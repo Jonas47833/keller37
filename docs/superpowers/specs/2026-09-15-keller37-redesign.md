@@ -277,8 +277,9 @@ Ein Panel „Lebenslauf": Villa-Slot (leer / gekauft mit Bild), Beziehungsstatus
 
 ### 8.3 Game Over (neue Regel)
 - Bankkredite sind auf **3.000 € Gesamtschulden** gedeckelt; ein Kredit, der das Limit überschreiten würde, wird abgelehnt (Szene `bank.limit` beim ersten Mal, danach Toast).
-- Game Over, wenn nach `afterSpin()` gilt: `balance < 0` **und** `bankDebt >= 3000` **und** `mafiaDebt > 0`. (Solange noch eine Kreditquelle offen ist, geht es weiter.)
-- Ablauf: Szene `gameover` (Vito, Hafen bei Sonnenaufgang), Panel 3 mit Statistik (Spins, höchster Kontostand, größter Gewinn, verkaufte Nieren, Game Overs) und Button „Nochmal" → `State.reset()` (50 €, alles zurück), `meta` bleibt, `meta.gameOvers++`. Die Statistik im Panel zeigt die Werte des beendeten Durchlaufs. Achievement „Auferstanden" beim ersten Weiterspielen.
+- Game Over (`Rules.isGameOver`), wenn gilt: `bankDebt >= 3000` **und** `mafiaDebt > 0` **und** `balance < 1 + interest + meds` (also nicht einmal ein 1-€-Spin inkl. Zinsen und Meds bezahlbar; ein negativer Kontostand ist damit eingeschlossen). Solange noch eine Kreditquelle offen ist, geht es weiter.
+- Geprüft wird an drei Stellen: am Ende von `afterSpin()`, nach der 25-€-Strafe beim Postboten (`Postman.fail`) und beim Start (`boot`, direkt nach dem Anzeigen des Screens) – ein Reload entkommt dem Game Over also nicht.
+- Ablauf: Szene `gameover` (Vito, Hafen bei Sonnenaufgang), Panel 3 mit Statistik (Spins, höchster Kontostand, größter Gewinn, verkaufte Nieren, Game Overs) und Button „Nochmal" → erst dann `meta.gameOvers++`, dann `State.reset()` (50 €, alles zurück), `meta` bleibt. Die Statistik im Panel zeigt die Werte des beendeten Durchlaufs. Achievement „Auferstanden" beim ersten Weiterspielen.
 
 ### 8.4 Sound
 Modul `SFX` mit `play(name)`, `loop(name)/stop(name)`, `mute(bool)`. Alle Sounds aus `OscillatorNode` + `BufferSource`-Rauschen + `GainNode`-Hüllkurven. Namen: `click, chip, coin, cash, lose, reelSpin, reelStop, ballTick, whinny, gallop, heartbeat, dryfire, gunshot, cardSlide, neonBuzz, typewriter, unlock, stamp, dog`. AudioContext wird beim ersten User-Klick erzeugt/resumed. Mute-Toggle in der Wallet-Bar, in `meta` gespeichert.

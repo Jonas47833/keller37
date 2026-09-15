@@ -721,7 +721,11 @@ const Rules = {
   },
   mafiaBill(debt) { return debt * 3; },
   bankLoanAllowed(s, amt) { return s.bankDebt + amt <= Rules.BANK_LIMIT; },
-  isGameOver(s) { return s.balance < 0 && s.bankDebt >= Rules.BANK_LIMIT && s.mafiaDebt > 0; },
+  /* Game Over: beide Kreditquellen zu und nicht mal ein 1-€-Spin (inkl. Zinsen/Meds) mehr bezahlbar */
+  isGameOver(s) {
+    const c = Rules.spinCosts(s);
+    return s.bankDebt >= Rules.BANK_LIMIT && s.mafiaDebt > 0 && s.balance < 1 + c.interest + c.meds;
+  },
   passiveTick(s) { return (s.hasHouse ? 3 : 0) + (s.hasDealer ? 5 : 0); },
   passivePerMin(s) { return (s.hasHouse ? 30 : 0) + (s.hasDealer ? 50 : 0); },
 
@@ -2685,6 +2689,7 @@ const Postman = {
     qs('#jobStatus', this.root).innerHTML = `<span class="loss">${msg} 25 € Strafe. Schicht beendet nach ${this.streak} Briefen.</span>`;
     qs('#btnShift', this.root).classList.remove('hidden');
     this.tier = null;
+    if (Rules.isGameOver(State.s)) Bus.emit('gameover', {});
   },
 };
 
@@ -2788,10 +2793,10 @@ Bus.on('gameover', async () => {
     'Beste Post-Serie': s.stats.postStreakBest,
     'Game Overs': State.meta.gameOvers + 1,
   };
-  State.meta.gameOvers++;
-  State.saveMeta();
   SFX.stopAll();
   await Cutscene.play('gameover', { balance: UI.fmt(s.balance), stats });
+  State.meta.gameOvers++;
+  State.saveMeta();
   await restartGame({ playIntro: false });
   UI.toast({ icon: '🌅', title: 'Neuer Anfang', text: '50 € und ein Kater. Auf geht’s.', tone: 'gold' });
   await Bus.emit('gameover:restart', {});
@@ -2882,11 +2887,13 @@ T.test('bankLoanAllowed: Limit 3000', () => {
   T.eq(Rules.bankLoanAllowed(base({ bankDebt: 2500 }), 1000), false);
   T.eq(Rules.bankLoanAllowed(base({ bankDebt: 3000 }), 200), false);
 });
-T.test('isGameOver: nur wenn negativ und beide Quellen zu', () => {
+T.test('isGameOver: beide Quellen zu und kein Spin mehr bezahlbar', () => {
   T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 3000, mafiaDebt: 300 })), true);
-  T.eq(Rules.isGameOver(base({ balance: 0, bankDebt: 3000, mafiaDebt: 300 })), false);
+  T.eq(Rules.isGameOver(base({ balance: 901, bankDebt: 3000, mafiaDebt: 300 })), false); // 1 € + 900 € Zinsen reicht genau
   T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 2000, mafiaDebt: 300 })), false);
   T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 3000, mafiaDebt: 0 })), false);
+  T.eq(Rules.isGameOver(base({ balance: 500, bankDebt: 3000, mafiaDebt: 300 })), true); // positiv, aber unter 901 €
+  T.eq(Rules.isGameOver(base({ balance: 920, bankDebt: 3000, mafiaDebt: 300, kidneySold: true })), true); // Meds: 921 nötig
 });
 T.test('passiveTick / passivePerMin', () => {
   T.eq(Rules.passiveTick(base()), 0);
@@ -3174,6 +3181,8 @@ T.test('Bus.emit: werfender Handler stoppt andere Handler nicht, liefert Promise
     UI.toast({ icon: r.failed ? '❌' : '✅', title: 'Selbsttest', text: `${r.passed} bestanden, ${r.failed} fehlgeschlagen`, tone: r.failed ? 'loss' : 'win', ms: 6000 });
   }
   await UI.show(params.get('screen') || 'hub');
+  let gameOverAtBoot = false;
+  if (Rules.isGameOver(State.s)) { gameOverAtBoot = true; await Bus.emit('gameover', {}); }
   if (params.has('scene')) {
     await Cutscene.play(params.get('scene'), { bill: 900, before: 1000, after: 500, price: '1.000 €', debt: 300, stats: { Spins: 12, 'Höchster Kontostand': '1.234 €' } });
   } else if (!State.s.flags.intro && !params.has('screen')) {
@@ -3181,7 +3190,7 @@ T.test('Bus.emit: werfender Handler stoppt andere Handler nicht, liefert Promise
     State.s.flags.intro = true;
     State.save();
   }
-  if (loaded && !params.has('screen')) UI.toast({ icon: '💾', title: 'Spielstand geladen', text: `Willkommen zurück. ${UI.fmt(State.s.balance)} in der Tasche.` });
+  if (loaded && !gameOverAtBoot && !params.has('screen')) UI.toast({ icon: '💾', title: 'Spielstand geladen', text: `Willkommen zurück. ${UI.fmt(State.s.balance)} in der Tasche.` });
 })();
 </script>
 </body>
