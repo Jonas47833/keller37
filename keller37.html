@@ -2652,6 +2652,53 @@ Bus.on('post:streak', ({ streak }) => { if (streak >= 11) Achievements.unlock('p
 Bus.on('gameover:restart', () => Achievements.unlock('phoenix'));
 </script>
 
+<script id="gameover">
+/* ================= GAME OVER & NEUES SPIEL ================= */
+Cutscene.define('gameover', [
+  { bg: 'hafen-morgen', who: 'vito', mood: 'calm', text: 'Schöner Sonnenaufgang, oder? Ich komme gern hierher, wenn ich nachdenken muss. Über Freunde. Über Schulden.' },
+  { bg: 'hafen-morgen', who: 'vito', mood: 'calm', text: 'Die Bank will nichts mehr von dir, ich habe schon etwas von dir, und dein Konto steht bei {{balance}}. Das nennt man ein Ende.' },
+  { bg: 'hafen-morgen', who: 'vito', mood: 'happy', fx: 'stats', text: 'Aber ich bin kein Unmensch. Fünfzig Euro und ein neuer Anfang. Wir sehen uns unten.',
+    choices: [{ label: 'Nochmal', value: 'again', cls: 'red' }] },
+]);
+
+async function restartGame({ playIntro }) {
+  State.reset();
+  State.s.flags.intro = true;
+  State.save();
+  UI.setBalance(State.s.balance, { animate: false });
+  UI.renderWallet();
+  UI.renderSide();
+  await UI.show('hub');
+  if (playIntro) await Cutscene.play('intro');
+}
+
+Bus.on('gameover', async () => {
+  const s = State.s;
+  const stats = {
+    Spins: s.stats.spins,
+    'Höchster Kontostand': UI.fmt(s.stats.maxBalance),
+    'Größter Gewinn': UI.fmt(s.stats.biggestWin),
+    'Verkaufte Nieren': s.stats.kidneys,
+    'Beste Post-Serie': s.stats.postStreakBest,
+    'Game Overs': State.meta.gameOvers + 1,
+  };
+  State.meta.gameOvers++;
+  State.saveMeta();
+  SFX.stopAll();
+  await Cutscene.play('gameover', { balance: UI.fmt(s.balance), stats });
+  await restartGame({ playIntro: false });
+  UI.toast({ icon: '🌅', title: 'Neuer Anfang', text: '50 € und ein Kater. Auf geht’s.', tone: 'gold' });
+  await Bus.emit('gameover:restart', {});
+});
+
+Bus.on('newgame.request', async () => {
+  if (Cutscene.active) return;
+  const c = await Cutscene.play('newgame.confirm', {});
+  if (c !== 'yes') return;
+  await restartGame({ playIntro: true });
+});
+</script>
+
 <script id="selftest">
 /* ================= SELFTEST – läuft mit ?selftest im Browser und via node tests/run-selftest.mjs ================= */
 const SelfTest = {
