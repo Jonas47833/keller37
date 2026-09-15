@@ -1414,18 +1414,22 @@ Cutscene.define('newgame.confirm', [
 /* ================= CORE – Kontostand, Spin-Kosten, afterSpin (Reihenfolge wie im Original) ================= */
 const Game = {
   _passiveAcc: 0,
-  settling: false,
-  applyDelta(delta, { from = null, quiet = false } = {}) {
+  settling: false,      // true, solange mindestens ein settle() läuft (blockiert beginSpin)
+  settleDepth: 0,
+  inFlight: 0,          // begonnene, noch nicht abgerechnete/verfallene Runden (blockiert ↺)
+  run: null,            // State.s zum Zeitpunkt von beginSpin – settle() prüft, ob es noch derselbe Spielstand ist
+  /* delta = Kontobewegung; net = angezeigter/gewerteter Netto-Betrag (Default: delta) */
+  applyDelta(delta, { from = null, quiet = false, net = delta } = {}) {
     const s = State.s;
-    if (delta === 0) quiet = true;
+    if (net === 0) quiet = true;
     s.balance += delta;
     if (s.balance > s.stats.maxBalance) s.stats.maxBalance = s.balance;
-    if (delta > s.stats.biggestWin) s.stats.biggestWin = delta;
+    if (net > s.stats.biggestWin) s.stats.biggestWin = net;
     UI.setBalance(s.balance);
     if (!quiet) {
-      UI.pulseBalance(delta);
-      UI.floatNumber(delta, from);
-      if (delta < 0) UI.shake(qs('#balance'));
+      UI.pulseBalance(net);
+      UI.floatNumber(net, from);
+      if (net < 0) UI.shake(qs('#balance'));
     }
     State.save();
     UI.renderWallet();
@@ -1458,25 +1462,35 @@ const Game = {
       return false;
     }
     const costs = chk.interest + chk.meds;
+    /* Einsatz wird sofort treuhänderisch abgezogen (Escrow) und bei settle() brutto ausgezahlt */
+    this.applyDelta(-(bet + costs), { quiet: true });
     if (costs > 0) {
-      this.applyDelta(-costs, { quiet: true });
       const parts = [];
       if (chk.interest) parts.push(`Zinsen ${UI.fmt(chk.interest)}`);
       if (chk.meds) parts.push(`Meds ${UI.fmt(chk.meds)}`);
       UI.toast({ icon: '🧾', title: 'Abzüge vor dem Spin', text: parts.join(' · '), tone: 'loss', ms: 2000 });
     }
+    this.inFlight++;
+    this.run = State.s;
     Bus.emit('spin:before', { bet });
     return true;
   },
-  async settle(delta, { from = null, game = '' } = {}) {
+  /* Runde ohne Abrechnung beenden (Einsatz verfällt, bereits abgezogen) */
+  forfeit() { this.inFlight = Math.max(0, this.inFlight - 1); },
+  /* delta = Netto-Ergebnis (wie in Rules.*Delta), bet = Einsatz aus beginSpin, run = Game.run nach beginSpin */
+  async settle(delta, { from = null, game = '', bet = 0, run = null } = {}) {
+    this.settleDepth++;
     this.settling = true;
     try {
-      this.applyDelta(delta, { from });
+      if (run !== State.s) return; // Spielstand wurde inzwischen ersetzt (Game Over / Neues Spiel) – Runde verfällt
+      this.applyDelta(delta + bet, { from, net: delta });
       if (delta > 0) { SFX.play('cash'); await Bus.emit('win', { amount: delta, game }); }
       else if (delta < 0) { SFX.play('lose'); await Bus.emit('loss', { amount: -delta, game }); }
       await this.afterSpin();
     } finally {
-      this.settling = false;
+      this.settleDepth--;
+      this.settling = this.settleDepth > 0;
+      this.inFlight = Math.max(0, this.inFlight - 1);
     }
   },
   async afterSpin() {
@@ -1909,6 +1923,7 @@ const Slots = {
     if (this.spinning || !this.root) return;
     const bet = Game.readBet('slotBet');
     if (!Game.beginSpin(bet)) return;
+    const run = Game.run;
     const gen = this.gen;
     this.spinning = true;
     try {
@@ -1944,7 +1959,7 @@ const Slots = {
         }
       }
       await Bus.emit('slots:result', { res, m, bet });
-      await Game.settle(delta, { from: this.alive(gen) ? qs('.slot-machine', this.root) : null, game: 'slots' });
+      await Game.settle(delta, { from: this.alive(gen) ? qs('.slot-machine', this.root) : null, game: 'slots', bet, run });
     } finally {
       SFX.stop('reelSpin');
       if (this.gen === gen) {
@@ -1980,7 +1995,7 @@ UI.register('slots', {
     qs('#lever', root).addEventListener('click', () => Slots.spin());
     document.addEventListener('keydown', Slots.onKey);
   },
-  unmount() { Slots.gen++; document.removeEventListener('keydown', Slots.onKey); Slots.root = null; Slots.spinning = false; },
+  unmount() { Slots.gen++; document.removeEventListener('keydown', Slots.onKey); SFX.stop('reelSpin'); Slots.root = null; Slots.spinning = false; },
 });
 </script>
 
@@ -2010,16 +2025,18 @@ const Blackjack = {
     qs('#bjPlayerVal', this.root).textContent = Rules.handSum(this.round.pHand);
     qs('#bjDealerVal', this.root).textContent = revealDealer ? Rules.handSum(this.round.dHand) : '?';
   },
+  /* Hand ohne Abrechnung fallen lassen (Screen verlassen) – Einsatz ist bereits abgezogen */
+  drop(round) { if (round && !round.done) { round.done = true; Game.forfeit(); } },
   async start() {
     if (this.inRound || !this.root) return;
     const bet = Game.readBet('bjBet');
     if (!Game.beginSpin(bet)) return;
     const gen = this.gen;
     this.inRound = true; this.dealing = true; this.bet = bet;
+    this.deck = Rules.newDeck(Math.random); this.pHand = []; this.dHand = [];
+    const round = { pHand: this.pHand, dHand: this.dHand, deck: this.deck, bet, gen, run: Game.run, done: false };
+    this.round = round;
     try {
-      this.deck = Rules.newDeck(Math.random); this.pHand = []; this.dHand = [];
-      const round = { pHand: this.pHand, dHand: this.dHand, deck: this.deck, bet, gen };
-      this.round = round;
       qs('#playerCards', this.root).innerHTML = ''; qs('#dealerCards', this.root).innerHTML = '';
       qsa('.hand-val', this.root).forEach((v) => v.classList.remove('push'));
       qs('#bjBetControls', this.root).classList.add('hidden');
@@ -2032,6 +2049,7 @@ const Blackjack = {
       this.updateVals(false);
     } finally {
       if (this.gen === gen) this.dealing = false;
+      else this.drop(round); // Screen während des Austeilens verlassen
     }
   },
   async hit() {
@@ -2048,6 +2066,7 @@ const Blackjack = {
       if (this.gen === gen) this.dealing = false;
     }
     if (Rules.handSum(round.pHand) > 21) await this.finish('bust', round);
+    else if (!this.alive(gen)) this.drop(round); // Screen während der Karte verlassen
   },
   async stand() {
     if (this.dealing || !this.inRound) return;
@@ -2076,6 +2095,8 @@ const Blackjack = {
     await this.finish(Rules.bjOutcome(Rules.handSum(round.pHand), Rules.handSum(round.dHand)), round);
   },
   async finish(outcome, round) {
+    if (round.done) return;
+    round.done = true;
     const delta = Rules.bjDelta(outcome, round.bet);
     try {
       if (this.alive(round.gen)) {
@@ -2095,7 +2116,7 @@ const Blackjack = {
       if (this.gen === round.gen) { this.inRound = false; this.dealing = false; }
     }
     await Bus.emit('blackjack:result', { outcome, bet: round.bet });
-    await Game.settle(delta, { from: this.alive(round.gen) ? qs('#playerCards', this.root) : null, game: 'blackjack' });
+    await Game.settle(delta, { from: this.alive(round.gen) ? qs('#playerCards', this.root) : null, game: 'blackjack', bet: round.bet, run: round.run });
   },
 };
 
@@ -2109,7 +2130,15 @@ UI.register('blackjack', {
     qs('#btnHit', root).addEventListener('click', () => Blackjack.hit());
     qs('#btnStand', root).addEventListener('click', () => Blackjack.stand());
   },
-  unmount() { Blackjack.gen++; Blackjack.root = null; Blackjack.inRound = false; Blackjack.dealing = false; },
+  unmount() {
+    Blackjack.gen++;
+    if (Blackjack.inRound) {
+      /* Zwischen zwei Aktionen verlassen: Hand sofort fallen lassen. Läuft noch eine Kette (dealing), räumt die selbst auf. */
+      if (!Blackjack.dealing) Blackjack.drop(Blackjack.round);
+      UI.toast({ icon: '🃏', title: 'Hand aufgegeben', text: 'Einsatz verfallen.', tone: 'loss' });
+    }
+    Blackjack.root = null; Blackjack.inRound = false; Blackjack.dealing = false;
+  },
 });
 </script>
 
@@ -2188,6 +2217,7 @@ const Roulette = {
     if (this.spinning || !this.root) return;
     const bet = Game.readBet('rouletteBet');
     if (!Game.beginSpin(bet)) return;
+    const run = Game.run;
     const gen = this.gen;
     this.spinning = true;
     try {
@@ -2223,7 +2253,7 @@ const Roulette = {
         qsa('.chip.placed', this.root).forEach((c) => c.classList.add(delta > 0 ? 'won' : 'lost'));
       }
       await Bus.emit('roulette:result', { type, chosen, rolled, win: delta > 0, bet });
-      await Game.settle(delta, { from: this.alive(gen) ? qs('.wheel-box', this.root) : null, game: 'roulette' });
+      await Game.settle(delta, { from: this.alive(gen) ? qs('.wheel-box', this.root) : null, game: 'roulette', bet, run });
     } finally {
       if (this.gen === gen) {
         this.spinning = false;
@@ -2300,6 +2330,7 @@ const Horses = {
     if (this.racing || !this.root) return;
     const bet = Game.readBet('horseBet');
     if (!Game.beginSpin(bet)) return;
+    const run = Game.run;
     const gen = this.gen;
     this.racing = true;
     try {
@@ -2333,7 +2364,7 @@ const Horses = {
       });
       clearInterval(this.commentTimer);
       SFX.stop('gallop');
-      if (!winner) return;
+      if (!winner) { Game.forfeit(); return; } // Rennen abgebrochen (Screen verlassen) – Einsatz verfällt
       const won = winner.id === selected;
       const delta = Rules.horseDelta(won, bet);
       if (this.alive(gen)) {
@@ -2352,7 +2383,7 @@ const Horses = {
         qs('#btnRace', this.root).disabled = false;
       }
       await Bus.emit('horses:result', { winner: winner.id, selected, bet });
-      await Game.settle(delta, { from: this.alive(gen) ? qs('#track', this.root) : null, game: 'horses' });
+      await Game.settle(delta, { from: this.alive(gen) ? qs('#track', this.root) : null, game: 'horses', bet, run });
     } finally {
       if (this.gen === gen) this.racing = false;
     }
@@ -2372,7 +2403,10 @@ UI.register('horses', {
     Horses.gen++;
     clearInterval(Horses.loop);
     clearInterval(Horses.commentTimer);
-    if (Horses.resolveRace) { Horses.resolveRace(null); Horses.resolveRace = null; }
+    if (Horses.resolveRace) {
+      Horses.resolveRace(null); Horses.resolveRace = null;
+      UI.toast({ icon: '🏇', title: 'Einsatz verfallen', text: 'Rennen ohne dich beendet.', tone: 'loss' });
+    }
     SFX.stop('gallop');
     Horses.root = null;
     Horses.racing = false;
@@ -2422,12 +2456,14 @@ const Russian = {
     if (!this.alive(duel.gen)) return;
     SFX.loop('heartbeat', Math.max(380, 900 - duel.idx * 110));
   },
+  /* Duell ohne Abrechnung abbrechen (Screen verlassen) – Einsatz ist bereits abgezogen */
+  drop(duel) { if (duel && !duel.done) { duel.done = true; Game.forfeit(); } },
   async start() {
     if (this.inDuel || !this.root) return;
     const bet = Game.readBet('rrBet');
     if (!Game.beginSpin(bet)) return;
     const gen = this.gen;
-    const duel = { cylinder: Rules.rrCylinder(Math.random), idx: 0, bet, gen };
+    const duel = { cylinder: Rules.rrCylinder(Math.random), idx: 0, bet, gen, run: Game.run, done: false };
     this.duel = duel;
     this.inDuel = true;
     if (this.alive(gen)) {
@@ -2493,11 +2529,14 @@ const Russian = {
         qs('#btnTrigger', this.root).disabled = false;
       }
       this.heartbeat(duel);
+      if (!this.alive(gen)) this.drop(duel); // Screen während des Zugs verlassen, Duell nicht entschieden
     } finally {
       if (this.gen === gen) this.busy = false;
     }
   },
   async end(victim, duel) {
+    if (duel.done) return;
+    duel.done = true;
     const gen = duel.gen;
     if (this.alive(gen)) SFX.stopAll(); else SFX.stop('heartbeat');
     try {
@@ -2513,7 +2552,7 @@ const Russian = {
     const delta = Rules.rrDelta(victim, duel.bet);
     await Bus.emit('rr:result', { victim, bet: duel.bet });
     if (victim === 'player' && this.alive(gen)) await Cutscene.play('rr.headshot', {});
-    await Game.settle(delta, { from: this.alive(gen) ? qs('.duel', this.root) : null, game: 'russian' });
+    await Game.settle(delta, { from: this.alive(gen) ? qs('.duel', this.root) : null, game: 'russian', bet: duel.bet, run: duel.run });
   },
 };
 
@@ -2530,6 +2569,11 @@ UI.register('russian', {
   unmount() {
     Russian.gen++;
     SFX.stop('heartbeat');
+    if (Russian.inDuel) {
+      /* Zwischen zwei Zügen verlassen: Duell sofort abbrechen. Läuft noch ein Zug (busy), räumt der selbst auf bzw. rechnet ab. */
+      if (!Russian.busy) Russian.drop(Russian.duel);
+      UI.toast({ icon: '🔫', title: 'Duell abgebrochen', text: 'Einsatz verfallen.', tone: 'loss' });
+    }
     Russian.root = null;
     Russian.inDuel = false;
     Russian.busy = false;
@@ -2755,6 +2799,7 @@ Bus.on('gameover', async () => {
 
 Bus.on('newgame.request', async () => {
   if (Cutscene.active) return;
+  if (Game.inFlight > 0) { UI.toast({ icon: '⏳', title: 'Erst die Runde beenden', text: 'Ein Spiel läuft noch.', tone: 'loss' }); return; }
   const c = await Cutscene.play('newgame.confirm', {});
   if (c !== 'yes') return;
   await restartGame({ playIntro: true });

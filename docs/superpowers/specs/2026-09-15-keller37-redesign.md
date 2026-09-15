@@ -226,7 +226,7 @@ Toasts (kein Overlay): Bier (Prost, +x %), Brownie (ab dem zweiten), Zinsen/Meds
 
 ## 7. Spiele
 
-Alle Zahlen: Abschnitt 9.
+Alle Zahlen: Abschnitt 9. Wer einen Spiel-Screen mitten in einer Runde verlässt (Blackjack-Hand, Pferderennen, Duell), verliert den Einsatz: Er wurde beim Start abgezogen (Abschnitt 9, „Kosten pro Spin") und wird nicht zurückgezahlt; ein Toast „Einsatz verfallen" weist darauf hin. Bereits laufende Animationen mit feststehendem Ergebnis (Slots, Roulette) laufen im Hintergrund zu Ende und werden normal abgerechnet.
 
 ### 7.1 Roulette (rot)
 - Kessel: Canvas 320 px, Holzrand, 37 Fächer (Reihenfolge wie bisher), Gold-Speichen, Innenschatten. Dreht per CSS-Transform wie bisher (5 Umdrehungen + Ziel, 4 s, gleiche Easing).
@@ -306,7 +306,7 @@ Seitenleiste wird Bottom-Bar mit drei Tabs (Bar / Hinterzimmer / Zuhause), die e
 
 ## 9. Mechanik-Referenz (muss 1:1 reproduziert werden)
 
-**Kosten pro Spin** (`checkCosts`): Einsatz muss `> 0` sein. `interest = bankDebt > 0 ? round(bankDebt·0,3) : 0`, `meds = kidneySold ? 20 : 0`. Wenn `balance < bet + interest + meds` → abgelehnt (Toast mit Aufschlüsselung). Sonst werden `interest + meds` sofort abgezogen; der Einsatz wird vom Spiel selbst verrechnet. `maxBet = max(1, balance − interest − meds)`.
+**Kosten pro Spin** (`checkCosts`): Einsatz muss `> 0` sein. `interest = bankDebt > 0 ? round(bankDebt·0,3) : 0`, `meds = kidneySold ? 20 : 0`. Wenn `balance < bet + interest + meds` → abgelehnt (Toast mit Aufschlüsselung). Sonst werden `bet + interest + meds` sofort abgezogen (`Game.beginSpin`): Zinsen und Meds endgültig, der Einsatz treuhänderisch. Bei der Abrechnung (`Game.settle(netto, {bet})`) zahlt das Spiel **brutto** aus: `balance += netto + bet` (Gewinn `bet + Gewinn`, Verlust `0`, Push `bet`). Netto ist damit exakt wie im Original (`Rules.*Delta`/`*Payout`); Anzeige, Statistik `biggestWin` und Achievements werten den Netto-Betrag. Eine Runde, die nicht abgerechnet wird (Screen verlassen, siehe 7), verfällt samt Einsatz; eine Abrechnung, deren Spielstand inzwischen ersetzt wurde (Game Over, Neues Spiel), wird verworfen. `maxBet = max(1, balance − interest − meds)`.
 
 **Glück**: Bier: 1 → +10 %, 2 → +15 %, 3 → +20 % (nur solange `beerTimer > 0`); Brownie +40 % solange `brownieTimer > 0`. Summe.
 
