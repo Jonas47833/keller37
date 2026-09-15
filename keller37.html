@@ -277,6 +277,30 @@ input { font-family: var(--font-mono); }
 .pcard .back { background: repeating-linear-gradient(45deg, #7a2a2a 0 4px, #5a1a1a 4px 8px); border: 4px solid #fdfaf0; transform: rotateY(180deg); }
 .pcard.bust .face { box-shadow: 0 0 18px 4px rgba(255,59,59,.7); }
 .pcard.bust { animation: bustSlide .6s ease .2s both; }
+/* -- Roulette -- */
+.roulette-top { display: flex; gap: 24px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.wheel-box { position: relative; width: 320px; height: 320px; flex: 0 0 auto; }
+#wheelCanvas { border-radius: 50%; transition: transform 4s cubic-bezier(0.12, 0.88, 0.22, 1); box-shadow: 0 10px 30px rgba(0,0,0,.8), 0 0 0 6px #2b1a0c, 0 0 0 9px #c9a227; }
+.ball { position: absolute; left: 0; top: 0; width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #999); box-shadow: 0 2px 4px rgba(0,0,0,.8); z-index: 5; transform: translate(153px, 8px); pointer-events: none; }
+.pointer { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); color: var(--gold-2); font-size: 1.6rem; z-index: 7; filter: drop-shadow(0 2px 3px #000); }
+.result-num { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0); width: 74px; height: 74px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 2.3rem; color: #fff; border: 3px solid var(--gold-2); z-index: 6; transition: transform .35s cubic-bezier(.3,1.5,.5,1); box-shadow: 0 0 20px rgba(0,0,0,.8); }
+.result-num.show { transform: translate(-50%, -50%) scale(1); }
+.result-num.red { background: #b3261e; } .result-num.black { background: #111; } .result-num.green { background: #1f7a4d; }
+.table-box { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.rtable { display: grid; grid-template-columns: 34px repeat(12, 34px); grid-auto-rows: 34px; gap: 2px; padding: 8px; background: rgba(0,0,0,.25); border-radius: 8px; border: 1px solid rgba(232,198,90,.35); }
+.rtable.locked .rcell { pointer-events: none; }
+.rcell { position: relative; border: 1px solid rgba(255,255,255,.35); color: #fff; font-family: var(--font-mono); font-weight: 700; font-size: .85rem; background: #1c1c1c; transition: filter .1s; padding: 0; }
+.rcell.red { background: #b3261e; }
+.rcell.zero { grid-row: 1 / span 3; background: #1f7a4d; }
+.rcell.out { grid-column: span 3; background: rgba(0,0,0,.35); font-family: var(--font-display); letter-spacing: .08em; font-size: 1rem; }
+.rcell.out.red { background: #b3261e; }
+.rcell.out.black { background: #111; }
+.rcell:hover { filter: brightness(1.35); }
+.chip.fly { position: fixed; z-index: 96; transition: transform .4s cubic-bezier(.3,.8,.4,1); pointer-events: none; }
+.chip.placed { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.68); pointer-events: none; animation: popIn .2s ease both; }
+.chip.placed.won { animation: chipWin .5s ease both; }
+.chip.placed.lost { animation: chipLost .5s ease both; }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
@@ -301,6 +325,8 @@ input { font-family: var(--font-mono); }
 @keyframes coinFall { 0% { transform: translateY(-40px) rotate(0); opacity: 1; } 100% { transform: translateY(260px) rotate(360deg); opacity: 0; } }
 @keyframes dealIn { from { transform: translate(220px, -120px) rotate(25deg); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes bustSlide { to { transform: translateY(30px) rotate(6deg); opacity: .4; } }
+@keyframes chipWin { 0% { transform: translate(-50%, -50%) scale(.68); } 50% { transform: translate(-50%, -50%) scale(1.1); } 100% { transform: translate(-50%, -250%) scale(.68); opacity: 0; } }
+@keyframes chipLost { to { transform: translate(120px, -50%) scale(.5); opacity: 0; } }
 </style>
 </head>
 <body>
@@ -451,6 +477,29 @@ input { font-family: var(--font-mono); }
     <div class="bet-bar hidden" id="bjActionControls">
       <button class="btn green" id="btnHit">Hit</button>
       <button class="btn red" id="btnStand">Stand</button>
+    </div>
+  </div>
+</template>
+<template id="tpl-roulette">
+  <div class="panel roulette-panel felt">
+    <div class="roulette-top">
+      <div class="wheel-box">
+        <canvas id="wheelCanvas" width="320" height="320"></canvas>
+        <div class="ball" id="ball"></div>
+        <div class="pointer">▼</div>
+        <div class="result-num" id="resultNum"></div>
+      </div>
+      <div class="table-box">
+        <div class="rtable" id="rtable"></div>
+        <div class="bet-bar">
+          <div class="bet-field"><button data-step="-5">−</button><input type="number" id="rouletteBet" value="10" min="1"><button data-step="5">+</button></div>
+          <button class="chip" data-chip="10" data-v="10">10</button>
+          <button class="chip" data-chip="25" data-v="25">25</button>
+          <button class="chip" data-chip="50" data-v="50">50</button>
+          <button class="chip" data-chip="max" data-v="max">MAX</button>
+        </div>
+        <div class="status" id="rouletteStatus">Chip auf ein Feld legen</div>
+      </div>
     </div>
   </div>
 </template>
@@ -1865,6 +1914,143 @@ UI.register('blackjack', {
     qs('#btnStand', root).addEventListener('click', () => Blackjack.stand());
   },
   unmount() { Blackjack.gen++; Blackjack.root = null; Blackjack.inRound = false; Blackjack.dealing = false; },
+});
+</script>
+
+<script id="game-roulette">
+/* ================= ROULETTE ================= */
+const Roulette = {
+  root: null, wheelDeg: 0, spinning: false, ballRaf: null, gen: 0,
+  alive(gen) { return !!this.root && this.gen === gen; },
+  buildTable() {
+    const t = qs('#rtable', this.root);
+    t.innerHTML = '';
+    const cell = (label, cls, type, chosen, style) =>
+      h('button', { class: `rcell ${cls}`, style, onclick: (e) => this.play(type, chosen, e.currentTarget) }, label);
+    t.append(cell('0', 'zero', 'number', 0));
+    for (let row = 0; row < 3; row++) for (let col = 0; col < 12; col++) {
+      const n = col * 3 + (3 - row);
+      t.append(cell(String(n), Rules.isRed(n) ? 'red' : 'black', 'number', n));
+    }
+    t.append(cell('Rot', 'out red', 'red', null, 'grid-column: 2 / span 3'), cell('Schwarz', 'out black', 'black', null),
+      cell('Gerade', 'out', 'even', null), cell('Ungerade', 'out', 'odd', null));
+  },
+  drawWheel(highlight = -1) {
+    const c = qs('#wheelCanvas', this.root);
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    const cx = 160, cy = 160, r = 150, total = 37, slice = (2 * Math.PI) / total;
+    ctx.clearRect(0, 0, 320, 320);
+    ctx.beginPath(); ctx.arc(cx, cy, r + 8, 0, 2 * Math.PI); ctx.fillStyle = '#4a2c14'; ctx.fill();
+    for (let i = 0; i < total; i++) {
+      const center = -Math.PI / 2 + i * slice;
+      const num = Rules.WHEEL[i];
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, center - slice / 2, center + slice / 2); ctx.closePath();
+      ctx.fillStyle = i === highlight ? '#e8c65a' : num === 0 ? '#1f7a4d' : Rules.isRed(num) ? '#b3261e' : '#1c1c1c';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(201,162,39,.5)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(center); ctx.translate(r - 16, 0); ctx.rotate(Math.PI / 2);
+      ctx.fillStyle = i === highlight ? '#000' : '#fff'; ctx.font = 'bold 11px "Courier Prime", "Courier New", monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(num), 0, 0); ctx.restore();
+    }
+    ctx.beginPath(); ctx.arc(cx, cy, r - 32, 0, 2 * Math.PI); ctx.fillStyle = '#141712'; ctx.fill(); ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 3; ctx.stroke();
+    for (let k = 0; k < 8; k++) { ctx.save(); ctx.translate(cx, cy); ctx.rotate((k * Math.PI) / 4); ctx.fillStyle = '#c9a227'; ctx.fillRect(-2, -(r - 34), 4, r - 34 - 40); ctx.restore(); }
+    ctx.beginPath(); ctx.arc(cx, cy, 40, 0, 2 * Math.PI); ctx.fillStyle = '#1b1f19'; ctx.fill(); ctx.strokeStyle = '#e8c65a'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 14, 0, 2 * Math.PI); ctx.fillStyle = '#e8c65a'; ctx.fill();
+  },
+  flyChip(cell, label) {
+    const from = qs('#balance').getBoundingClientRect();
+    const to = cell.getBoundingClientRect();
+    const c = h('div', { class: 'chip fly', style: `left:${from.left}px; top:${from.top}px` }, label);
+    document.body.append(c);
+    void c.offsetWidth;
+    c.style.transform = `translate(${to.left + to.width / 2 - from.left - 23}px, ${to.top + to.height / 2 - from.top - 23}px)`;
+    setTimeout(() => { c.remove(); cell.append(h('div', { class: 'chip placed' }, label)); }, 420);
+  },
+  animateBall(dur, gen) {
+    const ball = qs('#ball', this.root);
+    if (!ball) return;
+    if (this.ballRaf) cancelAnimationFrame(this.ballRaf);
+    const start = performance.now(), R0 = 152, R1 = 134, turns = 4;
+    let lastPocket = -1;
+    const frame = (now) => {
+      if (!this.alive(gen)) return;
+      const p = Math.min(1, (now - start) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      const angle = -90 - turns * 360 * e;           // endet bei −90° = oben, unter dem Zeiger
+      let r = R0;
+      if (p > 0.65) { const q = (p - 0.65) / 0.35; r = R1 + (R0 - R1) * (1 - q) * Math.abs(Math.cos(q * Math.PI * 3)); }
+      const rad = (angle * Math.PI) / 180;
+      ball.style.transform = `translate(${160 + r * Math.cos(rad) - 7}px, ${160 + r * Math.sin(rad) - 7}px)`;
+      const pocket = Math.floor((((angle % 360) + 360) % 360) / (360 / 37));
+      if (pocket !== lastPocket && p < 0.97) { lastPocket = pocket; SFX.play('ballTick'); }
+      if (p < 1) this.ballRaf = requestAnimationFrame(frame); else this.ballRaf = null;
+    };
+    this.ballRaf = requestAnimationFrame(frame);
+  },
+  async play(type, chosen, cell) {
+    if (this.spinning || !this.root) return;
+    const bet = Game.readBet('rouletteBet');
+    if (!Game.beginSpin(bet)) return;
+    const gen = this.gen;
+    this.spinning = true;
+    try {
+      qs('#rtable', this.root).classList.add('locked');
+      qsa('.chip.placed', this.root).forEach((c) => c.remove());
+      this.flyChip(cell, String(bet));
+      SFX.play('chip');
+      qs('#rouletteStatus', this.root).textContent = 'Kugel rollt…';
+      qs('#resultNum', this.root).className = 'result-num';
+      let rolled = Rules.rouletteRoll(Math.random);
+      rolled = Rules.rouletteLuckOverride(type, chosen, rolled, Rules.luck(State.s), Math.random);
+      const targetIdx = Rules.WHEEL.indexOf(rolled);
+      const sliceDeg = 360 / 37;
+      const targetDeg = (360 - targetIdx * sliceDeg) % 360;
+      const currentMod = this.wheelDeg % 360;
+      let diff = targetDeg - currentMod;
+      if (diff <= 0) diff += 360;
+      this.wheelDeg += 5 * 360 + diff;
+      this.drawWheel(-1);
+      qs('#wheelCanvas', this.root).style.transform = `rotate(${this.wheelDeg}deg)`;
+      this.animateBall(4000, gen);
+      await wait(4100);
+      const delta = Rules.roulettePayout(type, chosen, rolled, bet);
+      if (this.alive(gen)) {
+        this.drawWheel(targetIdx);
+        const res = qs('#resultNum', this.root);
+        res.textContent = rolled;
+        res.className = `result-num show ${rolled === 0 ? 'green' : Rules.isRed(rolled) ? 'red' : 'black'}`;
+        const colName = rolled === 0 ? '🟢 0' : Rules.isRed(rolled) ? `🔴 ${rolled}` : `⚫ ${rolled}`;
+        qs('#rouletteStatus', this.root).innerHTML = delta > 0
+          ? `<span class="win">${colName} · +${UI.fmt(delta)}</span>`
+          : `<span class="loss">${colName} · Niete · −${UI.fmt(bet)}</span>`;
+        qsa('.chip.placed', this.root).forEach((c) => c.classList.add(delta > 0 ? 'won' : 'lost'));
+      }
+      await Bus.emit('roulette:result', { type, chosen, rolled, win: delta > 0, bet });
+      await Game.settle(delta, { from: this.alive(gen) ? qs('.wheel-box', this.root) : null, game: 'roulette' });
+    } finally {
+      this.spinning = false;
+      if (this.alive(gen)) qs('#rtable', this.root).classList.remove('locked');
+    }
+  },
+};
+
+UI.register('roulette', {
+  template: 'tpl-roulette',
+  mount(root) {
+    Roulette.gen++;
+    Roulette.root = root;
+    Roulette.buildTable();
+    Roulette.drawWheel();
+    qs('#wheelCanvas', root).style.transform = `rotate(${Roulette.wheelDeg}deg)`;
+    Game.bindBet(root, 'rouletteBet');
+  },
+  unmount() {
+    Roulette.gen++;
+    if (Roulette.ballRaf) cancelAnimationFrame(Roulette.ballRaf);
+    Roulette.ballRaf = null;
+    Roulette.root = null;
+  },
 });
 </script>
 
