@@ -830,8 +830,8 @@ const Cutscene = {
   async play(id, ctx = {}) {
     const def = this.SCENES[id];
     if (!def) { console.warn('[cutscene] Szene fehlt:', id); return undefined; }
-    const panels = typeof def === 'function' ? def(ctx) : def;
     while (this.active) await wait(50);
+    const panels = typeof def === 'function' ? def(ctx) : def;
     this.active = true;
     SFX.stopAll();
     const root = qs('#cutscene');
@@ -913,7 +913,7 @@ const Cutscene = {
       };
       const onKey = (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onClick({ target: els.text }); } };
       const onSkip = (e) => { e.stopPropagation(); done(this.SKIP); };
-      const cleanup = () => { els.root.removeEventListener('click', onClick); document.removeEventListener('keydown', onKey); els.skip.removeEventListener('click', onSkip); };
+      const cleanup = () => { typing = false; clearTimeout(timer); els.root.removeEventListener('click', onClick); document.removeEventListener('keydown', onKey); els.skip.removeEventListener('click', onSkip); };
       const done = (v) => { cleanup(); resolve(v); };
       els.root.addEventListener('click', onClick);
       document.addEventListener('keydown', onKey);
