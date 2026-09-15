@@ -1650,6 +1650,8 @@ Cutscene.bind('dealer.hired', 'dealer.hired');
 const Slots = {
   root: null,
   spinning: false,
+  gen: 0,
+  alive(gen) { return !!this.root && this.gen === gen; },
   cell() { const c = qs('.cell', this.root); return c ? c.offsetHeight : 90; },
   buildStrips() {
     qsa('.strip', this.root).forEach((strip) => {
@@ -1669,42 +1671,47 @@ const Slots = {
     if (this.spinning || !this.root) return;
     const bet = Game.readBet('slotBet');
     if (!Game.beginSpin(bet)) return;
+    const gen = this.gen;
     this.spinning = true;
-    qs('#btnSpin', this.root).disabled = true;
-    const lever = qs('#lever', this.root);
-    lever.classList.add('pulled');
-    setTimeout(() => lever.classList.remove('pulled'), 500);
-    qs('#slotStatus', this.root).textContent = 'Walzen laufen…';
-    qsa('.reel-win', this.root).forEach((r) => r.classList.remove('locked', 'hit'));
-    let res = Rules.slotRoll(Math.random);
-    res = Rules.slotLuckOverride(res, Rules.luck(State.s), Math.random);
-    qsa('.strip', this.root).forEach((s) => { s.style.transition = 'none'; s.style.transform = 'translateY(0)'; void s.offsetHeight; s.classList.add('spinning'); });
-    SFX.loop('reelSpin', 120);
-    [800, 1400, 2000].forEach((ms, i) => setTimeout(() => {
-      if (!this.root) return;
-      this.setReel(i + 1, res[i], true);
-      qs(`#reel${i + 1}`, this.root).classList.add('locked');
-      SFX.play('reelStop');
-      if (i === 2) SFX.stop('reelSpin');
-    }, ms));
-    await wait(2450);
-    SFX.stop('reelSpin');
-    const m = Rules.slotMultiplier(...res);
-    const delta = Rules.slotDelta(bet, m);
-    if (this.root) {
-      const stat = qs('#slotStatus', this.root);
-      if (m > 0) {
-        stat.innerHTML = `<span class="win">${String(m).replace('.', ',')}× · +${UI.fmt(Math.round(bet * m))}</span>`;
-        qsa('.reel-win', this.root).forEach((r) => r.classList.add('hit'));
-        if (m >= 25) this.jackpot(m === 50 ? 'JACKPOT' : 'DIAMANTEN');
-      } else {
-        stat.innerHTML = `<span class="loss">Niete · −${UI.fmt(bet)}</span>`;
+    try {
+      qs('#btnSpin', this.root).disabled = true;
+      const lever = qs('#lever', this.root);
+      lever.classList.add('pulled');
+      setTimeout(() => lever.classList.remove('pulled'), 500);
+      qs('#slotStatus', this.root).textContent = 'Walzen laufen…';
+      qsa('.reel-win', this.root).forEach((r) => r.classList.remove('locked', 'hit'));
+      let res = Rules.slotRoll(Math.random);
+      res = Rules.slotLuckOverride(res, Rules.luck(State.s), Math.random);
+      qsa('.strip', this.root).forEach((s) => { s.style.transition = 'none'; s.style.transform = 'translateY(0)'; void s.offsetHeight; s.classList.add('spinning'); });
+      SFX.loop('reelSpin', 120);
+      [800, 1400, 2000].forEach((ms, i) => setTimeout(() => {
+        if (!this.alive(gen)) return;
+        this.setReel(i + 1, res[i], true);
+        qs(`#reel${i + 1}`, this.root).classList.add('locked');
+        SFX.play('reelStop');
+        if (i === 2) SFX.stop('reelSpin');
+      }, ms));
+      await wait(2450);
+      SFX.stop('reelSpin');
+      const m = Rules.slotMultiplier(...res);
+      const delta = Rules.slotDelta(bet, m);
+      if (this.alive(gen)) {
+        const stat = qs('#slotStatus', this.root);
+        if (m > 0) {
+          stat.innerHTML = `<span class="win">${String(m).replace('.', ',')}× · +${UI.fmt(Math.round(bet * m))}</span>`;
+          qsa('.reel-win', this.root).forEach((r) => r.classList.add('hit'));
+          if (m >= 25) this.jackpot(m === 50 ? 'JACKPOT' : 'DIAMANTEN');
+        } else {
+          stat.innerHTML = `<span class="loss">Niete · −${UI.fmt(bet)}</span>`;
+        }
       }
+      await Bus.emit('slots:result', { res, m, bet });
+      await Game.settle(delta, { from: this.alive(gen) ? qs('.slot-machine', this.root) : null, game: 'slots' });
+    } finally {
+      SFX.stop('reelSpin');
+      this.spinning = false;
+      if (this.alive(gen)) qs('#btnSpin', this.root).disabled = false;
     }
-    await Bus.emit('slots:result', { res, m, bet });
-    await Game.settle(delta, { from: this.root ? qs('.slot-machine', this.root) : null, game: 'slots' });
-    this.spinning = false;
-    if (this.root) qs('#btnSpin', this.root).disabled = false;
   },
   jackpot(label) {
     const machine = qs('.slot-machine', this.root);
@@ -1724,6 +1731,7 @@ const Slots = {
 UI.register('slots', {
   template: 'tpl-slots',
   mount(root) {
+    Slots.gen++;
     Slots.root = root;
     Slots.buildStrips();
     ['🍒', '7️⃣', '💎'].forEach((s, i) => Slots.setReel(i + 1, s, false));
@@ -1732,14 +1740,15 @@ UI.register('slots', {
     qs('#lever', root).addEventListener('click', () => Slots.spin());
     document.addEventListener('keydown', Slots.onKey);
   },
-  unmount() { document.removeEventListener('keydown', Slots.onKey); Slots.root = null; },
+  unmount() { Slots.gen++; document.removeEventListener('keydown', Slots.onKey); Slots.root = null; },
 });
 </script>
 
 <script id="game-blackjack">
 /* ================= BLACKJACK ================= */
 const Blackjack = {
-  root: null, deck: [], pHand: [], dHand: [], bet: 0, dealing: false, inRound: false,
+  root: null, deck: [], pHand: [], dHand: [], bet: 0, dealing: false, inRound: false, gen: 0, roundGen: -1,
+  alive(gen) { return !!this.root && this.gen === gen; },
   cardEl(c, hidden = false) {
     const red = ['♥', '♦'].includes(c.suit);
     return h('div', { class: `pcard dealing${hidden ? ' hidden-card' : ''}` },
@@ -1751,13 +1760,13 @@ const Blackjack = {
         h('div', { class: 'back' })));
   },
   async dealTo(elId, card, hidden = false) {
-    if (!this.root) return;
+    if (!this.alive(this.roundGen)) return;
     qs('#' + elId, this.root).append(this.cardEl(card, hidden));
     SFX.play('cardSlide');
     await wait(240);
   },
   updateVals(revealDealer) {
-    if (!this.root) return;
+    if (!this.alive(this.roundGen)) return;
     qs('#bjPlayerVal', this.root).textContent = Rules.handSum(this.pHand);
     qs('#bjDealerVal', this.root).textContent = revealDealer ? Rules.handSum(this.dHand) : '?';
   },
@@ -1765,82 +1774,97 @@ const Blackjack = {
     if (this.inRound || !this.root) return;
     const bet = Game.readBet('bjBet');
     if (!Game.beginSpin(bet)) return;
+    this.roundGen = this.gen;
     this.inRound = true; this.dealing = true; this.bet = bet;
-    this.deck = Rules.newDeck(Math.random); this.pHand = []; this.dHand = [];
-    qs('#playerCards', this.root).innerHTML = ''; qs('#dealerCards', this.root).innerHTML = '';
-    qsa('.hand-val', this.root).forEach((v) => v.classList.remove('push'));
-    qs('#bjBetControls', this.root).classList.add('hidden');
-    qs('#bjActionControls', this.root).classList.remove('hidden');
-    qs('#bjStatus', this.root).textContent = 'Hit oder Stand?';
-    this.pHand.push(this.deck.pop()); await this.dealTo('playerCards', this.pHand[0]);
-    this.dHand.push(this.deck.pop()); await this.dealTo('dealerCards', this.dHand[0], true);
-    this.pHand.push(this.deck.pop()); await this.dealTo('playerCards', this.pHand[1]);
-    this.dHand.push(this.deck.pop()); await this.dealTo('dealerCards', this.dHand[1]);
-    this.updateVals(false);
-    this.dealing = false;
+    try {
+      this.deck = Rules.newDeck(Math.random); this.pHand = []; this.dHand = [];
+      qs('#playerCards', this.root).innerHTML = ''; qs('#dealerCards', this.root).innerHTML = '';
+      qsa('.hand-val', this.root).forEach((v) => v.classList.remove('push'));
+      qs('#bjBetControls', this.root).classList.add('hidden');
+      qs('#bjActionControls', this.root).classList.remove('hidden');
+      qs('#bjStatus', this.root).textContent = 'Hit oder Stand?';
+      this.pHand.push(this.deck.pop()); await this.dealTo('playerCards', this.pHand[0]);
+      this.dHand.push(this.deck.pop()); await this.dealTo('dealerCards', this.dHand[0], true);
+      this.pHand.push(this.deck.pop()); await this.dealTo('playerCards', this.pHand[1]);
+      this.dHand.push(this.deck.pop()); await this.dealTo('dealerCards', this.dHand[1]);
+      this.updateVals(false);
+    } finally {
+      this.dealing = false;
+    }
   },
   async hit() {
     if (this.dealing || !this.inRound) return;
     this.dealing = true;
-    const c = this.deck.pop();
-    this.pHand.push(c);
-    await this.dealTo('playerCards', c);
-    this.updateVals(false);
-    this.dealing = false;
+    try {
+      const c = this.deck.pop();
+      this.pHand.push(c);
+      await this.dealTo('playerCards', c);
+      this.updateVals(false);
+    } finally {
+      this.dealing = false;
+    }
     if (Rules.handSum(this.pHand) > 21) await this.finish('bust');
   },
   async stand() {
     if (this.dealing || !this.inRound) return;
     this.dealing = true;
-    if (this.root) {
-      qs('#bjActionControls', this.root).classList.add('hidden');
-      const hole = qs('#dealerCards .pcard', this.root);
-      if (hole) hole.classList.remove('hidden-card');
-      SFX.play('cardSlide');
-      await wait(550);
-      this.updateVals(true);
+    try {
+      if (this.alive(this.roundGen)) {
+        qs('#bjActionControls', this.root).classList.add('hidden');
+        const hole = qs('#dealerCards .pcard', this.root);
+        if (hole) hole.classList.remove('hidden-card');
+        SFX.play('cardSlide');
+        await wait(550);
+        this.updateVals(true);
+      }
+      while (Rules.dealerShouldHit(this.dHand)) {
+        const c = this.deck.pop();
+        this.dHand.push(c);
+        await this.dealTo('dealerCards', c);
+        this.updateVals(true);
+        await wait(300);
+      }
+    } finally {
+      this.dealing = false;
     }
-    while (Rules.dealerShouldHit(this.dHand)) {
-      const c = this.deck.pop();
-      this.dHand.push(c);
-      await this.dealTo('dealerCards', c);
-      this.updateVals(true);
-      await wait(300);
-    }
-    this.dealing = false;
     await this.finish(Rules.bjOutcome(Rules.handSum(this.pHand), Rules.handSum(this.dHand)));
   },
   async finish(outcome) {
     const delta = Rules.bjDelta(outcome, this.bet);
-    if (this.root) {
-      const msgs = {
-        win: `<span class="win">Gewonnen · +${UI.fmt(this.bet)}</span>`,
-        bust: `<span class="loss">Bust · über 21 · −${UI.fmt(this.bet)}</span>`,
-        dealer: `<span class="loss">Dealer gewinnt · −${UI.fmt(this.bet)}</span>`,
-        push: 'Push · Unentschieden',
-      };
-      qs('#bjStatus', this.root).innerHTML = msgs[outcome];
-      if (outcome === 'bust') qsa('#playerCards .pcard', this.root).forEach((c) => c.classList.add('bust'));
-      if (outcome === 'push') qsa('.hand-val', this.root).forEach((v) => v.classList.add('push'));
-      qs('#bjActionControls', this.root).classList.add('hidden');
-      qs('#bjBetControls', this.root).classList.remove('hidden');
+    try {
+      if (this.alive(this.roundGen)) {
+        const msgs = {
+          win: `<span class="win">Gewonnen · +${UI.fmt(this.bet)}</span>`,
+          bust: `<span class="loss">Bust · über 21 · −${UI.fmt(this.bet)}</span>`,
+          dealer: `<span class="loss">Dealer gewinnt · −${UI.fmt(this.bet)}</span>`,
+          push: 'Push · Unentschieden',
+        };
+        qs('#bjStatus', this.root).innerHTML = msgs[outcome];
+        if (outcome === 'bust') qsa('#playerCards .pcard', this.root).forEach((c) => c.classList.add('bust'));
+        if (outcome === 'push') qsa('.hand-val', this.root).forEach((v) => v.classList.add('push'));
+        qs('#bjActionControls', this.root).classList.add('hidden');
+        qs('#bjBetControls', this.root).classList.remove('hidden');
+      }
+    } finally {
+      this.inRound = false;
+      this.dealing = false;
     }
-    this.inRound = false;
     await Bus.emit('blackjack:result', { outcome, bet: this.bet });
-    await Game.settle(delta, { from: this.root ? qs('#playerCards', this.root) : null, game: 'blackjack' });
+    await Game.settle(delta, { from: this.alive(this.roundGen) ? qs('#playerCards', this.root) : null, game: 'blackjack' });
   },
 };
 
 UI.register('blackjack', {
   template: 'tpl-blackjack',
   mount(root) {
+    Blackjack.gen++;
     Blackjack.root = root;
     Game.bindBet(root, 'bjBet');
     qs('#btnDeal', root).addEventListener('click', () => Blackjack.start());
     qs('#btnHit', root).addEventListener('click', () => Blackjack.hit());
     qs('#btnStand', root).addEventListener('click', () => Blackjack.stand());
   },
-  unmount() { Blackjack.root = null; Blackjack.inRound = false; Blackjack.dealing = false; },
+  unmount() { Blackjack.gen++; Blackjack.root = null; Blackjack.inRound = false; Blackjack.dealing = false; },
 });
 </script>
 
