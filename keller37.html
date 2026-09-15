@@ -336,6 +336,32 @@ input { font-family: var(--font-mono); }
 #cylinder { transition: transform .25s cubic-bezier(.3,1.3,.5,1); filter: drop-shadow(0 6px 10px rgba(0,0,0,.8)); }
 .cylinder-box.zoom { animation: cylZoom .3s ease both; }
 .chambers-left { font-family: var(--font-mono); font-size: .85rem; color: var(--dim); }
+/* -- Post austragen -- */
+.postman-panel { background: linear-gradient(180deg, #8fc3f0 0%, #dbe7ef 60%, #6b6a55 60%, #4e4c3c 100%); border-color: #8a8060; color: #222; }
+.postman-panel .status { color: #2a2418; }
+.postman-panel .status .win { color: #2f7a1f; text-shadow: none; }
+.postman-panel .status .loss { color: #b3261e; text-shadow: none; }
+.street { position: relative; width: 100%; min-height: 260px; }
+.sun { position: absolute; right: 30px; top: 10px; width: 60px; height: 60px; border-radius: 50%; background: radial-gradient(circle, #fff4b0, #f5d67a 60%, transparent 62%); filter: blur(1px); }
+.houses { position: absolute; left: 0; right: 0; bottom: 70px; display: flex; justify-content: space-around; align-items: flex-end; padding: 0 20px; }
+.house { --hc: #999; position: relative; width: 110px; background: none; border: 0; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: transform .12s; }
+.house:hover { transform: translateY(-4px); }
+.house .roof { width: 0; height: 0; border-left: 55px solid transparent; border-right: 55px solid transparent; border-bottom: 34px solid #5a3a2a; }
+.house .wall { width: 96px; height: 70px; background: var(--hc); border: 2px solid rgba(0,0,0,.25); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 1.6rem; color: #fff; text-shadow: 0 1px 2px #000; }
+.house .mailbox { position: relative; margin-top: 6px; font-size: 1.8rem; }
+.house .flag { position: absolute; right: -6px; top: 4px; width: 4px; height: 16px; background: #c1121f; transform-origin: bottom; transform: rotate(90deg); transition: transform .25s; }
+.house.delivered .flag { transform: rotate(0deg); }
+.house .dog { position: absolute; left: 50%; bottom: 40px; font-size: 2.2rem; transform: translateX(-50%); animation: dogJump .6s ease both; }
+.road { position: absolute; left: 0; right: 0; bottom: 0; height: 60px; background: #4e4c3c; border-top: 4px dashed #ddd; }
+.fuse-wrap { position: absolute; left: 20px; right: 20px; top: 14px; height: 10px; }
+.fuse { height: 6px; margin-top: 2px; background: linear-gradient(90deg, #333, #666); border-radius: 3px; width: 100%; transition: width .05s linear; box-shadow: 0 0 6px rgba(255,120,0,.6); }
+.spark { position: absolute; top: -10px; margin-left: -10px; font-size: 1.2rem; filter: drop-shadow(0 0 6px orange); animation: sparkle .3s infinite alternate; }
+.letter { position: absolute; left: 20px; top: 34px; font-size: 1rem; }
+.letter b { font-family: var(--font-display); font-size: 1.4rem; letter-spacing: .08em; }
+.streak { position: absolute; right: 20px; top: 40px; font-family: var(--font-display); font-size: 2.4rem; color: #2a2418; letter-spacing: .1em; }
+.streak span { font-size: 1rem; color: #555; }
+.stamp { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%) rotate(-12deg); font-family: var(--font-display); font-size: 3.5rem; color: #b3261e; border: 6px solid #b3261e; padding: 4px 18px; letter-spacing: .2em; animation: stampIn .4s cubic-bezier(.3,1.6,.5,1) both; pointer-events: none; z-index: 5; }
+.envelope { position: absolute; font-size: 1.6rem; pointer-events: none; transition: transform .35s ease-in, opacity .35s; z-index: 4; }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
@@ -365,6 +391,9 @@ input { font-family: var(--font-mono); }
 @keyframes gallop { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-5px) rotate(3deg); } }
 @keyframes dust { from { transform: translate(0, 0) scale(1); opacity: .8; } to { transform: translate(-30px, -6px) scale(2.2); opacity: 0; } }
 @keyframes cylZoom { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@keyframes sparkle { from { transform: scale(.8) rotate(0); } to { transform: scale(1.2) rotate(30deg); } }
+@keyframes stampIn { from { transform: translate(-50%, -50%) rotate(-12deg) scale(3); opacity: 0; } to { transform: translate(-50%, -50%) rotate(-12deg) scale(1); opacity: 1; } }
+@keyframes dogJump { 0% { transform: translateX(-50%) translateY(30px); opacity: 0; } 40% { transform: translateX(-50%) translateY(-20px); opacity: 1; } 100% { transform: translateX(-50%) translateY(0); opacity: 1; } }
 </style>
 </head>
 <body>
@@ -579,6 +608,21 @@ input { font-family: var(--font-mono); }
     <div class="bet-bar hidden" id="rrActionControls">
       <button class="btn red" id="btnTrigger">💥 Abzug drücken</button>
     </div>
+  </div>
+</template>
+<template id="tpl-postman">
+  <div class="panel postman-panel">
+    <div class="street" id="street">
+      <div class="sun"></div>
+      <div class="houses" id="houses"></div>
+      <div class="road"></div>
+      <div class="fuse-wrap hidden" id="fuseWrap"><div class="fuse" id="fuse"></div><div class="spark" id="spark">✨</div></div>
+      <div class="letter paper hidden" id="letter"></div>
+      <div class="streak" id="streak"></div>
+      <div class="stamp hidden" id="stamp">TEMPO!</div>
+    </div>
+    <div class="status" id="jobStatus">Schicht beginnen. Falscher Kasten oder zu langsam: 25 € Strafe.</div>
+    <div class="bet-bar"><button class="btn solid" id="btnShift">Schicht beginnen</button></div>
   </div>
 </template>
 <!-- /TEMPLATES -->
@@ -2426,6 +2470,118 @@ Cutscene.define('igor.first', [
 Cutscene.define('rr.headshot', [
   { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'flash', text: 'Streifschuss! Du Glückspilz. Hundert Euro fürs Pflaster – und für meine Nerven.' },
 ]);
+</script>
+
+<script id="game-postman">
+/* ================= POST AUSTRAGEN ================= */
+const Postman = {
+  root: null, streak: 0, timer: null, timeLeft: 0, target: null, tier: null, active: false, gen: 0,
+  alive(gen) { return !!this.root && this.gen === gen; },
+  renderHouses() {
+    const box = qs('#houses', this.root);
+    box.innerHTML = '';
+    for (const hs of [...Rules.POST_HOUSES].sort(() => Math.random() - 0.5)) {
+      box.append(h('button', { class: 'house', 'data-n': hs.n, style: `--hc: ${hs.c}`, onclick: () => this.deliver(hs.n) },
+        h('div', { class: 'roof' }), h('div', { class: 'wall' }, `#${hs.n}`), h('div', { class: 'mailbox' }, '📫', h('div', { class: 'flag' }))));
+    }
+  },
+  startShift() {
+    if (this.active || !this.root) return;
+    const gen = this.gen;
+    this.active = true; this.streak = 0;
+    qs('#btnShift', this.root).classList.add('hidden');
+    qs('#fuseWrap', this.root).classList.remove('hidden');
+    qs('#letter', this.root).classList.remove('hidden');
+    qs('#jobStatus', this.root).textContent = '';
+    this.nextStep(gen);
+  },
+  nextStep(gen) {
+    clearInterval(this.timer);
+    if (!this.alive(gen)) return;
+    const prevTier = this.tier;
+    this.tier = Rules.postmanTier(this.streak);
+    if (prevTier && prevTier.t !== this.tier.t) this.stamp();
+    this.timeLeft = this.tier.t;
+    this.target = pick(Rules.POST_HOUSES);
+    qs('#letter', this.root).innerHTML = `An: <b style="color:${this.target.c}">Haus #${this.target.n}</b><br>${this.tier.r} € Lohn`;
+    qs('#streak', this.root).innerHTML = `${this.streak}<span> in Folge</span>`;
+    this.renderHouses();
+    const fuse = qs('#fuse', this.root), spark = qs('#spark', this.root);
+    fuse.style.width = '100%'; spark.style.left = '100%';
+    this.timer = setInterval(() => {
+      if (!this.alive(gen)) { clearInterval(this.timer); return; }
+      this.timeLeft -= 0.05;
+      const pct = Math.max(0, (this.timeLeft / this.tier.t) * 100);
+      fuse.style.width = pct + '%'; spark.style.left = pct + '%';
+      if (this.timeLeft <= 0) { clearInterval(this.timer); this.fail('Zu langsam!', null, gen); }
+    }, 50);
+  },
+  stamp() {
+    const st = qs('#stamp', this.root);
+    st.classList.remove('hidden'); st.style.animation = 'none'; void st.offsetWidth; st.style.animation = '';
+    SFX.play('stamp');
+    setTimeout(() => st.classList.add('hidden'), 900);
+  },
+  async deliver(n) {
+    if (!this.active || !this.root) return;
+    const gen = this.gen;
+    clearInterval(this.timer);
+    const house = qs(`.house[data-n="${n}"]`, this.root);
+    if (n === this.target.n) {
+      const reward = this.tier.r;
+      house.classList.add('delivered');
+      const from = qs('#letter', this.root).getBoundingClientRect(), to = qs('.mailbox', house).getBoundingClientRect(), st = qs('#street', this.root).getBoundingClientRect();
+      const env = h('span', { class: 'envelope', style: `left:${from.left - st.left}px; top:${from.top - st.top}px` }, '✉️');
+      qs('#street', this.root).append(env);
+      void env.offsetWidth;
+      env.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(.5)`; env.style.opacity = '0';
+      setTimeout(() => env.remove(), 400);
+      SFX.play('coin');
+      Game.applyDelta(reward, { from: house });
+      this.streak++;
+      if (this.streak > State.s.stats.postStreakBest) { State.s.stats.postStreakBest = this.streak; State.save(); }
+      qs('#jobStatus', this.root).innerHTML = `<span class="win">+${UI.fmt(reward)}</span>`;
+      await Bus.emit('post:streak', { streak: this.streak });
+      await wait(250);
+      if (!this.alive(gen)) return;
+      this.nextStep(gen);
+    } else {
+      this.fail('Falscher Kasten!', house, gen);
+    }
+  },
+  fail(msg, house, gen) {
+    clearInterval(this.timer);
+    if (this.gen === gen) this.active = false;
+    if (!this.alive(gen)) return;
+    const target = house || qs(`.house[data-n="${this.target.n}"]`, this.root);
+    if (target) { target.append(h('span', { class: 'dog' }, '🐕')); }
+    SFX.play('dog');
+    UI.shake(qs('#street', this.root));
+    Game.applyDelta(-Rules.POST_PENALTY, { from: target });
+    qs('#fuseWrap', this.root).classList.add('hidden');
+    qs('#letter', this.root).classList.add('hidden');
+    qs('#jobStatus', this.root).innerHTML = `<span class="loss">${msg} 25 € Strafe. Schicht beendet nach ${this.streak} Briefen.</span>`;
+    qs('#btnShift', this.root).classList.remove('hidden');
+    this.tier = null;
+  },
+};
+
+UI.register('postman', {
+  template: 'tpl-postman',
+  mount(root) {
+    Postman.gen++;
+    Postman.root = root;
+    Postman.streak = 0; Postman.active = false; Postman.tier = null;
+    Postman.renderHouses();
+    qs('#btnShift', root).addEventListener('click', () => Postman.startShift());
+  },
+  unmount() {
+    Postman.gen++;
+    clearInterval(Postman.timer);
+    Postman.root = null;
+    Postman.active = false;
+  },
+});
 </script>
 
 <script id="selftest">
