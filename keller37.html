@@ -966,6 +966,7 @@ Cutscene.define('newgame.confirm', [
 /* ================= CORE – Kontostand, Spin-Kosten, afterSpin (Reihenfolge wie im Original) ================= */
 const Game = {
   _passiveAcc: 0,
+  settling: false,
   applyDelta(delta, { from = null, quiet = false } = {}) {
     const s = State.s;
     if (delta === 0) quiet = true;
@@ -999,6 +1000,7 @@ const Game = {
     }));
   },
   beginSpin(bet) {
+    if (this.settling) return false;
     const chk = Rules.checkSpin(State.s, bet);
     if (!chk.ok) {
       if (chk.reason === 'invalid') UI.toast({ icon: '🚫', title: 'Ungültiger Einsatz', text: 'Mindestens 1 €.', tone: 'loss' });
@@ -1019,10 +1021,15 @@ const Game = {
     return true;
   },
   async settle(delta, { from = null, game = '' } = {}) {
-    this.applyDelta(delta, { from });
-    if (delta > 0) { SFX.play('cash'); await Bus.emit('win', { amount: delta, game }); }
-    else if (delta < 0) { SFX.play('lose'); await Bus.emit('loss', { amount: -delta, game }); }
-    await this.afterSpin();
+    this.settling = true;
+    try {
+      this.applyDelta(delta, { from });
+      if (delta > 0) { SFX.play('cash'); await Bus.emit('win', { amount: delta, game }); }
+      else if (delta < 0) { SFX.play('lose'); await Bus.emit('loss', { amount: -delta, game }); }
+      await this.afterSpin();
+    } finally {
+      this.settling = false;
+    }
   },
   async afterSpin() {
     const s = State.s;
