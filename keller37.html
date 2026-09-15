@@ -367,6 +367,52 @@ input { font-family: var(--font-mono); }
 .trophy.on { opacity: 1; filter: none; border-style: solid; border-color: var(--gold); box-shadow: inset 0 0 12px rgba(201,162,39,.2); }
 .trophy .t-ic { font-size: 1.3rem; }
 .trophy.fresh { animation: popIn .4s cubic-bezier(.3,1.5,.5,1) both; }
+/* -- Mobile (< 760px): Seitenleiste wird Bottom-Bar mit Tabs -- */
+.side-tabs { display: none; }
+@media (max-width: 760px) {
+  .body { grid-template-columns: 1fr; padding: 12px 12px 110px; gap: 12px; }
+  .wallet { padding: 8px 12px; gap: 8px; }
+  .brand { font-size: 1.5rem; }
+  .balance { font-size: 1.15rem; min-width: 110px; padding: 4px 10px; }
+  .wallet-mid { order: 3; width: 100%; }
+  .side { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; gap: 0; background: rgba(12,14,10,.97); border-top: 1px solid rgba(201,162,39,.25); }
+  .side-sec { display: none; border-radius: 0; box-shadow: none; border: 0; padding: 10px 12px 6px; }
+  .side.open .side-sec.active { display: block; }
+  .side-sec h3 { display: none; }
+  .side-btn { padding: 8px 10px; font-size: .85rem; }
+  .side-tabs { display: flex; }
+  .side-tabs button { flex: 1; background: none; border: 0; border-top: 3px solid transparent; padding: 8px 4px; font-family: var(--font-display); letter-spacing: .1em; font-size: 1rem; color: var(--dim); }
+  .side-tabs button.on { color: var(--gold-2); border-top-color: var(--gold); }
+  .hub { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .door { height: 150px; padding-top: 14px; gap: 6px; }
+  .door .sign { font-size: 1.2rem; padding: 2px 8px; }
+  .door .glyph { font-size: 2rem; }
+  .finance, .invest-grid, .life-grid { grid-template-columns: 1fr; }
+  .roulette-top { flex-direction: column; }
+  .table-box { transform: scale(.78); transform-origin: top center; margin-bottom: -90px; }
+  .slot-machine { --cell: 64px; padding: 12px 56px 16px 14px; }
+  .lever { right: 8px; top: 50px; transform: scale(.8); }
+  .pcard { width: 46px; height: 66px; }
+  .pcard .pip { font-size: 1.4rem; }
+  .pcard .corner { font-size: .65rem; }
+  .cards { min-height: 70px; }
+  .duel { flex-direction: column; }
+  .fighter .face { width: 90px; height: 90px; font-size: 3rem; }
+  .house { width: 70px; } .house .roof { border-left-width: 35px; border-right-width: 35px; } .house .wall { width: 64px; height: 50px; font-size: 1.1rem; }
+  .cs-stage { flex-direction: column; align-items: center; padding: 0 4vw 2vh; gap: 10px; }
+  .cs-portrait { width: 110px; height: 110px; font-size: 4rem; margin-bottom: 0; }
+  .cs-text { font-size: 1rem; }
+  .cs-box { width: 100%; }
+  #toasts { right: 10px; left: 10px; bottom: 120px; }
+  .toast { max-width: none; }
+}
+/* -- Reduced Motion -- */
+@media (prefers-reduced-motion: reduce) {
+  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh { animation: none !important; }
+  .strip.spinning { animation: none !important; filter: none; }
+  .stage, .stage.leaving, .stage.entering { transition: none; animation: none; }
+  #wheelCanvas { transition-duration: .3s; }
+}
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
@@ -1132,6 +1178,7 @@ const UI = {
   renderSide() {
     const s = State.s;
     const side = qs('#side');
+    const openIdx = qsa('.side-sec', side).findIndex((sec) => sec.classList.contains('active'));
     side.innerHTML = '';
     const sec = (title, ...kids) => h('section', { class: 'side-sec' }, h('h3', {}, title), ...kids);
     const btn = (label, price, action, disabled = false) =>
@@ -1147,6 +1194,18 @@ const UI = {
         btn('📈 Anlagen', s.investments.length ? `${s.investments.length} aktiv` : '', 'invest')),
       sec('Zuhause', btn('🏡 Leben', s.hasHouse ? '🏰' : '', 'life')),
     );
+    const tabs = h('div', { class: 'side-tabs' });
+    ['Bar', 'Hinterzimmer', 'Zuhause'].forEach((label, i) => {
+      tabs.append(h('button', { onclick: () => {
+        const secs = qsa('.side-sec', side);
+        const wasOpen = side.classList.contains('open') && secs[i].classList.contains('active');
+        secs.forEach((sec, j) => sec.classList.toggle('active', j === i && !wasOpen));
+        qsa('button', tabs).forEach((b, j) => b.classList.toggle('on', j === i && !wasOpen));
+        side.classList.toggle('open', !wasOpen);
+        SFX.play('click');
+      } }, label));
+    });
+    side.append(tabs);
     side.onclick = (e) => {
       const b = e.target.closest('[data-action]');
       if (!b || b.disabled) return;
@@ -1154,6 +1213,7 @@ const UI = {
       const a = Actions[b.dataset.action];
       if (a) a(); else console.warn('[ui] Aktion fehlt:', b.dataset.action);
     };
+    if (openIdx >= 0) { qsa('.side-sec', side)[openIdx].classList.add('active'); qsa('.side-tabs button', side)[openIdx].classList.add('on'); side.classList.add('open'); }
   },
   mountShell() {
     const w = qs('#wallet');
