@@ -389,7 +389,9 @@ input { font-family: var(--font-mono); }
   .door .glyph { font-size: 2rem; }
   .finance, .invest-grid, .life-grid { grid-template-columns: 1fr; }
   .roulette-top { flex-direction: column; }
-  .table-box { transform: scale(.78); transform-origin: top center; margin-bottom: -90px; }
+  .rtable { grid-template-columns: 23px repeat(12, 23px); grid-auto-rows: 23px; gap: 1px; padding: 5px; }
+  .rcell { font-size: .58rem; }
+  .rcell.out { font-size: .5rem; letter-spacing: .02em; }
   .slot-machine { --cell: 64px; padding: 12px 56px 16px 14px; }
   .lever { right: 8px; top: 50px; transform: scale(.8); }
   .pcard { width: 46px; height: 66px; }
