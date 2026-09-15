@@ -1798,7 +1798,7 @@ UI.register('slots', {
 <script id="game-blackjack">
 /* ================= BLACKJACK ================= */
 const Blackjack = {
-  root: null, deck: [], pHand: [], dHand: [], bet: 0, dealing: false, inRound: false, gen: 0, roundGen: -1,
+  root: null, deck: [], pHand: [], dHand: [], bet: 0, dealing: false, inRound: false, gen: 0, round: null,
   alive(gen) { return !!this.root && this.gen === gen; },
   cardEl(c, hidden = false) {
     const red = ['♥', '♦'].includes(c.suit);
@@ -1811,34 +1811,35 @@ const Blackjack = {
         h('div', { class: 'back' })));
   },
   async dealTo(elId, card, hidden = false) {
-    if (!this.alive(this.roundGen)) return;
+    if (!this.round || !this.alive(this.round.gen)) return;
     qs('#' + elId, this.root).append(this.cardEl(card, hidden));
     SFX.play('cardSlide');
     await wait(240);
   },
   updateVals(revealDealer) {
-    if (!this.alive(this.roundGen)) return;
-    qs('#bjPlayerVal', this.root).textContent = Rules.handSum(this.pHand);
-    qs('#bjDealerVal', this.root).textContent = revealDealer ? Rules.handSum(this.dHand) : '?';
+    if (!this.round || !this.alive(this.round.gen)) return;
+    qs('#bjPlayerVal', this.root).textContent = Rules.handSum(this.round.pHand);
+    qs('#bjDealerVal', this.root).textContent = revealDealer ? Rules.handSum(this.round.dHand) : '?';
   },
   async start() {
     if (this.inRound || !this.root) return;
     const bet = Game.readBet('bjBet');
     if (!Game.beginSpin(bet)) return;
     const gen = this.gen;
-    this.roundGen = gen;
     this.inRound = true; this.dealing = true; this.bet = bet;
     try {
       this.deck = Rules.newDeck(Math.random); this.pHand = []; this.dHand = [];
+      const round = { pHand: this.pHand, dHand: this.dHand, deck: this.deck, bet, gen };
+      this.round = round;
       qs('#playerCards', this.root).innerHTML = ''; qs('#dealerCards', this.root).innerHTML = '';
       qsa('.hand-val', this.root).forEach((v) => v.classList.remove('push'));
       qs('#bjBetControls', this.root).classList.add('hidden');
       qs('#bjActionControls', this.root).classList.remove('hidden');
       qs('#bjStatus', this.root).textContent = 'Hit oder Stand?';
-      this.pHand.push(this.deck.pop()); await this.dealTo('playerCards', this.pHand[0]);
-      this.dHand.push(this.deck.pop()); await this.dealTo('dealerCards', this.dHand[0], true);
-      this.pHand.push(this.deck.pop()); await this.dealTo('playerCards', this.pHand[1]);
-      this.dHand.push(this.deck.pop()); await this.dealTo('dealerCards', this.dHand[1]);
+      round.pHand.push(round.deck.pop()); await this.dealTo('playerCards', round.pHand[0]);
+      round.dHand.push(round.deck.pop()); await this.dealTo('dealerCards', round.dHand[0], true);
+      round.pHand.push(round.deck.pop()); await this.dealTo('playerCards', round.pHand[1]);
+      round.dHand.push(round.deck.pop()); await this.dealTo('dealerCards', round.dHand[1]);
       this.updateVals(false);
     } finally {
       if (this.gen === gen) this.dealing = false;
@@ -1846,24 +1847,26 @@ const Blackjack = {
   },
   async hit() {
     if (this.dealing || !this.inRound) return;
+    const round = this.round;
     const gen = this.gen;
     this.dealing = true;
     try {
-      const c = this.deck.pop();
-      this.pHand.push(c);
+      const c = round.deck.pop();
+      round.pHand.push(c);
       await this.dealTo('playerCards', c);
       this.updateVals(false);
     } finally {
       if (this.gen === gen) this.dealing = false;
     }
-    if (Rules.handSum(this.pHand) > 21) await this.finish('bust');
+    if (Rules.handSum(round.pHand) > 21) await this.finish('bust', round);
   },
   async stand() {
     if (this.dealing || !this.inRound) return;
+    const round = this.round;
     const gen = this.gen;
     this.dealing = true;
     try {
-      if (this.alive(this.roundGen)) {
+      if (this.alive(round.gen)) {
         qs('#bjActionControls', this.root).classList.add('hidden');
         const hole = qs('#dealerCards .pcard', this.root);
         if (hole) hole.classList.remove('hidden-card');
@@ -1871,9 +1874,9 @@ const Blackjack = {
         await wait(550);
         this.updateVals(true);
       }
-      while (Rules.dealerShouldHit(this.dHand)) {
-        const c = this.deck.pop();
-        this.dHand.push(c);
+      while (Rules.dealerShouldHit(round.dHand)) {
+        const c = round.deck.pop();
+        round.dHand.push(c);
         await this.dealTo('dealerCards', c);
         this.updateVals(true);
         await wait(300);
@@ -1881,17 +1884,16 @@ const Blackjack = {
     } finally {
       if (this.gen === gen) this.dealing = false;
     }
-    await this.finish(Rules.bjOutcome(Rules.handSum(this.pHand), Rules.handSum(this.dHand)));
+    await this.finish(Rules.bjOutcome(Rules.handSum(round.pHand), Rules.handSum(round.dHand)), round);
   },
-  async finish(outcome) {
-    const gen = this.gen;
-    const delta = Rules.bjDelta(outcome, this.bet);
+  async finish(outcome, round) {
+    const delta = Rules.bjDelta(outcome, round.bet);
     try {
-      if (this.alive(this.roundGen)) {
+      if (this.alive(round.gen)) {
         const msgs = {
-          win: `<span class="win">Gewonnen · +${UI.fmt(this.bet)}</span>`,
-          bust: `<span class="loss">Bust · über 21 · −${UI.fmt(this.bet)}</span>`,
-          dealer: `<span class="loss">Dealer gewinnt · −${UI.fmt(this.bet)}</span>`,
+          win: `<span class="win">Gewonnen · +${UI.fmt(round.bet)}</span>`,
+          bust: `<span class="loss">Bust · über 21 · −${UI.fmt(round.bet)}</span>`,
+          dealer: `<span class="loss">Dealer gewinnt · −${UI.fmt(round.bet)}</span>`,
           push: 'Push · Unentschieden',
         };
         qs('#bjStatus', this.root).innerHTML = msgs[outcome];
@@ -1901,10 +1903,10 @@ const Blackjack = {
         qs('#bjBetControls', this.root).classList.remove('hidden');
       }
     } finally {
-      if (this.gen === gen) { this.inRound = false; this.dealing = false; }
+      if (this.gen === round.gen) { this.inRound = false; this.dealing = false; }
     }
-    await Bus.emit('blackjack:result', { outcome, bet: this.bet });
-    await Game.settle(delta, { from: this.alive(this.roundGen) ? qs('#playerCards', this.root) : null, game: 'blackjack' });
+    await Bus.emit('blackjack:result', { outcome, bet: round.bet });
+    await Game.settle(delta, { from: this.alive(round.gen) ? qs('#playerCards', this.root) : null, game: 'blackjack' });
   },
 };
 
