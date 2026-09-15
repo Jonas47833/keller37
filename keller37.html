@@ -350,7 +350,11 @@ const Bus = {
   },
   emit(name, payload = {}) {
     const list = (this.handlers.get(name) || []).slice();
-    const results = list.map((fn) => { try { return Promise.resolve(fn(payload)); } catch (e) { console.error('[bus]', name, e); return Promise.resolve(); } });
+    const results = list.map((fn) => {
+      let r;
+      try { r = fn(payload); } catch (e) { console.error('[bus]', name, e); return Promise.resolve(); }
+      return Promise.resolve(r).catch((e) => { console.error('[bus]', name, e); });
+    });
     return Promise.all(results);
   },
 };
@@ -791,6 +795,14 @@ T.test('Bus.on/off/emit synchron sichtbar', () => {
   off();
   Bus.emit('t1', { x: 3 });
   T.eq(seen, [2]);
+});
+T.test('Bus.emit: werfender Handler stoppt andere Handler nicht, liefert Promise', () => {
+  const seen = [];
+  Bus.on('t2', () => { throw new Error('boom'); });
+  Bus.on('t2', (p) => { seen.push(p.x); });
+  const r = Bus.emit('t2', { x: 1 });
+  T.eq(seen, [1]);
+  T.ok(r instanceof Promise);
 });
 
 /* --- SELFTEST CASES END --- */
