@@ -962,6 +962,216 @@ Cutscene.define('newgame.confirm', [
 ]);
 </script>
 
+<script id="core">
+/* ================= CORE – Kontostand, Spin-Kosten, afterSpin (Reihenfolge wie im Original) ================= */
+const Game = {
+  _passiveAcc: 0,
+  applyDelta(delta, { from = null, quiet = false } = {}) {
+    const s = State.s;
+    if (delta === 0) quiet = true;
+    s.balance += delta;
+    if (s.balance > s.stats.maxBalance) s.stats.maxBalance = s.balance;
+    if (delta > s.stats.biggestWin) s.stats.biggestWin = delta;
+    UI.setBalance(s.balance);
+    if (!quiet) {
+      UI.pulseBalance(delta);
+      UI.floatNumber(delta, from);
+      if (delta < 0) UI.shake(qs('#balance'));
+    }
+    State.save();
+    UI.renderWallet();
+    UI.renderSide();
+  },
+  readBet(inputId) { return parseInt(qs('#' + inputId).value, 10); },
+  bindBet(root, inputId) {
+    const input = qs('#' + inputId, root);
+    const clamp = () => { const v = parseInt(input.value, 10); input.value = Number.isFinite(v) ? Math.max(1, v) : 1; };
+    input.addEventListener('change', clamp);
+    qsa('[data-step]', root).forEach((b) => b.addEventListener('click', () => {
+      const v = parseInt(input.value, 10) || 0;
+      input.value = Math.max(1, v + parseInt(b.dataset.step, 10));
+      SFX.play('click');
+    }));
+    qsa('[data-chip]', root).forEach((c) => c.addEventListener('click', () => {
+      const v = c.dataset.chip;
+      input.value = v === 'max' ? Rules.maxBet(State.s) : parseInt(v, 10);
+      SFX.play('chip');
+    }));
+  },
+  beginSpin(bet) {
+    const chk = Rules.checkSpin(State.s, bet);
+    if (!chk.ok) {
+      if (chk.reason === 'invalid') UI.toast({ icon: '🚫', title: 'Ungültiger Einsatz', text: 'Mindestens 1 €.', tone: 'loss' });
+      else UI.toast({ icon: '🚫', title: 'Zu wenig Geld', tone: 'loss', ms: 4500,
+        text: `Benötigt ${UI.fmt(chk.total)} (Einsatz ${UI.fmt(bet)} + Zinsen ${UI.fmt(chk.interest)} + Meds ${UI.fmt(chk.meds)}).` });
+      SFX.play('lose');
+      return false;
+    }
+    const costs = chk.interest + chk.meds;
+    if (costs > 0) {
+      this.applyDelta(-costs, { quiet: true });
+      const parts = [];
+      if (chk.interest) parts.push(`Zinsen ${UI.fmt(chk.interest)}`);
+      if (chk.meds) parts.push(`Meds ${UI.fmt(chk.meds)}`);
+      UI.toast({ icon: '🧾', title: 'Abzüge vor dem Spin', text: parts.join(' · '), tone: 'loss', ms: 2000 });
+    }
+    Bus.emit('spin:before', { bet });
+    return true;
+  },
+  async settle(delta, { from = null, game = '' } = {}) {
+    this.applyDelta(delta, { from });
+    if (delta > 0) { SFX.play('cash'); await Bus.emit('win', { amount: delta, game }); }
+    else if (delta < 0) { SFX.play('lose'); await Bus.emit('loss', { amount: -delta, game }); }
+    await this.afterSpin();
+  },
+  async afterSpin() {
+    const s = State.s;
+    s.stats.spins++;
+    if (s.beerTimer > 0) {
+      s.beerTimer--;
+      if (s.beerTimer === 0) { s.beers = 0; UI.toast({ icon: '🍺', title: 'Ausgenüchtert', text: 'Die Bierwirkung ist verflogen.' }); }
+    }
+    if (s.brownieTimer > 0) {
+      s.brownieTimer--;
+      if (s.brownieTimer === 0) UI.toast({ icon: '🍪', title: 'Brownie verdaut', text: 'Die +40 % sind weg.' });
+    }
+    if (s.isMarried) {
+      s.marriageSpins++;
+      if (s.marriageSpins >= Rules.MARRIAGE_SPINS) {
+        s.isMarried = false; s.hasHouse = false; s.isHeartbroken = true;
+        const before = s.balance;
+        s.balance = Math.floor(s.balance / 2);
+        State.save();
+        await Bus.emit('divorce', { before: UI.fmt(before), after: UI.fmt(s.balance) });
+      }
+    }
+    if (s.isHeartbroken && s.beers < 2) {
+      s.balance -= Rules.HEARTBREAK_BILL;
+      State.save();
+      await Bus.emit('heartbreak.collapse', { bill: UI.fmt(Rules.HEARTBREAK_BILL) });
+    }
+    if (s.mafiaDebt > 0) {
+      s.mafiaSpins--;
+      if (s.mafiaSpins <= 0) {
+        const bill = Rules.mafiaBill(s.mafiaDebt);
+        s.balance -= bill; s.mafiaDebt = 0; s.mafiaSpins = 0;
+        State.save();
+        await Bus.emit('mafia.legbreak', { bill: UI.fmt(bill) });
+      } else if (s.mafiaSpins === 1) {
+        await Bus.emit('mafia.lastcall', { debt: UI.fmt(s.mafiaDebt) });
+      }
+    }
+    for (let i = s.investments.length - 1; i >= 0; i--) {
+      const inv = s.investments[i];
+      inv.spins--;
+      if (inv.spins <= 0) {
+        const r = Rules.investmentResolve(inv, Math.random);
+        s.investments.splice(i, 1);
+        if (r.won) {
+          this.applyDelta(r.payout, { quiet: true });
+          SFX.play('coin');
+          UI.toast({ icon: '📈', title: `${inv.name} ausgezahlt`, text: `+${UI.fmt(r.payout)}`, tone: 'win' });
+        } else {
+          UI.toast({ icon: '📉', title: `${inv.name}: Totalverlust`, text: `${UI.fmt(inv.amount)} sind weg.`, tone: 'loss' });
+        }
+        await Bus.emit('invest.resolved', { inv, won: r.won, payout: r.payout });
+      }
+    }
+    State.save();
+    UI.setBalance(s.balance);
+    UI.renderWallet();
+    UI.renderSide();
+    await Bus.emit('spin:after', {});
+    if (Rules.isGameOver(s)) await Bus.emit('gameover', {});
+  },
+};
+
+/* Passives Einkommen: alle 6 s, gesammelt als Toast pro Minute */
+setInterval(() => {
+  if (!State.s) return;
+  const inc = Rules.passiveTick(State.s);
+  if (inc > 0) { Game.applyDelta(inc, { quiet: true }); Game._passiveAcc += inc; }
+}, 6000);
+setInterval(() => {
+  if (Game._passiveAcc > 0) {
+    UI.toast({ icon: '💸', title: 'Passives Einkommen', text: `+${UI.fmt(Game._passiveAcc)} in der letzten Minute.`, tone: 'gold' });
+    Game._passiveAcc = 0;
+  }
+}, 60000);
+</script>
+
+<script id="rooms">
+/* ================= ROOMS – Bar, Kredite, Anlagen, Zuhause ================= */
+
+/* ---- Die Bar (Seitenleiste) ---- */
+Actions.beer = async () => {
+  const s = State.s;
+  const c = Rules.canBeer(s);
+  if (!c.ok) {
+    UI.toast({ icon: '🍺', title: c.reason === 'max' ? 'Maximal 3 Bier' : 'Bier kostet 50 €', text: c.reason === 'max' ? 'Der Wirt schüttelt den Kopf.' : 'Zu wenig Geld.', tone: 'loss' });
+    return;
+  }
+  Game.applyDelta(-Rules.PRICES.beer, { quiet: true });
+  s.beers++;
+  s.beerTimer = Rules.BEER_SPINS;
+  State.save();
+  UI.renderWallet(); UI.renderSide();
+  SFX.play('coin');
+  UI.toast({ icon: '🍺', title: `Prost! Bier #${s.beers}`, text: `+${Rules.BEER_LUCK[s.beers]} % Glück für 2 Spins.`, tone: 'gold' });
+  await Bus.emit('beer', { beers: s.beers });
+};
+
+Actions.brownie = async () => {
+  const s = State.s;
+  const c = Rules.canBrownie(s);
+  if (!c.ok) {
+    UI.toast({ icon: '🍪', title: c.reason === 'active' ? 'Brownie wirkt bereits' : `Kostet ${UI.fmt(s.brownieCost)}`, text: c.reason === 'active' ? 'Einer reicht. Wirklich.' : 'Zu wenig Geld.', tone: 'loss' });
+    return;
+  }
+  const price = s.brownieCost;
+  Game.applyDelta(-price, { quiet: true });
+  s.brownieTimer = Rules.BROWNIE_SPINS;
+  s.brownieCost = Rules.PRICES.brownieNext;
+  State.save();
+  UI.renderWallet(); UI.renderSide();
+  if (!s.flags.brownie) {
+    s.flags.brownie = true; State.save();
+    await Cutscene.play('brownie.first', { price: UI.fmt(price) });
+  } else {
+    UI.toast({ icon: '🍪', title: 'Brownie', text: '+40 % Glück für 1 Spin. Frag nicht.', tone: 'gold' });
+  }
+  await Bus.emit('brownie', {});
+};
+
+Actions.kidney = async () => {
+  const s = State.s;
+  if (s.kidneySold) return;
+  const choice = await Cutscene.play('kidney.offer', {});
+  if (choice !== 'yes') return;
+  s.kidneySold = true;
+  s.stats.kidneys++;
+  s.balance += Rules.PRICES.kidney;
+  if (s.balance > s.stats.maxBalance) s.stats.maxBalance = s.balance;
+  State.save();
+  await Cutscene.play('kidney.sold', {});
+  UI.renderWallet(); UI.renderSide();
+  await Bus.emit('kidney.sold', {});
+};
+
+Cutscene.define('brownie.first', [
+  { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Der Brownie. Vierzig Prozent Glück, einen Spin lang. Nur dass du es weißt: Der nächste kostet zehntausend. Beschwer dich beim Lieferanten.' },
+]);
+Cutscene.define('kidney.offer', [
+  { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Ah, der Kandidat. Setz dich. Zwei Nieren, ein Hobby – das geht sich rechnerisch nicht aus.' },
+  { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Zweitausend Euro, bar, Eiswanne inklusive. Dafür schluckst du ab jetzt bei jedem Spin für zwanzig Euro Tabletten. Deal?',
+    choices: [{ label: 'Ja, brauch das Geld', value: 'yes', cls: 'red' }, { label: 'Nein danke', value: 'no', cls: 'ghost' }] },
+]);
+Cutscene.define('kidney.sold', [
+  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'blackout', text: 'Zähl rückwärts von zehn. Zehn… neun…' },
+  { bg: 'klinik', who: 'doc', mood: 'happy', fx: 'gain', text: 'Wach? Gut. Die Naht hält, meistens. Zweitausend liegen auf dem Nachttisch. Die Meds gehen auf dich.' },
+]);
+</script>
+
 <script id="selftest">
 /* ================= SELFTEST – läuft mit ?selftest im Browser und via node tests/run-selftest.mjs ================= */
 const SelfTest = {
