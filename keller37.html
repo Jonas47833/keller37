@@ -154,7 +154,7 @@ input { font-family: var(--font-mono); }
 .toast .ic { font-size: 1.4rem; line-height: 1; }
 .toast b { display: block; font-family: var(--font-display); letter-spacing: .08em; font-size: 1.05rem; margin-bottom: 2px; }
 .toast.out { animation: toastOut .25s ease both; }
-.floatnum { position: fixed; z-index: 94; font-family: var(--font-mono); font-weight: 700; font-size: 1.3rem; pointer-events: none; animation: floatUp 1.1s ease-out both; text-shadow: 0 2px 6px #000; }
+.floatnum { position: fixed; z-index: 79; font-family: var(--font-mono); font-weight: 700; font-size: 1.3rem; pointer-events: none; animation: floatUp 1.1s ease-out both; text-shadow: 0 2px 6px #000; }
 .floatnum.up { color: var(--gold-2); }
 .floatnum.down { color: var(--neon-red); }
 .shake { animation: shake .35s ease both; }
@@ -930,19 +930,21 @@ const State = {
     };
   },
   freshMeta() { return { v: 1, achievements: [], muted: false, gameOvers: 0 }; },
+  /* discarded: es gab einen Wert, aber er war unlesbar oder hatte die falsche Version */
   _read(key, freshFn) {
+    let raw = null;
     try {
-      const raw = this.storage.getItem(key);
-      if (!raw) return { value: freshFn(), loaded: false };
+      raw = this.storage.getItem(key);
+      if (!raw) return { value: freshFn(), loaded: false, discarded: false };
       const p = JSON.parse(raw);
-      if (!p || p.v !== this.VERSION) return { value: freshFn(), loaded: false };
+      if (!p || p.v !== this.VERSION) return { value: freshFn(), loaded: false, discarded: true };
       const f = freshFn();
       const merged = Object.assign(f, p);
       if (f.flags) merged.flags = Object.assign(freshFn().flags, p.flags || {});
       if (f.stats) merged.stats = Object.assign(freshFn().stats, p.stats || {});
-      return { value: merged, loaded: true };
+      return { value: merged, loaded: true, discarded: false };
     } catch (e) {
-      return { value: freshFn(), loaded: false };
+      return { value: freshFn(), loaded: false, discarded: !!raw };
     }
   },
   init(storage) {
@@ -951,7 +953,7 @@ const State = {
     const m = this._read(this.META_KEY, () => this.freshMeta());
     this.s = s.value;
     this.meta = m.value;
-    return { loaded: s.loaded };
+    return { loaded: s.loaded, discarded: s.discarded || m.discarded };
   },
   save() { try { this.storage.setItem(this.KEY, JSON.stringify(this.s)); } catch (e) { /* privater Modus o.ä. */ } },
   saveMeta() { try { this.storage.setItem(this.META_KEY, JSON.stringify(this.meta)); } catch (e) { /* ignorieren */ } },
@@ -1620,7 +1622,7 @@ Actions.kidney = async () => {
   const s = State.s;
   if (s.kidneySold) return;
   const choice = await Cutscene.play('kidney.offer', {});
-  if (choice !== 'yes') return;
+  if (choice !== 'yes' || s.kidneySold) return; // erneut prüfen: Zustand kann sich während der Szene geändert haben
   s.kidneySold = true;
   s.stats.kidneys++;
   s.balance += Rules.PRICES.kidney;
@@ -3096,7 +3098,7 @@ const memStorage = () => ({
 });
 T.test('State.init: leer → frisch, loaded=false', () => {
   const st = memStorage();
-  T.eq(State.init(st), { loaded: false });
+  T.eq(State.init(st), { loaded: false, discarded: false });
   T.eq(State.s.balance, 50);
   T.eq(State.s.v, 1);
   T.eq(State.s.flags, { intro: false, mafiaLoan: false, bankLoan: false, bankLimit: false, brownie: false, igor: false });
@@ -3108,7 +3110,7 @@ T.test('State.save/init: Spielstand überlebt', () => {
   State.s.balance = 1234; State.s.hasHouse = true; State.s.investments.push({ name: 'Festgeld', amount: 50, rate: 0.08, spins: 5, risk: 10 });
   State.save();
   T.ok(st.getItem('keller37.state').includes('1234'));
-  T.eq(State.init(st), { loaded: true });
+  T.eq(State.init(st), { loaded: true, discarded: false });
   T.eq(State.s.balance, 1234);
   T.eq(State.s.hasHouse, true);
   T.eq(State.s.investments.length, 1);
@@ -3116,10 +3118,10 @@ T.test('State.save/init: Spielstand überlebt', () => {
 T.test('State.init: falsche Version oder Müll → frisch', () => {
   const st = memStorage();
   st.setItem('keller37.state', JSON.stringify({ v: 99, balance: 5 }));
-  T.eq(State.init(st), { loaded: false });
+  T.eq(State.init(st), { loaded: false, discarded: true });
   T.eq(State.s.balance, 50);
   st.setItem('keller37.state', '{kaputt');
-  T.eq(State.init(st), { loaded: false });
+  T.eq(State.init(st), { loaded: false, discarded: true });
 });
 T.test('State.init: fehlende Felder werden aufgefüllt', () => {
   const st = memStorage();
@@ -3137,7 +3139,7 @@ T.test('State.reset: Spielstand frisch, meta bleibt', () => {
   State.reset();
   T.eq(State.s.balance, 50);
   T.eq(State.meta.achievements, ['firstWin']);
-  T.eq(State.init(st), { loaded: true });
+  T.eq(State.init(st), { loaded: true, discarded: false });
   T.eq(State.meta.achievements, ['firstWin']);
 });
 
@@ -3170,9 +3172,15 @@ T.test('Bus.emit: werfender Handler stoppt andere Handler nicht, liefert Promise
 /* ================= BOOT ================= */
 (async function boot() {
   const params = new URLSearchParams(location.search);
-  if (params.has('fresh')) { try { localStorage.removeItem('keller37.state'); } catch (e) { /* egal */ } }
-  const { loaded } = State.init(localStorage);
+  /* localStorage kann fehlen oder werfen (privater Modus, blockierte Cookies) → In-Memory-Ersatz */
+  let storage;
+  try { storage = window.localStorage; storage.getItem('x'); } catch (e) {
+    storage = { data: {}, getItem(k) { return k in this.data ? this.data[k] : null; }, setItem(k, v) { this.data[k] = String(v); }, removeItem(k) { delete this.data[k]; } };
+  }
+  if (params.has('fresh')) { try { storage.removeItem('keller37.state'); } catch (e) { /* egal */ } }
+  const { loaded, discarded } = State.init(storage);
   UI.mountShell();
+  if (discarded) UI.toast({ icon: '🗑️', title: 'Alter Spielstand verworfen', text: 'Unlesbar oder falsche Version – neues Spiel.', tone: 'loss', ms: 5000 });
   if (params.has('selftest')) {
     const r = SelfTest.run();
     document.documentElement.dataset.selftest = `passed=${r.passed} failed=${r.failed}`;
