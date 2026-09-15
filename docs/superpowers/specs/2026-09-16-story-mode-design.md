@@ -129,8 +129,8 @@ Jede Schicht-Karte hat in Story 1 mindestens 3 Szenen mit je einer Entscheidung 
 
 **Enden** (Priorität absteigend, geprüft jede Nacht):
 1. `ehrlich` – `schuld ≤ 0`: Hafen, Vito beeindruckt. Sofort in der Nacht, in der die Schuld 0 erreicht.
-2. `sturz` – day ≥ 28 ∧ `hauptbuch` ∧ `safe` ∧ `igorZweifelt`: Igor kommt statt Vito, der Wirt übernimmt. (Ab Tag 28 wählbar über Wirt-Szene „Jetzt oder nie" mit Choice; sonst Tag 30.)
-3. `taxi` – `fluchtBereit` ∧ Spieler wählt in der Kevin-Szene „Heute Nacht": Hafen, Chantal steigt ein, wenn `chantalKennt` und nicht `komplize`.
+2. `sturz` – `hauptbuch` ∧ `safe` ∧ `igorZweifelt` ∧ (`sturzJetzt` ∨ day ≥ 30): Igor kommt statt Vito, der Wirt übernimmt. Ab Tag 28 fragt der Wirt nachts „Jetzt oder nie?" – die Choice „Jetzt" setzt `sturzJetzt`.
+3. `taxi` – `fluchtHeute` (gesetzt durch die Choice „Heute Nacht" in Kevins Flucht-Szene, die jede Nacht ab `fluchtBereit` angeboten wird): Hafen, Chantal steigt ein, wenn `chantalKennt` und nicht `komplize`.
 4. `doc` – **fallback**, day > 30: Doc-Szene, Blackout.
 
 **Vertrauen:** +1 pro 5.000 € Zahlung, +1 Kontrolle bestanden, +1 pro 3 Türsteher-Schichten ohne „Gast reingelassen", +1 Duell-Sieg (max. 3); −2 `kesselGehalten` erwischt (30 %), −1 `verhaftet`, −3 wenn Igor die Flucht sieht (`fluchtBereit` und Türsteher-Schicht danach). **Ruf:** +1 Taxi-Schicht ≥ 150 €, +1 Kurier, +1 Doc; −2 Kevin verpfiffen.
