@@ -102,6 +102,48 @@ const Rules = {
   isGameOver(s) { return s.balance < 0 && s.bankDebt >= Rules.BANK_LIMIT && s.mafiaDebt > 0; },
   passiveTick(s) { return (s.hasHouse ? 3 : 0) + (s.hasDealer ? 5 : 0); },
   passivePerMin(s) { return (s.hasHouse ? 30 : 0) + (s.hasDealer ? 50 : 0); },
+
+  /* ---- Roulette ---- */
+  WHEEL: [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26],
+  RED: [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36],
+  isRed(n) { return Rules.RED.includes(n); },
+  rouletteRoll(rng) { return Math.floor(rng() * 37); },
+  rouletteLuckOverride(type, chosen, rolled, luck, rng) {
+    const r = rng() * 100;
+    if (r < luck && rolled !== 0) {
+      if (type === 'red') return 7;
+      if (type === 'black') return 8;
+      if (type === 'number') return chosen;
+    }
+    return rolled;
+  },
+  roulettePayout(type, chosen, rolled, bet) {
+    const red = Rules.isRed(rolled);
+    if (type === 'red' && red) return bet;
+    if (type === 'black' && !red && rolled !== 0) return bet;
+    if (type === 'even' && rolled !== 0 && rolled % 2 === 0) return bet;
+    if (type === 'odd' && rolled % 2 !== 0) return bet;
+    if (type === 'number' && rolled === chosen) return bet * 35;
+    return -bet;
+  },
+
+  /* ---- Slots ---- */
+  SYMBOLS: ['🍒', '🍋', '🍇', '🔔', '💎', '7️⃣'],
+  slotRoll(rng) { return [0, 1, 2].map(() => Rules.SYMBOLS[Math.floor(rng() * Rules.SYMBOLS.length)]); },
+  slotLuckOverride(res, luck, rng) {
+    const [a, b, c] = res;
+    if (rng() * 100 < luck) {
+      if (rng() < 0.3) { const j = rng() < 0.5 ? '7️⃣' : '💎'; return [j, j, j]; }
+      return [a, a, c];
+    }
+    return [a, b, c];
+  },
+  slotMultiplier(a, b, c) {
+    if (a === b && b === c) return a === '7️⃣' ? 50 : a === '💎' ? 25 : a === '🔔' ? 15 : 5;
+    if (a === b || b === c || a === c) return 1.5;
+    return 0;
+  },
+  slotDelta(bet, m) { return m > 0 ? Math.round(bet * m) - bet : -bet; },
 };
 </script>
 
@@ -219,6 +261,76 @@ T.test('passiveTick / passivePerMin', () => {
   T.eq(Rules.passivePerMin(base({ hasHouse: true, hasDealer: true })), 80);
 });
 T.test('PRICES', () => T.eq(Rules.PRICES, { beer: 50, brownie: 1000, brownieNext: 10000, kidney: 2000, house: 2500, tinder: 50, therapy: 5000, dealer: 5000 }));
+
+/* ---- Rules: Roulette ---- */
+T.test('WHEEL hat 37 Fächer in Kesselreihenfolge', () => {
+  T.eq(Rules.WHEEL.length, 37);
+  T.eq(Rules.WHEEL.slice(0, 5), [0, 32, 15, 19, 4]);
+  T.eq(Rules.WHEEL[36], 26);
+});
+T.test('isRed', () => { T.ok(Rules.isRed(1)); T.ok(Rules.isRed(36)); T.ok(!Rules.isRed(2)); T.ok(!Rules.isRed(0)); });
+T.test('rouletteRoll: floor(rng*37)', () => {
+  T.eq(Rules.rouletteRoll(seq(0)), 0);
+  T.eq(Rules.rouletteRoll(seq(0.999)), 36);
+});
+T.test('rouletteLuckOverride: greift bei Glück, nicht bei 0', () => {
+  T.eq(Rules.rouletteLuckOverride('red', null, 20, 40, seq(0.1)), 7);
+  T.eq(Rules.rouletteLuckOverride('black', null, 20, 40, seq(0.1)), 8);
+  T.eq(Rules.rouletteLuckOverride('number', 17, 20, 40, seq(0.1)), 17);
+  T.eq(Rules.rouletteLuckOverride('even', null, 21, 40, seq(0.1)), 21, 'even unbeeinflusst');
+  T.eq(Rules.rouletteLuckOverride('red', null, 0, 40, seq(0.1)), 0, 'Null bleibt');
+  T.eq(Rules.rouletteLuckOverride('red', null, 20, 40, seq(0.5)), 20, 'rng 50 >= luck 40');
+  T.eq(Rules.rouletteLuckOverride('red', null, 20, 0, seq(0)), 20, 'kein Glück');
+});
+T.test('roulettePayout: Farben 1:1, Null verliert', () => {
+  T.eq(Rules.roulettePayout('red', null, 7, 10), 10);
+  T.eq(Rules.roulettePayout('red', null, 8, 10), -10);
+  T.eq(Rules.roulettePayout('black', null, 8, 10), 10);
+  T.eq(Rules.roulettePayout('black', null, 0, 10), -10);
+  T.eq(Rules.roulettePayout('red', null, 0, 10), -10);
+});
+T.test('roulettePayout: gerade/ungerade, Null verliert', () => {
+  T.eq(Rules.roulettePayout('even', null, 4, 10), 10);
+  T.eq(Rules.roulettePayout('even', null, 0, 10), -10);
+  T.eq(Rules.roulettePayout('odd', null, 3, 10), 10);
+  T.eq(Rules.roulettePayout('odd', null, 0, 10), -10);
+});
+T.test('roulettePayout: Zahl 35:1', () => {
+  T.eq(Rules.roulettePayout('number', 17, 17, 10), 350);
+  T.eq(Rules.roulettePayout('number', 0, 0, 10), 350);
+  T.eq(Rules.roulettePayout('number', 17, 18, 10), -10);
+});
+
+/* ---- Rules: Slots ---- */
+T.test('SYMBOLS', () => T.eq(Rules.SYMBOLS, ['🍒', '🍋', '🍇', '🔔', '💎', '7️⃣']));
+T.test('slotRoll: drei Züge', () => T.eq(Rules.slotRoll(seq(0, 0.5, 0.99)), ['🍒', '🔔', '7️⃣']));
+T.test('slotLuckOverride: Jackpot-Zweig', () => {
+  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.2, 0.4)), ['7️⃣', '7️⃣', '7️⃣']);
+  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.2, 0.6)), ['💎', '💎', '💎']);
+});
+T.test('slotLuckOverride: Paar-Zweig', () => {
+  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.5)), ['🍒', '🍒', '🍇']);
+});
+T.test('slotLuckOverride: kein Glück', () => {
+  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.5)), ['🍒', '🍋', '🍇']);
+  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 0, seq(0)), ['🍒', '🍋', '🍇']);
+});
+T.test('slotMultiplier', () => {
+  T.eq(Rules.slotMultiplier('7️⃣', '7️⃣', '7️⃣'), 50);
+  T.eq(Rules.slotMultiplier('💎', '💎', '💎'), 25);
+  T.eq(Rules.slotMultiplier('🔔', '🔔', '🔔'), 15);
+  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍒'), 5);
+  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍋'), 1.5);
+  T.eq(Rules.slotMultiplier('🍒', '🍋', '🍒'), 1.5);
+  T.eq(Rules.slotMultiplier('🍋', '🍒', '🍒'), 1.5);
+  T.eq(Rules.slotMultiplier('🍒', '🍋', '🍇'), 0);
+});
+T.test('slotDelta', () => {
+  T.eq(Rules.slotDelta(10, 50), 490);
+  T.eq(Rules.slotDelta(10, 1.5), 5);
+  T.eq(Rules.slotDelta(15, 1.5), 8, 'round(22.5)-15');
+  T.eq(Rules.slotDelta(10, 0), -10);
+});
 
 /* --- SELFTEST CASES END --- */
 </script>
