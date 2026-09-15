@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KELLER 37</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ==== 1. TOKENS ==== */
+:root {
+  --bg: #0a0c09;
+  --panel: #141712;
+  --panel-2: #1b1f19;
+  --felt: #0f3d2e;
+  --felt-2: #0b2e22;
+  --gold: #c9a227;
+  --gold-2: #e8c65a;
+  --neon-red: #ff3b3b;
+  --neon-amber: #ffb432;
+  --neon-blue: #4cc9f0;
+  --neon-green: #3ddc84;
+  --neon-pink: #ff5fa2;
+  --neon-purple: #b066ff;
+  --day: #f5d67a;
+  --text: #e8e2d0;
+  --dim: #8a8577;
+  --paper: #e9dcc0;
+  --paper-ink: #2a2418;
+  --font-display: "Bebas Neue", Impact, "Arial Narrow", sans-serif;
+  --font-mono: "Courier Prime", "Courier New", monospace;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --radius: 10px;
+  --shadow: 0 10px 30px rgba(0,0,0,.6);
+}
+/* ==== 2. BASIS & TEXTUR ==== */
+/* ==== 3. LAYOUT ==== */
+/* ==== 4. KOMPONENTEN ==== */
+/* ==== 5. CUTSCENE ==== */
+/* ==== 6. SPIELE & RÄUME ==== */
+/* ==== 7. ANIMATIONEN ==== */
+</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+<div class="shell" id="shell">
+  <header class="wallet" id="wallet"></header>
+  <div class="body">
+    <main class="stage" id="stage"></main>
+    <aside class="side" id="side"></aside>
+  </div>
+</div>
+<div id="toasts" aria-live="polite"></div>
+<div id="cutscene" hidden></div>
+
+<!-- TEMPLATES -->
+<!-- /TEMPLATES -->
+
+<script id="rules">
+/* ================= RULES – reine Spielregeln, kein DOM, kein State ================= */
+const Rules = {
+  PRICES: { beer: 50, brownie: 1000, brownieNext: 10000, kidney: 2000, house: 2500, tinder: 50, therapy: 5000, dealer: 5000 },
+  MEDS_PER_SPIN: 20,
+  HOSPITAL_RR: 100,
+  HEARTBREAK_BILL: 250,
+  BANK_LIMIT: 3000,
+  BANK_RATE: 0.3,
+  POST_PENALTY: 25,
+  BEER_LUCK: [0, 10, 15, 20],
+  BROWNIE_LUCK: 40,
+  BEER_SPINS: 2,
+  BROWNIE_SPINS: 1,
+  MARRIAGE_SPINS: 2,
+  MAFIA_SPINS: 5,
+  MAX_BEERS: 3,
+
+  luck(s) {
+    let l = 0;
+    if (s.beerTimer > 0) l += Rules.BEER_LUCK[Math.min(s.beers, 3)];
+    if (s.brownieTimer > 0) l += Rules.BROWNIE_LUCK;
+    return l;
+  },
+  bankInterest(debt) { return debt > 0 ? Math.round(debt * Rules.BANK_RATE) : 0; },
+  spinCosts(s) {
+    return { interest: Rules.bankInterest(s.bankDebt), meds: s.kidneySold ? Rules.MEDS_PER_SPIN : 0 };
+  },
+  maxBet(s) {
+    const c = Rules.spinCosts(s);
+    return Math.max(1, s.balance - c.interest - c.meds);
+  },
+  checkSpin(s, bet) {
+    if (!Number.isFinite(bet) || bet <= 0) return { ok: false, reason: 'invalid' };
+    const c = Rules.spinCosts(s);
+    const total = bet + c.interest + c.meds;
+    if (s.balance < total) return { ok: false, reason: 'funds', total, interest: c.interest, meds: c.meds };
+    return { ok: true, total, interest: c.interest, meds: c.meds };
+  },
+  mafiaBill(debt) { return debt * 3; },
+  bankLoanAllowed(s, amt) { return s.bankDebt + amt <= Rules.BANK_LIMIT; },
+  isGameOver(s) { return s.balance < 0 && s.bankDebt >= Rules.BANK_LIMIT && s.mafiaDebt > 0; },
+  passiveTick(s) { return (s.hasHouse ? 3 : 0) + (s.hasDealer ? 5 : 0); },
+  passivePerMin(s) { return (s.hasHouse ? 30 : 0) + (s.hasDealer ? 50 : 0); },
+};
+</script>
+
+<script id="util">
+/* ================= UTIL ================= */
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const qs = (sel, root = document) => root.querySelector(sel);
+const qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+function h(tag, attrs = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'style') el.style.cssText = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (k === 'html') el.innerHTML = v;
+    else el.setAttribute(k, v);
+  }
+  for (const c of children.flat()) {
+    if (c == null) continue;
+    el.append(c.nodeType ? c : document.createTextNode(String(c)));
+  }
+  return el;
+}
+</script>
+
+<script id="selftest">
+/* ================= SELFTEST – läuft mit ?selftest im Browser und via node tests/run-selftest.mjs ================= */
+const SelfTest = {
+  cases: [],
+  test(name, fn) { this.cases.push({ name, fn }); },
+  eq(a, b, msg = '') {
+    const ja = JSON.stringify(a), jb = JSON.stringify(b);
+    if (ja !== jb) throw new Error(`${msg} erwartet ${jb}, bekommen ${ja}`);
+  },
+  ok(v, msg = 'erwartet wahr') { if (!v) throw new Error(msg); },
+  run() {
+    let passed = 0, failed = 0; const failures = [];
+    for (const c of this.cases) {
+      try { c.fn(); passed++; } catch (e) { failed++; failures.push(`${c.name}: ${e.message}`); }
+    }
+    return { passed, failed, failures };
+  },
+};
+/* deterministischer rng: liefert die Werte der Reihe nach, dann von vorn */
+const seq = (...vals) => { let i = 0; return () => vals[i++ % vals.length]; };
+const T = SelfTest;
+
+/* ---- Rules: Wirtschaft ---- */
+const base = (o = {}) => Object.assign({
+  balance: 50, beers: 0, beerTimer: 0, brownieTimer: 0, kidneySold: false,
+  bankDebt: 0, mafiaDebt: 0, hasHouse: false, hasDealer: false,
+  isMarried: false, isHeartbroken: false,
+}, o);
+
+T.test('luck: nichts aktiv = 0', () => T.eq(Rules.luck(base()), 0));
+T.test('luck: 1/2/3 Bier = 10/15/20', () => {
+  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2 })), 10);
+  T.eq(Rules.luck(base({ beers: 2, beerTimer: 1 })), 15);
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2 })), 20);
+});
+T.test('luck: Bier ohne Timer zählt nicht', () => T.eq(Rules.luck(base({ beers: 2, beerTimer: 0 })), 0));
+T.test('luck: Brownie +40, mit 3 Bier 60', () => {
+  T.eq(Rules.luck(base({ brownieTimer: 1 })), 40);
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, brownieTimer: 1 })), 60);
+});
+T.test('bankInterest: 30% gerundet', () => {
+  T.eq(Rules.bankInterest(0), 0);
+  T.eq(Rules.bankInterest(200), 60);
+  T.eq(Rules.bankInterest(1000), 300);
+  T.eq(Rules.bankInterest(333), 100);
+});
+T.test('spinCosts: Zinsen + Meds', () => {
+  T.eq(Rules.spinCosts(base()), { interest: 0, meds: 0 });
+  T.eq(Rules.spinCosts(base({ bankDebt: 200, kidneySold: true })), { interest: 60, meds: 20 });
+});
+T.test('maxBet: Guthaben minus Kosten, mindestens 1', () => {
+  T.eq(Rules.maxBet(base()), 50);
+  T.eq(Rules.maxBet(base({ bankDebt: 200, kidneySold: true })), 1);
+  T.eq(Rules.maxBet(base({ balance: 500, bankDebt: 200 })), 440);
+});
+T.test('checkSpin: ungültiger Einsatz', () => {
+  T.eq(Rules.checkSpin(base(), 0).ok, false);
+  T.eq(Rules.checkSpin(base(), 0).reason, 'invalid');
+  T.eq(Rules.checkSpin(base(), NaN).ok, false);
+  T.eq(Rules.checkSpin(base(), -5).ok, false);
+});
+T.test('checkSpin: zu wenig Geld inkl. Kosten', () => {
+  const r = Rules.checkSpin(base({ balance: 80, bankDebt: 200, kidneySold: true }), 10);
+  T.eq(r, { ok: false, reason: 'funds', total: 90, interest: 60, meds: 20 });
+});
+T.test('checkSpin: ok', () => {
+  T.eq(Rules.checkSpin(base({ balance: 100, bankDebt: 200, kidneySold: true }), 10), { ok: true, total: 90, interest: 60, meds: 20 });
+  T.eq(Rules.checkSpin(base(), 50).ok, true);
+  T.eq(Rules.checkSpin(base(), 51).ok, false);
+});
+T.test('mafiaBill = 3x', () => T.eq(Rules.mafiaBill(300), 900));
+T.test('bankLoanAllowed: Limit 3000', () => {
+  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 2000 }), 1000), true);
+  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 2500 }), 1000), false);
+  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 3000 }), 200), false);
+});
+T.test('isGameOver: nur wenn negativ und beide Quellen zu', () => {
+  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 3000, mafiaDebt: 300 })), true);
+  T.eq(Rules.isGameOver(base({ balance: 0, bankDebt: 3000, mafiaDebt: 300 })), false);
+  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 2000, mafiaDebt: 300 })), false);
+  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 3000, mafiaDebt: 0 })), false);
+});
+T.test('passiveTick / passivePerMin', () => {
+  T.eq(Rules.passiveTick(base()), 0);
+  T.eq(Rules.passiveTick(base({ hasHouse: true })), 3);
+  T.eq(Rules.passiveTick(base({ hasHouse: true, hasDealer: true })), 8);
+  T.eq(Rules.passivePerMin(base({ hasHouse: true, hasDealer: true })), 80);
+});
+T.test('PRICES', () => T.eq(Rules.PRICES, { beer: 50, brownie: 1000, brownieNext: 10000, kidney: 2000, house: 2500, tinder: 50, therapy: 5000, dealer: 5000 }));
+
+/* --- SELFTEST CASES END --- */
+</script>
+
+<script id="boot">
+/* ================= BOOT ================= */
+(function boot() {
+  const params = new URLSearchParams(location.search);
+  if (params.has('selftest')) {
+    const r = SelfTest.run();
+    document.documentElement.dataset.selftest = `passed=${r.passed} failed=${r.failed}`;
+    console.log('[selftest]', r);
+    r.failures.forEach((f) => console.error('[selftest] FAIL', f));
+  }
+})();
+</script>
+</body>
+</html>
