@@ -35,11 +35,141 @@
   --shadow: 0 10px 30px rgba(0,0,0,.6);
 }
 /* ==== 2. BASIS & TEXTUR ==== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 15px; line-height: 1.45; overflow-x: hidden; }
+button { font-family: inherit; cursor: pointer; color: inherit; }
+input { font-family: var(--font-mono); }
+.grain { position: fixed; inset: 0; pointer-events: none; z-index: 90; opacity: .06; background-size: 200px 200px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.vignette { position: fixed; inset: 0; pointer-events: none; z-index: 89; background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.75) 100%); }
+.felt { background: repeating-linear-gradient(45deg, rgba(255,255,255,.02) 0 2px, transparent 2px 4px), radial-gradient(ellipse at 50% 30%, #145240 0%, var(--felt) 45%, var(--felt-2) 100%); }
+.neon { font-family: var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: #fff;
+  text-shadow: 0 0 4px #fff, 0 0 10px var(--neon, var(--neon-amber)), 0 0 24px var(--neon, var(--neon-amber)), 0 0 48px var(--neon, var(--neon-amber));
+  animation: neonFlicker 7s infinite; }
+.hidden { display: none !important; }
 /* ==== 3. LAYOUT ==== */
+.shell { min-height: 100vh; display: flex; flex-direction: column; }
+.wallet { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  padding: 10px 20px; background: rgba(12,14,10,.92); border-bottom: 1px solid rgba(201,162,39,.25); backdrop-filter: blur(6px); }
+.wallet-mid { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; flex: 1; }
+.wallet-right { display: flex; align-items: center; gap: 8px; }
+.brand { background: none; border: 0; font-size: 2rem; line-height: 1; padding: 2px 6px; }
+.notes { display: flex; gap: 8px; flex-wrap: wrap; }
+.note { font-family: var(--font-mono); font-size: .78rem; background: var(--paper); color: var(--paper-ink); padding: 3px 8px; transform: rotate(-1.5deg);
+  box-shadow: 2px 3px 6px rgba(0,0,0,.5); animation: popIn .25s ease both; }
+.note:nth-child(even) { transform: rotate(1.2deg); }
+.note.danger { background: #f2b2a6; }
+.note.pink { background: #f3c0d8; }
+.note.gold { background: #f2dc9a; }
+.luck { display: flex; align-items: center; gap: 4px; font-size: 1rem; }
+.luck .seg { width: 14px; height: 10px; border-radius: 2px; background: #2a2e26; border: 1px solid #3a3f35; }
+.luck .seg.on { background: var(--neon-green); box-shadow: 0 0 8px var(--neon-green); }
+.luck .luck-val { font-family: var(--font-mono); font-size: .8rem; color: var(--dim); margin-left: 4px; }
+.balance { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 700; color: var(--gold-2); padding: 6px 14px; border: 1px solid rgba(201,162,39,.4);
+  border-radius: 8px; background: rgba(0,0,0,.4); min-width: 150px; text-align: right; }
+.balance.up { animation: pulseGold .6s ease both; }
+.balance.down { animation: pulseRed .6s ease both; }
+.icon-btn { background: transparent; border: 1px solid rgba(255,255,255,.12); border-radius: 6px; width: 34px; height: 34px; font-size: 1rem; }
+.icon-btn:hover { border-color: var(--gold); }
+.body { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 18px; padding: 18px 20px 40px; max-width: 1180px; width: 100%; margin: 0 auto; }
+.stage { min-width: 0; position: relative; transition: opacity .25s ease, transform .25s ease; }
+.stage.leaving { opacity: 0; transform: translateY(-8px); transition-duration: .18s; pointer-events: none; }
+.stage.entering { animation: screenIn .25s ease both; }
+.side { display: flex; flex-direction: column; gap: 14px; }
+.side-sec { background: var(--panel); border: 1px solid rgba(255,255,255,.06); border-radius: var(--radius); padding: 10px 12px; box-shadow: var(--shadow); }
+.side-sec h3 { font-family: var(--font-display); letter-spacing: .12em; font-size: 1.05rem; color: var(--dim); margin-bottom: 8px; }
+.side-btn { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 8px 10px; margin-bottom: 6px; background: var(--panel-2);
+  border: 1px solid rgba(255,255,255,.06); border-radius: 8px; font-size: .9rem; text-align: left; transition: transform .12s, border-color .12s, background .12s; }
+.side-btn:hover:not(:disabled) { border-color: var(--gold); background: #22261f; transform: translateX(2px); }
+.side-btn:disabled { opacity: .45; cursor: not-allowed; }
+.side-btn .price { font-family: var(--font-mono); color: var(--gold-2); font-size: .85rem; }
+.side-hint { font-size: .75rem; color: var(--dim); font-family: var(--font-mono); }
+/* Hub */
+.hub { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.door { position: relative; height: 220px; border-radius: 8px 8px 4px 4px; background: linear-gradient(180deg, #2a2118, #17120d); border: 2px solid #3a2e20;
+  box-shadow: inset 0 0 0 6px #1d1610, inset 0 -40px 60px rgba(0,0,0,.6), var(--shadow); cursor: pointer; display: flex; flex-direction: column; align-items: center;
+  padding-top: 22px; gap: 12px; overflow: hidden; transition: transform .2s; --neon: var(--neon-amber); }
+.door::after { content: ""; position: absolute; left: 10%; right: 10%; bottom: 0; height: 6px; background: var(--neon); filter: blur(6px); opacity: 0; transition: opacity .25s; }
+.door:hover { transform: translateY(-3px); }
+.door:hover::after { opacity: .9; }
+.door:hover .sign { opacity: 1; }
+.door .sign { font-family: var(--font-display); font-size: 1.7rem; letter-spacing: .1em; color: #fff; padding: 2px 14px; border: 2px solid var(--neon); border-radius: 6px; opacity: .8;
+  text-shadow: 0 0 6px #fff, 0 0 14px var(--neon), 0 0 30px var(--neon); box-shadow: 0 0 12px var(--neon), inset 0 0 12px rgba(255,255,255,.08); transition: opacity .2s; }
+.door .glyph { font-size: 2.6rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,.7)); }
+.door .chalk-tag { font-family: var(--font-mono); font-size: .8rem; color: #d8d2c0; background: #1a1a1a; border: 1px solid #333; padding: 3px 10px; border-radius: 3px; transform: rotate(-2deg); }
+.door .knob { position: absolute; right: 22px; top: 52%; width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, var(--gold-2), #6b5313); box-shadow: 0 1px 3px #000; }
+.door.day { background: linear-gradient(180deg, #6a6250, #3b3629); border-color: #8a8060; }
+.door.day::before { content: ""; position: absolute; inset: 8px; background: linear-gradient(180deg, rgba(245,214,122,.25), transparent 60%); pointer-events: none; }
+.door.day .sign { color: #fff7dd; }
 /* ==== 4. KOMPONENTEN ==== */
+.panel { background: var(--panel); border: 1px solid rgba(255,255,255,.06); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; display: flex; flex-direction: column; gap: 16px; align-items: center; }
+.panel.stretch { align-items: stretch; }
+.panel h2 { font-family: var(--font-display); letter-spacing: .12em; font-size: 1.6rem; }
+.btn { font-family: var(--font-display); font-size: 1.1rem; letter-spacing: .1em; text-transform: uppercase; padding: 9px 20px; border-radius: 6px; --c: var(--gold);
+  border: 2px solid var(--c); background: rgba(201,162,39,.08); color: var(--gold-2); transition: transform .1s, box-shadow .15s, background .15s; }
+.btn:hover:not(:disabled) { background: rgba(201,162,39,.18); box-shadow: 0 0 14px rgba(201,162,39,.35), inset 0 0 10px rgba(201,162,39,.15); }
+.btn:active:not(:disabled) { transform: scale(.97); }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn.red { --c: var(--neon-red); color: #ffb3b3; background: rgba(255,59,59,.08); }
+.btn.red:hover:not(:disabled) { background: rgba(255,59,59,.2); box-shadow: 0 0 14px rgba(255,59,59,.4); }
+.btn.blue { --c: var(--neon-blue); color: #bfeeff; background: rgba(76,201,240,.08); }
+.btn.blue:hover:not(:disabled) { background: rgba(76,201,240,.2); box-shadow: 0 0 14px rgba(76,201,240,.4); }
+.btn.green { --c: var(--neon-green); color: #c8ffe0; background: rgba(61,220,132,.08); }
+.btn.green:hover:not(:disabled) { background: rgba(61,220,132,.2); box-shadow: 0 0 14px rgba(61,220,132,.4); }
+.btn.pink { --c: var(--neon-pink); color: #ffd0e4; background: rgba(255,95,162,.08); }
+.btn.pink:hover:not(:disabled) { background: rgba(255,95,162,.2); box-shadow: 0 0 14px rgba(255,95,162,.4); }
+.btn.ghost { --c: rgba(255,255,255,.2); color: var(--text); background: rgba(255,255,255,.04); }
+.btn.ghost:hover:not(:disabled) { background: rgba(255,255,255,.1); box-shadow: none; }
+.btn.solid { background: var(--gold); color: #1a1408; }
+.btn.solid:hover:not(:disabled) { background: var(--gold-2); }
+.btn.sm { font-size: .95rem; padding: 6px 12px; }
+.chip { width: 46px; height: 46px; border-radius: 50%; border: 4px dashed #fff; background: var(--chip, #b3261e); color: #fff; font-family: var(--font-mono); font-weight: 700; font-size: .8rem;
+  box-shadow: 0 3px 6px rgba(0,0,0,.6), inset 0 0 0 3px rgba(0,0,0,.3); display: inline-flex; align-items: center; justify-content: center; transition: transform .12s; }
+.chip:hover { transform: translateY(-3px) rotate(8deg); }
+.chip[data-v="10"] { --chip: #b3261e; } .chip[data-v="25"] { --chip: #1e6fb3; } .chip[data-v="50"] { --chip: #1f8a4c; } .chip[data-v="100"] { --chip: #2b2b2b; } .chip[data-v="max"] { --chip: #8a6d1a; }
+.bet-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
+.bet-field { display: inline-flex; align-items: center; background: rgba(0,0,0,.45); border: 1px solid rgba(201,162,39,.35); border-radius: 8px; overflow: hidden; }
+.bet-field input { width: 90px; background: transparent; border: 0; color: var(--gold-2); font-size: 1.1rem; font-weight: 700; text-align: center; padding: 8px 4px; outline: none; -moz-appearance: textfield; }
+.bet-field input::-webkit-inner-spin-button, .bet-field input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.bet-field button { background: rgba(255,255,255,.05); border: 0; width: 32px; height: 38px; font-size: 1.1rem; }
+.bet-field button:hover { background: rgba(255,255,255,.12); }
+.chalk { background: #1c1e1a; border: 6px solid #4a3a2a; border-radius: 4px; padding: 12px 16px; color: #e6e2d3; font-family: var(--font-mono); text-shadow: 0 0 2px rgba(255,255,255,.4); box-shadow: inset 0 0 30px rgba(0,0,0,.6); }
+.chalk h4 { font-family: var(--font-display); letter-spacing: .1em; font-size: 1.2rem; color: #fff; margin-bottom: 6px; }
+.chalk .dim { color: #a9a596; }
+.chalk table { border-collapse: collapse; width: 100%; }
+.chalk td { padding: 2px 6px; } .chalk td:last-child { text-align: right; color: var(--gold-2); }
+.paper { background: var(--paper); color: var(--paper-ink); font-family: var(--font-mono); padding: 12px 14px; box-shadow: 3px 4px 10px rgba(0,0,0,.6); transform: rotate(-.6deg); border-radius: 2px; }
+.paper h4 { font-family: var(--font-display); letter-spacing: .1em; font-size: 1.2rem; margin-bottom: 4px; }
+.status { min-height: 30px; text-align: center; font-family: var(--font-display); font-size: 1.3rem; letter-spacing: .06em; color: var(--dim); }
+.status .win { color: var(--gold-2); text-shadow: 0 0 10px rgba(232,198,90,.6); }
+.status .loss { color: var(--neon-red); text-shadow: 0 0 10px rgba(255,59,59,.5); }
+#toasts { position: fixed; right: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 10px; z-index: 95; pointer-events: none; }
+.toast { display: flex; gap: 10px; align-items: flex-start; min-width: 240px; max-width: 340px; background: var(--paper); color: var(--paper-ink); padding: 10px 12px;
+  box-shadow: 3px 4px 12px rgba(0,0,0,.7); transform: rotate(-1deg); animation: toastIn .25s ease both; font-family: var(--font-mono); font-size: .85rem; border-left: 5px solid var(--neon-blue); }
+.toast.win { border-left-color: var(--gold); background: #f2e2a8; }
+.toast.loss { border-left-color: var(--neon-red); background: #f0b8ad; }
+.toast.gold { border-left-color: var(--gold-2); background: #f6e6b3; }
+.toast.pink { border-left-color: var(--neon-pink); background: #f3c8dc; }
+.toast .ic { font-size: 1.4rem; line-height: 1; }
+.toast b { display: block; font-family: var(--font-display); letter-spacing: .08em; font-size: 1.05rem; margin-bottom: 2px; }
+.toast.out { animation: toastOut .25s ease both; }
+.floatnum { position: fixed; z-index: 94; font-family: var(--font-mono); font-weight: 700; font-size: 1.3rem; pointer-events: none; animation: floatUp 1.1s ease-out both; text-shadow: 0 2px 6px #000; }
+.floatnum.up { color: var(--gold-2); }
+.floatnum.down { color: var(--neon-red); }
+.shake { animation: shake .35s ease both; }
 /* ==== 5. CUTSCENE ==== */
 /* ==== 6. SPIELE & RÄUME ==== */
 /* ==== 7. ANIMATIONEN ==== */
+@keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
+@keyframes popIn { from { transform: scale(.6) rotate(-6deg); opacity: 0; } to { opacity: 1; } }
+@keyframes pulseGold { 0% { box-shadow: 0 0 0 0 rgba(232,198,90,.7); } 100% { box-shadow: 0 0 0 18px rgba(232,198,90,0); } }
+@keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(255,59,59,.7); color: #ff8080; } 100% { box-shadow: 0 0 0 18px rgba(255,59,59,0); } }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+@keyframes toastIn { from { transform: translateX(40px) rotate(-1deg); opacity: 0; } to { transform: rotate(-1deg); opacity: 1; } }
+@keyframes toastOut { to { transform: translateX(40px); opacity: 0; } }
+@keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-70px); opacity: 0; } }
 </style>
 </head>
 <body>
@@ -56,6 +186,16 @@
 <div id="cutscene" hidden></div>
 
 <!-- TEMPLATES -->
+<template id="tpl-hub">
+  <div class="hub">
+    <div class="door" data-screen="roulette" style="--neon: var(--neon-red)"><div class="sign">Roulette</div><div class="glyph">🎡</div><div class="chalk-tag">Plein 35:1</div><div class="knob"></div></div>
+    <div class="door" data-screen="slots" style="--neon: var(--neon-amber)"><div class="sign">Slots</div><div class="glyph">🎰</div><div class="chalk-tag">bis 50×</div><div class="knob"></div></div>
+    <div class="door" data-screen="horses" style="--neon: var(--neon-green)"><div class="sign">Rennbahn</div><div class="glyph">🏇</div><div class="chalk-tag">Quote 4.0</div><div class="knob"></div></div>
+    <div class="door" data-screen="russian" style="--neon: var(--neon-blue)"><div class="sign">Igor</div><div class="glyph">🔫</div><div class="chalk-tag">Duell · 1 Kugel</div><div class="knob"></div></div>
+    <div class="door" data-screen="blackjack" style="--neon: var(--neon-green)"><div class="sign">Black Jack</div><div class="glyph">🃏</div><div class="chalk-tag">bis 21</div><div class="knob"></div></div>
+    <div class="door day" data-screen="postman" style="--neon: var(--day)"><div class="sign">Ausgang</div><div class="glyph">📬</div><div class="chalk-tag">Post austragen</div><div class="knob"></div></div>
+  </div>
+</template>
 <!-- /TEMPLATES -->
 
 <script id="rules">
@@ -455,6 +595,164 @@ document.addEventListener('pointerdown', () => SFX.init(), { capture: true });
 document.addEventListener('keydown', () => SFX.init(), { capture: true });
 </script>
 
+<script id="ui">
+/* ================= UI – Router, Wallet, Seitenleiste, Toasts, Money-Counter ================= */
+const Actions = {
+  finance: () => UI.show('finance'),
+  invest: () => UI.show('invest'),
+  life: () => UI.show('life'),
+};
+
+const UI = {
+  screens: new Map(),
+  current: null,
+  busy: false,
+  shownBalance: 0,
+  tweenId: null,
+  fmt(n) { return Math.round(n).toLocaleString('de-DE') + ' €'; },
+  register(id, def) { this.screens.set(id, def); },
+  async show(id) {
+    if (this.busy) return;
+    const def = this.screens.get(id);
+    if (!def) { console.warn('[ui] Screen fehlt:', id); return; }
+    this.busy = true;
+    const stage = qs('#stage');
+    if (this.current) {
+      try { this.current.def.unmount?.(); } catch (e) { console.error(e); }
+      stage.classList.add('leaving');
+      await wait(180);
+    }
+    stage.innerHTML = '';
+    stage.classList.remove('leaving');
+    stage.appendChild(qs('#' + def.template).content.cloneNode(true));
+    this.current = { id, def };
+    document.body.dataset.screen = id;
+    stage.classList.add('entering');
+    try { def.mount?.(stage); } catch (e) { console.error(e); }
+    await wait(250);
+    stage.classList.remove('entering');
+    this.busy = false;
+  },
+  toast({ icon = '📌', title = '', text = '', tone = 'info', ms = 3000 } = {}) {
+    const box = qs('#toasts');
+    while (box.children.length >= 3) box.firstChild.remove();
+    const t = h('div', { class: `toast ${tone}` }, h('span', { class: 'ic' }, icon), h('div', {}, title ? h('b', {}, title) : null, text));
+    box.appendChild(t);
+    setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 260); }, ms);
+    return t;
+  },
+  _writeMoney(v) { for (const el of qsa('.money-live')) el.textContent = this.fmt(v); },
+  setBalance(target, { animate = true, duration = 600 } = {}) {
+    if (this.tweenId) cancelAnimationFrame(this.tweenId);
+    const from = this.shownBalance;
+    if (!animate || from === target || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.shownBalance = target; this._writeMoney(target); return;
+    }
+    const t0 = performance.now();
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / duration);
+      const e = 1 - Math.pow(1 - p, 3);
+      this.shownBalance = from + (target - from) * e;
+      this._writeMoney(this.shownBalance);
+      if (p < 1) this.tweenId = requestAnimationFrame(step);
+      else { this.shownBalance = target; this._writeMoney(target); this.tweenId = null; }
+    };
+    this.tweenId = requestAnimationFrame(step);
+  },
+  pulseBalance(delta) {
+    for (const el of qsa('.money-live')) {
+      el.classList.remove('up', 'down'); void el.offsetWidth;
+      el.classList.add(delta >= 0 ? 'up' : 'down');
+    }
+  },
+  floatNumber(delta, fromEl) {
+    const r = (fromEl || qs('#stage')).getBoundingClientRect();
+    const n = h('div', { class: `floatnum ${delta >= 0 ? 'up' : 'down'}`, style: `left:${r.left + r.width / 2 - 40}px; top:${r.top + r.height / 3}px` },
+      (delta >= 0 ? '+' : '−') + this.fmt(Math.abs(delta)));
+    document.body.appendChild(n);
+    setTimeout(() => n.remove(), 1200);
+  },
+  shake(el = qs('#shell')) {
+    if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+    setTimeout(() => el.classList.remove('shake'), 400);
+  },
+  renderWallet() {
+    const s = State.s;
+    const luck = Rules.luck(s);
+    const segs = luck >= 60 ? 5 : luck >= 40 ? 4 : luck >= 20 ? 3 : luck >= 15 ? 2 : luck >= 10 ? 1 : 0;
+    const luckEl = qs('#luck');
+    luckEl.title = `Glück +${luck} %`;
+    luckEl.innerHTML = '';
+    luckEl.append('🍀', ...[0, 1, 2, 3, 4].map((i) => h('span', { class: 'seg' + (i < segs ? ' on' : '') })), h('span', { class: 'luck-val' }, `+${luck}%`));
+    const notes = qs('#notes');
+    notes.innerHTML = '';
+    if (s.isHeartbroken) notes.append(h('span', { class: 'note pink' }, `💔 Liebeskummer · ${s.beers}/2 🍺`));
+    else if (s.isMarried) notes.append(h('span', { class: 'note pink' }, `💍 Chantal · noch ${Rules.MARRIAGE_SPINS - s.marriageSpins} Spins`));
+    if (s.bankDebt > 0) notes.append(h('span', { class: 'note danger' }, `🏦 ${this.fmt(s.bankDebt)} · −${this.fmt(Rules.bankInterest(s.bankDebt))}/Spin`));
+    if (s.mafiaDebt > 0) notes.append(h('span', { class: 'note danger' }, `🕶️ ${this.fmt(s.mafiaDebt)} · ${s.mafiaSpins} Spins`));
+    if (s.kidneySold) notes.append(h('span', { class: 'note danger' }, '💊 −20 €/Spin'));
+    if (s.hasHouse || s.hasDealer) notes.append(h('span', { class: 'note gold' }, `💸 +${Rules.passivePerMin(s)} €/min`));
+    qs('#mute').textContent = State.meta.muted ? '🔇' : '🔊';
+  },
+  renderSide() {
+    const s = State.s;
+    const side = qs('#side');
+    side.innerHTML = '';
+    const sec = (title, ...kids) => h('section', { class: 'side-sec' }, h('h3', {}, title), ...kids);
+    const btn = (label, price, action, disabled = false) =>
+      h('button', { class: 'side-btn', 'data-action': action, disabled: disabled ? '' : null }, h('span', {}, label), h('span', { class: 'price' }, price));
+    side.append(
+      sec('Die Bar',
+        btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/3)` : ''}`, '50 €', 'beer', !Rules.canBeer(s).ok),
+        btn('🍪 Brownie', s.brownieCost >= 10000 ? '10.000 €' : '1.000 €', 'brownie', !Rules.canBrownie(s).ok),
+        h('p', { class: 'side-hint' }, 'Bier hält 2 Spins, Brownie 1 Spin.')),
+      sec('Hinterzimmer',
+        btn(s.kidneySold ? '🫁 Niere verkauft' : '🫁 Niere verkaufen', s.kidneySold ? '' : '+2.000 €', 'kidney', s.kidneySold),
+        btn('🏦 Kredite', s.bankDebt + s.mafiaDebt > 0 ? `−${this.fmt(s.bankDebt + s.mafiaDebt)}` : '', 'finance'),
+        btn('📈 Anlagen', s.investments.length ? `${s.investments.length} aktiv` : '', 'invest')),
+      sec('Zuhause', btn('🏡 Leben', s.hasHouse ? '🏰' : '', 'life')),
+    );
+    side.onclick = (e) => {
+      const b = e.target.closest('[data-action]');
+      if (!b || b.disabled) return;
+      SFX.play('click');
+      const a = Actions[b.dataset.action];
+      if (a) a(); else console.warn('[ui] Aktion fehlt:', b.dataset.action);
+    };
+  },
+  mountShell() {
+    const w = qs('#wallet');
+    w.innerHTML = '';
+    w.append(
+      h('button', { class: 'brand neon', id: 'brand', style: '--neon: var(--neon-amber)', title: 'Zurück in den Gang', onclick: () => UI.show('hub') }, 'Keller 37'),
+      h('div', { class: 'wallet-mid' }, h('div', { class: 'luck', id: 'luck' }), h('div', { class: 'notes', id: 'notes' })),
+      h('div', { class: 'wallet-right' },
+        h('button', { class: 'icon-btn', id: 'mute', title: 'Ton an/aus', onclick: () => { SFX.setMuted(!State.meta.muted); UI.renderWallet(); } }, '🔊'),
+        h('button', { class: 'icon-btn', id: 'newgame', title: 'Neues Spiel', onclick: () => Bus.emit('newgame.request', {}) }, '↺'),
+        h('div', { class: 'balance money-live', id: 'balance' }, '0 €')),
+    );
+    this.shownBalance = State.s.balance;
+    this.setBalance(State.s.balance, { animate: false });
+    this.renderWallet();
+    this.renderSide();
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && qs('#cutscene').hidden && UI.current && UI.current.id !== 'hub') UI.show('hub');
+    });
+  },
+};
+
+UI.register('hub', {
+  template: 'tpl-hub',
+  mount(root) {
+    qsa('.door', root).forEach((d) => {
+      d.addEventListener('click', () => { SFX.play('click'); UI.show(d.dataset.screen); });
+      d.addEventListener('mouseenter', () => SFX.play('neonBuzz'));
+    });
+  },
+});
+</script>
+
 <script id="selftest">
 /* ================= SELFTEST – läuft mit ?selftest im Browser und via node tests/run-selftest.mjs ================= */
 const SelfTest = {
@@ -810,14 +1108,20 @@ T.test('Bus.emit: werfender Handler stoppt andere Handler nicht, liefert Promise
 
 <script id="boot">
 /* ================= BOOT ================= */
-(function boot() {
+(async function boot() {
   const params = new URLSearchParams(location.search);
+  if (params.has('fresh')) { try { localStorage.removeItem('keller37.state'); } catch (e) { /* egal */ } }
+  const { loaded } = State.init(localStorage);
+  UI.mountShell();
   if (params.has('selftest')) {
     const r = SelfTest.run();
     document.documentElement.dataset.selftest = `passed=${r.passed} failed=${r.failed}`;
     console.log('[selftest]', r);
     r.failures.forEach((f) => console.error('[selftest] FAIL', f));
+    UI.toast({ icon: r.failed ? '❌' : '✅', title: 'Selbsttest', text: `${r.passed} bestanden, ${r.failed} fehlgeschlagen`, tone: r.failed ? 'loss' : 'win', ms: 6000 });
   }
+  await UI.show(params.get('screen') || 'hub');
+  if (loaded && !params.has('screen')) UI.toast({ icon: '💾', title: 'Spielstand geladen', text: `Willkommen zurück. ${UI.fmt(State.s.balance)} in der Tasche.` });
 })();
 </script>
 </body>
