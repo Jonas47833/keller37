@@ -144,6 +144,113 @@ const Rules = {
     return 0;
   },
   slotDelta(bet, m) { return m > 0 ? Math.round(bet * m) - bet : -bet; },
+
+  /* ---- Pferde ---- */
+  HORSES: [
+    { id: 1, name: 'Blitz', col: '#ff3b3b', dot: '🔴' },
+    { id: 2, name: 'Donner', col: '#4cc9f0', dot: '🔵' },
+    { id: 3, name: 'Phantom', col: '#b066ff', dot: '🟣' },
+    { id: 4, name: 'Lucky', col: '#ffd23f', dot: '🟡' },
+  ],
+  horseStep(isSelected, luck, rng) {
+    let step = rng() * 3 + 1;
+    if (isSelected && luck > 0) step += luck * 0.02;
+    return step * 1.5;
+  },
+  horseDelta(won, bet) { return won ? bet * 3 : -bet; },
+
+  /* ---- Russisches Roulette ---- */
+  rrCylinder(rng) {
+    const c = [false, false, false, false, false, false];
+    c[Math.floor(rng() * 6)] = true;
+    return c;
+  },
+  rrDelta(victim, bet) { return victim === 'player' ? -(bet + Rules.HOSPITAL_RR) : bet; },
+
+  /* ---- Blackjack ---- */
+  SUITS: ['♠', '♥', '♦', '♣'],
+  VALUES: ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'],
+  newDeck(rng) {
+    const d = [];
+    for (const suit of Rules.SUITS) for (const val of Rules.VALUES) d.push({ suit, val });
+    for (let i = 0; i < d.length - 1; i++) {
+      const j = i + Math.floor(rng() * (d.length - i));
+      [d[i], d[j]] = [d[j], d[i]];
+    }
+    return d;
+  },
+  cardValue(v) { return ['J', 'Q', 'K'].includes(v) ? 10 : v === 'A' ? 11 : parseInt(v, 10); },
+  handSum(hand) {
+    let s = 0, aces = 0;
+    for (const c of hand) { s += Rules.cardValue(c.val); if (c.val === 'A') aces++; }
+    while (s > 21 && aces > 0) { s -= 10; aces--; }
+    return s;
+  },
+  dealerShouldHit(hand) { return Rules.handSum(hand) < 17; },
+  bjOutcome(pSum, dSum) {
+    if (pSum > 21) return 'bust';
+    if (dSum > 21 || pSum > dSum) return 'win';
+    if (pSum === dSum) return 'push';
+    return 'dealer';
+  },
+  bjDelta(outcome, bet) { return outcome === 'win' ? bet : outcome === 'push' ? 0 : -bet; },
+
+  /* ---- Post ---- */
+  POST_HOUSES: [{ n: 12, c: '#ffb432' }, { n: 45, c: '#4cc9f0' }, { n: 88, c: '#3ddc84' }, { n: 99, c: '#ff3b3b' }],
+  postmanTier(streak) {
+    if (streak < 2) return { t: 5, r: 5 };
+    if (streak < 6) return { t: 3, r: 10 };
+    if (streak < 11) return { t: 1.5, r: 25 };
+    return { t: 0.5, r: 50 };
+  },
+
+  /* ---- Anlagen ---- */
+  INVEST: {
+    bank: { name: 'Festgeld', rate: 0.08, spins: 5, risk: 10, min: 10 },
+    stock: { name: 'Aktien', rate: 1.0, spins: 2, risk: 85, min: 10 },
+    scam: { name: 'Trickbetrug', rate: 0.3, spins: 10, risk: 55, min: 10 },
+  },
+  investmentResolve(inv, rng) {
+    const won = rng() * 100 >= inv.risk;
+    return { won, payout: won ? Math.round(inv.amount * (1 + inv.rate)) : 0 };
+  },
+
+  /* ---- Leben ---- */
+  canBuyHouse(s) {
+    if (s.hasHouse) return { ok: false, reason: 'owned' };
+    if (s.bankDebt > 0 || s.mafiaDebt > 0) return { ok: false, reason: 'debts' };
+    if (s.isHeartbroken) return { ok: false, reason: 'heartbroken' };
+    if (s.isMarried) return { ok: false, reason: 'married' };
+    if (s.balance < Rules.PRICES.house) return { ok: false, reason: 'funds' };
+    return { ok: true };
+  },
+  canTinder(s) {
+    if (!s.hasHouse) return { ok: false, reason: 'house' };
+    if (s.isMarried) return { ok: false, reason: 'married' };
+    if (s.isHeartbroken) return { ok: false, reason: 'heartbroken' };
+    if (s.balance < Rules.PRICES.tinder) return { ok: false, reason: 'funds' };
+    return { ok: true };
+  },
+  canTherapy(s) {
+    if (!s.isHeartbroken) return { ok: false, reason: 'notNeeded' };
+    if (s.balance < Rules.PRICES.therapy) return { ok: false, reason: 'funds' };
+    return { ok: true };
+  },
+  canDealer(s) {
+    if (s.hasDealer) return { ok: false, reason: 'owned' };
+    if (s.balance < Rules.PRICES.dealer) return { ok: false, reason: 'funds' };
+    return { ok: true };
+  },
+  canBeer(s) {
+    if (s.beers >= Rules.MAX_BEERS) return { ok: false, reason: 'max' };
+    if (s.balance < Rules.PRICES.beer) return { ok: false, reason: 'funds' };
+    return { ok: true };
+  },
+  canBrownie(s) {
+    if (s.brownieTimer > 0) return { ok: false, reason: 'active' };
+    if (s.balance < s.brownieCost) return { ok: false, reason: 'funds' };
+    return { ok: true };
+  },
 };
 </script>
 
@@ -330,6 +437,120 @@ T.test('slotDelta', () => {
   T.eq(Rules.slotDelta(10, 1.5), 5);
   T.eq(Rules.slotDelta(15, 1.5), 8, 'round(22.5)-15');
   T.eq(Rules.slotDelta(10, 0), -10);
+});
+
+/* ---- Rules: Pferde ---- */
+T.test('HORSES', () => T.eq(Rules.HORSES.map((x) => x.name), ['Blitz', 'Donner', 'Phantom', 'Lucky']));
+T.test('horseStep: (rng*3+1)*1.5, Glück nur für gewähltes Pferd', () => {
+  T.eq(Rules.horseStep(false, 40, seq(0)), 1.5);
+  T.eq(Rules.horseStep(true, 0, seq(0)), 1.5);
+  T.eq(Rules.horseStep(true, 40, seq(0)), 2.7);
+  T.eq(Rules.horseStep(false, 0, seq(1)), 6);
+});
+T.test('horseDelta', () => { T.eq(Rules.horseDelta(true, 10), 30); T.eq(Rules.horseDelta(false, 10), -10); });
+
+/* ---- Rules: Russisches Roulette ---- */
+T.test('rrCylinder: 6 Kammern, eine Kugel', () => {
+  const c = Rules.rrCylinder(seq(0.5));
+  T.eq(c.length, 6);
+  T.eq(c.filter(Boolean).length, 1);
+  T.eq(c[3], true);
+});
+T.test('rrDelta', () => { T.eq(Rules.rrDelta('player', 10), -110); T.eq(Rules.rrDelta('igor', 10), 10); });
+
+/* ---- Rules: Blackjack ---- */
+T.test('newDeck: 52 eindeutige Karten', () => {
+  const d = Rules.newDeck(Math.random);
+  T.eq(d.length, 52);
+  T.eq(new Set(d.map((c) => c.val + c.suit)).size, 52);
+});
+T.test('newDeck: rng=0 lässt Reihenfolge stehen', () => {
+  const d = Rules.newDeck(seq(0));
+  T.eq(d[0], { suit: '♠', val: '2' });
+});
+T.test('cardValue', () => { T.eq(Rules.cardValue('K'), 10); T.eq(Rules.cardValue('A'), 11); T.eq(Rules.cardValue('7'), 7); });
+const H = (...vals) => vals.map((val) => ({ suit: '♠', val }));
+T.test('handSum: Ass-Logik', () => {
+  T.eq(Rules.handSum(H('A', 'K')), 21);
+  T.eq(Rules.handSum(H('A', 'A', '9')), 21);
+  T.eq(Rules.handSum(H('A', '9', '5')), 15);
+  T.eq(Rules.handSum(H('K', 'Q', '5')), 25);
+  T.eq(Rules.handSum([]), 0);
+});
+T.test('dealerShouldHit: unter 17', () => {
+  T.ok(Rules.dealerShouldHit(H('K', '6')));
+  T.ok(!Rules.dealerShouldHit(H('K', '7')));
+  T.ok(!Rules.dealerShouldHit(H('A', '6')), 'Soft 17 steht');
+});
+T.test('bjOutcome', () => {
+  T.eq(Rules.bjOutcome(22, 18), 'bust');
+  T.eq(Rules.bjOutcome(20, 22), 'win');
+  T.eq(Rules.bjOutcome(20, 18), 'win');
+  T.eq(Rules.bjOutcome(18, 18), 'push');
+  T.eq(Rules.bjOutcome(17, 18), 'dealer');
+});
+T.test('bjDelta', () => {
+  T.eq(Rules.bjDelta('win', 10), 10); T.eq(Rules.bjDelta('bust', 10), -10);
+  T.eq(Rules.bjDelta('dealer', 10), -10); T.eq(Rules.bjDelta('push', 10), 0);
+});
+
+/* ---- Rules: Post ---- */
+T.test('POST_HOUSES', () => T.eq(Rules.POST_HOUSES.map((x) => x.n), [12, 45, 88, 99]));
+T.test('postmanTier: Grenzen', () => {
+  T.eq(Rules.postmanTier(0), { t: 5, r: 5 });
+  T.eq(Rules.postmanTier(1), { t: 5, r: 5 });
+  T.eq(Rules.postmanTier(2), { t: 3, r: 10 });
+  T.eq(Rules.postmanTier(5), { t: 3, r: 10 });
+  T.eq(Rules.postmanTier(6), { t: 1.5, r: 25 });
+  T.eq(Rules.postmanTier(10), { t: 1.5, r: 25 });
+  T.eq(Rules.postmanTier(11), { t: 0.5, r: 50 });
+});
+
+/* ---- Rules: Anlagen ---- */
+T.test('INVEST', () => {
+  T.eq(Rules.INVEST.bank, { name: 'Festgeld', rate: 0.08, spins: 5, risk: 10, min: 10 });
+  T.eq(Rules.INVEST.stock, { name: 'Aktien', rate: 1.0, spins: 2, risk: 85, min: 10 });
+  T.eq(Rules.INVEST.scam, { name: 'Trickbetrug', rate: 0.3, spins: 10, risk: 55, min: 10 });
+});
+T.test('investmentResolve: rng*100 >= risk gewinnt', () => {
+  const inv = { amount: 100, rate: 0.08, risk: 10 };
+  T.eq(Rules.investmentResolve(inv, seq(0.10)), { won: true, payout: 108 });
+  T.eq(Rules.investmentResolve(inv, seq(0.09)), { won: false, payout: 0 });
+  T.eq(Rules.investmentResolve({ amount: 33, rate: 1.0, risk: 85 }, seq(0.9)), { won: true, payout: 66 });
+});
+
+/* ---- Rules: Leben ---- */
+T.test('canBuyHouse', () => {
+  T.eq(Rules.canBuyHouse(base({ balance: 2500 })), { ok: true });
+  T.eq(Rules.canBuyHouse(base({ balance: 2499 })), { ok: false, reason: 'funds' });
+  T.eq(Rules.canBuyHouse(base({ balance: 9999, hasHouse: true })), { ok: false, reason: 'owned' });
+  T.eq(Rules.canBuyHouse(base({ balance: 9999, bankDebt: 1 })), { ok: false, reason: 'debts' });
+  T.eq(Rules.canBuyHouse(base({ balance: 9999, mafiaDebt: 1 })), { ok: false, reason: 'debts' });
+  T.eq(Rules.canBuyHouse(base({ balance: 9999, isHeartbroken: true })), { ok: false, reason: 'heartbroken' });
+  T.eq(Rules.canBuyHouse(base({ balance: 9999, isMarried: true })), { ok: false, reason: 'married' });
+});
+T.test('canTinder', () => {
+  T.eq(Rules.canTinder(base({ balance: 50, hasHouse: true })), { ok: true });
+  T.eq(Rules.canTinder(base({ balance: 50 })), { ok: false, reason: 'house' });
+  T.eq(Rules.canTinder(base({ balance: 50, hasHouse: true, isMarried: true })), { ok: false, reason: 'married' });
+  T.eq(Rules.canTinder(base({ balance: 50, hasHouse: true, isHeartbroken: true })), { ok: false, reason: 'heartbroken' });
+  T.eq(Rules.canTinder(base({ balance: 49, hasHouse: true })), { ok: false, reason: 'funds' });
+});
+T.test('canTherapy / canDealer', () => {
+  T.eq(Rules.canTherapy(base({ balance: 5000, isHeartbroken: true })), { ok: true });
+  T.eq(Rules.canTherapy(base({ balance: 5000 })), { ok: false, reason: 'notNeeded' });
+  T.eq(Rules.canTherapy(base({ balance: 4999, isHeartbroken: true })), { ok: false, reason: 'funds' });
+  T.eq(Rules.canDealer(base({ balance: 5000 })), { ok: true });
+  T.eq(Rules.canDealer(base({ balance: 5000, hasDealer: true })), { ok: false, reason: 'owned' });
+  T.eq(Rules.canDealer(base({ balance: 4999 })), { ok: false, reason: 'funds' });
+});
+T.test('canBeer / canBrownie', () => {
+  T.eq(Rules.canBeer(base()), { ok: true });
+  T.eq(Rules.canBeer(base({ beers: 3 })), { ok: false, reason: 'max' });
+  T.eq(Rules.canBeer(base({ balance: 49 })), { ok: false, reason: 'funds' });
+  T.eq(Rules.canBrownie(base({ balance: 1000, brownieCost: 1000 })), { ok: true });
+  T.eq(Rules.canBrownie(base({ balance: 1000, brownieCost: 1000, brownieTimer: 1 })), { ok: false, reason: 'active' });
+  T.eq(Rules.canBrownie(base({ balance: 999, brownieCost: 1000 })), { ok: false, reason: 'funds' });
 });
 
 /* --- SELFTEST CASES END --- */
