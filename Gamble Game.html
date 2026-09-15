@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Underground Casino</title>
+  <style>
+    :root {
+      --bg: #090c10;
+      --card: #121720;
+      --card-hover: #18202c;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(255, 255, 255, 0.2);
+      --accent: #10b981;
+      --accent-glow: rgba(16, 185, 129, 0.15);
+      --danger: #ef4444;
+      --gold: #f59e0b;
+      --purple: #8b5cf6;
+      --pink: #ec4899;
+      --text: #f3f4f6;
+      --text-dim: #9ca3af;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); display: flex; justify-content: center; padding: 15px; min-height: 100vh; }
+    .container { width: 100%; max-width: 920px; display: flex; flex-direction: column; gap: 15px; }
+
+    /* Header Bar */
+    header {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .header-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .brand { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
+    .stats { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    .badge {
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+    }
+    .badge-balance { color: var(--accent); background: var(--accent-glow); border-color: rgba(16, 185, 129, 0.3); font-size: 1rem; }
+    .badge-luck { color: var(--gold); }
+    .badge-warn { color: #f97316; }
+    .badge-pink { color: var(--pink); border-color: rgba(236, 72, 153, 0.3); }
+
+    /* Quick Action Buttons */
+    .quick-actions { display: flex; gap: 8px; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 8px; }
+    .btn-chip {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-chip:hover:not(:disabled) { background: var(--card-hover); color: var(--text); border-color: var(--border-focus); }
+    .btn-chip:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-chip.gold { color: var(--gold); border-color: rgba(245, 158, 11, 0.3); }
+    .btn-chip.pink { color: var(--pink); border-color: rgba(236, 72, 153, 0.3); }
+
+    /* Buttons */
+    button { cursor: pointer; border: none; border-radius: 8px; padding: 9px 16px; font-weight: 600; font-size: 0.9rem; transition: all 0.15s; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-primary:hover:not(:disabled) { background: #059669; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover:not(:disabled) { background: #dc2626; }
+    .btn-pink { background: var(--pink); color: #fff; }
+    .btn-secondary { background: rgba(255, 255, 255, 0.06); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
+
+    /* Screens */
+    .screen { display: none; flex-direction: column; gap: 15px; }
+    .screen.active { display: flex; }
+
+    /* Game Hub Grid */
+    .game-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    .game-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      transition: all 0.2s ease;
+    }
+    .game-card:hover { transform: translateY(-2px); border-color: var(--border-focus); background: var(--card-hover); }
+    .game-card .icon { font-size: 2.2rem; }
+    .game-card-text h3 { font-size: 1rem; margin-bottom: 3px; }
+    .game-card-text p { font-size: 0.8rem; color: var(--text-dim); }
+
+    /* Panels & Betting Row */
+    .card-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      align-items: center;
+    }
+    .bet-bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
+    input[type="number"] {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 8px;
+      width: 90px;
+      font-size: 0.95rem;
+      text-align: center;
+    }
+    .status-alert { font-size: 0.95rem; min-height: 24px; text-align: center; font-weight: 500; }
+    .win { color: var(--accent); }
+    .loss { color: var(--danger); }
+
+    /* 🎰 Slots */
+    .slot-machine { display: flex; gap: 12px; background: rgba(0,0,0,0.4); padding: 15px 25px; border-radius: 14px; border: 1px solid var(--border); }
+    .reel { width: 75px; height: 95px; background: #18202c; border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 2.8rem; transition: transform 0.15s; }
+    .reel.locked { border-color: var(--gold); transform: scale(1.05); }
+
+    /* 🎡 ROULETTE WHEEL */
+    .wheel-box { position: relative; width: 280px; height: 280px; margin: 5px 0; }
+    .pointer {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.8rem;
+      color: var(--gold);
+      z-index: 10;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+    }
+    #wheelCanvas {
+      border-radius: 50%;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+      transition: transform 4s cubic-bezier(0.12, 0.88, 0.22, 1);
+    }
+
+    /* 🏇 Horses */
+    .track { width: 100%; background: rgba(0,0,0,0.4); border-radius: 10px; padding: 10px; border: 1px solid var(--border); }
+    .lane { height: 45px; position: relative; border-bottom: 1px dashed var(--border); display: flex; align-items: center; }
+    .lane:last-child { border-bottom: none; }
+    .horse { position: absolute; left: 0; font-size: 1.6rem; }
+
+    /* 🔫 Russian Roulette */
+    .duel { display: flex; width: 100%; justify-content: space-around; align-items: center; padding: 10px 0; }
+    .fighter { text-align: center; font-size: 2.8rem; }
+
+    /* 🃏 Blackjack */
+    .cards-row { display: flex; gap: 8px; min-height: 75px; align-items: center; }
+    .card { background: #fff; color: #000; border-radius: 6px; width: 50px; height: 70px; display: flex; flex-direction: column; justify-content: space-between; padding: 4px; font-weight: bold; font-size: 0.85rem; }
+    .card.red { color: #dc2626; }
+
+    /* 📬 Postbote */
+    .timer-wrap { width: 100%; max-width: 380px; height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+    .timer-bar { height: 100%; width: 100%; background: var(--accent); transition: width 0.05s linear; }
+    .boxes-grid { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .box-btn { width: 75px; height: 75px; border-radius: 10px; background: var(--card-hover); border: 1px solid var(--border); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 1rem; }
+
+    /* 📈 Grids */
+    .sub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; width: 100%; }
+    .story-card { background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="header-row">
+        <div class="brand">
+          <button class="btn-chip" id="btnBack" onclick="showScreen('screenMenu')" style="display:none;">⬅ Zurück</button>
+          <span>🎰 Casino Club</span>
+        </div>
+        <div class="stats">
+          <div class="badge badge-luck" id="luckBadge">🍀 +0%</div>
+          <div class="badge badge-pink" id="lifeBadge" style="display:none;">💔 Liebeskummer</div>
+          <div class="badge badge-warn" id="debtBadge" style="display:none;"></div>
+          <div class="badge badge-balance" id="balanceBadge">50 €</div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <button class="btn-chip" onclick="buyBeer()">🍺 Bier (+10% / 50€)</button>
+        <button class="btn-chip" id="btnBrownie" onclick="buyBrownie()">🍪 Brownie (+40% / 1k€)</button>
+        <button class="btn-chip" id="btnKidney" onclick="sellKidney()">🫁 Niere (+2.000€)</button>
+        <button class="btn-chip pink" onclick="showScreen('screenLife')">🏡 Leben</button>
+        <button class="btn-chip gold" onclick="showScreen('screenInvest')">📈 Anlegen</button>
+        <button class="btn-chip" onclick="showScreen('screenFinance')">🏦 Kredite</button>
+      </div>
+    </header>
+
+    <!-- 1. HAUPTMENÜ -->
+    <div id="screenMenu" class="screen active">
+      <div class="game-grid">
+        <div class="game-card" onclick="showScreen('screenRoulette')">
+          <div class="icon">🎡</div>
+          <div class="game-card-text">
+            <h3>Roulette</h3>
+            <p>Echtes Kesselrad (35:1)</p>
+          </div>
+        </div>
+
+        <div class="game-card" onclick="showScreen('screenSlots')">
+          <div class="icon">🎰</div>
+          <div class="game-card-text">
+            <h3>Slots</h3>
+            <p>Einarmiger Bandit (bis 50x)</p>
+          </div>
+        </div>
+
+        <div class="game-card" onclick="showScreen('screenHorse')">
+          <div class="icon">🏇</div>
+          <div class="game-card-text">
+            <h3>Pferderennen</h3>
+            <p>4 Pferde (Quote 4.0x)</p>
+          </div>
+        </div>
+
+        <div class="game-card" onclick="showScreen('screenRussian')">
+          <div class="icon">🔫</div>
+          <div class="game-card-text">
+            <h3>Russ. Roulette</h3>
+            <p>Duell gegen Igor</p>
+          </div>
+        </div>
+
+        <div class="game-card" onclick="showScreen('screenBlackjack')">
+          <div class="icon">🃏</div>
+          <div class="game-card-text">
+            <h3>Black Jack</h3>
+            <p>Klassisch bis 21</p>
+          </div>
+        </div>
+
+        <div class="game-card" onclick="openJob()">
+          <div class="icon">📬</div>
+          <div class="game-card-text">
+            <h3>Post austragen</h3>
+            <p>Geld verdienen</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. LEBEN: HAUS (2.500 € = +30 €/min), TINDER, THERAPIE (5.000 €) & DROGENDEALER (+50 €/min) -->
+    <div id="screenLife" class="screen">
+      <div class="card-panel" style="align-items:stretch;">
+        <div style="font-weight:700; font-size:1.1rem; display:flex; justify-content:space-between; align-items:center;">
+          <span>🏡 Lebensabschnitte & Schattenwirtschaft</span>
+          <span style="font-size:0.85rem; color:var(--accent);" id="lifeIncomeStatus">Passiv: 0 €/min</span>
+        </div>
+
+        <div class="sub-grid" style="margin-top:10px;">
+          <!-- 1. Haus kaufen (2.500 €) -->
+          <div class="story-card" id="cardHouse">
+            <h4>🏰 Penthouse-Villa</h4>
+            <p style="font-size:0.8rem; color:var(--text-dim);">
+              Kosten: 2.500 €.<br>
+              Generiert <strong>+30 €/min</strong> passives Einkommen.<br>
+              <span style="color:var(--gold);">⚠️ Voraussetzung: Keine offenen Schulden oder Verpflichtungen!</span>
+            </p>
+            <button class="btn-primary" id="btnBuyHouse" onclick="buyHouse()">Haus kaufen (2.500 €)</button>
+          </div>
+
+          <!-- 2. Tinder Premium -->
+          <div class="story-card" id="cardTinder">
+            <h4>🔥 Tinder Gold</h4>
+            <p style="font-size:0.8rem; color:var(--text-dim);">Kosten: 50 €.<br>Heirate Chantal-Monique! (Nach 2 Spins folgt die Scheidung...)</p>
+            <button class="btn-pink" id="btnTinder" onclick="useTinder()" disabled>Tinder Gold (50 €)</button>
+          </div>
+
+          <!-- 3. Liebeskummer & Therapie (5.000 €) -->
+          <div class="story-card" id="cardHeartbreak">
+            <h4>💔 Der Scheidungskrieg</h4>
+            <p style="font-size:0.8rem; color:var(--text-dim);" id="heartbreakDesc">Noch keine Scheidung. Friede herrscht.</p>
+            <button class="btn-secondary" id="btnTherapy" onclick="healHeartbreak()" disabled>Therapie & Anwalt (5.000 €)</button>
+          </div>
+
+          <!-- 4. Drogendealer (+50 €/min) -->
+          <div class="story-card" id="cardDealer">
+            <h4>🕶️ Drogendealer</h4>
+            <p style="font-size:0.8rem; color:var(--text-dim);">Heuere einen Dealer an.<br>Generiert <strong>+50 €/min</strong> dauerhaftes passives Einkommen!</p>
+            <button class="btn-secondary" id="btnBuyDealer" style="border-color:var(--purple); color:var(--purple);" onclick="hireDealer()">Dealer anheuern (5.000 €)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. ROULETTE -->
+    <div id="screenRoulette" class="screen">
+      <div class="card-panel">
+        <div class="wheel-box">
+          <div class="pointer">▼</div>
+          <canvas id="wheelCanvas" width="280" height="280"></canvas>
+        </div>
+        <div class="status-alert" id="rouletteStatus">Wette wählen & Kugel rollen lassen</div>
+        <div class="bet-bar">
+          <input type="number" id="rouletteBet" value="10" min="1">
+          <button class="btn-danger" onclick="playRoulette('red')">Rot</button>
+          <button class="btn-secondary" style="background:#000;" onclick="playRoulette('black')">Schwarz</button>
+          <button class="btn-secondary" onclick="playRoulette('even')">Gerade</button>
+          <button class="btn-secondary" onclick="playRoulette('odd')">Ungerade</button>
+          <button class="btn-secondary" onclick="playRoulette('number')">Zahl (0-36)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. SLOTS -->
+    <div id="screenSlots" class="screen">
+      <div class="card-panel">
+        <div class="slot-machine">
+          <div class="reel" id="r1">🍒</div>
+          <div class="reel" id="r2">7️⃣</div>
+          <div class="reel" id="r3">💎</div>
+        </div>
+        <div class="status-alert" id="slotStatus">Einsatz wählen und drehen!</div>
+        <div class="bet-bar">
+          <input type="number" id="slotBet" value="10" min="1">
+          <button class="btn-secondary" onclick="setBet('slotBet', 10)">10</button>
+          <button class="btn-secondary" onclick="setBet('slotBet', 25)">25</button>
+          <button class="btn-secondary" onclick="setBet('slotBet', 'all')">Max</button>
+          <button class="btn-primary" id="btnSpin" onclick="spinSlots()">Drehen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. PFERDERENNEN -->
+    <div id="screenHorse" class="screen">
+      <div class="card-panel">
+        <div class="track" id="horseTrack"></div>
+        <div class="status-alert" id="horseStatus">Pferd wählen & starten</div>
+        <div class="bet-bar" id="horseSelectBtns"></div>
+        <div class="bet-bar" style="margin-top:5px;">
+          <input type="number" id="horseBet" value="10" min="1">
+          <button class="btn-secondary" onclick="setBet('horseBet', 10)">10</button>
+          <button class="btn-secondary" onclick="setBet('horseBet', 25)">25</button>
+          <button class="btn-secondary" onclick="setBet('horseBet', 'all')">Max</button>
+          <button class="btn-primary" id="btnHorse" onclick="startHorseRace()">Start</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. RUSSISCHES ROULETTE -->
+    <div id="screenRussian" class="screen">
+      <div class="card-panel">
+        <div class="duel">
+          <div class="fighter" id="avPlayer">🤠</div>
+          <div style="font-weight:bold; color:var(--text-dim);">VS</div>
+          <div class="fighter" id="avIgor">🐻</div>
+        </div>
+        <div class="status-alert" id="rrStatus">Duell gegen Igor. Kopfschuss = 100€ Spital!</div>
+        <div class="bet-bar" id="rrBetControls">
+          <input type="number" id="rrBet" value="10" min="1">
+          <button class="btn-secondary" onclick="setBet('rrBet', 10)">10</button>
+          <button class="btn-secondary" onclick="setBet('rrBet', 'all')">Max</button>
+          <button class="btn-danger" onclick="startRR()">Duell starten</button>
+        </div>
+        <div class="bet-bar" id="rrActionControls" style="display:none;">
+          <button class="btn-danger" id="btnTrigger" onclick="pullTrigger()">💥 Abzug drücken</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. BLACKJACK -->
+    <div id="screenBlackjack" class="screen">
+      <div class="card-panel">
+        <div style="font-size:0.85rem; color:var(--text-dim);">Dealer: <span id="bjDealerVal">0</span></div>
+        <div class="cards-row" id="dealerCards"></div>
+        <div style="font-size:0.85rem; color:var(--text-dim);">Deine Hand: <span id="bjPlayerVal">0</span></div>
+        <div class="cards-row" id="playerCards"></div>
+        <div class="status-alert" id="bjStatus">Einsatz setzen</div>
+        <div class="bet-bar" id="bjBetControls">
+          <input type="number" id="bjBet" value="10" min="1">
+          <button class="btn-secondary" onclick="setBet('bjBet', 10)">10</button>
+          <button class="btn-secondary" onclick="setBet('bjBet', 25)">25</button>
+          <button class="btn-primary" onclick="startBJ()">Austeilen</button>
+        </div>
+        <div class="bet-bar" id="bjActionControls" style="display:none;">
+          <button class="btn-primary" onclick="bjHit()">Hit</button>
+          <button class="btn-secondary" onclick="bjStand()">Stand</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. POST AUSTRAGEN -->
+    <div id="screenJob" class="screen">
+      <div class="card-panel">
+        <div id="jobTarget" style="font-weight:700; font-size:1.1rem;">Schicht starten</div>
+        <div class="timer-wrap" id="timerWrap" style="display:none;"><div class="timer-bar" id="timerBar"></div></div>
+        <div class="boxes-grid" id="mailboxBox" style="display:none;"></div>
+        <div class="status-alert" id="jobStatus"></div>
+        <button class="btn-primary" id="btnJobStart" onclick="startJob()">Schicht beginnen</button>
+      </div>
+    </div>
+
+    <!-- 9. GELD ANLEGEN -->
+    <div id="screenInvest" class="screen">
+      <div class="card-panel" style="align-items:stretch;">
+        <div style="font-weight:700;">Laufende Anlagen:</div>
+        <div id="investList" style="font-size:0.85rem; color:var(--text-dim);">Keine aktiven Anlagen.</div>
+        
+        <div class="sub-grid" style="margin-top:10px;">
+          <div class="story-card">
+            <h4>🏦 Festgeld</h4>
+            <p style="font-size:0.8rem; color:var(--text-dim);">+8% Zinsen | 5 Spins | 10% Risiko</p>
+            <input type="number" id="invBank" value="50" min="10">
+            <button class="btn-secondary" onclick="invest('bank')">Anlegen</button>
+          </div>
+          <div class="story-card">
+            <h4>🚀 Aktien</h4>
+            <p style="font-size:0.8rem; color:var(--text-dim);">+100% Gewinn | 2 Spins | <strong>85% Verlustchance</strong> (15% Chance)</p>
+            <input type="number" id="invStock" value="20" min="10">
+            <button class="btn-danger" onclick="invest('stock')">Zocken</button>
+          </div>
+          <div class="story-card">
+            <h4>🕶️ Trickbetrug</h4>
+            <p style="font-size:0.8rem; color:var(--text-dim);">+30% Gewinn | 10 Spins | <strong>45% Gewinnchance</strong> (55% Risiko)</p>
+            <input type="number" id="invScam" value="50" min="10">
+            <button class="btn-secondary" style="color:var(--purple);" onclick="invest('scam')">Riskieren</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10. FINANZEN / KREDITE -->
+    <div id="screenFinance" class="screen">
+      <div class="card-panel" style="align-items:stretch;">
+        <div class="sub-grid">
+          <div class="story-card">
+            <h4>🏦 Bank-Kredit</h4>
+            <p style="font-size:0.8rem; color:var(--text-dim);">30% Zinsen pro Spin bis Rückzahlung!</p>
+            <div style="font-weight:700; color:var(--danger);" id="bankLoanVal">0 € Schulden</div>
+            <div class="bet-bar" style="justify-content:flex-start;">
+              <button class="btn-secondary" onclick="loanBank(200)">+200€</button>
+              <button class="btn-secondary" onclick="loanBank(500)">+500€</button>
+              <button class="btn-secondary" onclick="loanBank(1000)">+1.000€</button>
+              <button class="btn-primary" onclick="repayBank()">Tilgen</button>
+            </div>
+          </div>
+
+          <div class="story-card">
+            <h4>🕶️ Mafia (Don Vito)</h4>
+            <p style="font-size:0.8rem; color:var(--text-dim);">Frist: 5 Spins! Sonst Bein ab (300% OP-Kosten).</p>
+            <div style="font-weight:700; color:var(--danger);" id="mafiaLoanVal">0 € Schulden</div>
+            <div class="bet-bar" style="justify-content:flex-start;">
+              <button class="btn-secondary" onclick="loanMafia(300)">+300€</button>
+              <button class="btn-secondary" onclick="loanMafia(600)">+600€</button>
+              <button class="btn-secondary" onclick="loanMafia(1000)">+1.000€</button>
+              <button class="btn-danger" onclick="repayMafia()">Begleichen</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ================= CORE STATE ================= */
+    let balance = 50;
+    let beers = 0; 
+    let beerTimer = 0;
+    let brownieTimer = 0;
+    let brownieCost = 1000;
+    let kidneySold = false;
+    let bankDebt = 0;
+    let mafiaDebt = 0;
+    let mafiaSpins = 0;
+    let investments = [];
+
+    // LEBENSABSCHNITTE
+    let hasHouse = false;
+    let isMarried = false;
+    let marriageSpins = 0;
+    let isHeartbroken = false;
+    let hasDealer = false;
+
+    // Passives Einkommen: alle 6s anteilig (+3 € für 30 €/min Haus, +5 € für 50 €/min Dealer)
+    setInterval(() => {
+      let income = 0;
+      if (hasHouse) income += 3;  // 3 € alle 6s = 30 € / min
+      if (hasDealer) income += 5; // 5 € alle 6s = 50 € / min
+      if (income > 0) {
+        balance += income;
+        syncUI();
+      }
+    }, 6000);
+
+    function getLuck() {
+      let l = 0;
+      if (beerTimer > 0) l += (beers === 1 ? 10 : (beers === 2 ? 15 : 20));
+      if (brownieTimer > 0) l += 40;
+      return l;
+    }
+
+    function syncUI() {
+      document.getElementById('balanceBadge').textContent = balance + ' €';
+      const luck = getLuck();
+      document.getElementById('luckBadge').textContent = `🍀 +${luck}%`;
+      
+      const dBadge = document.getElementById('debtBadge');
+      let debts = [];
+      if (bankDebt > 0) debts.push(`🏦 Bank: ${bankDebt}€`);
+      if (mafiaDebt > 0) debts.push(`🕶️ Mafia: ${mafiaDebt}€ (${mafiaSpins}S)`);
+      if (kidneySold) debts.push(`💊 -20€/S`);
+      if (debts.length > 0) {
+        dBadge.style.display = 'block';
+        dBadge.textContent = debts.join(' | ');
+      } else {
+        dBadge.style.display = 'none';
+      }
+
+      // Lebens-Badge
+      const lb = document.getElementById('lifeBadge');
+      if (isHeartbroken) {
+        lb.style.display = 'block';
+        lb.textContent = `💔 Liebeskummer (${beers}/2 Bier!)`;
+      } else if (isMarried) {
+        lb.style.display = 'block';
+        lb.textContent = `💍 Verheiratet (${2 - marriageSpins} Spins)`;
+      } else if (hasHouse || hasDealer) {
+        lb.style.display = 'block';
+        lb.textContent = `💸 Passiv: +${(hasHouse ? 30 : 0) + (hasDealer ? 50 : 0)} €/min`;
+      } else {
+        lb.style.display = 'none';
+      }
+
+      document.getElementById('btnBrownie').textContent = `🍪 Brownie (${brownieCost >= 10000 ? '10k' : '1k'}€)`;
+      if (kidneySold) {
+        const bk = document.getElementById('btnKidney');
+        bk.disabled = true;
+        bk.textContent = '🫁 Verkauft';
+      }
+
+      document.getElementById('bankLoanVal').textContent = `${bankDebt} € Schulden (-${Math.round(bankDebt * 0.3)}€/Spin)`;
+      document.getElementById('mafiaLoanVal').textContent = mafiaDebt > 0 ? `${mafiaDebt} € (${mafiaSpins} Spins Frist)` : '0 € Schulden';
+      
+      // Leben UI Sync
+      const totalIncome = (hasHouse ? 30 : 0) + (hasDealer ? 50 : 0);
+      document.getElementById('lifeIncomeStatus').textContent = `Passiv: +${totalIncome} €/min`;
+
+      // HAUS-BEDINGUNGEN: Gesperrt wenn Verpflichtungen (Schulden oder Liebeskummer) bestehen!
+      const btnHouse = document.getElementById('btnBuyHouse');
+      const hasDebts = (bankDebt > 0 || mafiaDebt > 0);
+
+      if (hasHouse) {
+        btnHouse.disabled = true;
+        btnHouse.textContent = "🏰 Haus im Besitz";
+      } else if (hasDebts) {
+        btnHouse.disabled = true;
+        btnHouse.textContent = "Gesperrt (Erst Schulden tilgen!)";
+      } else if (isHeartbroken) {
+        btnHouse.disabled = true;
+        btnHouse.textContent = "Gesperrt (Liebeskummer heilen!)";
+      } else if (isMarried) {
+        btnHouse.disabled = true;
+        btnHouse.textContent = "Verheiratet";
+      } else {
+        btnHouse.disabled = false;
+        btnHouse.textContent = "Haus kaufen (2.500 €)";
+      }
+
+      document.getElementById('btnTinder').disabled = !hasHouse || isMarried || isHeartbroken;
+      document.getElementById('btnTinder').textContent = isMarried ? "💍 Mit Chantal verheiratet" : "Tinder Gold (50 €)";
+
+      document.getElementById('btnBuyDealer').disabled = hasDealer;
+      document.getElementById('btnBuyDealer').textContent = hasDealer ? "🕶️ Dealer aktiv (+50 €/min)" : "Dealer anheuern (5.000 €)";
+      
+      const hbDesc = document.getElementById('heartbreakDesc');
+      if (isHeartbroken) {
+        hbDesc.innerHTML = `<span style="color:var(--danger);">💔 Scheidung durch! Haus weg, Konto halbiert. <strong>Du brauchst mind. 2 Bier aktiv</strong>!</span>`;
+        document.getElementById('btnTherapy').disabled = false;
+      } else {
+        hbDesc.textContent = isMarried ? "Verheiratet mit Chantal-Monique... noch." : "Kein Liebeskummer aktiv.";
+        document.getElementById('btnTherapy').disabled = true;
+      }
+
+      renderInvestments();
+    }
+
+    function checkCosts(bet) {
+      if (isNaN(bet) || bet <= 0) { alert("Ungültiger Einsatz!"); return false; }
+      const interest = bankDebt > 0 ? Math.round(bankDebt * 0.3) : 0;
+      const meds = kidneySold ? 20 : 0;
+      const total = bet + interest + meds;
+
+      if (balance < total) {
+        alert(`Zu wenig Geld! Benötigt: ${total} € (Einsatz ${bet}€ + Zinsen ${interest}€ + Meds ${meds}€).`);
+        return false;
+      }
+      balance -= (interest + meds);
+      return true;
+    }
+
+    function afterSpin() {
+      if (beerTimer > 0) { beerTimer--; if (beerTimer === 0) beers = 0; }
+      if (brownieTimer > 0) brownieTimer--;
+
+      // Scheidungs-Timer prüfen
+      if (isMarried) {
+        marriageSpins++;
+        if (marriageSpins >= 2) {
+          isMarried = false;
+          hasHouse = false;
+          isHeartbroken = true;
+          balance = Math.floor(balance / 2);
+          alert("💔 EHE-DRAMA! Chantal-Monique hat die Scheidung eingereicht!\nSie nimmt dein Haus mit und dein Kontostand wurde halbiert!\n\nACHTUNG: Du musst ab jetzt IMMER mindestens 2 Bier intus haben!");
+        }
+      }
+
+      // Liebeskummer-Bedingung prüfen: mind. 2 Bier aktiv!
+      if (isHeartbroken) {
+        if (beers < 2) {
+          const hosp = 250;
+          balance -= hosp;
+          alert(`💔 HERZSCHMERZ-KOLLAPS! Weniger als 2 Bier getrunken!\nNotarzt-Einsatz: -${hosp} € Spitalrechnung!`);
+        }
+      }
+
+      if (mafiaDebt > 0) {
+        mafiaSpins--;
+        if (mafiaSpins <= 0) {
+          const bill = mafiaDebt * 3;
+          balance -= bill;
+          alert(`💀 KNACK! Frist abgelaufen! Die Mafia bricht dein Bein. Not-OP kostet ${bill} €!`);
+          mafiaDebt = 0;
+        }
+      }
+
+      for (let i = investments.length - 1; i >= 0; i--) {
+        let inv = investments[i];
+        inv.spins--;
+        if (inv.spins <= 0) {
+          if (Math.random() * 100 >= inv.risk) {
+            const win = Math.round(inv.amount * (1 + inv.rate));
+            balance += win;
+            alert(`✅ [${inv.name}] ausgezahlt: +${win} €!`);
+          } else {
+            alert(`❌ [${inv.name}] Totalverlust: ${inv.amount} € verloren.`);
+          }
+          investments.splice(i, 1);
+        }
+      }
+      syncUI();
+    }
+
+    function showScreen(id) {
+      if (jobTimer) clearInterval(jobTimer);
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      document.getElementById('btnBack').style.display = (id === 'screenMenu') ? 'none' : 'block';
+    }
+
+    function setBet(id, val) {
+      const el = document.getElementById(id);
+      const interest = bankDebt > 0 ? Math.round(bankDebt * 0.3) : 0;
+      const meds = kidneySold ? 20 : 0;
+      const max = Math.max(1, balance - interest - meds);
+      el.value = (val === 'all') ? max : val;
+    }
+
+    /* ================= LEBENS-LOGIK ================= */
+    function buyHouse() {
+      if (bankDebt > 0 || mafiaDebt > 0) {
+        return alert("Der Makler lehnt dich ab! Du hast noch offene Schulden bei der Bank oder der Mafia. Tilge erst alle Kredite!");
+      }
+      if (isHeartbroken) {
+        return alert("Kläre erst dein Scheidungsdrama und den Liebeskummer per Therapie & Anwalt!");
+      }
+      if (balance < 2500) return alert("Ein Penthouse kostet 2.500 €!");
+
+      balance -= 2500;
+      hasHouse = true;
+      syncUI();
+      alert("🏰 Du bist schuldenfreier Hausbesitzer! Ab jetzt gibt's +30 €/min passiv.");
+    }
+
+    function useTinder() {
+      if (!hasHouse) return alert("Ohne Haus hast du keine Matches!");
+      if (balance < 50) return alert("Tinder Gold kostet 50 €!");
+      balance -= 50;
+      isMarried = true;
+      marriageSpins = 0;
+      syncUI();
+      alert("💍 IT'S A MATCH! Chantal-Monique liebt dein Penthouse.\nIhr heiratet sofort...");
+    }
+
+    function healHeartbreak() {
+      if (balance < 5000) return alert("Therapie & Scheidungsanwalt kosten 5.000 €!");
+      balance -= 5000;
+      isHeartbroken = false;
+      syncUI();
+      alert("🧘 Geist geheilt! Liebeskummer überstanden – keine 2 Bier mehr nötig.");
+    }
+
+    function hireDealer() {
+      if (hasDealer) return;
+      if (balance < 5000) return alert("Ein Drogendealer verlangt 5.000 € Startkapital!");
+      balance -= 5000;
+      hasDealer = true;
+      syncUI();
+      alert("🕶️ Drogendealer angeheuert! Ab sofort fließen +50 €/min passiv auf dein Konto.");
+    }
+
+    /* ================= SHOP & KREDITE ================= */
+    function buyBeer() {
+      if (beers >= 3) return alert("Maximal 3 Bier!");
+      if (balance < 50) return alert("Bier kostet 50 €!");
+      balance -= 50;
+      beers++;
+      beerTimer = 2;
+      syncUI();
+      alert(`Prost! 🍺 Bier #${beers} intus (+${beers === 1 ? '10' : (beers === 2 ? '15' : '20')}% Glück).`);
+    }
+
+    function buyBrownie() {
+      if (brownieTimer > 0) return alert("Brownie wirkt bereits!");
+      if (balance < brownieCost) return alert(`Kostet ${brownieCost} €!`);
+      balance -= brownieCost;
+      brownieTimer = 1;
+      brownieCost = 10000;
+      syncUI();
+    }
+
+    function sellKidney() {
+      if (kidneySold) return;
+      if (!confirm("Niere für 2.000 € verkaufen? Ab sofort 20 € Meds pro Spin!")) return;
+      kidneySold = true;
+      balance += 2000;
+      syncUI();
+    }
+
+    function loanBank(amt) { bankDebt += amt; balance += amt; syncUI(); }
+    function repayBank() {
+      if (balance < bankDebt) return alert(`Du brauchst ${bankDebt} €!`);
+      balance -= bankDebt; bankDebt = 0; syncUI();
+    }
+    function loanMafia(amt) {
+      if (mafiaDebt > 0) return alert("Erst alte Schulden tilgen!");
+      mafiaDebt = amt; mafiaSpins = 5; balance += amt; syncUI();
+    }
+    function repayMafia() {
+      if (balance < mafiaDebt) return alert(`Du brauchst ${mafiaDebt} €!`);
+      balance -= mafiaDebt; mafiaDebt = 0; syncUI();
+    }
+
+    /* ================= ANLAGEN ================= */
+    function invest(type) {
+      let amt = 0, name = "", rate = 0, spins = 0, risk = 0;
+      if (type === 'bank') { 
+        amt = parseInt(document.getElementById('invBank').value); 
+        name = "Festgeld"; rate = 0.08; spins = 5; risk = 10; 
+      }
+      if (type === 'stock') { 
+        amt = parseInt(document.getElementById('invStock').value); 
+        name = "Aktien"; rate = 1.0; spins = 2; risk = 85; 
+      }
+      if (type === 'scam') { 
+        amt = parseInt(document.getElementById('invScam').value); 
+        name = "Trickbetrug"; rate = 0.3; spins = 10; risk = 55; 
+      }
+
+      if (isNaN(amt) || amt <= 0 || balance < amt) return alert("Ungültiges Guthaben!");
+      balance -= amt;
+      investments.push({ name, amount: amt, rate, spins, risk });
+      syncUI();
+    }
+
+    function renderInvestments() {
+      const el = document.getElementById('investList');
+      if (!el) return;
+      if (investments.length === 0) { el.textContent = "Keine aktiven Anlagen."; return; }
+      el.innerHTML = investments.map(i => `<div>• <strong>${i.name}</strong> (${i.amount}€) - Noch ${i.spins} Spins</div>`).join('');
+    }
+
+    /* ================= 1. ROULETTE ================= */
+    const wheelNumbers = [
+      0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10,
+      5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
+    ];
+    const redNumbers = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+    let wheelDeg = 0, spinningRoulette = false;
+
+    function drawWheel() {
+      const c = document.getElementById('wheelCanvas');
+      if (!c) return;
+      const ctx = c.getContext('2d');
+      const cx = 140, cy = 140, r = 135;
+      const total = wheelNumbers.length;
+      const sliceAngle = (2 * Math.PI) / total;
+
+      ctx.clearRect(0, 0, 280, 280);
+
+      for (let i = 0; i < total; i++) {
+        const centerAngle = -Math.PI / 2 + i * sliceAngle;
+        const start = centerAngle - sliceAngle / 2;
+        const end = centerAngle + sliceAngle / 2;
+        const num = wheelNumbers[i];
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, start, end);
+        ctx.closePath();
+        ctx.fillStyle = num === 0 ? '#10b981' : (redNumbers.includes(num) ? '#ef4444' : '#1e293b');
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(centerAngle);
+        ctx.translate(r - 18, 0);
+        ctx.rotate(Math.PI / 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 10px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(num.toString(), 0, 0);
+        ctx.restore();
+      }
+
+      ctx.beginPath(); ctx.arc(cx, cy, 38, 0, 2 * Math.PI); ctx.fillStyle = '#121720'; ctx.fill();
+      ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, 14, 0, 2 * Math.PI); ctx.fillStyle = '#f59e0b'; ctx.fill();
+    }
+
+    function playRoulette(type) {
+      if (spinningRoulette) return;
+      const bet = parseInt(document.getElementById('rouletteBet').value);
+      if (!checkCosts(bet)) return;
+
+      let chosen = null;
+      if (type === 'number') {
+        chosen = parseInt(prompt("Zahl (0-36):"));
+        if (isNaN(chosen) || chosen < 0 || chosen > 36) return;
+      }
+
+      spinningRoulette = true;
+      document.getElementById('rouletteStatus').textContent = "Kugel rollt...";
+
+      let rolled = Math.floor(Math.random() * 37);
+      if (Math.random() * 100 < getLuck() && rolled !== 0) {
+        if (type === 'red') rolled = 7;
+        if (type === 'black') rolled = 8;
+        if (type === 'number') rolled = chosen;
+      }
+
+      const targetIdx = wheelNumbers.indexOf(rolled);
+      const sliceDeg = 360 / 37;
+      const targetDeg = (360 - (targetIdx * sliceDeg)) % 360;
+      const currentMod = wheelDeg % 360;
+      let diff = targetDeg - currentMod;
+      if (diff <= 0) diff += 360;
+
+      wheelDeg += (5 * 360) + diff;
+      document.getElementById('wheelCanvas').style.transform = `rotate(${wheelDeg}deg)`;
+
+      setTimeout(() => {
+        const isRed = redNumbers.includes(rolled);
+        const colName = rolled === 0 ? "🟢 0" : (isRed ? `🔴 ${rolled}` : `⚫ ${rolled}`);
+        let win = false, pay = 0;
+
+        if (type === 'red' && isRed) { win = true; pay = bet; }
+        else if (type === 'black' && !isRed && rolled !== 0) { win = true; pay = bet; }
+        else if (type === 'even' && rolled !== 0 && rolled % 2 === 0) { win = true; pay = bet; }
+        else if (type === 'odd' && rolled % 2 !== 0) { win = true; pay = bet; }
+        else if (type === 'number' && rolled === chosen) { win = true; pay = bet * 35; }
+
+        const stat = document.getElementById('rouletteStatus');
+        if (win) {
+          balance += pay;
+          stat.innerHTML = `<span class="win">Treffer auf ${colName}! +${pay + bet} € gewonnen!</span>`;
+        } else {
+          balance -= bet;
+          stat.innerHTML = `<span class="loss">Niete! Kugel fiel auf ${colName}. -${bet} €</span>`;
+        }
+        afterSpin();
+        spinningRoulette = false;
+      }, 4100);
+    }
+
+    /* ================= 2. SLOTS ================= */
+    const symbols = ['🍒', '🍋', '🍇', '🔔', '💎', '7️⃣'];
+    let spinningSlots = false;
+
+    function spinSlots() {
+      if (spinningSlots) return;
+      const bet = parseInt(document.getElementById('slotBet').value);
+      if (!checkCosts(bet)) return;
+
+      spinningSlots = true;
+      document.getElementById('btnSpin').disabled = true;
+      document.getElementById('slotStatus').textContent = "Walzen laufen...";
+
+      const r1 = document.getElementById('r1'), r2 = document.getElementById('r2'), r3 = document.getElementById('r3');
+      r1.className = 'reel'; r2.className = 'reel'; r3.className = 'reel';
+
+      let res1 = symbols[Math.floor(Math.random() * symbols.length)];
+      let res2 = symbols[Math.floor(Math.random() * symbols.length)];
+      let res3 = symbols[Math.floor(Math.random() * symbols.length)];
+
+      if (Math.random() * 100 < getLuck()) {
+        if (Math.random() < 0.3) { const j = Math.random() < 0.5 ? '7️⃣' : '💎'; res1 = j; res2 = j; res3 = j; }
+        else { res2 = res1; }
+      }
+
+      const t1 = setInterval(() => r1.textContent = symbols[Math.floor(Math.random()*symbols.length)], 60);
+      const t2 = setInterval(() => r2.textContent = symbols[Math.floor(Math.random()*symbols.length)], 60);
+      const t3 = setInterval(() => r3.textContent = symbols[Math.floor(Math.random()*symbols.length)], 60);
+
+      setTimeout(() => { clearInterval(t1); r1.textContent = res1; r1.classList.add('locked'); }, 800);
+      setTimeout(() => { clearInterval(t2); r2.textContent = res2; r2.classList.add('locked'); }, 1400);
+      setTimeout(() => {
+        clearInterval(t3); r3.textContent = res3; r3.classList.add('locked');
+        let m = 0;
+        if (res1 === res2 && res2 === res3) {
+          m = res1 === '7️⃣' ? 50 : (res1 === '💎' ? 25 : (res1 === '🔔' ? 15 : 5));
+        } else if (res1 === res2 || res2 === res3 || res1 === res3) {
+          m = 1.5;
+        }
+
+        const stat = document.getElementById('slotStatus');
+        if (m > 0) {
+          const win = Math.round(bet * m);
+          balance += (win - bet);
+          stat.innerHTML = `<span class="win">+${win} € (${m}x) Gewonnen!</span>`;
+        } else {
+          balance -= bet;
+          stat.innerHTML = `<span class="loss">-${bet} € Niete</span>`;
+        }
+        afterSpin();
+        spinningSlots = false;
+        document.getElementById('btnSpin').disabled = false;
+      }, 2000);
+    }
+
+    /* ================= 3. PFERDERENNEN ================= */
+    const horses = [
+      { id: 1, name: "Blitz", col: "🔴" },
+      { id: 2, name: "Donner", col: "🔵" },
+      { id: 3, name: "Phantom", col: "🟣" },
+      { id: 4, name: "Lucky", col: "🟡" }
+    ];
+    let selectedHorse = 1, racing = false;
+
+    function initHorses() {
+      const track = document.getElementById('horseTrack'), sel = document.getElementById('horseSelectBtns');
+      track.innerHTML = ''; sel.innerHTML = '';
+      horses.forEach(h => {
+        track.innerHTML += `<div class="lane"><div class="horse" id="h-${h.id}">🏇${h.col}</div></div>`;
+        sel.innerHTML += `<button class="btn-secondary ${h.id === selectedHorse ? 'btn-primary' : ''}" id="hb-${h.id}" onclick="pickHorse(${h.id})">${h.name}</button>`;
+      });
+    }
+
+    function pickHorse(id) {
+      if (racing) return;
+      selectedHorse = id;
+      horses.forEach(h => document.getElementById(`hb-${h.id}`).className = h.id === id ? 'btn-primary' : 'btn-secondary');
+    }
+
+    function startHorseRace() {
+      const bet = parseInt(document.getElementById('horseBet').value);
+      if (!checkCosts(bet) || racing) return;
+
+      racing = true;
+      document.getElementById('btnHorse').disabled = true;
+      let pos = [0, 0, 0, 0];
+      const goal = document.getElementById('horseTrack').clientWidth - 65;
+      let winner = null;
+      const luck = getLuck();
+
+      const loop = setInterval(() => {
+        horses.forEach((h, i) => {
+          let step = Math.random() * 3 + 1;
+          if (h.id === selectedHorse && luck > 0) step += (luck * 0.02);
+          pos[i] += step * 1.5;
+          document.getElementById(`h-${h.id}`).style.transform = `translateX(${pos[i]}px)`;
+          if (pos[i] >= goal && !winner) winner = h;
+        });
+
+        if (winner) {
+          clearInterval(loop);
+          racing = false;
+          document.getElementById('btnHorse').disabled = false;
+          const stat = document.getElementById('horseStatus');
+          if (winner.id === selectedHorse) {
+            balance += (bet * 3);
+            stat.innerHTML = `<span class="win">+${bet * 4} €! ${winner.name} gewinnt!</span>`;
+          } else {
+            balance -= bet;
+            stat.innerHTML = `<span class="loss">-${bet} €! ${winner.name} siegte.</span>`;
+          }
+          afterSpin();
+        }
+      }, 30);
+    }
+
+    /* ================= 4. RUSSISCHES ROULETTE ================= */
+    let cylinder = [], rrIdx = 0, rrBetVal = 0;
+
+    function startRR() {
+      const bet = parseInt(document.getElementById('rrBet').value);
+      if (!checkCosts(bet)) return;
+      rrBetVal = bet;
+      cylinder = [false, false, false, false, false, false];
+      cylinder[Math.floor(Math.random() * 6)] = true;
+      rrIdx = 0;
+
+      document.getElementById('rrBetControls').style.display = 'none';
+      document.getElementById('rrActionControls').style.display = 'flex';
+      document.getElementById('avPlayer').textContent = "🤠";
+      document.getElementById('avIgor').textContent = "🐻";
+      document.getElementById('rrStatus').textContent = "Du bist dran. Drück ab!";
+    }
+
+    function pullTrigger() {
+      document.getElementById('btnTrigger').disabled = true;
+      if (cylinder[rrIdx]) {
+        document.getElementById('avPlayer').textContent = "💀";
+        balance -= (rrBetVal + 100);
+        document.getElementById('rrStatus').innerHTML = `<span class="loss">💥 PÄNG! -${rrBetVal}€ & 100€ Spital!</span>`;
+        endRR();
+      } else {
+        rrIdx++;
+        document.getElementById('rrStatus').textContent = "*Klick*... Leer. Igor ist dran...";
+        setTimeout(() => {
+          if (cylinder[rrIdx]) {
+            document.getElementById('avIgor').textContent = "💀";
+            balance += rrBetVal;
+            document.getElementById('rrStatus').innerHTML = `<span class="win">💥 Igor erschossen! +${rrBetVal * 2} €!</span>`;
+            endRR();
+          } else {
+            rrIdx++;
+            document.getElementById('rrStatus').textContent = "*Klick*... Igor lebt. Du bist dran!";
+            document.getElementById('btnTrigger').disabled = false;
+          }
+          syncUI();
+        }, 1100);
+      }
+      syncUI();
+    }
+
+    function endRR() {
+      afterSpin();
+      document.getElementById('rrBetControls').style.display = 'flex';
+      document.getElementById('rrActionControls').style.display = 'none';
+      document.getElementById('btnTrigger').disabled = false;
+    }
+
+    /* ================= 5. BLACKJACK ================= */
+    let deck = [], pHand = [], dHand = [], bjBetVal = 0;
+    function getCardVal(v) { return ['J','Q','K'].includes(v) ? 10 : (v === 'A' ? 11 : parseInt(v)); }
+    function handSum(h) {
+      let s = 0, a = 0;
+      h.forEach(c => { s += getCardVal(c.val); if (c.val === 'A') a++; });
+      while (s > 21 && a > 0) { s -= 10; a--; }
+      return s;
+    }
+    function renderHand(h, elId, hideFirst = false) {
+      document.getElementById(elId).innerHTML = h.map((c, i) => 
+        (hideFirst && i === 0) 
+        ? `<div class="card" style="background:#1e293b; color:#fff;">?</div>`
+        : `<div class="card ${['♥','♦'].includes(c.suit)?'red':''}">${c.val}<br>${c.suit}</div>`
+      ).join('');
+    }
+
+    function startBJ() {
+      const bet = parseInt(document.getElementById('bjBet').value);
+      if (!checkCosts(bet)) return;
+      bjBetVal = bet;
+      const suits = ['♠', '♥', '♦', '♣'], vals = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+      deck = [];
+      suits.forEach(s => vals.forEach(v => deck.push({ suit: s, val: v })));
+      deck.sort(() => Math.random() - 0.5);
+
+      pHand = [deck.pop(), deck.pop()];
+      dHand = [deck.pop(), deck.pop()];
+
+      document.getElementById('bjBetControls').style.display = 'none';
+      document.getElementById('bjActionControls').style.display = 'flex';
+      document.getElementById('bjStatus').textContent = "Hit oder Stand?";
+
+      renderHand(pHand, 'playerCards');
+      renderHand(dHand, 'dealerCards', true);
+      document.getElementById('bjPlayerVal').textContent = handSum(pHand);
+      document.getElementById('bjDealerVal').textContent = '?';
+    }
+
+    function bjHit() {
+      pHand.push(deck.pop());
+      renderHand(pHand, 'playerCards');
+      const s = handSum(pHand);
+      document.getElementById('bjPlayerVal').textContent = s;
+      if (s > 21) finishBJ('bust');
+    }
+
+    function bjStand() {
+      let ds = handSum(dHand);
+      while (ds < 17) { dHand.push(deck.pop()); ds = handSum(dHand); }
+      renderHand(dHand, 'dealerCards', false);
+      document.getElementById('bjDealerVal').textContent = ds;
+      const ps = handSum(pHand);
+      if (ds > 21 || ps > ds) finishBJ('win');
+      else if (ps === ds) finishBJ('push');
+      else finishBJ('dealer');
+    }
+
+    function finishBJ(res) {
+      const stat = document.getElementById('bjStatus');
+      if (res === 'win') { balance += bjBetVal; stat.innerHTML = `<span class="win">+${bjBetVal} € Gewonnen!</span>`; }
+      else if (res === 'bust') { balance -= bjBetVal; stat.innerHTML = `<span class="loss">-${bjBetVal} € (>21)</span>`; }
+      else if (res === 'dealer') { balance -= bjBetVal; stat.innerHTML = `<span class="loss">-${bjBetVal} € Dealer gewinnt</span>`; }
+      else { stat.textContent = "Unentschieden (Push)"; }
+      afterSpin();
+      document.getElementById('bjBetControls').style.display = 'flex';
+      document.getElementById('bjActionControls').style.display = 'none';
+    }
+
+    /* ================= 6. POSTBOTE ================= */
+    let jobStreak = 0, jobTimer = null, timeLeft = 5, targetHouse = null;
+    function openJob() {
+      showScreen('screenJob');
+      document.getElementById('jobStatus').textContent = "";
+      document.getElementById('timerWrap').style.display = 'none';
+      document.getElementById('mailboxBox').style.display = 'none';
+      document.getElementById('btnJobStart').style.display = 'block';
+    }
+
+    function startJob() {
+      jobStreak = 0;
+      document.getElementById('btnJobStart').style.display = 'none';
+      document.getElementById('timerWrap').style.display = 'block';
+      document.getElementById('mailboxBox').style.display = 'flex';
+      nextJobStep();
+    }
+
+    function nextJobStep() {
+      if (jobTimer) clearInterval(jobTimer);
+      const tier = jobStreak < 2 ? { t: 5, r: 5 } : (jobStreak < 6 ? { t: 3, r: 10 } : (jobStreak < 11 ? { t: 1.5, r: 25 } : { t: 0.5, r: 50 }));
+      timeLeft = tier.t;
+
+      const houses = [{ n: 12, c: '#f59e0b' }, { n: 45, c: '#3b82f6' }, { n: 88, c: '#10b981' }, { n: 99, c: '#ef4444' }];
+      targetHouse = houses[Math.floor(Math.random() * houses.length)];
+      document.getElementById('jobTarget').innerHTML = `Brief an: <span style="color:${targetHouse.c}">Haus #${targetHouse.n}</span> (${tier.r}€)`;
+
+      const box = document.getElementById('mailboxBox');
+      box.innerHTML = '';
+      [...houses].sort(() => Math.random() - 0.5).forEach(h => {
+        box.innerHTML += `<button class="box-btn" onclick="deliver(${h.n}, ${tier.r})">📫<br>#${h.n}</button>`;
+      });
+
+      jobTimer = setInterval(() => {
+        timeLeft -= 0.05;
+        document.getElementById('timerBar').style.width = Math.max(0, (timeLeft / tier.t) * 100) + '%';
+        if (timeLeft <= 0) { clearInterval(jobTimer); failJob("Zu langsam!"); }
+      }, 50);
+    }
+
+    function deliver(num, reward) {
+      clearInterval(jobTimer);
+      if (num === targetHouse.n) {
+        balance += reward;
+        jobStreak++;
+        document.getElementById('jobStatus').innerHTML = `<span class="win">+${reward} €!</span>`;
+        syncUI();
+        nextJobStep();
+      } else {
+        failJob("Falscher Kasten!");
+      }
+    }
+
+    function failJob(msg) {
+      balance -= 25;
+      syncUI();
+      document.getElementById('mailboxBox').style.display = 'none';
+      document.getElementById('timerWrap').style.display = 'none';
+      document.getElementById('btnJobStart').style.display = 'block';
+      document.getElementById('jobTarget').textContent = "Schicht abgebrochen";
+      document.getElementById('jobStatus').innerHTML = `<span class="loss">${msg} 25 € Strafe gezahlt!</span>`;
+    }
+
+    /* ================= INITIALISIERUNG ================= */
+    window.onload = () => {
+      syncUI();
+      initHorses();
+      drawWheel();
+    };
+  </script>
+</body>
+</html>
