@@ -337,11 +337,11 @@ input { font-family: var(--font-mono); }
 .cylinder-box.zoom { animation: cylZoom .3s ease both; }
 .chambers-left { font-family: var(--font-mono); font-size: .85rem; color: var(--dim); }
 /* -- Post austragen -- */
-.postman-panel { background: linear-gradient(180deg, #8fc3f0 0%, #dbe7ef 60%, #6b6a55 60%, #4e4c3c 100%); border-color: #8a8060; color: #222; }
+.postman-panel { background: linear-gradient(180deg, #8fc3f0 0, #dbe7ef 330px, #6b6a55 330px, #4e4c3c 100%); /* Horizont = 20px Padding + 350px Straße − 40px (knapp unter der Straßenkante) */ border-color: #8a8060; color: #222; }
 .postman-panel .status { color: #2a2418; }
 .postman-panel .status .win { color: #2f7a1f; text-shadow: none; }
 .postman-panel .status .loss { color: #b3261e; text-shadow: none; }
-.street { position: relative; width: 100%; min-height: 260px; }
+.street { position: relative; width: 100%; min-height: 350px; } /* hoch genug, dass Brief und Serie nie die Häuser verdecken */
 .sun { position: absolute; right: 30px; top: 10px; width: 60px; height: 60px; border-radius: 50%; background: radial-gradient(circle, #fff4b0, #f5d67a 60%, transparent 62%); filter: blur(1px); }
 .houses { position: absolute; left: 0; right: 0; bottom: 70px; display: flex; justify-content: space-around; align-items: flex-end; padding: 0 20px; }
 .house { --hc: #999; position: relative; width: 110px; background: none; border: 0; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: transform .12s; }
