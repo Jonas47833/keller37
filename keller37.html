@@ -219,6 +219,16 @@ input { font-family: var(--font-mono); }
 .ticket { background: #f6e6b3; color: var(--paper-ink); font-family: var(--font-mono); font-size: .85rem; padding: 8px 12px; border: 1px dashed #8a6d1a; transform: rotate(-1deg); animation: popIn .25s ease both; }
 .ticket b { font-family: var(--font-display); letter-spacing: .08em; }
 .tickets .empty { color: var(--dim); font-family: var(--font-mono); font-size: .85rem; align-self: center; }
+/* -- Zuhause -- */
+.life-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.life-card { background: var(--panel-2); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; }
+.life-card .pic { font-size: 3.2rem; height: 70px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,.6)); }
+.life-card .pic.empty { opacity: .3; filter: grayscale(1); }
+.life-card h4 { font-family: var(--font-display); letter-spacing: .1em; font-size: 1.3rem; }
+.life-card p { font-size: .85rem; color: var(--dim); }
+.life-card .reason { font-family: var(--font-mono); font-size: .8rem; color: #d8d2c0; background: #1a1a1a; border: 1px solid #333; padding: 4px 10px; transform: rotate(-1deg); }
+.life-card .reason.warn { color: #ffb3b3; }
+.trophy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 6px; }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
@@ -313,6 +323,17 @@ input { font-family: var(--font-mono); }
         <button class="btn sm" style="--c: var(--neon-purple); color: #e0c8ff" data-invest="scam">Riskieren</button>
       </div>
     </div>
+  </div>
+</template>
+<template id="tpl-life">
+  <div class="panel stretch life">
+    <h2>🏡 Lebenslauf</h2>
+    <div class="life-grid">
+      <div class="life-card" id="lifeHouse"></div>
+      <div class="life-card" id="lifeLove"></div>
+      <div class="life-card" id="lifeDealer"></div>
+    </div>
+    <div class="chalk" id="trophies"><h4>🏆 Trophäenwand</h4><div class="trophy-grid" id="trophyGrid"></div></div>
   </div>
 </template>
 <!-- /TEMPLATES -->
@@ -1394,6 +1415,115 @@ UI.register('invest', {
   unmount() { Invest.root = null; },
 });
 Bus.on('invest.resolved', () => Invest.render());
+
+/* ---- Zuhause ---- */
+const Life = {
+  root: null,
+  REASON: {
+    debts: 'Erst Schulden tilgen', heartbroken: 'Erst Liebeskummer heilen', married: 'Chantal will kein zweites Haus',
+    funds: 'Zu wenig Geld', house: 'Ohne Haus keine Matches', owned: 'Schon erledigt', notNeeded: 'Kein Liebeskummer',
+  },
+  card(el, { pic, empty, title, text, action, label, cls, check }) {
+    el.innerHTML = '';
+    el.append(h('div', { class: 'pic' + (empty ? ' empty' : '') }, pic), h('h4', {}, title), h('p', {}, text));
+    if (!check) return;
+    if (check.ok) el.append(h('button', { class: `btn ${cls || ''}`, onclick: action }, label));
+    else el.append(h('span', { class: 'reason' + (check.reason === 'funds' ? '' : ' warn') }, this.REASON[check.reason] || check.reason));
+  },
+  render() {
+    if (!this.root) return;
+    const s = State.s;
+    this.card(qs('#lifeHouse', this.root), s.hasHouse
+      ? { pic: '🏰', title: 'Penthouse-Villa', text: 'Blick auf den Hafen. +30 €/min von Untermietern, nach denen du nicht fragst.' }
+      : { pic: '🏚️', empty: true, title: 'Kein Haus', text: 'Penthouse für 2.500 €. Nur ohne Schulden, nüchtern im Herzen und ledig.', action: () => Life.buyHouse(), label: 'Kaufen · 2.500 €', check: Rules.canBuyHouse(s) });
+    const love = s.isHeartbroken
+      ? { pic: '💔', title: 'Liebeskummer', text: 'Chantal ist weg, das Haus auch. Ohne 2 Bier pro Spin klappst du zusammen (−250 €).', action: () => Life.therapy(), label: 'Therapie & Anwalt · 5.000 €', cls: 'pink', check: Rules.canTherapy(s) }
+      : s.isMarried
+        ? { pic: '💍', title: 'Verheiratet', text: `Mit Chantal-Monique. Noch ${Rules.MARRIAGE_SPINS - s.marriageSpins} Spin${Rules.MARRIAGE_SPINS - s.marriageSpins === 1 ? '' : 's'} bis… irgendwas.` }
+        : { pic: '🔥', empty: !s.hasHouse, title: 'Tinder Gold', text: 'Chantal-Monique steht auf Penthouses. 50 €, und ihr heiratet sofort.', action: () => Life.tinder(), label: 'Matchen · 50 €', cls: 'pink', check: Rules.canTinder(s) };
+    this.card(qs('#lifeLove', this.root), love);
+    this.card(qs('#lifeDealer', this.root), s.hasDealer
+      ? { pic: '🧢', title: 'Kevin arbeitet', text: '+50 €/min. Pünktlich wie die Bahn. Also pünktlicher.' }
+      : { pic: '🧢', empty: true, title: 'Drogendealer', text: 'Kevin will 5.000 € Startkapital. Dafür +50 €/min, dauerhaft.', action: () => Life.dealer(), label: 'Anheuern · 5.000 €', cls: 'blue', check: Rules.canDealer(s) });
+  },
+  async buyHouse() {
+    const s = State.s;
+    if (!Rules.canBuyHouse(s).ok) return;
+    Game.applyDelta(-Rules.PRICES.house, { from: qs('#lifeHouse') });
+    s.hasHouse = true; State.save();
+    this.render(); UI.renderWallet(); UI.renderSide();
+    await Bus.emit('house.bought', {});
+    this.render();
+  },
+  async tinder() {
+    const s = State.s;
+    if (!Rules.canTinder(s).ok) return;
+    Game.applyDelta(-Rules.PRICES.tinder, { from: qs('#lifeLove') });
+    s.isMarried = true; s.marriageSpins = 0; State.save();
+    this.render(); UI.renderWallet();
+    await Bus.emit('tinder.match', {});
+    this.render();
+  },
+  async therapy() {
+    const s = State.s;
+    if (!Rules.canTherapy(s).ok) return;
+    Game.applyDelta(-Rules.PRICES.therapy, { from: qs('#lifeLove') });
+    s.isHeartbroken = false; State.save();
+    this.render(); UI.renderWallet();
+    await Bus.emit('therapy.done', {});
+    this.render();
+  },
+  async dealer() {
+    const s = State.s;
+    if (!Rules.canDealer(s).ok) return;
+    Game.applyDelta(-Rules.PRICES.dealer, { from: qs('#lifeDealer') });
+    s.hasDealer = true; State.save();
+    this.render(); UI.renderWallet();
+    await Bus.emit('dealer.hired', {});
+    this.render();
+  },
+};
+
+UI.register('life', {
+  template: 'tpl-life',
+  mount(root) { Life.root = root; Life.render(); if (typeof Achievements !== 'undefined') Achievements.renderWall(qs('#trophyGrid', root)); },
+  unmount() { Life.root = null; },
+});
+Bus.on('spin:after', () => Life.render());
+
+Cutscene.define('house.bought', [
+  { bg: 'villa', who: 'makler', mood: 'happy', text: 'Traumlage! Penthouse, Blick auf den Hafen, Nachbarn, die nicht fragen. Hier sind die Schlüssel.' },
+  { bg: 'villa', who: 'makler', mood: 'calm', text: 'Dreißig Euro die Minute wirft die Bude ab – Untermieter, frag nicht welche. Und jetzt: Tinder Gold. Du hast schließlich ein Penthouse.' },
+]);
+Cutscene.define('tinder.match', [
+  { bg: 'standesamt', who: 'chantal', mood: 'happy', text: 'Ehrlich jetzt – ein Penthouse?! Du bist ja soooo reif. ✨ It’s a match!' },
+  { bg: 'standesamt', who: 'chantal', mood: 'happy', fx: 'hearts', text: 'Ich hab schon das Standesamt gebucht. Meine Follower flippen aus.' },
+  { bg: 'standesamt', who: 'du', mood: 'happy', text: '„Ja, ich will." – Irgendwo in der Ferne lacht ein Anwalt.' },
+]);
+Cutscene.define('divorce', [
+  { bg: 'hafen', who: 'chantal', mood: 'angry', text: 'Ehrlich jetzt, Schatz… es liegt nicht an dir. Es liegt an deinem Kontostand.' },
+  { bg: 'hafen', who: 'schmalz', mood: 'calm', text: 'Dr. Schmalz, Fachanwalt für Familienrecht. Das Penthouse geht an meine Mandantin. Das Konto teilen wir. Fair ist fair.' },
+  { bg: 'hafen', who: 'schmalz', mood: 'calm', fx: 'drain', text: '{{before}} durch zwei macht {{after}}. Ich runde zu ihren Gunsten.' },
+  { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Komm, setz dich. Ab jetzt brauchst du zwei Bier intus, sonst klappst du zusammen. Ärztlicher Rat. Meiner.' },
+]);
+Cutscene.define('heartbreak.collapse', [
+  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'shake', text: 'Kreislauf! Weniger als zwei Bier bei akutem Liebeskummer – das ist grob fahrlässig.' },
+  { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'drain', text: 'Notarzt, Infusion, ein Brownie zur Beruhigung: {{bill}}. Trink nächstes Mal.' },
+]);
+Cutscene.define('therapy.done', [
+  { bg: 'hinterzimmer', who: 'schmalz', mood: 'calm', text: 'Fünftausend. Davon gehen viertausendneunhundert an mich und hundert an die Therapeutin. Sie sagt, Sie sollen loslassen.' },
+  { bg: 'hinterzimmer', who: 'schmalz', mood: 'happy', text: 'Herzlichen Glückwunsch, Sie sind geheilt. Kein Bierzwang mehr. Rechtlich gesehen.' },
+]);
+Cutscene.define('dealer.hired', [
+  { bg: 'strasse', who: 'kevin', mood: 'calm', text: 'Digga, fünf Riesen Startkapital, und ich mach den Rest. Frag nicht, was der Rest ist.' },
+  { bg: 'strasse', who: 'kevin', mood: 'happy', text: 'Fuffzig die Minute, pünktlich wie die Bahn. Also pünktlicher.' },
+]);
+Cutscene.bind('house.bought', 'house.bought');
+Cutscene.bind('tinder.match', 'tinder.match');
+Cutscene.bind('divorce', 'divorce');
+Cutscene.bind('heartbreak.collapse', 'heartbreak.collapse');
+Cutscene.bind('therapy.done', 'therapy.done');
+Cutscene.bind('dealer.hired', 'dealer.hired');
 </script>
 
 <script id="selftest">
