@@ -251,6 +251,32 @@ input { font-family: var(--font-mono); }
 .paytable { min-width: 190px; }
 .jackpot { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font-size: 3.5rem; z-index: 5; animation: jackpotPop .5s cubic-bezier(.3,1.5,.5,1) both; pointer-events: none; }
 .coin-p { position: absolute; font-size: 1.6rem; pointer-events: none; animation: coinFall 1.5s ease-in both; z-index: 4; }
+/* -- Blackjack -- */
+.bj-panel { border: 6px solid #3b2a12; border-radius: 160px 160px 14px 14px; }
+.bj-panel .status { color: #d9e6d0; }
+.bj-table { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 10px 0; }
+.shoe { position: absolute; right: 24px; top: 0; width: 60px; height: 84px; border-radius: 6px; background: repeating-linear-gradient(135deg, #7a2a2a 0 6px, #5a1a1a 6px 12px); border: 2px solid #c9a227; box-shadow: 0 6px 12px rgba(0,0,0,.6); }
+.shoe::after { content: ""; position: absolute; inset: 6px; border: 1px solid rgba(255,255,255,.3); border-radius: 3px; }
+.bj-arc { font-family: var(--font-display); letter-spacing: .2em; color: rgba(232,198,90,.45); font-size: 1rem; border-top: 1px solid rgba(232,198,90,.25); border-bottom: 1px solid rgba(232,198,90,.25); padding: 4px 30px; }
+.bj-hand { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.hand-label { font-family: var(--font-display); letter-spacing: .12em; color: #d9e6d0; font-size: 1.1rem; }
+.hand-val { font-family: var(--font-mono); background: #1c1e1a; border: 2px solid #4a3a2a; padding: 0 8px; margin-left: 6px; color: #fff; }
+.hand-val.push { color: var(--gold-2); }
+.cards { display: flex; gap: 8px; min-height: 96px; align-items: center; }
+.pcard { width: 66px; height: 94px; perspective: 600px; }
+.pcard.dealing { animation: dealIn .35s cubic-bezier(.2,.9,.3,1) both; }
+.pcard .inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .5s; }
+.pcard.hidden-card .inner { transform: rotateY(180deg); }
+.pcard .face, .pcard .back { position: absolute; inset: 0; border-radius: 6px; backface-visibility: hidden; box-shadow: 0 4px 8px rgba(0,0,0,.6); }
+.pcard .face { background: #fdfaf0; color: #111; font-family: var(--font-mono); font-weight: 700; }
+.pcard .face.red { color: #c1121f; }
+.pcard .corner { position: absolute; font-size: .8rem; line-height: 1; }
+.pcard .corner.tl { top: 5px; left: 6px; }
+.pcard .corner.br { bottom: 5px; right: 6px; transform: rotate(180deg); }
+.pcard .pip { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+.pcard .back { background: repeating-linear-gradient(45deg, #7a2a2a 0 4px, #5a1a1a 4px 8px); border: 4px solid #fdfaf0; transform: rotateY(180deg); }
+.pcard.bust .face { box-shadow: 0 0 18px 4px rgba(255,59,59,.7); }
+.pcard.bust { animation: bustSlide .6s ease .2s both; }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
@@ -273,6 +299,8 @@ input { font-family: var(--font-mono); }
 @keyframes hitGlow { 0%, 100% { box-shadow: 0 0 0 3px var(--gold); } 50% { box-shadow: 0 0 22px 6px var(--gold-2); } }
 @keyframes jackpotPop { from { transform: translate(-50%, -50%) scale(.2); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
 @keyframes coinFall { 0% { transform: translateY(-40px) rotate(0); opacity: 1; } 100% { transform: translateY(260px) rotate(360deg); opacity: 0; } }
+@keyframes dealIn { from { transform: translate(220px, -120px) rotate(25deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes bustSlide { to { transform: translateY(30px) rotate(6deg); opacity: .4; } }
 </style>
 </head>
 <body>
@@ -394,6 +422,35 @@ input { font-family: var(--font-mono); }
       <button class="chip" data-chip="50" data-v="50">50</button>
       <button class="chip" data-chip="max" data-v="max">MAX</button>
       <button class="btn solid" id="btnSpin">Drehen</button>
+    </div>
+  </div>
+</template>
+<template id="tpl-blackjack">
+  <div class="panel bj-panel felt">
+    <div class="bj-table">
+      <div class="shoe" id="shoe"></div>
+      <div class="bj-hand dealer">
+        <div class="hand-label">Dealer <span class="hand-val" id="bjDealerVal">–</span></div>
+        <div class="cards" id="dealerCards"></div>
+      </div>
+      <div class="bj-arc">Black Jack zahlt 1:1 · Dealer zieht bis 17</div>
+      <div class="bj-hand player">
+        <div class="cards" id="playerCards"></div>
+        <div class="hand-label">Du <span class="hand-val" id="bjPlayerVal">–</span></div>
+      </div>
+    </div>
+    <div class="status" id="bjStatus">Einsatz setzen</div>
+    <div class="bet-bar" id="bjBetControls">
+      <div class="bet-field"><button data-step="-5">−</button><input type="number" id="bjBet" value="10" min="1"><button data-step="5">+</button></div>
+      <button class="chip" data-chip="10" data-v="10">10</button>
+      <button class="chip" data-chip="25" data-v="25">25</button>
+      <button class="chip" data-chip="50" data-v="50">50</button>
+      <button class="chip" data-chip="max" data-v="max">MAX</button>
+      <button class="btn solid" id="btnDeal">Austeilen</button>
+    </div>
+    <div class="bet-bar hidden" id="bjActionControls">
+      <button class="btn green" id="btnHit">Hit</button>
+      <button class="btn red" id="btnStand">Stand</button>
     </div>
   </div>
 </template>
@@ -1676,6 +1733,114 @@ UI.register('slots', {
     document.addEventListener('keydown', Slots.onKey);
   },
   unmount() { document.removeEventListener('keydown', Slots.onKey); Slots.root = null; },
+});
+</script>
+
+<script id="game-blackjack">
+/* ================= BLACKJACK ================= */
+const Blackjack = {
+  root: null, deck: [], pHand: [], dHand: [], bet: 0, dealing: false, inRound: false,
+  cardEl(c, hidden = false) {
+    const red = ['♥', '♦'].includes(c.suit);
+    return h('div', { class: `pcard dealing${hidden ? ' hidden-card' : ''}` },
+      h('div', { class: 'inner' },
+        h('div', { class: `face${red ? ' red' : ''}` },
+          h('span', { class: 'corner tl' }, c.val, h('br'), c.suit),
+          h('span', { class: 'pip' }, c.suit),
+          h('span', { class: 'corner br' }, c.val, h('br'), c.suit)),
+        h('div', { class: 'back' })));
+  },
+  async dealTo(elId, card, hidden = false) {
+    if (!this.root) return;
+    qs('#' + elId, this.root).append(this.cardEl(card, hidden));
+    SFX.play('cardSlide');
+    await wait(240);
+  },
+  updateVals(revealDealer) {
+    if (!this.root) return;
+    qs('#bjPlayerVal', this.root).textContent = Rules.handSum(this.pHand);
+    qs('#bjDealerVal', this.root).textContent = revealDealer ? Rules.handSum(this.dHand) : '?';
+  },
+  async start() {
+    if (this.inRound || !this.root) return;
+    const bet = Game.readBet('bjBet');
+    if (!Game.beginSpin(bet)) return;
+    this.inRound = true; this.dealing = true; this.bet = bet;
+    this.deck = Rules.newDeck(Math.random); this.pHand = []; this.dHand = [];
+    qs('#playerCards', this.root).innerHTML = ''; qs('#dealerCards', this.root).innerHTML = '';
+    qsa('.hand-val', this.root).forEach((v) => v.classList.remove('push'));
+    qs('#bjBetControls', this.root).classList.add('hidden');
+    qs('#bjActionControls', this.root).classList.remove('hidden');
+    qs('#bjStatus', this.root).textContent = 'Hit oder Stand?';
+    this.pHand.push(this.deck.pop()); await this.dealTo('playerCards', this.pHand[0]);
+    this.dHand.push(this.deck.pop()); await this.dealTo('dealerCards', this.dHand[0], true);
+    this.pHand.push(this.deck.pop()); await this.dealTo('playerCards', this.pHand[1]);
+    this.dHand.push(this.deck.pop()); await this.dealTo('dealerCards', this.dHand[1]);
+    this.updateVals(false);
+    this.dealing = false;
+  },
+  async hit() {
+    if (this.dealing || !this.inRound) return;
+    this.dealing = true;
+    const c = this.deck.pop();
+    this.pHand.push(c);
+    await this.dealTo('playerCards', c);
+    this.updateVals(false);
+    this.dealing = false;
+    if (Rules.handSum(this.pHand) > 21) await this.finish('bust');
+  },
+  async stand() {
+    if (this.dealing || !this.inRound) return;
+    this.dealing = true;
+    if (this.root) {
+      qs('#bjActionControls', this.root).classList.add('hidden');
+      const hole = qs('#dealerCards .pcard', this.root);
+      if (hole) hole.classList.remove('hidden-card');
+      SFX.play('cardSlide');
+      await wait(550);
+      this.updateVals(true);
+    }
+    while (Rules.dealerShouldHit(this.dHand)) {
+      const c = this.deck.pop();
+      this.dHand.push(c);
+      await this.dealTo('dealerCards', c);
+      this.updateVals(true);
+      await wait(300);
+    }
+    this.dealing = false;
+    await this.finish(Rules.bjOutcome(Rules.handSum(this.pHand), Rules.handSum(this.dHand)));
+  },
+  async finish(outcome) {
+    const delta = Rules.bjDelta(outcome, this.bet);
+    if (this.root) {
+      const msgs = {
+        win: `<span class="win">Gewonnen · +${UI.fmt(this.bet)}</span>`,
+        bust: `<span class="loss">Bust · über 21 · −${UI.fmt(this.bet)}</span>`,
+        dealer: `<span class="loss">Dealer gewinnt · −${UI.fmt(this.bet)}</span>`,
+        push: 'Push · Unentschieden',
+      };
+      qs('#bjStatus', this.root).innerHTML = msgs[outcome];
+      if (outcome === 'bust') qsa('#playerCards .pcard', this.root).forEach((c) => c.classList.add('bust'));
+      if (outcome === 'push') qsa('.hand-val', this.root).forEach((v) => v.classList.add('push'));
+      qs('#bjActionControls', this.root).classList.add('hidden');
+      qs('#bjBetControls', this.root).classList.remove('hidden');
+    }
+    this.inRound = false;
+    await Bus.emit('blackjack:result', { outcome, bet: this.bet });
+    await Game.settle(delta, { from: this.root ? qs('#playerCards', this.root) : null, game: 'blackjack' });
+  },
+};
+
+UI.register('blackjack', {
+  template: 'tpl-blackjack',
+  mount(root) {
+    Blackjack.root = root;
+    Game.bindBet(root, 'bjBet');
+    qs('#btnDeal', root).addEventListener('click', () => Blackjack.start());
+    qs('#btnHit', root).addEventListener('click', () => Blackjack.hit());
+    qs('#btnStand', root).addEventListener('click', () => Blackjack.stand());
+  },
+  unmount() { Blackjack.root = null; Blackjack.inRound = false; Blackjack.dealing = false; },
 });
 </script>
 
