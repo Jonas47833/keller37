@@ -201,6 +201,16 @@ input { font-family: var(--font-mono); }
 .cs-stats { margin-top: 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 20px; font-family: var(--font-mono); }
 .cs-stats span:nth-child(even) { text-align: right; color: var(--gold-2); }
 /* ==== 6. SPIELE & RÄUME ==== */
+/* -- Kredite -- */
+.finance { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.counter { padding: 22px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; box-shadow: var(--shadow); }
+.counter.bank { background: linear-gradient(180deg, #0c1f33, #071322); border: 1px solid rgba(76,201,240,.3); }
+.counter.vito { background: linear-gradient(180deg, #2a1608, #150a03); border: 1px solid rgba(255,59,59,.3); }
+.counter h2 { font-size: 2rem; }
+.counter .dim { color: var(--dim); font-size: .85rem; }
+.iou { min-width: 230px; text-align: left; }
+.iou .amt { font-size: 1.4rem; font-weight: 700; }
+.iou .deadline { color: #b3261e; font-weight: 700; animation: pulseText 1s infinite; }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
@@ -218,6 +228,7 @@ input { font-family: var(--font-mono); }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
 @keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes particleUp { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(-260px) rotate(40deg); opacity: 0; } }
+@keyframes pulseText { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 </style>
 </head>
 <body>
@@ -242,6 +253,32 @@ input { font-family: var(--font-mono); }
     <div class="door" data-screen="russian" style="--neon: var(--neon-blue)"><div class="sign">Igor</div><div class="glyph">🔫</div><div class="chalk-tag">Duell · 1 Kugel</div><div class="knob"></div></div>
     <div class="door" data-screen="blackjack" style="--neon: var(--neon-green)"><div class="sign">Black Jack</div><div class="glyph">🃏</div><div class="chalk-tag">bis 21</div><div class="knob"></div></div>
     <div class="door day" data-screen="postman" style="--neon: var(--day)"><div class="sign">Ausgang</div><div class="glyph">📬</div><div class="chalk-tag">Post austragen</div><div class="knob"></div></div>
+  </div>
+</template>
+<template id="tpl-finance">
+  <div class="finance">
+    <section class="counter bank">
+      <h2 class="neon" style="--neon: var(--neon-blue)">Bank</h2>
+      <p class="dim">Herr Krause · 30 % Zinsen pro Spin · Limit 3.000 €</p>
+      <div class="paper iou" id="bankIou"></div>
+      <div class="bet-bar">
+        <button class="btn blue sm" data-loan="200">+200 €</button>
+        <button class="btn blue sm" data-loan="500">+500 €</button>
+        <button class="btn blue sm" data-loan="1000">+1.000 €</button>
+        <button class="btn solid sm" id="repayBank">Tilgen</button>
+      </div>
+    </section>
+    <section class="counter vito">
+      <h2 class="neon" style="--neon: var(--neon-red)">Don Vito</h2>
+      <p class="dim">Frist 5 Spins · danach 300 % OP-Kosten</p>
+      <div class="paper iou" id="mafiaIou"></div>
+      <div class="bet-bar">
+        <button class="btn red sm" data-mloan="300">+300 €</button>
+        <button class="btn red sm" data-mloan="600">+600 €</button>
+        <button class="btn red sm" data-mloan="1000">+1.000 €</button>
+        <button class="btn solid sm" id="repayMafia">Begleichen</button>
+      </div>
+    </section>
   </div>
 </template>
 <!-- /TEMPLATES -->
@@ -1177,6 +1214,111 @@ Cutscene.define('kidney.sold', [
   { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'blackout', text: 'Zähl rückwärts von zehn. Zehn… neun…' },
   { bg: 'klinik', who: 'doc', mood: 'happy', fx: 'gain', text: 'Wach? Gut. Die Naht hält, meistens. Zweitausend liegen auf dem Nachttisch. Die Meds gehen auf dich.' },
 ]);
+
+/* ---- Kredite ---- */
+const Finance = {
+  root: null,
+  render() {
+    if (!this.root) return;
+    const s = State.s;
+    qs('#bankIou', this.root).innerHTML = s.bankDebt > 0
+      ? `<h4>Schuldschein</h4><div class="amt">${UI.fmt(s.bankDebt)}</div><div>−${UI.fmt(Rules.bankInterest(s.bankDebt))} Zinsen pro Spin</div>`
+      : `<h4>Schuldschein</h4><div class="amt">0 €</div><div>Sauberes Konto. Noch.</div>`;
+    qs('#mafiaIou', this.root).innerHTML = s.mafiaDebt > 0
+      ? `<h4>Vitos Zettel</h4><div class="amt">${UI.fmt(s.mafiaDebt)}</div><div class="deadline">Noch ${s.mafiaSpins} Spin${s.mafiaSpins === 1 ? '' : 's'}</div>`
+      : `<h4>Vitos Zettel</h4><div class="amt">0 €</div><div>„Wir kennen uns nicht."</div>`;
+    qsa('[data-loan]', this.root).forEach((b) => { b.disabled = !Rules.bankLoanAllowed(s, parseInt(b.dataset.loan, 10)); });
+    qsa('[data-mloan]', this.root).forEach((b) => { b.disabled = s.mafiaDebt > 0; });
+    qs('#repayBank', this.root).disabled = s.bankDebt === 0;
+    qs('#repayMafia', this.root).disabled = s.mafiaDebt === 0;
+  },
+  async loanBank(amt) {
+    const s = State.s;
+    if (!Rules.bankLoanAllowed(s, amt)) {
+      if (!s.flags.bankLimit) { s.flags.bankLimit = true; State.save(); await Cutscene.play('bank.limit', {}); }
+      else UI.toast({ icon: '👔', title: 'Kreditlimit erreicht', text: 'Herr Krause bedauert. 3.000 € sind das Ende.', tone: 'loss' });
+      return;
+    }
+    s.bankDebt += amt;
+    Game.applyDelta(amt, { quiet: true });
+    SFX.play('cash');
+    this.render();
+    if (!s.flags.bankLoan) { s.flags.bankLoan = true; State.save(); await Cutscene.play('bank.loan', {}); }
+    else UI.toast({ icon: '🏦', title: `+${UI.fmt(amt)} Kredit`, text: `Schulden jetzt ${UI.fmt(s.bankDebt)}.`, tone: 'info' });
+    this.render();
+  },
+  repayBank() {
+    const s = State.s;
+    if (s.bankDebt === 0) return;
+    if (s.balance < s.bankDebt) { UI.toast({ icon: '🏦', title: 'Zu wenig Geld', text: `Du brauchst ${UI.fmt(s.bankDebt)}.`, tone: 'loss' }); SFX.play('lose'); return; }
+    const d = s.bankDebt;
+    s.bankDebt = 0;
+    Game.applyDelta(-d, { from: qs('#bankIou') });
+    SFX.play('stamp');
+    UI.toast({ icon: '✅', title: 'Schuldenfrei', text: 'Herr Krause nickt anerkennend.', tone: 'win' });
+    this.render();
+  },
+  async loanMafia(amt) {
+    const s = State.s;
+    if (s.mafiaDebt > 0) { UI.toast({ icon: '🕶️', title: 'Erst zahlen', text: 'Vito gibt keinen zweiten Kredit.', tone: 'loss' }); return; }
+    s.mafiaDebt = amt;
+    s.mafiaSpins = Rules.MAFIA_SPINS;
+    Game.applyDelta(amt, { quiet: true });
+    SFX.play('cash');
+    this.render();
+    if (!s.flags.mafiaLoan) { s.flags.mafiaLoan = true; State.save(); await Cutscene.play('mafia.loan', {}); }
+    else UI.toast({ icon: '🕶️', title: `+${UI.fmt(amt)} von Vito`, text: 'Fünf Spins. Er zählt mit.', tone: 'loss' });
+    this.render();
+  },
+  async repayMafia() {
+    const s = State.s;
+    if (s.mafiaDebt === 0) return;
+    if (s.balance < s.mafiaDebt) { UI.toast({ icon: '🕶️', title: 'Zu wenig Geld', text: `Du brauchst ${UI.fmt(s.mafiaDebt)}.`, tone: 'loss' }); SFX.play('lose'); return; }
+    const d = s.mafiaDebt;
+    s.mafiaDebt = 0; s.mafiaSpins = 0;
+    Game.applyDelta(-d, { from: qs('#mafiaIou') });
+    SFX.play('stamp');
+    UI.toast({ icon: '🕶️', title: 'Beglichen', text: '„Ich wusste, du bist ein Freund."', tone: 'win' });
+    this.render();
+    await Bus.emit('mafia.repaid', {});
+  },
+};
+
+UI.register('finance', {
+  template: 'tpl-finance',
+  mount(root) {
+    Finance.root = root;
+    qsa('[data-loan]', root).forEach((b) => b.addEventListener('click', () => Finance.loanBank(parseInt(b.dataset.loan, 10))));
+    qsa('[data-mloan]', root).forEach((b) => b.addEventListener('click', () => Finance.loanMafia(parseInt(b.dataset.mloan, 10))));
+    qs('#repayBank', root).addEventListener('click', () => Finance.repayBank());
+    qs('#repayMafia', root).addEventListener('click', () => Finance.repayMafia());
+    Finance.render();
+  },
+  unmount() { Finance.root = null; },
+});
+
+Cutscene.define('bank.loan', [
+  { bg: 'bank', who: 'krause', mood: 'calm', text: 'Willkommen bei der Sparkasse Keller 37. Ich sehe, Sie möchten liquide bleiben. Sehr vernünftig.' },
+  { bg: 'bank', who: 'krause', mood: 'happy', text: 'Dreißig Prozent Zinsen – pro Spin, versteht sich. Marktüblich. Hier unten. Unterschreiben Sie bitte da, da und da.' },
+]);
+Cutscene.define('bank.limit', [
+  { bg: 'bank', who: 'krause', mood: 'calm', text: 'Dreitausend Euro Gesamtschuld. Da geht nichts mehr, tut mir leid. Ich kann Ihnen einen Kaffee anbieten. Der ist auch nicht umsonst.' },
+]);
+Cutscene.define('mafia.loan', [
+  { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Setz dich. Du brauchst Geld, ich habe Geld. So einfach ist das Leben manchmal.' },
+  { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Fünf Spins. Dann liegt es hier auf dem Tisch. Ich rede nicht gern über das, was sonst passiert. Der Doc redet gern darüber.' },
+  { bg: 'hinterzimmer', who: 'vito', mood: 'happy', text: 'Ich mag dich. Enttäusch mich nicht.' },
+]);
+Cutscene.define('mafia.lastcall', [
+  { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Noch ein Spin, mein Freund. {{debt}}. Ich habe den Doc schon angerufen – nur zur Sicherheit.' },
+]);
+Cutscene.define('mafia.legbreak', [
+  { bg: 'hinterzimmer', who: 'vito', mood: 'angry', fx: 'blackout', text: 'Die Frist ist um. Es tut mir leid. Wirklich. Luigi – das Bein.' },
+  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'shake', text: 'KNACK. Ja, das war das Schienbein. Halt still, ich hab nur noch Zahnseide.' },
+  { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'drain', text: 'Not-OP, Titanplatte, Krücken: {{bill}}. Ich schreib es dir auf den Zettel. Vito lässt grüßen.' },
+]);
+Cutscene.bind('mafia.lastcall', 'mafia.lastcall');
+Cutscene.bind('mafia.legbreak', 'mafia.legbreak');
 </script>
 
 <script id="selftest">
