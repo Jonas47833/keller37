@@ -1351,6 +1351,7 @@ UI.register('finance', {
   },
   unmount() { Finance.root = null; },
 });
+Bus.on('spin:after', () => Finance.render());
 
 Cutscene.define('bank.loan', [
   { bg: 'bank', who: 'krause', mood: 'calm', text: 'Willkommen bei der Sparkasse Keller 37. Ich sehe, Sie möchten liquide bleiben. Sehr vernünftig.' },
@@ -1896,7 +1897,7 @@ T.test('Bus.emit: werfender Handler stoppt andere Handler nicht, liefert Promise
   await UI.show(params.get('screen') || 'hub');
   if (params.has('scene')) {
     await Cutscene.play(params.get('scene'), { bill: 900, before: 1000, after: 500, price: '1.000 €', debt: 300, stats: { Spins: 12, 'Höchster Kontostand': '1.234 €' } });
-  } else if (!State.s.flags.intro) {
+  } else if (!State.s.flags.intro && !params.has('screen')) {
     await Cutscene.play('intro');
     State.s.flags.intro = true;
     State.save();
