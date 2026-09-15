@@ -2829,6 +2829,118 @@ Bus.on('newgame.request', async () => {
 });
 </script>
 
+<script id="story-rules">
+/* ================= STORY RULES – pure Engine-Regeln, kein DOM ================= */
+const StoryRules = {
+  OPS: ['eq', 'ne', 'gte', 'lte', 'gt', 'lt'],
+  cmp(op, a, b) {
+    switch (op) {
+      case 'eq': return a === b; case 'ne': return a !== b;
+      case 'gte': return a >= b; case 'lte': return a <= b;
+      case 'gt': return a > b; case 'lt': return a < b;
+      default: throw new Error(`Ungültige Bedingung: Operator ${op}`);
+    }
+  },
+  _ops(obj, value) {
+    const keys = Object.keys(obj).filter((k) => StoryRules.OPS.includes(k));
+    if (!keys.length) throw new Error(`Ungültige Bedingung: ${JSON.stringify(obj)}`);
+    return keys.every((k) => StoryRules.cmp(k, value, obj[k]));
+  },
+  check(cond, s) {
+    if (cond == null) return true;
+    const st = s.story;
+    if ('all' in cond) return cond.all.every((c) => StoryRules.check(c, s));
+    if ('any' in cond) return cond.any.some((c) => StoryRules.check(c, s));
+    if ('not' in cond) return !StoryRules.check(cond.not, s);
+    if ('day' in cond) return StoryRules._ops(cond.day, st.day);
+    if ('balance' in cond) return StoryRules._ops(cond.balance, s.balance);
+    if ('var' in cond) return StoryRules._ops(cond, st.vars[cond.var] || 0);
+    if ('jobDone' in cond) return StoryRules._ops(cond, st.jobsDone[cond.jobDone] || 0);
+    if ('flag' in cond) return !!st.flags[cond.flag];
+    if ('notFlag' in cond) return !st.flags[cond.notFlag];
+    if ('unlocked' in cond) return ['jobs', 'doors', 'rooms'].some((k) => st.unlocked[k].includes(cond.unlocked));
+    throw new Error(`Ungültige Bedingung: ${JSON.stringify(cond)}`);
+  },
+  applyEffect(s, eff, story = {}) {
+    const st = s.story;
+    if ('var' in eff) {
+      const max = (story.varMax || {})[eff.var];
+      let v = 'set' in eff ? eff.set : (st.vars[eff.var] || 0) + (eff.add || 0);
+      if (max != null) v = Math.min(max, v);
+      if ('add' in eff) v = Math.max(0, v);
+      st.vars[eff.var] = v;
+      return {};
+    }
+    if ('flag' in eff) { st.flags[eff.flag] = true; return {}; }
+    if ('unflag' in eff) { st.flags[eff.unflag] = false; return {}; }
+    if ('balance' in eff) { s.balance += eff.balance; return {}; }
+    if ('balancePct' in eff) { s.balance += Math.round(s.balance * eff.balancePct / 100); if (eff.min != null) s.balance = Math.max(eff.min, s.balance); return {}; }
+    if ('unlock' in eff) {
+      for (const k of ['jobs', 'doors', 'rooms']) for (const id of eff.unlock[k] || []) if (!st.unlocked[k].includes(id)) st.unlocked[k].push(id);
+      return {};
+    }
+    const out = {};
+    if ('force' in eff) out.force = eff.force;
+    if ('loseDay' in eff) out.loseDay = true;
+    if ('scene' in eff) out.scene = eff.scene;
+    return out;
+  },
+  pickStory(stories, storyRuns, rng) {
+    const cands = stories.filter((st) => !st.dev);
+    const last = (st) => (storyRuns[st.id] && storyRuns[st.id].lastPlayed) || 0;
+    const min = Math.min(...cands.map(last));
+    const oldest = cands.filter((st) => last(st) === min);
+    return oldest[Math.floor(rng() * oldest.length)].id;
+  },
+  chapterFor(story, s) {
+    let found = null;
+    for (const ch of story.chapters) if (StoryRules.check(ch.when, s)) found = ch;
+    return found;
+  },
+  dueEvents(story, s, at) {
+    return story.events.filter((e) => e.at === at && !(e.once && s.story.seen.includes(e.id)) && StoryRules.check(e.when, s));
+  },
+  ending(story, s) {
+    const sorted = story.endings.filter((e) => !e.fallback).slice().sort((a, b) => b.priority - a.priority);
+    for (const e of sorted) if (StoryRules.check(e.when, s)) return e;
+    if (s.story.day > story.days) return story.endings.find((e) => e.fallback) || null;
+    return null;
+  },
+  advanceDay(s) { s.story.day++; s.story.phase = 'morning'; s.story.jobToday = null; },
+  jobAvailable(job, s) {
+    const st = s.story;
+    if (!st.unlocked.jobs.includes(job.id)) return { ok: false, reason: 'locked' };
+    if (st.jobToday) return { ok: false, reason: 'done' };
+    if (job.requires && !StoryRules.check(job.requires, s)) return { ok: false, reason: job.requireText || 'Voraussetzung fehlt' };
+    return { ok: true };
+  },
+  spuelerPay(hits, breaks) { return hits * 5 - breaks * 10; },
+  taxiPay(passengers, tickets) { return passengers * 15 - tickets * 50; },
+  validate(story, sceneIds, jobIds) {
+    const errs = [];
+    const scene = (id, where) => { if (id && !sceneIds.includes(id)) errs.push(`${story.id}: Szene "${id}" fehlt (${where})`); };
+    const jobs = (list, where) => (list || []).forEach((j) => { if (!jobIds.includes(j)) errs.push(`${story.id}: Job "${j}" unbekannt (${where})`); });
+    scene(story.intro, 'intro');
+    jobs(story.start && story.start.unlocked && story.start.unlocked.jobs, 'start');
+    for (const ch of story.chapters || []) { scene(ch.intro, ch.id); jobs(ch.unlock && ch.unlock.jobs, ch.id); }
+    for (const e of story.events || []) { scene(e.scene, e.id); for (const eff of e.effects || []) { scene(eff.scene, e.id); jobs(eff.unlock && eff.unlock.jobs, e.id); } }
+    for (const [job, list] of Object.entries(story.jobScenes || {})) { jobs([job], 'jobScenes'); list.forEach((id) => scene(id, `jobScenes.${job}`)); }
+    for (const e of story.endings || []) scene(e.scene, e.id);
+    if ((story.endings || []).filter((e) => e.fallback).length !== 1) errs.push(`${story.id}: genau ein Fallback-Ende nötig`);
+    return errs;
+  },
+  freshStoryPart(story) {
+    return {
+      id: story.id, day: 1, phase: 'morning',
+      vars: Object.assign({}, story.start.vars), flags: {},
+      unlocked: { jobs: [...story.start.unlocked.jobs], doors: [...story.start.unlocked.doors], rooms: [...story.start.unlocked.rooms] },
+      jobsDone: {}, jobToday: null, seen: [], seenJobScenes: {}, ended: null,
+      stats: { earned: 0, gambled: 0, jobs: 0 },
+    };
+  },
+};
+</script>
+
 <script id="selftest">
 /* ================= SELFTEST – läuft mit ?selftest im Browser und via node tests/run-selftest.mjs ================= */
 const SelfTest = {
@@ -3179,6 +3291,142 @@ T.test('Bus.emit: werfender Handler stoppt andere Handler nicht, liefert Promise
   const r = Bus.emit('t2', { x: 1 });
   T.eq(seen, [1]);
   T.ok(r instanceof Promise);
+});
+
+/* ---- StoryRules ---- */
+const storyBase = (o = {}) => Object.assign(base({ balance: 500 }), {
+  story: Object.assign({
+    id: 'probe', day: 1, phase: 'morning', vars: { schuld: 50000, vertrauen: 2 }, flags: { a: true },
+    unlocked: { jobs: ['spueler'], doors: ['slots'], rooms: ['bar'] }, jobsDone: { tuersteher: 3 }, jobToday: null,
+    seen: [], seenJobScenes: {}, ended: null, stats: { earned: 0, gambled: 0, jobs: 0 },
+  }, o),
+});
+T.test('StoryRules.cmp', () => {
+  T.ok(StoryRules.cmp('gte', 5, 5)); T.ok(!StoryRules.cmp('gt', 5, 5)); T.ok(StoryRules.cmp('lte', 4, 5));
+  T.ok(StoryRules.cmp('lt', 4, 5)); T.ok(StoryRules.cmp('eq', 5, 5)); T.ok(StoryRules.cmp('ne', 4, 5));
+});
+T.test('StoryRules.check: day/balance/var', () => {
+  const s = storyBase({ day: 10 });
+  T.ok(StoryRules.check({ day: { gte: 10 } }, s)); T.ok(!StoryRules.check({ day: { gt: 10 } }, s));
+  T.ok(StoryRules.check({ balance: { gte: 500 } }, s)); T.ok(!StoryRules.check({ balance: { lt: 500 } }, s));
+  T.ok(StoryRules.check({ var: 'vertrauen', gte: 2 }, s)); T.ok(!StoryRules.check({ var: 'vertrauen', gt: 2 }, s));
+  T.ok(StoryRules.check({ var: 'unbekannt', lte: 0 }, s), 'fehlende Variable zählt als 0');
+});
+T.test('StoryRules.check: flag/jobDone/unlocked/all/any/not', () => {
+  const s = storyBase();
+  T.ok(StoryRules.check({ flag: 'a' }, s)); T.ok(!StoryRules.check({ flag: 'b' }, s));
+  T.ok(StoryRules.check({ notFlag: 'b' }, s)); T.ok(!StoryRules.check({ notFlag: 'a' }, s));
+  T.ok(StoryRules.check({ jobDone: 'tuersteher', gte: 3 }, s)); T.ok(!StoryRules.check({ jobDone: 'croupier', gte: 1 }, s));
+  T.ok(StoryRules.check({ unlocked: 'spueler' }, s)); T.ok(StoryRules.check({ unlocked: 'slots' }, s)); T.ok(!StoryRules.check({ unlocked: 'taxi' }, s));
+  T.ok(StoryRules.check({ all: [{ flag: 'a' }, { day: { gte: 1 } }] }, s));
+  T.ok(!StoryRules.check({ all: [{ flag: 'a' }, { flag: 'b' }] }, s));
+  T.ok(StoryRules.check({ any: [{ flag: 'b' }, { flag: 'a' }] }, s));
+  T.ok(StoryRules.check({ not: { flag: 'b' } }, s));
+  T.ok(StoryRules.check(undefined, s), 'keine Bedingung = wahr');
+});
+T.test('StoryRules.check: ungültig wirft', () => {
+  let threw = false;
+  try { StoryRules.check({ foo: 1 }, storyBase()); } catch (e) { threw = /Ungültige Bedingung/.test(e.message); }
+  T.ok(threw);
+});
+T.test('StoryRules.applyEffect: var add/set mit Clamp, flag, balance, unlock', () => {
+  const s = storyBase();
+  const story = { varMax: { vertrauen: 10 } };
+  T.eq(StoryRules.applyEffect(s, { var: 'vertrauen', add: 20 }, story), {});
+  T.eq(s.story.vars.vertrauen, 10);
+  StoryRules.applyEffect(s, { var: 'vertrauen', add: -30 }, story); T.eq(s.story.vars.vertrauen, 0);
+  StoryRules.applyEffect(s, { var: 'schuld', set: 0 }, story); T.eq(s.story.vars.schuld, 0);
+  StoryRules.applyEffect(s, { var: 'neu', add: 2 }, story); T.eq(s.story.vars.neu, 2);
+  StoryRules.applyEffect(s, { flag: 'x' }, story); T.eq(s.story.flags.x, true);
+  StoryRules.applyEffect(s, { unflag: 'x' }, story); T.eq(s.story.flags.x, false);
+  StoryRules.applyEffect(s, { balance: -250 }, story); T.eq(s.balance, 250);
+  StoryRules.applyEffect(s, { balancePct: -20, min: 100 }, story); T.eq(s.balance, 200);
+  StoryRules.applyEffect(s, { unlock: { jobs: ['taxi', 'spueler'], doors: ['roulette'] } }, story);
+  T.eq(s.story.unlocked.jobs, ['spueler', 'taxi']); T.eq(s.story.unlocked.doors, ['slots', 'roulette']);
+});
+T.test('StoryRules.applyEffect: nicht-pure Effekte werden gemeldet', () => {
+  const s = storyBase();
+  T.eq(StoryRules.applyEffect(s, { force: 'duel' }, {}), { force: 'duel' });
+  T.eq(StoryRules.applyEffect(s, { loseDay: true }, {}), { loseDay: true });
+  T.eq(StoryRules.applyEffect(s, { scene: 'x.y' }, {}), { scene: 'x.y' });
+});
+T.test('StoryRules.pickStory: am längsten nicht gespielt, dev nie', () => {
+  const stories = [{ id: 'a' }, { id: 'b' }, { id: 'c', dev: true }];
+  T.eq(StoryRules.pickStory(stories, { a: { lastPlayed: 5 }, b: { lastPlayed: 3 } }, seq(0)), 'b');
+  T.eq(StoryRules.pickStory(stories, { a: { lastPlayed: 5 } }, seq(0)), 'b', 'nie gespielt zählt als ältestes');
+  T.eq(StoryRules.pickStory(stories, {}, seq(0)), 'a');
+  T.eq(StoryRules.pickStory(stories, {}, seq(0.99)), 'b', 'Gleichstand → rng');
+  T.eq(StoryRules.pickStory([{ id: 'a' }], {}, seq(0.99)), 'a');
+});
+const probeStory = () => ({
+  id: 'p', title: 'P', days: 3,
+  start: { balance: 50, unlocked: { jobs: [], doors: [], rooms: [] }, vars: { x: 0 } },
+  chapters: [
+    { id: 'k1', title: 'Eins', when: { day: { gte: 1 } }, unlock: { jobs: ['spueler'] } },
+    { id: 'k2', title: 'Zwei', when: { day: { gte: 2 } }, intro: 'p.k2', unlock: { doors: ['slots'] } },
+  ],
+  events: [
+    { id: 'e1', when: { day: { eq: 2 } }, once: true, at: 'night', scene: 'p.e1' },
+    { id: 'e2', when: { var: 'x', gte: 1 }, at: 'morning', effects: [{ flag: 'y' }] },
+  ],
+  jobScenes: {},
+  endings: [
+    { id: 'gut', title: 'Gut', priority: 2, when: { var: 'x', gte: 5 }, scene: 'p.gut' },
+    { id: 'mid', title: 'Mittel', priority: 1, when: { flag: 'y' }, scene: 'p.mid' },
+    { id: 'aus', title: 'Aus', priority: 0, scene: 'p.aus', fallback: true },
+  ],
+  scenes: { 'p.k2': [], 'p.e1': [], 'p.gut': [], 'p.mid': [], 'p.aus': [] },
+});
+T.test('StoryRules.chapterFor: höchstes passendes Kapitel', () => {
+  const st = probeStory();
+  T.eq(StoryRules.chapterFor(st, storyBase({ day: 1 })).id, 'k1');
+  T.eq(StoryRules.chapterFor(st, storyBase({ day: 2 })).id, 'k2');
+  T.eq(StoryRules.chapterFor(st, storyBase({ day: 0 })), null);
+});
+T.test('StoryRules.dueEvents: at, when, once/seen', () => {
+  const st = probeStory();
+  T.eq(StoryRules.dueEvents(st, storyBase({ day: 2 }), 'night').map((e) => e.id), ['e1']);
+  T.eq(StoryRules.dueEvents(st, storyBase({ day: 2, seen: ['e1'] }), 'night'), []);
+  T.eq(StoryRules.dueEvents(st, storyBase({ day: 2 }), 'morning'), []);
+  T.eq(StoryRules.dueEvents(st, storyBase({ day: 2, vars: { x: 1 } }), 'morning').map((e) => e.id), ['e2']);
+});
+T.test('StoryRules.ending: Priorität, Fallback nur nach Ablauf', () => {
+  const st = probeStory();
+  T.eq(StoryRules.ending(st, storyBase({ day: 2 })), null);
+  T.eq(StoryRules.ending(st, storyBase({ day: 2, flags: { y: true } })).id, 'mid');
+  T.eq(StoryRules.ending(st, storyBase({ day: 2, flags: { y: true }, vars: { x: 5 } })).id, 'gut');
+  T.eq(StoryRules.ending(st, storyBase({ day: 4 })).id, 'aus', 'Tag > days → Fallback');
+});
+T.test('StoryRules.advanceDay', () => {
+  const s = storyBase({ day: 3, phase: 'evening', jobToday: 'spueler' });
+  StoryRules.advanceDay(s);
+  T.eq([s.story.day, s.story.phase, s.story.jobToday], [4, 'morning', null]);
+});
+T.test('StoryRules.jobAvailable', () => {
+  const s = storyBase({ jobToday: null });
+  T.eq(StoryRules.jobAvailable({ id: 'spueler' }, s), { ok: true });
+  T.eq(StoryRules.jobAvailable({ id: 'taxi' }, s), { ok: false, reason: 'locked' });
+  s.story.unlocked.jobs.push('taxi', 'croupier');
+  T.eq(StoryRules.jobAvailable({ id: 'taxi', requires: { balance: { gte: 200 } }, requireText: 'Kaution 200 €' }, s), { ok: true });
+  s.balance = 100;
+  T.eq(StoryRules.jobAvailable({ id: 'taxi', requires: { balance: { gte: 200 } }, requireText: 'Kaution 200 €' }, s), { ok: false, reason: 'Kaution 200 €' });
+  s.story.jobToday = 'spueler';
+  T.eq(StoryRules.jobAvailable({ id: 'spueler' }, s), { ok: false, reason: 'done' });
+});
+T.test('StoryRules Lohn', () => {
+  T.eq(StoryRules.spuelerPay(10, 0), 50); T.eq(StoryRules.spuelerPay(7, 3), 5); T.eq(StoryRules.spuelerPay(0, 10), -100);
+  T.eq(StoryRules.taxiPay(12, 1), 130); T.eq(StoryRules.taxiPay(0, 3), -150);
+});
+T.test('StoryRules.validate: Referenzen und Fallback', () => {
+  T.eq(StoryRules.validate(probeStory(), ['p.k2', 'p.e1', 'p.gut', 'p.mid', 'p.aus'], ['spueler']), []);
+  const bad = probeStory(); bad.endings.pop(); bad.chapters[1].intro = 'fehlt'; bad.chapters[0].unlock.jobs = ['nix'];
+  const errs = StoryRules.validate(bad, ['p.e1', 'p.gut', 'p.mid'], ['spueler']);
+  T.ok(errs.some((e) => /fehlt/.test(e))); T.ok(errs.some((e) => /nix/.test(e))); T.ok(errs.some((e) => /Fallback/.test(e)));
+});
+T.test('StoryRules.freshStoryPart', () => {
+  const p = StoryRules.freshStoryPart(probeStory());
+  T.eq(p.day, 1); T.eq(p.phase, 'morning'); T.eq(p.vars, { x: 0 }); T.eq(p.unlocked, { jobs: [], doors: [], rooms: [] });
+  T.eq(p.stats, { earned: 0, gambled: 0, jobs: 0 });
 });
 
 /* --- SELFTEST CASES END --- */
