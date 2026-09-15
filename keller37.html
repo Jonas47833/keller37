@@ -2189,7 +2189,7 @@ UI.register('roulette', {
 <script id="game-horses">
 /* ================= PFERDERENNEN ================= */
 const Horses = {
-  root: null, racing: false, loop: null, commentTimer: null, gen: 0,
+  root: null, racing: false, loop: null, commentTimer: null, resolveRace: null, gen: 0,
   alive(gen) { return !!this.root && this.gen === gen; },
   build() {
     const track = qs('#track', this.root);
@@ -2250,8 +2250,9 @@ const Horses = {
       this.commentTimer = setInterval(() => this.comment(pos), 600);
       let tick = 0;
       const winner = await new Promise((resolve) => {
+        this.resolveRace = resolve;
         this.loop = setInterval(() => {
-          if (!this.alive(gen)) { clearInterval(this.loop); resolve(null); return; }
+          if (!this.alive(gen)) { clearInterval(this.loop); this.resolveRace = null; resolve(null); return; }
           let win = null;
           Rules.HORSES.forEach((hrs, i) => {
             pos[i] += Rules.horseStep(hrs.id === selected, luck, Math.random);
@@ -2260,7 +2261,7 @@ const Horses = {
             if (pos[i] >= goal && !win) win = hrs;
           });
           tick++;
-          if (win) { clearInterval(this.loop); resolve(win); }
+          if (win) { clearInterval(this.loop); this.resolveRace = null; resolve(win); }
         }, 30);
       });
       clearInterval(this.commentTimer);
@@ -2304,6 +2305,7 @@ UI.register('horses', {
     Horses.gen++;
     clearInterval(Horses.loop);
     clearInterval(Horses.commentTimer);
+    if (Horses.resolveRace) { Horses.resolveRace(null); Horses.resolveRace = null; }
     SFX.stop('gallop');
     Horses.root = null;
     Horses.racing = false;
@@ -2314,7 +2316,7 @@ UI.register('horses', {
 <script id="game-russian">
 /* ================= RUSSISCHES ROULETTE ================= */
 const Russian = {
-  root: null, cylinder: [], idx: 0, bet: 0, inDuel: false, busy: false, gen: 0,
+  root: null, duel: null, inDuel: false, busy: false, gen: 0,
   alive(gen) { return !!this.root && this.gen === gen; },
   drawCylinder() {
     const svg = qs('#cylinder', this.root);
@@ -2349,15 +2351,18 @@ const Russian = {
     qs('#fPlayer', this.root).classList.toggle('turn', who === 'player');
     qs('#fIgor', this.root).classList.toggle('turn', who === 'igor');
   },
-  heartbeat() { SFX.loop('heartbeat', Math.max(380, 900 - this.idx * 110)); },
+  heartbeat(duel) {
+    if (!this.alive(duel.gen)) return;
+    SFX.loop('heartbeat', Math.max(380, 900 - duel.idx * 110));
+  },
   async start() {
     if (this.inDuel || !this.root) return;
     const bet = Game.readBet('rrBet');
     if (!Game.beginSpin(bet)) return;
     const gen = this.gen;
-    this.inDuel = true; this.bet = bet;
-    this.cylinder = Rules.rrCylinder(Math.random);
-    this.idx = 0;
+    const duel = { cylinder: Rules.rrCylinder(Math.random), idx: 0, bet, gen };
+    this.duel = duel;
+    this.inDuel = true;
     if (this.alive(gen)) {
       qs('#fPlayer', this.root).classList.remove('dead'); qs('#fIgor', this.root).classList.remove('dead');
       this.drawCylinder();
@@ -2370,7 +2375,7 @@ const Russian = {
     if (!this.alive(gen)) return;
     qs('#rrStatus', this.root).textContent = 'Du bist dran. Drück ab.';
     this.setTurn('player');
-    this.heartbeat();
+    this.heartbeat(duel);
   },
   async bang(who, gen) {
     if (this.alive(gen)) {
@@ -2385,48 +2390,49 @@ const Russian = {
   },
   async pull() {
     if (!this.inDuel || this.busy || !this.root) return;
-    const gen = this.gen;
+    const duel = this.duel;
+    const gen = duel.gen;
     this.busy = true;
     try {
       if (this.alive(gen)) qs('#btnTrigger', this.root).disabled = true;
-      this.rotateTo(this.idx, gen);
+      this.rotateTo(duel.idx, gen);
       await wait(350);
-      if (this.cylinder[this.idx]) {
+      if (duel.cylinder[duel.idx]) {
         await this.bang('player', gen);
-        if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = `<span class="loss">PÄNG · Streifschuss · −${UI.fmt(this.bet)} & 100 € Spital</span>`;
-        await this.end('player', gen);
+        if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = `<span class="loss">PÄNG · Streifschuss · −${UI.fmt(duel.bet)} & 100 € Spital</span>`;
+        await this.end('player', duel);
         return;
       }
-      SFX.play('dryfire');
-      this.markSpent(this.idx, gen);
-      this.idx++;
+      if (this.alive(gen)) SFX.play('dryfire');
+      this.markSpent(duel.idx, gen);
+      duel.idx++;
       if (this.alive(gen)) { qs('#rrStatus', this.root).textContent = '*Klick*… Leer. Igor ist dran…'; this.setTurn('igor'); }
-      this.heartbeat();
+      this.heartbeat(duel);
       await wait(1100);
-      this.rotateTo(this.idx, gen);
+      this.rotateTo(duel.idx, gen);
       await wait(350);
-      if (this.cylinder[this.idx]) {
+      if (duel.cylinder[duel.idx]) {
         await this.bang('igor', gen);
-        if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = `<span class="win">PÄNG · Igor liegt · +${UI.fmt(this.bet)}</span>`;
-        await this.end('igor', gen);
+        if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = `<span class="win">PÄNG · Igor liegt · +${UI.fmt(duel.bet)}</span>`;
+        await this.end('igor', duel);
         return;
       }
-      SFX.play('dryfire');
-      this.markSpent(this.idx, gen);
-      this.idx++;
+      if (this.alive(gen)) SFX.play('dryfire');
+      this.markSpent(duel.idx, gen);
+      duel.idx++;
       if (this.alive(gen)) {
         qs('#rrStatus', this.root).textContent = '*Klick*… Igor lebt. Du bist dran.';
         this.setTurn('player');
         qs('#btnTrigger', this.root).disabled = false;
       }
-      this.heartbeat();
+      this.heartbeat(duel);
     } finally {
       if (this.gen === gen) this.busy = false;
     }
   },
-  async end(victim, gen) {
-    SFX.stopAll();
-    const bet = this.bet;
+  async end(victim, duel) {
+    const gen = duel.gen;
+    if (this.alive(gen)) SFX.stopAll(); else SFX.stop('heartbeat');
     try {
       if (this.alive(gen)) {
         this.setTurn(null);
@@ -2437,9 +2443,9 @@ const Russian = {
     } finally {
       if (this.gen === gen) { this.inDuel = false; this.busy = false; }
     }
-    const delta = Rules.rrDelta(victim, bet);
-    await Bus.emit('rr:result', { victim, bet });
-    if (victim === 'player') await Cutscene.play('rr.headshot', {});
+    const delta = Rules.rrDelta(victim, duel.bet);
+    await Bus.emit('rr:result', { victim, bet: duel.bet });
+    if (victim === 'player' && this.alive(gen)) await Cutscene.play('rr.headshot', {});
     await Game.settle(delta, { from: this.alive(gen) ? qs('.duel', this.root) : null, game: 'russian' });
   },
 };
@@ -2475,7 +2481,7 @@ Cutscene.define('rr.headshot', [
 <script id="game-postman">
 /* ================= POST AUSTRAGEN ================= */
 const Postman = {
-  root: null, streak: 0, timer: null, timeLeft: 0, target: null, tier: null, active: false, gen: 0,
+  root: null, streak: 0, timer: null, timeLeft: 0, target: null, tier: null, active: false, busy: false, gen: 0,
   alive(gen) { return !!this.root && this.gen === gen; },
   renderHouses() {
     const box = qs('#houses', this.root);
@@ -2523,30 +2529,35 @@ const Postman = {
     setTimeout(() => st.classList.add('hidden'), 900);
   },
   async deliver(n) {
-    if (!this.active || !this.root) return;
+    if (!this.active || !this.root || this.busy) return;
     const gen = this.gen;
-    clearInterval(this.timer);
-    const house = qs(`.house[data-n="${n}"]`, this.root);
-    if (n === this.target.n) {
-      const reward = this.tier.r;
-      house.classList.add('delivered');
-      const from = qs('#letter', this.root).getBoundingClientRect(), to = qs('.mailbox', house).getBoundingClientRect(), st = qs('#street', this.root).getBoundingClientRect();
-      const env = h('span', { class: 'envelope', style: `left:${from.left - st.left}px; top:${from.top - st.top}px` }, '✉️');
-      qs('#street', this.root).append(env);
-      void env.offsetWidth;
-      env.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(.5)`; env.style.opacity = '0';
-      setTimeout(() => env.remove(), 400);
-      SFX.play('coin');
-      Game.applyDelta(reward, { from: house });
-      this.streak++;
-      if (this.streak > State.s.stats.postStreakBest) { State.s.stats.postStreakBest = this.streak; State.save(); }
-      qs('#jobStatus', this.root).innerHTML = `<span class="win">+${UI.fmt(reward)}</span>`;
-      await Bus.emit('post:streak', { streak: this.streak });
-      await wait(250);
-      if (!this.alive(gen)) return;
-      this.nextStep(gen);
-    } else {
-      this.fail('Falscher Kasten!', house, gen);
+    this.busy = true;
+    try {
+      clearInterval(this.timer);
+      const house = qs(`.house[data-n="${n}"]`, this.root);
+      if (n === this.target.n) {
+        const reward = this.tier.r;
+        house.classList.add('delivered');
+        const from = qs('#letter', this.root).getBoundingClientRect(), to = qs('.mailbox', house).getBoundingClientRect(), st = qs('#street', this.root).getBoundingClientRect();
+        const env = h('span', { class: 'envelope', style: `left:${from.left - st.left}px; top:${from.top - st.top}px` }, '✉️');
+        qs('#street', this.root).append(env);
+        void env.offsetWidth;
+        env.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(.5)`; env.style.opacity = '0';
+        setTimeout(() => env.remove(), 400);
+        SFX.play('coin');
+        Game.applyDelta(reward, { from: house });
+        this.streak++;
+        if (this.streak > State.s.stats.postStreakBest) { State.s.stats.postStreakBest = this.streak; State.save(); }
+        qs('#jobStatus', this.root).innerHTML = `<span class="win">+${UI.fmt(reward)}</span>`;
+        await Bus.emit('post:streak', { streak: this.streak });
+        await wait(250);
+        if (!this.alive(gen)) return;
+        this.nextStep(gen);
+      } else {
+        this.fail('Falscher Kasten!', house, gen);
+      }
+    } finally {
+      if (this.gen === gen) this.busy = false;
     }
   },
   fail(msg, house, gen) {
@@ -2580,6 +2591,7 @@ UI.register('postman', {
     clearInterval(Postman.timer);
     Postman.root = null;
     Postman.active = false;
+    Postman.busy = false;
   },
 });
 </script>
