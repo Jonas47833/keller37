@@ -279,6 +279,83 @@ function h(tag, attrs = {}, ...children) {
 }
 </script>
 
+<script id="state">
+/* ================= STATE – ein Objekt, localStorage, versioniert ================= */
+const State = {
+  VERSION: 1,
+  KEY: 'keller37.state',
+  META_KEY: 'keller37.meta',
+  s: null,
+  meta: null,
+  storage: null,
+  fresh() {
+    return {
+      v: 1,
+      balance: 50,
+      beers: 0, beerTimer: 0,
+      brownieTimer: 0, brownieCost: 1000,
+      kidneySold: false,
+      bankDebt: 0, mafiaDebt: 0, mafiaSpins: 0,
+      investments: [],
+      hasHouse: false, isMarried: false, marriageSpins: 0, isHeartbroken: false, hasDealer: false,
+      flags: { intro: false, mafiaLoan: false, bankLoan: false, bankLimit: false, brownie: false, igor: false },
+      stats: { spins: 0, maxBalance: 50, biggestWin: 0, kidneys: 0, postStreakBest: 0 },
+      selectedHorse: 1,
+    };
+  },
+  freshMeta() { return { v: 1, achievements: [], muted: false, gameOvers: 0 }; },
+  _read(key, freshFn) {
+    try {
+      const raw = this.storage.getItem(key);
+      if (!raw) return { value: freshFn(), loaded: false };
+      const p = JSON.parse(raw);
+      if (!p || p.v !== this.VERSION) return { value: freshFn(), loaded: false };
+      const f = freshFn();
+      const merged = Object.assign(f, p);
+      if (f.flags) merged.flags = Object.assign(freshFn().flags, p.flags || {});
+      if (f.stats) merged.stats = Object.assign(freshFn().stats, p.stats || {});
+      return { value: merged, loaded: true };
+    } catch (e) {
+      return { value: freshFn(), loaded: false };
+    }
+  },
+  init(storage) {
+    this.storage = storage;
+    const s = this._read(this.KEY, () => this.fresh());
+    const m = this._read(this.META_KEY, () => this.freshMeta());
+    this.s = s.value;
+    this.meta = m.value;
+    return { loaded: s.loaded };
+  },
+  save() { try { this.storage.setItem(this.KEY, JSON.stringify(this.s)); } catch (e) { /* privater Modus o.ä. */ } },
+  saveMeta() { try { this.storage.setItem(this.META_KEY, JSON.stringify(this.meta)); } catch (e) { /* ignorieren */ } },
+  reset() { this.s = this.fresh(); this.save(); },
+};
+</script>
+
+<script id="bus">
+/* ================= BUS – Spiellogik → Cutscenes/Sound/Achievements ================= */
+const Bus = {
+  handlers: new Map(),
+  on(name, fn) {
+    if (!this.handlers.has(name)) this.handlers.set(name, []);
+    this.handlers.get(name).push(fn);
+    return () => this.off(name, fn);
+  },
+  off(name, fn) {
+    const list = this.handlers.get(name);
+    if (!list) return;
+    const i = list.indexOf(fn);
+    if (i >= 0) list.splice(i, 1);
+  },
+  emit(name, payload = {}) {
+    const list = (this.handlers.get(name) || []).slice();
+    const results = list.map((fn) => { try { return Promise.resolve(fn(payload)); } catch (e) { console.error('[bus]', name, e); return Promise.resolve(); } });
+    return Promise.all(results);
+  },
+};
+</script>
+
 <script id="selftest">
 /* ================= SELFTEST – läuft mit ?selftest im Browser und via node tests/run-selftest.mjs ================= */
 const SelfTest = {
@@ -551,6 +628,74 @@ T.test('canBeer / canBrownie', () => {
   T.eq(Rules.canBrownie(base({ balance: 1000, brownieCost: 1000 })), { ok: true });
   T.eq(Rules.canBrownie(base({ balance: 1000, brownieCost: 1000, brownieTimer: 1 })), { ok: false, reason: 'active' });
   T.eq(Rules.canBrownie(base({ balance: 999, brownieCost: 1000 })), { ok: false, reason: 'funds' });
+});
+
+/* ---- State ---- */
+const memStorage = () => ({
+  data: {},
+  getItem(k) { return k in this.data ? this.data[k] : null; },
+  setItem(k, v) { this.data[k] = String(v); },
+  removeItem(k) { delete this.data[k]; },
+});
+T.test('State.init: leer → frisch, loaded=false', () => {
+  const st = memStorage();
+  T.eq(State.init(st), { loaded: false });
+  T.eq(State.s.balance, 50);
+  T.eq(State.s.v, 1);
+  T.eq(State.s.flags, { intro: false, mafiaLoan: false, bankLoan: false, bankLimit: false, brownie: false, igor: false });
+  T.eq(State.meta, { v: 1, achievements: [], muted: false, gameOvers: 0 });
+});
+T.test('State.save/init: Spielstand überlebt', () => {
+  const st = memStorage();
+  State.init(st);
+  State.s.balance = 1234; State.s.hasHouse = true; State.s.investments.push({ name: 'Festgeld', amount: 50, rate: 0.08, spins: 5, risk: 10 });
+  State.save();
+  T.ok(st.getItem('keller37.state').includes('1234'));
+  T.eq(State.init(st), { loaded: true });
+  T.eq(State.s.balance, 1234);
+  T.eq(State.s.hasHouse, true);
+  T.eq(State.s.investments.length, 1);
+});
+T.test('State.init: falsche Version oder Müll → frisch', () => {
+  const st = memStorage();
+  st.setItem('keller37.state', JSON.stringify({ v: 99, balance: 5 }));
+  T.eq(State.init(st), { loaded: false });
+  T.eq(State.s.balance, 50);
+  st.setItem('keller37.state', '{kaputt');
+  T.eq(State.init(st), { loaded: false });
+});
+T.test('State.init: fehlende Felder werden aufgefüllt', () => {
+  const st = memStorage();
+  st.setItem('keller37.state', JSON.stringify({ v: 1, balance: 70, flags: { intro: true } }));
+  State.init(st);
+  T.eq(State.s.balance, 70);
+  T.eq(State.s.flags.intro, true);
+  T.eq(State.s.flags.igor, false);
+  T.eq(State.s.stats.spins, 0);
+});
+T.test('State.reset: Spielstand frisch, meta bleibt', () => {
+  const st = memStorage();
+  State.init(st);
+  State.s.balance = 9; State.meta.achievements.push('firstWin'); State.saveMeta();
+  State.reset();
+  T.eq(State.s.balance, 50);
+  T.eq(State.meta.achievements, ['firstWin']);
+  T.eq(State.init(st), { loaded: true });
+  T.eq(State.meta.achievements, ['firstWin']);
+});
+
+/* ---- Bus ---- */
+T.test('Bus.emit ohne Handler liefert ein Promise', () => {
+  T.ok(Bus.emit('nix', {}) instanceof Promise);
+});
+T.test('Bus.on/off/emit synchron sichtbar', () => {
+  const seen = [];
+  const off = Bus.on('t1', (p) => { seen.push(p.x); return p.x * 2; });
+  Bus.emit('t1', { x: 2 });
+  T.eq(seen, [2]);
+  off();
+  Bus.emit('t1', { x: 3 });
+  T.eq(seen, [2]);
 });
 
 /* --- SELFTEST CASES END --- */
