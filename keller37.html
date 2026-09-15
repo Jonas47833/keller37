@@ -159,6 +159,47 @@ input { font-family: var(--font-mono); }
 .floatnum.down { color: var(--neon-red); }
 .shake { animation: shake .35s ease both; }
 /* ==== 5. CUTSCENE ==== */
+#cutscene { position: fixed; inset: 0; z-index: 80; display: flex; flex-direction: column; justify-content: flex-end; background: #000; overflow: hidden; animation: fadeIn .3s ease both; }
+#cutscene[hidden] { display: none; }
+.cs-bg { position: absolute; inset: 0; transition: background 1s; }
+.cs-bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(0,0,0,.8) 100%); }
+.cs-bg .prop { position: absolute; font-size: 6rem; opacity: .22; filter: blur(1px) grayscale(.4); }
+.cs-bg.bar { background: linear-gradient(180deg, #3a1f0c 0%, #1a0d05 60%, #000 100%); }
+.cs-bg.hinterzimmer { background: radial-gradient(circle at 50% 20%, #5a3a12 0%, #1e1207 40%, #000 100%); }
+.cs-bg.standesamt { background: linear-gradient(180deg, #f3e6c8 0%, #c9b58f 60%, #6b5b3f 100%); }
+.cs-bg.villa { background: linear-gradient(180deg, #0a1636 0%, #16244d 50%, #0a0f1f 100%); }
+.cs-bg.hafen { background: linear-gradient(180deg, #02050f 0%, #0a1a33 55%, #041020 100%); }
+.cs-bg.hafen-morgen { background: linear-gradient(180deg, #2c2a4a 0%, #c4573b 45%, #f0a35a 70%, #3b2a2a 100%); }
+.cs-bg.klinik { background: linear-gradient(180deg, #0d3b3f 0%, #0a2224 60%, #020a0b 100%); }
+.cs-bg.bank { background: linear-gradient(180deg, #0c1f33 0%, #123a5c 50%, #06131f 100%); }
+.cs-bg.strasse { background: linear-gradient(180deg, #7fb2e5 0%, #c7d7e3 50%, #5b5b4d 100%); }
+.cs-bg.keller { background: radial-gradient(circle at 50% 10%, #4a4a3a 0%, #151512 40%, #000 100%); }
+.cs-money { position: absolute; top: 16px; left: 20px; z-index: 3; font-family: var(--font-mono); font-size: 1.3rem; font-weight: 700; color: var(--gold-2); background: rgba(0,0,0,.5); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(201,162,39,.4); }
+.cs-money.up { animation: pulseGold .6s ease both; }
+.cs-money.down { animation: pulseRed .6s ease both; }
+.cs-stage { position: relative; z-index: 2; display: flex; align-items: flex-end; gap: 24px; padding: 0 6vw 4vh; max-width: 1100px; width: 100%; margin: 0 auto; }
+.cs-portrait { flex: 0 0 auto; width: 170px; height: 170px; border-radius: 50%; border: 5px solid var(--c, var(--gold)); background: radial-gradient(circle at 40% 35%, #3a3a33, #0d0d0b);
+  display: flex; align-items: center; justify-content: center; font-size: 6rem; box-shadow: 0 0 30px rgba(0,0,0,.8), 0 0 24px var(--c, var(--gold)); margin-bottom: 10px; }
+.cs-portrait.calm { animation: breathe 3s ease-in-out infinite; }
+.cs-portrait.angry { animation: shake .5s infinite; }
+.cs-portrait.happy { animation: bounce .7s infinite; }
+.cs-portrait.shock { animation: shockZoom .5s ease both; }
+.cs-portrait.dead { filter: grayscale(1) brightness(.6); transform: rotate(12deg); }
+.cs-box { flex: 1; --c: var(--gold); background: rgba(12,12,10,.92); border: 2px solid var(--c); border-radius: 10px; padding: 18px 22px 26px; min-height: 150px; position: relative; box-shadow: 0 0 40px rgba(0,0,0,.8); }
+.cs-name { font-family: var(--font-display); letter-spacing: .14em; font-size: 1.3rem; color: var(--c); margin-bottom: 8px; text-shadow: 0 0 10px var(--c); }
+.cs-text { font-size: 1.15rem; line-height: 1.55; min-height: 3.2em; }
+.cs-next { position: absolute; right: 16px; bottom: 8px; color: var(--c); animation: bob 1s infinite; font-size: 1.1rem; }
+.cs-choices { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.cs-choices:empty { display: none; }
+.cs-skip { position: absolute; top: 16px; right: 20px; z-index: 3; background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.2); color: var(--dim); font-family: var(--font-display); letter-spacing: .1em; padding: 6px 12px; border-radius: 4px; }
+.cs-skip:hover { color: var(--text); border-color: var(--text); }
+.cs-flash { position: absolute; inset: 0; background: #fff; z-index: 4; pointer-events: none; opacity: 0; }
+.cs-flash.on { animation: flash .18s ease both; }
+.cs-black { position: absolute; inset: 0; background: #000; z-index: 4; pointer-events: none; opacity: 0; transition: opacity .5s; }
+.cs-black.on { opacity: 1; }
+.cs-particle { position: absolute; z-index: 3; pointer-events: none; animation: particleUp 1.6s ease-out both; }
+.cs-stats { margin-top: 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 20px; font-family: var(--font-mono); }
+.cs-stats span:nth-child(even) { text-align: right; color: var(--gold-2); }
 /* ==== 6. SPIELE & RÄUME ==== */
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -170,6 +211,13 @@ input { font-family: var(--font-mono); }
 @keyframes toastIn { from { transform: translateX(40px) rotate(-1deg); opacity: 0; } to { transform: rotate(-1deg); opacity: 1; } }
 @keyframes toastOut { to { transform: translateX(40px); opacity: 0; } }
 @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-70px); opacity: 0; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes shockZoom { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1.05); } }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+@keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes particleUp { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(-260px) rotate(40deg); opacity: 0; } }
 </style>
 </head>
 <body>
@@ -753,6 +801,167 @@ UI.register('hub', {
 });
 </script>
 
+<script id="cutscene-engine">
+/* ================= CUTSCENE – Visual-Novel-Engine ================= */
+const Cutscene = {
+  active: false,
+  SKIP: Symbol('skip'),
+  CAST: {
+    wirt: { name: 'Der Wirt', emoji: '🍺', color: 'var(--neon-amber)' },
+    chantal: { name: 'Chantal-Monique', emoji: '💅', color: 'var(--neon-pink)' },
+    vito: { name: 'Don Vito', emoji: '🕶️', color: 'var(--neon-red)' },
+    igor: { name: 'Igor', emoji: '🐻', color: 'var(--neon-blue)' },
+    doc: { name: 'Der Doc', emoji: '🥼', color: '#5fe0d0' },
+    krause: { name: 'Herr Krause', emoji: '👔', color: 'var(--neon-blue)' },
+    makler: { name: 'Der Makler', emoji: '🧑‍💼', color: 'var(--gold-2)' },
+    schmalz: { name: 'Dr. Schmalz', emoji: '⚖️', color: '#c0c0c0' },
+    kevin: { name: 'Kevin', emoji: '🧢', color: 'var(--neon-purple)' },
+    postmeister: { name: 'Der Postmeister', emoji: '📬', color: 'var(--day)' },
+    du: { name: 'Du', emoji: '🤠', color: '#ffffff' },
+  },
+  PROPS: {
+    bar: ['🍾', '🪑'], hinterzimmer: ['🕯️', '🚬'], standesamt: ['💐', '🔔'], villa: ['🏙️', '🌙'], hafen: ['🏗️', '🌙'],
+    'hafen-morgen': ['🏗️', '🌅'], klinik: ['🩺', '💡'], bank: ['🏧', '🪴'], strasse: ['🏠', '🚗'], keller: ['💡', '🪑'],
+  },
+  SCENES: {},
+  define(id, panels) { this.SCENES[id] = panels; },
+  bind(eventName, sceneId) { Bus.on(eventName, (ctx) => this.play(sceneId, ctx)); },
+  fill(text, ctx) { return text.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in ctx ? String(ctx[k]) : `{{${k}}}`)); },
+  async play(id, ctx = {}) {
+    const def = this.SCENES[id];
+    if (!def) { console.warn('[cutscene] Szene fehlt:', id); return undefined; }
+    const panels = typeof def === 'function' ? def(ctx) : def;
+    while (this.active) await wait(50);
+    this.active = true;
+    SFX.stopAll();
+    const root = qs('#cutscene');
+    root.innerHTML = '';
+    const els = {
+      root,
+      bg: h('div', { class: 'cs-bg' }),
+      flash: h('div', { class: 'cs-flash' }),
+      black: h('div', { class: 'cs-black' }),
+      money: h('div', { class: 'cs-money money-live' }, UI.fmt(UI.shownBalance)),
+      portrait: h('div', { class: 'cs-portrait' }),
+      name: h('div', { class: 'cs-name' }),
+      text: h('div', { class: 'cs-text' }),
+      extra: h('div', { class: 'cs-extra' }),
+      choices: h('div', { class: 'cs-choices' }),
+      next: h('div', { class: 'cs-next' }, '▼'),
+      skip: h('button', { class: 'cs-skip' }, 'Überspringen ⏭'),
+    };
+    els.box = h('div', { class: 'cs-box' }, els.name, els.text, els.extra, els.choices, els.next);
+    root.append(els.bg, els.flash, els.black, els.money, els.skip, h('div', { class: 'cs-stage' }, els.portrait, els.box));
+    root.hidden = false;
+    let result;
+    for (let i = 0; i < panels.length; i++) {
+      const isLast = i === panels.length - 1;
+      const r = await this._panel(els, panels[i], ctx, isLast);
+      if (r === this.SKIP) {
+        for (let j = i + 1; j < panels.length - 1; j++) this._fx(els, panels[j].fx, ctx, true);
+        i = panels.length - 2; // nächster Durchlauf zeigt das letzte Panel
+        continue;
+      }
+      if (r !== undefined) result = r;
+    }
+    root.hidden = true;
+    root.innerHTML = '';
+    this.active = false;
+    UI.setBalance(State.s.balance, { animate: false });
+    UI.renderWallet();
+    return result;
+  },
+  _panel(els, p, ctx, isLast) {
+    return new Promise((resolve) => {
+      const who = this.CAST[p.who] || this.CAST.du;
+      els.bg.className = `cs-bg ${p.bg || 'bar'}`;
+      els.bg.innerHTML = '';
+      (this.PROPS[p.bg] || []).forEach((e, i) => els.bg.append(h('span', { class: 'prop', style: `left:${i ? 78 : 12}%; top:${i ? 22 : 30}%` }, e)));
+      els.portrait.className = `cs-portrait ${p.mood || 'calm'}`;
+      els.portrait.textContent = who.emoji;
+      els.portrait.style.setProperty('--c', who.color);
+      els.box.style.setProperty('--c', who.color);
+      els.name.textContent = who.name;
+      els.choices.innerHTML = '';
+      els.extra.innerHTML = '';
+      els.next.style.visibility = 'hidden';
+      els.skip.style.display = isLast ? 'none' : '';
+      this._fx(els, p.fx, ctx, false);
+      const full = this.fill(p.text || '', ctx);
+      let typing = true, pos = 0, timer = null;
+      const renderChoices = () => {
+        for (const c of p.choices) {
+          els.choices.append(h('button', { class: 'btn ' + (c.cls || ''), onclick: (e) => { e.stopPropagation(); SFX.play('click'); done(c.value); } }, c.label));
+        }
+      };
+      const finish = () => {
+        typing = false; clearTimeout(timer); els.text.textContent = full;
+        if (p.choices) renderChoices(); else els.next.style.visibility = 'visible';
+      };
+      const tick = () => {
+        if (!typing) return;
+        pos++;
+        els.text.textContent = full.slice(0, pos);
+        if (pos % 3 === 0) SFX.play('typewriter');
+        if (pos >= full.length) { finish(); return; }
+        const ch = full[pos - 1];
+        timer = setTimeout(tick, /[.!?…]/.test(ch) ? 120 : /[,;:]/.test(ch) ? 60 : 30);
+      };
+      const onClick = (e) => {
+        if (e.target.closest('.cs-choices') || e.target.closest('.cs-skip')) return;
+        if (typing) finish(); else if (!p.choices) done(undefined);
+      };
+      const onKey = (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onClick({ target: els.text }); } };
+      const onSkip = (e) => { e.stopPropagation(); done(this.SKIP); };
+      const cleanup = () => { els.root.removeEventListener('click', onClick); document.removeEventListener('keydown', onKey); els.skip.removeEventListener('click', onSkip); };
+      const done = (v) => { cleanup(); resolve(v); };
+      els.root.addEventListener('click', onClick);
+      document.addEventListener('keydown', onKey);
+      els.skip.addEventListener('click', onSkip);
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) finish(); else tick();
+    });
+  },
+  _fx(els, fx, ctx, instant) {
+    if (!fx) return;
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    switch (fx) {
+      case 'flash': if (!instant) { els.flash.classList.remove('on'); void els.flash.offsetWidth; els.flash.classList.add('on'); } break;
+      case 'shake': if (!instant) UI.shake(els.root); break;
+      case 'blackout': if (!instant && !reduced) { els.black.classList.add('on'); SFX.play('blackout'); setTimeout(() => els.black.classList.remove('on'), 900); } break;
+      case 'hearts': if (!instant && !reduced) this._particles(els, ['❤️', '💕', '💖'], 14); break;
+      case 'coins': if (!instant && !reduced) { this._particles(els, ['🪙', '💶', '💰'], 24); SFX.play('cash'); } break;
+      case 'drain': UI.setBalance(State.s.balance, { animate: !instant, duration: 1800 }); if (!instant) { UI.pulseBalance(-1); SFX.play('lose'); } break;
+      case 'gain': UI.setBalance(State.s.balance, { animate: !instant, duration: 1200 }); if (!instant) { UI.pulseBalance(1); SFX.play('cash'); } break;
+      case 'stats': {
+        const grid = h('div', { class: 'cs-stats' });
+        for (const [k, v] of Object.entries(ctx.stats || {})) grid.append(h('span', {}, k), h('span', {}, String(v)));
+        els.extra.append(grid);
+        break;
+      }
+      default: console.warn('[cutscene] fx unbekannt:', fx);
+    }
+  },
+  _particles(els, glyphs, n) {
+    for (let i = 0; i < n; i++) {
+      const p = h('span', { class: 'cs-particle', style: `left:${rand(5, 95)}%; top:${rand(40, 90)}%; animation-delay:${rand(0, 0.6)}s; font-size:${rand(1.2, 2.4)}rem` }, pick(glyphs));
+      els.root.append(p);
+      setTimeout(() => p.remove(), 2400);
+    }
+  },
+};
+
+/* ---- Szenen: Intro & Neues Spiel ---- */
+Cutscene.define('intro', [
+  { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Neu hier? Fünfzig Euro in der Tasche und dieser Blick. Den kenn ich.' },
+  { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Hier unten gibt es keine Regeln, nur Quoten. Die Bar ist rechts, das Hinterzimmer daneben. Frag nicht, was im Brownie ist.' },
+  { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Die Türen sind da drüben. Viel Glück – du wirst es brauchen.' },
+]);
+Cutscene.define('newgame.confirm', [
+  { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Alles auf Anfang? Konto, Haus, Schulden, Chantal – alles weg. Die Trophäen an der Wand bleiben hängen.',
+    choices: [{ label: 'Ja, alles weg', value: 'yes', cls: 'red' }, { label: 'Doch nicht', value: 'no', cls: 'ghost' }] },
+]);
+</script>
+
 <script id="selftest">
 /* ================= SELFTEST – läuft mit ?selftest im Browser und via node tests/run-selftest.mjs ================= */
 const SelfTest = {
@@ -1121,6 +1330,13 @@ T.test('Bus.emit: werfender Handler stoppt andere Handler nicht, liefert Promise
     UI.toast({ icon: r.failed ? '❌' : '✅', title: 'Selbsttest', text: `${r.passed} bestanden, ${r.failed} fehlgeschlagen`, tone: r.failed ? 'loss' : 'win', ms: 6000 });
   }
   await UI.show(params.get('screen') || 'hub');
+  if (params.has('scene')) {
+    await Cutscene.play(params.get('scene'), { bill: 900, before: 1000, after: 500, price: '1.000 €', debt: 300, stats: { Spins: 12, 'Höchster Kontostand': '1.234 €' } });
+  } else if (!State.s.flags.intro) {
+    await Cutscene.play('intro');
+    State.s.flags.intro = true;
+    State.save();
+  }
   if (loaded && !params.has('screen')) UI.toast({ icon: '💾', title: 'Spielstand geladen', text: `Willkommen zurück. ${UI.fmt(State.s.balance)} in der Tasche.` });
 })();
 </script>
