@@ -1758,8 +1758,10 @@ const Slots = {
       await Game.settle(delta, { from: this.alive(gen) ? qs('.slot-machine', this.root) : null, game: 'slots' });
     } finally {
       SFX.stop('reelSpin');
-      this.spinning = false;
-      if (this.alive(gen)) qs('#btnSpin', this.root).disabled = false;
+      if (this.gen === gen) {
+        this.spinning = false;
+        qs('#btnSpin', this.root).disabled = false;
+      }
     }
   },
   jackpot(label) {
@@ -1789,7 +1791,7 @@ UI.register('slots', {
     qs('#lever', root).addEventListener('click', () => Slots.spin());
     document.addEventListener('keydown', Slots.onKey);
   },
-  unmount() { Slots.gen++; document.removeEventListener('keydown', Slots.onKey); Slots.root = null; },
+  unmount() { Slots.gen++; document.removeEventListener('keydown', Slots.onKey); Slots.root = null; Slots.spinning = false; },
 });
 </script>
 
@@ -1823,7 +1825,8 @@ const Blackjack = {
     if (this.inRound || !this.root) return;
     const bet = Game.readBet('bjBet');
     if (!Game.beginSpin(bet)) return;
-    this.roundGen = this.gen;
+    const gen = this.gen;
+    this.roundGen = gen;
     this.inRound = true; this.dealing = true; this.bet = bet;
     try {
       this.deck = Rules.newDeck(Math.random); this.pHand = []; this.dHand = [];
@@ -1838,11 +1841,12 @@ const Blackjack = {
       this.dHand.push(this.deck.pop()); await this.dealTo('dealerCards', this.dHand[1]);
       this.updateVals(false);
     } finally {
-      this.dealing = false;
+      if (this.gen === gen) this.dealing = false;
     }
   },
   async hit() {
     if (this.dealing || !this.inRound) return;
+    const gen = this.gen;
     this.dealing = true;
     try {
       const c = this.deck.pop();
@@ -1850,12 +1854,13 @@ const Blackjack = {
       await this.dealTo('playerCards', c);
       this.updateVals(false);
     } finally {
-      this.dealing = false;
+      if (this.gen === gen) this.dealing = false;
     }
     if (Rules.handSum(this.pHand) > 21) await this.finish('bust');
   },
   async stand() {
     if (this.dealing || !this.inRound) return;
+    const gen = this.gen;
     this.dealing = true;
     try {
       if (this.alive(this.roundGen)) {
@@ -1874,11 +1879,12 @@ const Blackjack = {
         await wait(300);
       }
     } finally {
-      this.dealing = false;
+      if (this.gen === gen) this.dealing = false;
     }
     await this.finish(Rules.bjOutcome(Rules.handSum(this.pHand), Rules.handSum(this.dHand)));
   },
   async finish(outcome) {
+    const gen = this.gen;
     const delta = Rules.bjDelta(outcome, this.bet);
     try {
       if (this.alive(this.roundGen)) {
@@ -1895,8 +1901,7 @@ const Blackjack = {
         qs('#bjBetControls', this.root).classList.remove('hidden');
       }
     } finally {
-      this.inRound = false;
-      this.dealing = false;
+      if (this.gen === gen) { this.inRound = false; this.dealing = false; }
     }
     await Bus.emit('blackjack:result', { outcome, bet: this.bet });
     await Game.settle(delta, { from: this.alive(this.roundGen) ? qs('#playerCards', this.root) : null, game: 'blackjack' });
@@ -1958,14 +1963,14 @@ const Roulette = {
     ctx.beginPath(); ctx.arc(cx, cy, 40, 0, 2 * Math.PI); ctx.fillStyle = '#1b1f19'; ctx.fill(); ctx.strokeStyle = '#e8c65a'; ctx.lineWidth = 2; ctx.stroke();
     ctx.beginPath(); ctx.arc(cx, cy, 14, 0, 2 * Math.PI); ctx.fillStyle = '#e8c65a'; ctx.fill();
   },
-  flyChip(cell, label) {
+  flyChip(cell, label, gen) {
     const from = qs('#balance').getBoundingClientRect();
     const to = cell.getBoundingClientRect();
     const c = h('div', { class: 'chip fly', style: `left:${from.left}px; top:${from.top}px` }, label);
     document.body.append(c);
     void c.offsetWidth;
     c.style.transform = `translate(${to.left + to.width / 2 - from.left - 23}px, ${to.top + to.height / 2 - from.top - 23}px)`;
-    setTimeout(() => { c.remove(); cell.append(h('div', { class: 'chip placed' }, label)); }, 420);
+    setTimeout(() => { c.remove(); if (this.alive(gen)) cell.append(h('div', { class: 'chip placed' }, label)); }, 420);
   },
   animateBall(dur, gen) {
     const ball = qs('#ball', this.root);
@@ -1997,7 +2002,7 @@ const Roulette = {
     try {
       qs('#rtable', this.root).classList.add('locked');
       qsa('.chip.placed', this.root).forEach((c) => c.remove());
-      this.flyChip(cell, String(bet));
+      this.flyChip(cell, String(bet), gen);
       SFX.play('chip');
       qs('#rouletteStatus', this.root).textContent = 'Kugel rollt…';
       qs('#resultNum', this.root).className = 'result-num';
@@ -2029,8 +2034,10 @@ const Roulette = {
       await Bus.emit('roulette:result', { type, chosen, rolled, win: delta > 0, bet });
       await Game.settle(delta, { from: this.alive(gen) ? qs('.wheel-box', this.root) : null, game: 'roulette' });
     } finally {
-      this.spinning = false;
-      if (this.alive(gen)) qs('#rtable', this.root).classList.remove('locked');
+      if (this.gen === gen) {
+        this.spinning = false;
+        qs('#rtable', this.root).classList.remove('locked');
+      }
     }
   },
 };
@@ -2050,6 +2057,7 @@ UI.register('roulette', {
     if (Roulette.ballRaf) cancelAnimationFrame(Roulette.ballRaf);
     Roulette.ballRaf = null;
     Roulette.root = null;
+    Roulette.spinning = false;
   },
 });
 </script>
