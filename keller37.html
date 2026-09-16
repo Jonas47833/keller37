@@ -1455,7 +1455,9 @@ const UI = {
       this._shellKeys = true;
       document.addEventListener('keydown', (e) => {
         if (typeof Russian !== 'undefined' && Russian.inDuel && Russian.duel && Russian.duel.forced) return;
-        if (e.key === 'Escape' && qs('#cutscene').hidden && qs('#title').hidden && UI.current && UI.current.id !== 'hub') UI.show('hub');
+        if (e.key !== 'Escape' || !qs('#cutscene').hidden || !qs('#title').hidden || !UI.current) return;
+        const home = State.mode === 'story' && Story.s && Story.s.phase === 'morning' && UI.screens.has('jobs') ? 'jobs' : 'hub';
+        if (UI.current.id !== home) UI.show(home);
       });
     }
   },
@@ -3117,6 +3119,8 @@ const StoryRules = {
     if ('balance' in cond) return StoryRules._ops(cond.balance, s.balance);
     if ('var' in cond) return StoryRules._ops(cond, st.vars[cond.var] || 0);
     if ('jobDone' in cond) return StoryRules._ops(cond, st.jobsDone[cond.jobDone] || 0);
+    if ('stat' in cond) return StoryRules._ops(cond, (st.stats || {})[cond.stat] || 0);
+    if ('jobToday' in cond) return st.jobToday === cond.jobToday;
     if ('flag' in cond) return !!st.flags[cond.flag];
     if ('notFlag' in cond) return !st.flags[cond.notFlag];
     if ('unlocked' in cond) return ['jobs', 'doors', 'rooms'].some((k) => st.unlocked[k].includes(cond.unlocked));
@@ -3140,8 +3144,15 @@ const StoryRules = {
     }
     if ('flag' in eff) { st.flags[eff.flag] = true; return {}; }
     if ('unflag' in eff) { st.flags[eff.unflag] = false; return {}; }
-    if ('balance' in eff) { s.balance += eff.balance; return {}; }
-    if ('balancePct' in eff) { s.balance += Math.round(s.balance * eff.balancePct / 100); if (eff.min != null) s.balance = Math.max(eff.min, s.balance); return {}; }
+    if ('balance' in eff) { s.balance = eff.balance < 0 ? Math.max(0, s.balance + eff.balance) : s.balance + eff.balance; return {}; }
+    if ('balancePct' in eff) {
+      const pct = eff.balancePct;
+      if (pct >= 0) { s.balance += Math.round(s.balance * pct / 100); return {}; }
+      /* Abzug: mindestens eff.min, nie mehr als der Kontostand – erhöht das Konto nie */
+      const cut = Math.max(Math.round(s.balance * -pct / 100), eff.min || 0);
+      s.balance -= Math.min(cut, Math.max(0, s.balance));
+      return {};
+    }
     if ('unlock' in eff) {
       for (const k of ['jobs', 'doors', 'rooms']) for (const id of eff.unlock[k] || []) if (!st.unlocked[k].includes(id)) st.unlocked[k].push(id);
       return {};
@@ -3387,9 +3398,10 @@ const Story = {
   },
   async runEvents(at) {
     for (const e of StoryRules.dueEvents(this.story, State.s, at)) {
-      if (e.once) this.s.seen.push(e.id);
       if (e.scene) await this.playScene(e.scene);
       await this.applyEffects(e.effects || []);
+      /* erst nach Szene und Effekten als gesehen markieren – ein Reload mittendrin überspringt nichts */
+      if (e.once) { this.s.seen.push(e.id); State.save(); }
     }
   },
   async applyChapter() {
@@ -3761,7 +3773,7 @@ const Spueler = {
   score() { if (this.root) qs('#dishScore', this.root).textContent = `Sauber ${this.hits} · Bruch ${this.breaks}`; },
   async finish() {
     this.running = false;
-    const pay = Math.max(StoryRules.spuelerPay(this.hits, this.breaks), -State.s.balance);
+    const pay = Math.max(StoryRules.spuelerPay(this.hits, this.breaks), -Math.max(0, State.s.balance));
     if (this.root) {
       qs('#belt', this.root).classList.remove('running');
       qs('#btnDishTap', this.root).classList.add('hidden');
@@ -3857,7 +3869,7 @@ const Taxi = {
   async finish() {
     this.running = false;
     clearInterval(this.spawnTimer);
-    const pay = Math.max(StoryRules.taxiPay(this.passengers, this.tickets), -State.s.balance);
+    const pay = Math.max(StoryRules.taxiPay(this.passengers, this.tickets), -Math.max(0, State.s.balance));
     if (this.root) {
       qs('#taxiRoad', this.root).classList.remove('running');
       this.entities.forEach((e) => e.el.remove()); this.entities = [];
@@ -4175,8 +4187,8 @@ const STORY_SCHULD = {
   events: [
     { id: 'chantal3', when: { day: { eq: 3 } }, once: true, at: 'night', scene: 'schuld.chantal3', effects: [{ flag: 'chantalKennt' }] },
     { id: 'wirt5', when: { day: { eq: 5 } }, once: true, at: 'night', scene: 'schuld.wirt5' },
-    { id: 'kontrolleOk', when: { all: [{ day: { eq: 10 } }, { any: [{ balance: { gte: 5000 } }, { var: 'schuld', lte: 45000 }] }] }, once: true, at: 'night', scene: 'schuld.kontrolle.ok', effects: [{ var: 'vertrauen', add: 1 }, { flag: 'kontrolle' }] },
-    { id: 'kontrolleFail', when: { all: [{ day: { eq: 10 } }, { not: { any: [{ balance: { gte: 5000 } }, { var: 'schuld', lte: 45000 }] } }] }, once: true, at: 'night', scene: 'schuld.kontrolle.fail', effects: [{ force: 'duel' }] },
+    { id: 'kontrolleOk', when: { all: [{ day: { eq: 10 } }, { any: [{ balance: { gte: 5000 } }, { var: 'schuld', lte: 45000 }, { stat: 'jobs', gte: 7 }] }] }, once: true, at: 'night', scene: 'schuld.kontrolle.ok', effects: [{ var: 'vertrauen', add: 1 }, { flag: 'kontrolle' }] },
+    { id: 'kontrolleFail', when: { all: [{ day: { eq: 10 } }, { not: { any: [{ balance: { gte: 5000 } }, { var: 'schuld', lte: 45000 }, { stat: 'jobs', gte: 7 }] } }] }, once: true, at: 'night', scene: 'schuld.kontrolle.fail', effects: [{ force: 'duel' }] },
     { id: 'duelLostBill', when: { all: [{ flag: 'duelLost' }, { notFlag: 'duelLostBilled' }] }, once: true, at: 'night', scene: 'schuld.duelLost', effects: [{ balance: -500 }, { flag: 'duelLostBilled' }] },
     { id: 'duelWonNote', when: { all: [{ flag: 'duelWon' }, { notFlag: 'duelWonNoted' }] }, once: true, at: 'night', scene: 'schuld.duelWon', effects: [{ flag: 'duelWonNoted' }, { var: 'vertrauen', add: 1 }] },
     { id: 'tuerJob', when: { all: [{ day: { gte: 13 } }, { var: 'vertrauen', gte: 4 }] }, once: true, at: 'morning', scene: 'schuld.tuerJob', effects: [{ unlock: { jobs: ['tuersteher'] } }] },
@@ -4186,9 +4198,9 @@ const STORY_SCHULD = {
     { id: 'tuerSauber', when: { var: 'tuerSauber', gte: 3 }, at: 'night', scene: 'schuld.tuerSauber', effects: [{ var: 'vertrauen', add: 1 }, { var: 'tuerSauber', set: 0 }] },
     { id: 'croupierJob', when: { all: [{ day: { gte: 21 } }, { var: 'vertrauen', gte: 7 }, { jobDone: 'tuersteher', gte: 3 }] }, once: true, at: 'morning', scene: 'schuld.croupierJob', effects: [{ unlock: { jobs: ['croupier'] } }] },
     { id: 'erinnerung', when: { day: { eq: 25 } }, once: true, at: 'night', scene: 'schuld.erinnerung', effects: [{ balancePct: -20, min: 100 }] },
-    { id: 'fluchtAngebot', when: { all: [{ day: { gte: 20 } }, { jobDone: 'taxi', gte: 1 }, { balance: { gte: 8000 } }, { notFlag: 'fluchtBereit' }] }, once: true, at: 'night', scene: 'schuld.fluchtAngebot', effects: [{ flag: 'fluchtBereit' }] },
+    { id: 'fluchtAngebot', when: { all: [{ day: { gte: 20 } }, { jobDone: 'taxi', gte: 1 }, { var: 'ruf', gte: 2 }, { balance: { gte: 8000 } }, { notFlag: 'fluchtBereit' }] }, once: true, at: 'night', scene: 'schuld.fluchtAngebot', effects: [{ flag: 'fluchtBereit' }] },
     { id: 'fluchtFrage', when: { all: [{ flag: 'fluchtBereit' }, { notFlag: 'fluchtHeute' }] }, at: 'night', scene: 'schuld.fluchtFrage' },
-    { id: 'igorSah', when: { all: [{ flag: 'fluchtBereit' }, { notFlag: 'igorSah' }] }, once: true, at: 'morning', scene: 'schuld.igorSah', effects: [{ flag: 'igorSah' }, { var: 'vertrauen', add: -3 }] },
+    { id: 'igorSah', when: { all: [{ flag: 'fluchtBereit' }, { notFlag: 'igorSah' }, { jobToday: 'tuersteher' }] }, once: true, at: 'night', scene: 'schuld.igorSah', effects: [{ flag: 'igorSah' }, { var: 'vertrauen', add: -3 }] },
     { id: 'sturzFrage', when: { all: [{ day: { gte: 28 } }, { flag: 'hauptbuch' }, { flag: 'safe' }, { flag: 'igorZweifelt' }, { notFlag: 'sturzJetzt' }] }, at: 'night', scene: 'schuld.sturzFrage' },
   ],
   jobScenes: {
@@ -4210,6 +4222,12 @@ const STORY_SCHULD = {
   ],
 };
 if (typeof Stories !== 'undefined') Stories.define(STORY_SCHULD);
+/* Ruf: +1 pro Taxi-Schicht ab 150 € (Spec §9) */
+Bus.on('taxi:result', ({ pay }) => {
+  if (State.mode !== 'story' || !State.s.story || State.s.story.id !== 'schuld' || pay < 150) return;
+  StoryRules.applyEffect(State.s, { var: 'ruf', add: 1 }, STORY_SCHULD);
+  State.save(); UI.renderWallet();
+});
 Bus.on('rr:result', ({ victim }) => {
   if (State.mode !== 'story' || !State.s.story || State.s.story.id !== 'schuld' || victim !== 'igor') return;
   const v = State.s.story.vars;
@@ -4618,9 +4636,26 @@ T.test('StoryRules.applyEffect: var add/set mit Clamp, flag, balance, unlock', (
   StoryRules.applyEffect(s, { flag: 'x' }, story); T.eq(s.story.flags.x, true);
   StoryRules.applyEffect(s, { unflag: 'x' }, story); T.eq(s.story.flags.x, false);
   StoryRules.applyEffect(s, { balance: -250 }, story); T.eq(s.balance, 250);
-  StoryRules.applyEffect(s, { balancePct: -20, min: 100 }, story); T.eq(s.balance, 200);
+  StoryRules.applyEffect(s, { balancePct: -20, min: 100 }, story); T.eq(s.balance, 150, 'min = Mindestabzug');
+  StoryRules.applyEffect(s, { balance: 100 }, story); T.eq(s.balance, 250);
   StoryRules.applyEffect(s, { unlock: { jobs: ['taxi', 'spueler'], doors: ['roulette'] } }, story);
   T.eq(s.story.unlocked.jobs, ['spueler', 'taxi']); T.eq(s.story.unlocked.doors, ['slots', 'roulette']);
+});
+T.test('StoryRules.applyEffect: Konto fällt nie unter 0, balancePct erhöht nie', () => {
+  const s = storyBase({}); s.balance = 100;
+  StoryRules.applyEffect(s, { balance: -250 }, {}); T.eq(s.balance, 0);
+  s.balance = 50; StoryRules.applyEffect(s, { balancePct: -20, min: 100 }, {}); T.eq(s.balance, 0, '50 → 0 (kein Anheben auf min)');
+  s.balance = 1000; StoryRules.applyEffect(s, { balancePct: -20, min: 100 }, {}); T.eq(s.balance, 800);
+  s.balance = 300; StoryRules.applyEffect(s, { balancePct: -20, min: 100 }, {}); T.eq(s.balance, 200, 'Mindestabzug 100');
+  s.balance = 0; StoryRules.applyEffect(s, { balancePct: -20, min: 100 }, {}); T.eq(s.balance, 0);
+  s.balance = 200; StoryRules.applyEffect(s, { balancePct: 50 }, {}); T.eq(s.balance, 300, 'positiver Prozentsatz unverändert');
+});
+T.test('StoryRules.check: stat/jobToday', () => {
+  const s = storyBase({ jobToday: 'tuersteher', stats: { earned: 0, gambled: 0, jobs: 7 } });
+  T.ok(StoryRules.check({ stat: 'jobs', gte: 7 }, s)); T.ok(!StoryRules.check({ stat: 'jobs', gt: 7 }, s));
+  T.ok(StoryRules.check({ stat: 'unbekannt', lte: 0 }, s), 'fehlende Statistik zählt als 0');
+  T.ok(StoryRules.check({ jobToday: 'tuersteher' }, s)); T.ok(!StoryRules.check({ jobToday: 'taxi' }, s));
+  T.ok(!StoryRules.check({ jobToday: 'tuersteher' }, storyBase({ jobToday: null })));
 });
 T.test('StoryRules.applyEffect: nicht-pure Effekte werden gemeldet', () => {
   const s = storyBase();
@@ -4767,7 +4802,9 @@ T.test('STORY_SCHULD: Kontrolle Tag 10 und Enden', () => {
   const s = Object.assign(base({ balance: 100 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
   s.story.day = 10;
   T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id), ['kontrolleFail']);
-  s.balance = 5000;
+  s.story.stats.jobs = 7;
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id), ['kontrolleOk'], 'sieben Jobs reichen für die Kontrolle');
+  s.story.stats.jobs = 0; s.balance = 5000;
   T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id), ['kontrolleOk']);
   s.story.vars.schuld = 0;
   T.eq(StoryRules.ending(STORY_SCHULD, s).id, 'ehrlich');
@@ -4801,6 +4838,19 @@ T.test('STORY_SCHULD: Kapitel 3/4 und Job-Freischaltung per Vertrauen', () => {
   T.eq(StoryRules.chapterFor(STORY_SCHULD, s).id, 'k4');
   T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), ['croupierJob']);
   T.eq(STORY_SCHULD.jobScenes.tuersteher.length, 3); T.eq(STORY_SCHULD.jobScenes.croupier.length, 3); T.eq(STORY_SCHULD.jobScenes.docassi.length, 3);
+});
+T.test('STORY_SCHULD: Flucht braucht Ruf, Igor sieht sie nur nach einer Tür-Schicht', () => {
+  const s = Object.assign(base({ balance: 8000 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
+  s.story.day = 22; s.story.jobsDone.taxi = 1; s.story.seen.push('croupierJob');
+  const night = () => StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id);
+  T.eq(night(), [], 'ohne Ruf kein Angebot');
+  s.story.vars.ruf = 2;
+  T.eq(night(), ['fluchtAngebot']);
+  s.story.flags.fluchtBereit = true; s.story.seen.push('fluchtAngebot');
+  T.eq(night(), ['fluchtFrage'], 'kein Türsteher-Job heute → Igor sieht nichts');
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), []);
+  s.story.jobToday = 'tuersteher';
+  T.eq(night(), ['fluchtFrage', 'igorSah']);
 });
 
 /* --- SELFTEST CASES END --- */
