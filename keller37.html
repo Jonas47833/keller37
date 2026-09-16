@@ -1056,6 +1056,103 @@ const Rules = {
 };
 </script>
 
+<script id="gear-rules">
+/* ================= GEAR – Autos, Schuhe, Stärke, Überfall-Rechnung (rein, kein DOM, kein State) ================= */
+Object.assign(Rules, {
+  GEAR: {
+    cars: {
+      audiA3:  { brand: 'audi', tier: 1, name: 'Audi A3 (gebraucht)', icon: '🚗', price: 1500,  mugMult: 0.7,  flee: 10, luck: 0 },
+      audiRS4: { brand: 'audi', tier: 2, name: 'Audi RS 4 quattro',   icon: '🏎️', price: 8000,  mugMult: 0.45, flee: 20, luck: 2 },
+      audiR8:  { brand: 'audi', tier: 3, name: 'Audi R8',             icon: '🏎️', price: 30000, mugMult: 0.2,  flee: 35, luck: 4 },
+      mercC:   { brand: 'merc', tier: 1, name: 'Mercedes C-Klasse',   icon: '🚙', price: 2000,  bankLimit: 4000,  bankRate: 0.27, luck: 0 },
+      mercS:   { brand: 'merc', tier: 2, name: 'Mercedes S-Klasse',   icon: '🚘', price: 10000, bankLimit: 6000,  bankRate: 0.24, luck: 2 },
+      mercG:   { brand: 'merc', tier: 3, name: 'Mercedes AMG G 63',   icon: '🚐', price: 40000, bankLimit: 10000, bankRate: 0.20, luck: 4 },
+    },
+    shoes: {
+      basic:  { tier: 1, name: 'Laufschuh Basic',  icon: '👟', price: 300,  flee: 15, postTime: 1, postPay: 0,  spuelerBand: 0,   taxiTip: 0 },
+      trail:  { tier: 2, name: 'Trail-Runner Pro', icon: '👟', price: 2000, flee: 30, postTime: 1, postPay: 5,  spuelerBand: 0.2, taxiTip: 0 },
+      carbon: { tier: 3, name: 'Carbon-Sprinter',  icon: '👟', price: 7500, flee: 45, postTime: 2, postPay: 10, spuelerBand: 0.2, taxiTip: 5 },
+    },
+    TRADE_IN: 0.5,
+    BRANDS: { audi: 'Audi Zentrum', merc: 'Mercedes-Benz Niederlassung' },
+  },
+  MUG: {
+    BASE_DOOR: 0.06, BASE_EVENING: 0.12,
+    MIN_CASH: 100, RICH_CASH: 2000, RICH_MULT: 2,
+    MIN_SPINS: 10, MIN_DAY: 4,
+    COOLDOWN_SPINS: 15, COOLDOWN_DAYS: 3,
+    LOOT_PCT: 0.2, LOOT_MIN: 50, LOOT_MAX: 1500, FLEE_FAIL_PCT: 0.1,
+    FIGHT_BASE: 0.35, FIGHT_PER_STR: 0.08, FLEE_BASE: 0.3, CHANCE_CAP: 0.9,
+    STR_WALLET: 5, WALLET_MIN: 50, WALLET_MAX: 150,
+    STR_FEARED: 10, FEARED_MULT: 0.5,
+    STR_RESPECT: 8,
+  },
+  /* Alle Boni der aktuellen Ausrüstung – immer alle Schlüssel, neutral = ohne Ausrüstung */
+  gear(s) {
+    const car = s.car ? Rules.GEAR.cars[s.car] : null;
+    const sh = s.shoes ? Rules.GEAR.shoes[s.shoes] : null;
+    const feared = (s.strength || 0) >= Rules.MUG.STR_FEARED ? Rules.MUG.FEARED_MULT : 1;
+    return {
+      luck: car ? car.luck || 0 : 0,
+      mugMult: (car && car.mugMult != null ? car.mugMult : 1) * feared,
+      flee: (car ? car.flee || 0 : 0) + (sh ? sh.flee || 0 : 0),
+      bankLimit: car && car.bankLimit ? car.bankLimit : Rules.BANK_LIMIT,
+      bankRate: car && car.bankRate ? car.bankRate : Rules.BANK_RATE,
+      postTime: sh ? sh.postTime || 0 : 0,
+      postPay: sh ? sh.postPay || 0 : 0,
+      spuelerBand: sh ? sh.spuelerBand || 0 : 0,
+      taxiTip: sh ? sh.taxiTip || 0 : 0,
+    };
+  },
+  carUpgradeCost(s, id) {
+    const car = Rules.GEAR.cars[id];
+    const old = s.car ? Rules.GEAR.cars[s.car] : null;
+    return Math.max(0, car.price - (old ? Math.round(old.price * Rules.GEAR.TRADE_IN) : 0));
+  },
+  canBuyCar(s, id) {
+    const car = Rules.GEAR.cars[id];
+    if (!car) return { ok: false, reason: 'unknown', cost: 0 };
+    const cost = Rules.carUpgradeCost(s, id);
+    if (s.car === id) return { ok: false, reason: 'owned', cost };
+    const old = s.car ? Rules.GEAR.cars[s.car] : null;
+    if (old && old.brand === car.brand && car.tier < old.tier) return { ok: false, reason: 'downgrade', cost };
+    if (s.balance < cost) return { ok: false, reason: 'funds', cost };
+    return { ok: true, cost };
+  },
+  canBuyShoes(s, id) {
+    const sh = Rules.GEAR.shoes[id];
+    if (!sh) return { ok: false, reason: 'unknown' };
+    if (s.shoes === id) return { ok: false, reason: 'owned' };
+    const old = s.shoes ? Rules.GEAR.shoes[s.shoes] : null;
+    if (old && sh.tier < old.tier) return { ok: false, reason: 'downgrade' };
+    if (s.balance < sh.price) return { ok: false, reason: 'funds' };
+    return { ok: true };
+  },
+  /* where: 'door' (freies Spiel, Hub → Casino-Tür) oder 'evening' (Story, Morgen → Abend) */
+  mugChance(s, where) {
+    const M = Rules.MUG;
+    if (s.balance < M.MIN_CASH) return 0;
+    if ((s.mugCooldown || 0) > 0) return 0;
+    if (where === 'evening') { if (!s.story || s.story.day < M.MIN_DAY) return 0; }
+    else if (((s.stats && s.stats.spins) || 0) < M.MIN_SPINS) return 0;
+    let c = where === 'evening' ? M.BASE_EVENING : M.BASE_DOOR;
+    if (s.balance >= M.RICH_CASH) c *= M.RICH_MULT;
+    return c * Rules.gear(s).mugMult;
+  },
+  mugLoot(balance) {
+    const M = Rules.MUG;
+    return Math.min(balance, Math.max(M.LOOT_MIN, Math.min(M.LOOT_MAX, Math.round(balance * M.LOOT_PCT))));
+  },
+  mugWallet(rng = Math.random) {
+    const M = Rules.MUG;
+    return M.WALLET_MIN + Math.floor(rng() * (M.WALLET_MAX - M.WALLET_MIN + 1));
+  },
+  fightChance(strength) { const M = Rules.MUG; return Math.min(M.CHANCE_CAP, M.FIGHT_BASE + M.FIGHT_PER_STR * (strength || 0)); },
+  fleeChance(gear) { const M = Rules.MUG; return Math.min(M.CHANCE_CAP, M.FLEE_BASE + (gear.flee || 0) / 100); },
+  fleeFailExtra(balance) { return Math.round(balance * Rules.MUG.FLEE_FAIL_PCT); },
+});
+</script>
+
 <script id="util">
 /* ================= UTIL ================= */
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -1103,8 +1200,9 @@ const State = {
       bankDebt: 0, mafiaDebt: 0, mafiaSpins: 0,
       investments: [],
       hasHouse: false, isMarried: false, marriageSpins: 0, isHeartbroken: false, hasDealer: false,
+      car: null, shoes: null, strength: 0, mugCooldown: 0,
       flags: { intro: false, mafiaLoan: false, bankLoan: false, bankLimit: false, brownie: false, igor: false },
-      stats: { spins: 0, maxBalance: 50, biggestWin: 0, kidneys: 0, postStreakBest: 0 },
+      stats: { spins: 0, maxBalance: 50, biggestWin: 0, kidneys: 0, postStreakBest: 0, muggings: 0, fightsWon: 0 },
       selectedHorse: 1,
     };
   },
@@ -4872,6 +4970,90 @@ T.test('STORY_SCHULD: Flucht braucht Ruf, Igor sieht sie nur nach einer Tür-Sch
   T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), []);
   s.story.jobToday = 'tuersteher';
   T.eq(night(), ['fluchtFrage', 'igorSah']);
+});
+
+/* ---- Gear: Katalog, Boni, Kauf ---- */
+const near = (a, b, msg = '') => T.ok(Math.abs(a - b) < 1e-9, `${msg} erwartet ${b}, bekommen ${a}`);
+T.test('GEAR: Preise steigen je Linie, Glück ≤ 4, Zinsen sinken', () => {
+  const cars = Rules.GEAR.cars;
+  for (const brand of ['audi', 'merc']) {
+    const line = Object.values(cars).filter((c) => c.brand === brand).sort((a, b) => a.tier - b.tier);
+    T.eq(line.length, 3, brand);
+    for (let i = 1; i < line.length; i++) T.ok(line[i].price > line[i - 1].price, `${brand} Preis Stufe ${i + 1}`);
+  }
+  for (const c of Object.values(cars)) T.ok((c.luck || 0) <= 4, c.name);
+  const merc = Object.values(cars).filter((c) => c.brand === 'merc').sort((a, b) => a.tier - b.tier);
+  T.ok(merc[0].bankRate > merc[1].bankRate && merc[1].bankRate > merc[2].bankRate, 'Zinsen sinken');
+  const shoes = Object.values(Rules.GEAR.shoes).sort((a, b) => a.tier - b.tier);
+  T.eq(shoes.map((s) => s.price), [300, 2000, 7500]);
+  T.ok(cars.audiR8.flee + shoes[2].flee <= 80, 'Flucht-Summe ≤ 80');
+});
+T.test('gear: ohne Ausrüstung neutral', () => {
+  T.eq(Rules.gear(base()), { luck: 0, mugMult: 1, flee: 0, bankLimit: 3000, bankRate: 0.3, postTime: 0, postPay: 0, spuelerBand: 0, taxiTip: 0 });
+});
+T.test('gear: Audi R8 + Carbon', () => {
+  const g = Rules.gear(base({ car: 'audiR8', shoes: 'carbon' }));
+  T.eq([g.luck, g.mugMult, g.flee, g.bankLimit, g.bankRate, g.postTime, g.postPay, g.spuelerBand, g.taxiTip], [4, 0.2, 80, 3000, 0.3, 2, 10, 0.2, 5]);
+});
+T.test('gear: Mercedes G', () => {
+  const g = Rules.gear(base({ car: 'mercG' }));
+  T.eq([g.luck, g.mugMult, g.flee, g.bankLimit, g.bankRate], [4, 1, 0, 10000, 0.2]);
+});
+T.test('gear: Stärke 10 halbiert mugMult', () => {
+  near(Rules.gear(base({ strength: 10 })).mugMult, 0.5);
+  near(Rules.gear(base({ strength: 10, car: 'audiA3' })).mugMult, 0.35);
+  near(Rules.gear(base({ strength: 9 })).mugMult, 1);
+});
+T.test('carUpgradeCost / canBuyCar', () => {
+  T.eq(Rules.carUpgradeCost(base(), 'audiA3'), 1500);
+  T.eq(Rules.carUpgradeCost(base({ car: 'audiA3' }), 'audiRS4'), 8000 - 750);
+  T.eq(Rules.carUpgradeCost(base({ car: 'audiA3' }), 'mercC'), 2000 - 750);
+  T.eq(Rules.carUpgradeCost(base({ car: 'audiR8' }), 'mercC'), 0, 'nie Geld zurück');
+  T.eq(Rules.canBuyCar(base({ car: 'audiRS4', balance: 99999 }), 'audiA3').reason, 'downgrade');
+  T.eq(Rules.canBuyCar(base({ car: 'audiA3', balance: 99999 }), 'audiA3').reason, 'owned');
+  T.eq(Rules.canBuyCar(base({ balance: 1499 }), 'audiA3').reason, 'funds');
+  T.eq(Rules.canBuyCar(base({ balance: 1500 }), 'audiA3'), { ok: true, cost: 1500 });
+  T.eq(Rules.canBuyCar(base({ car: 'audiA3', balance: 7250 }), 'audiRS4'), { ok: true, cost: 7250 });
+  T.eq(Rules.canBuyCar(base({ car: 'audiR8', balance: 25000 }), 'mercG'), { ok: true, cost: 25000 });
+});
+T.test('canBuyShoes: nur Aufstieg, Sprung erlaubt, voller Preis', () => {
+  T.eq(Rules.canBuyShoes(base({ balance: 7500 }), 'carbon'), { ok: true });
+  T.eq(Rules.canBuyShoes(base({ shoes: 'basic', balance: 7500 }), 'carbon'), { ok: true });
+  T.eq(Rules.canBuyShoes(base({ shoes: 'carbon', balance: 99999 }), 'trail').reason, 'downgrade');
+  T.eq(Rules.canBuyShoes(base({ shoes: 'trail', balance: 99999 }), 'trail').reason, 'owned');
+  T.eq(Rules.canBuyShoes(base({ balance: 299 }), 'basic').reason, 'funds');
+});
+/* ---- Überfall-Rechnung ---- */
+const mugBase = (o = {}) => base(Object.assign({ balance: 500, mugCooldown: 0, strength: 0, stats: { spins: 20 } }, o));
+T.test('mugChance: Schwellen', () => {
+  T.eq(Rules.mugChance(mugBase({ balance: 99 }), 'door'), 0);
+  T.eq(Rules.mugChance(mugBase({ mugCooldown: 1 }), 'door'), 0);
+  T.eq(Rules.mugChance(mugBase({ stats: { spins: 9 } }), 'door'), 0);
+  near(Rules.mugChance(mugBase(), 'door'), 0.06);
+  near(Rules.mugChance(mugBase({ balance: 2000 }), 'door'), 0.12);
+  near(Rules.mugChance(mugBase({ car: 'audiA3' }), 'door'), 0.042);
+});
+T.test('mugChance: Abend in der Story', () => {
+  const s3 = storyBase({ day: 3 }); s3.balance = 500; s3.mugCooldown = 0; s3.stats = { spins: 0 };
+  T.eq(Rules.mugChance(s3, 'evening'), 0);
+  const s4 = storyBase({ day: 4 }); s4.balance = 500; s4.mugCooldown = 0; s4.stats = { spins: 0 };
+  near(Rules.mugChance(s4, 'evening'), 0.12);
+});
+T.test('mugLoot: 20 %, 50–1500, nie mehr als Bargeld', () => {
+  T.eq(Rules.mugLoot(100), 50); T.eq(Rules.mugLoot(1000), 200); T.eq(Rules.mugLoot(10000), 1500);
+  T.eq(Rules.mugLoot(60), 50); T.eq(Rules.mugLoot(30), 30);
+});
+T.test('fightChance / fleeChance / Deckel', () => {
+  near(Rules.fightChance(0), 0.35); near(Rules.fightChance(3), 0.59); near(Rules.fightChance(7), 0.9); near(Rules.fightChance(50), 0.9);
+  near(Rules.fleeChance({ flee: 0 }), 0.3); near(Rules.fleeChance({ flee: 45 }), 0.75); near(Rules.fleeChance({ flee: 80 }), 0.9);
+  T.eq(Rules.fleeFailExtra(1000), 100);
+});
+T.test('mugWallet: 50–150', () => {
+  T.eq(Rules.mugWallet(() => 0), 50); T.eq(Rules.mugWallet(() => 0.999), 150);
+});
+T.test('State.fresh: Gear-Felder', () => {
+  const f = State.fresh();
+  T.eq([f.car, f.shoes, f.strength, f.mugCooldown, f.stats.muggings, f.stats.fightsWon], [null, null, 0, 0, 0, 0]);
 });
 
 /* --- SELFTEST CASES END --- */
