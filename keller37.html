@@ -478,6 +478,21 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .plate.hit { animation: plateHit .35s ease both; }
 .plate.broken { animation: plateBreak .5s ease both; }
 @media (max-width: 760px) { .belt { height: 70px; } .plate { font-size: 2.3rem; } }
+/* -- Nachttaxi -- */
+.taxi-panel { background: linear-gradient(180deg, #0b1020, #05070f); border-color: rgba(76,201,240,.25); }
+.taxi-hud { display: flex; gap: 20px; font-family: var(--font-mono); color: var(--dim); }
+.taxi-road { position: relative; width: 100%; max-width: 420px; height: 420px; background: #2b2b2b; border-left: 8px solid #d8c36b; border-right: 8px solid #d8c36b; border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; }
+.taxi-road.running { background-image: repeating-linear-gradient(180deg, transparent 0 40px, rgba(255,255,255,.04) 40px 44px); animation: roadMove .5s linear infinite; }
+.lane-line { position: absolute; top: 0; bottom: 0; width: 4px; background: repeating-linear-gradient(180deg, #ddd 0 24px, transparent 24px 48px); }
+.lane-line.l1 { left: 33.3%; } .lane-line.l2 { left: 66.6%; }
+.taxi { position: absolute; bottom: 20px; width: 33.3%; text-align: center; font-size: 2.6rem; transition: left .12s; filter: drop-shadow(0 0 8px rgba(245,214,122,.6)); }
+.taxi.braking { filter: drop-shadow(0 0 12px #ff3b3b); }
+.rider { position: absolute; width: 33.3%; text-align: center; font-size: 2rem; top: -60px; }
+.light { position: absolute; left: 0; right: 0; height: 26px; top: -40px; background: repeating-linear-gradient(90deg, #ff3b3b 0 20px, #fff 20px 40px); box-shadow: 0 0 16px rgba(255,59,59,.7); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+.brake-flash { position: absolute; inset: 0; background: rgba(255,59,59,.35); opacity: 0; pointer-events: none; }
+.brake-flash.on { animation: flash .25s ease both; }
+.ticket-pop { position: absolute; left: 50%; top: 40%; transform: translateX(-50%) rotate(-8deg); font-family: var(--font-display); font-size: 2rem; color: #fff; background: #b3261e; padding: 4px 14px; letter-spacing: .1em; animation: stampIn .4s cubic-bezier(.3,1.6,.5,1) both; }
+@media (max-width: 760px) { .taxi-road { height: 340px; } }
 
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -514,6 +529,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 @keyframes beltMove { from { background-position: 0 0; } to { background-position: 60px 0; } }
 @keyframes plateHit { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -80%) scale(1.2); } 100% { transform: translate(-50%, -50%) scale(0); opacity: 0; } }
 @keyframes plateBreak { 0% { transform: translate(-50%, -50%) rotate(0); } 100% { transform: translate(-50%, 40%) rotate(60deg); opacity: 0; } }
+@keyframes roadMove { from { background-position: 0 0; } to { background-position: 0 44px; } }
 </style>
 </head>
 <body>
@@ -804,6 +820,21 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
       <button class="btn solid" id="btnDishStart">Schicht beginnen</button>
       <button class="btn blue hidden" id="btnDishTap">Abwaschen!</button>
       <button class="btn ghost hidden" id="btnDishDone">Feierabend</button>
+    </div>
+  </div>
+</template>
+<template id="tpl-job-taxi">
+  <div class="panel taxi-panel">
+    <div class="taxi-hud"><span id="taxiTime">60 s</span><span id="taxiScore">Fahrgäste 0 · Strafzettel 0</span></div>
+    <div class="taxi-road" id="taxiRoad">
+      <div class="lane-line l1"></div><div class="lane-line l2"></div>
+      <div class="taxi" id="taxiCar">🚕</div>
+      <div class="brake-flash" id="brakeFlash"></div>
+    </div>
+    <div class="status" id="taxiStatus">← → Spur wechseln · Leertaste bremsen · oder tippen: links / Mitte / rechts</div>
+    <div class="bet-bar">
+      <button class="btn solid" id="btnTaxiStart">Schicht beginnen</button>
+      <button class="btn ghost hidden" id="btnTaxiDone">Feierabend</button>
     </div>
   </div>
 </template>
@@ -3694,6 +3725,108 @@ UI.register('job-spueler', {
     if (Spueler.raf) cancelAnimationFrame(Spueler.raf);
     if (Spueler.running) Jobs.abort();
     Spueler.gen++; Spueler.root = null; Spueler.running = false;
+  },
+});
+</script>
+
+<script id="job-taxi">
+/* ================= JOB: NACHTTAXI – drei Spuren, 60 Sekunden ================= */
+const Taxi = {
+  root: null, gen: 0, running: false, raf: null, spawnTimer: null, timeLeft: 60, laneIdx: 1, passengers: 0, tickets: 0, braking: false, brakeUntil: 0, entities: [], speed: 160, lastT: 0,
+  DURATION: 60,
+  alive(gen) { return !!this.root && this.gen === gen; },
+  start() {
+    if (this.running || !this.root) return;
+    const gen = this.gen;
+    this.running = true; this.timeLeft = this.DURATION; this.laneIdx = 1; this.passengers = 0; this.tickets = 0; this.entities = []; this.speed = 160;
+    qs('#btnTaxiStart', this.root).classList.add('hidden');
+    qs('#taxiRoad', this.root).classList.add('running');
+    this.placeCar();
+    SFX.play('whinny');
+    this.spawnTimer = setInterval(() => this.spawn(), 900);
+    this.lastT = performance.now();
+    const step = (now) => {
+      if (!this.alive(gen) || !this.running) return;
+      const dt = Math.min(0.05, (now - this.lastT) / 1000); this.lastT = now;
+      this.timeLeft -= dt;
+      this.speed = 160 + (this.DURATION - this.timeLeft) * 2; // wird schneller
+      qs('#taxiTime', this.root).textContent = `${Math.max(0, Math.ceil(this.timeLeft))} s`;
+      const road = qs('#taxiRoad', this.root); const H = road.clientHeight; const carY = H - 20 - 44;
+      for (const e of this.entities) {
+        e.y += this.speed * dt; e.el.style.top = `${e.y}px`;
+        if (!e.done && e.y >= carY - 20 && e.y <= carY + 30) {
+          e.done = true;
+          if (e.kind === 'rider') { if (e.lane === this.laneIdx) { this.passengers++; SFX.play('coin'); e.el.textContent = '💨'; this.floatText('+15 €', 'win'); } }
+          else if (this.braking) { SFX.play('click'); } else { this.tickets++; SFX.play('stamp'); this.ticket(); }
+          this.score();
+        }
+        if (e.y > H + 60) { e.el.remove(); e.dead = true; }
+      }
+      this.entities = this.entities.filter((e) => !e.dead);
+      if (this.braking && now > this.brakeUntil) { this.braking = false; qs('#taxiCar', this.root).classList.remove('braking'); }
+      if (this.timeLeft <= 0) { this.finish(); return; }
+      this.raf = requestAnimationFrame(step);
+    };
+    this.raf = requestAnimationFrame(step);
+  },
+  spawn() {
+    if (!this.root || !this.running) return;
+    const road = qs('#taxiRoad', this.root);
+    const isLight = Math.random() < 0.22;
+    if (isLight) {
+      const el = h('div', { class: 'light' }, '🚦 ROT');
+      road.append(el); this.entities.push({ kind: 'light', el, y: -40, done: false });
+    } else {
+      const lane = Math.floor(Math.random() * 3);
+      const el = h('div', { class: 'rider', style: `left:${lane * 33.3}%` }, pick(['🙋', '🙋‍♀️', '🧑‍🦳', '🕺']));
+      road.append(el); this.entities.push({ kind: 'rider', el, y: -60, lane, done: false });
+    }
+  },
+  placeCar() { if (this.root) qs('#taxiCar', this.root).style.left = `${this.laneIdx * 33.3}%`; },
+  lane(dir) { if (!this.running) return; this.laneIdx = Math.max(0, Math.min(2, this.laneIdx + dir)); this.placeCar(); SFX.play('click'); },
+  brake() { if (!this.running || !this.root) return; this.braking = true; this.brakeUntil = performance.now() + 600; qs('#taxiCar', this.root).classList.add('braking'); const f = qs('#brakeFlash', this.root); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); },
+  ticket() { if (!this.root) return; const p = h('div', { class: 'ticket-pop' }, 'STRAFZETTEL −50 €'); qs('#taxiRoad', this.root).append(p); UI.shake(qs('#taxiRoad', this.root)); setTimeout(() => p.remove(), 900); },
+  floatText(txt, cls) { if (!this.root) return; const el = h('div', { class: 'ticket-pop', style: 'background:#2f7a1f' }, txt); qs('#taxiRoad', this.root).append(el); setTimeout(() => el.remove(), 600); },
+  score() { if (this.root) qs('#taxiScore', this.root).textContent = `Fahrgäste ${this.passengers} · Strafzettel ${this.tickets}`; },
+  async finish() {
+    this.running = false;
+    clearInterval(this.spawnTimer);
+    const pay = Math.max(StoryRules.taxiPay(this.passengers, this.tickets), -State.s.balance);
+    if (this.root) {
+      qs('#taxiRoad', this.root).classList.remove('running');
+      this.entities.forEach((e) => e.el.remove()); this.entities = [];
+      qs('#btnTaxiDone', this.root).classList.remove('hidden');
+      qs('#taxiStatus', this.root).innerHTML = pay >= 0 ? `<span class="win">Feierabend · ${this.passengers} Fahrgäste · ${UI.fmt(pay)}</span>` : `<span class="loss">Feierabend · ${this.tickets} Strafzettel · Abzug ${UI.fmt(-pay)}</span>`;
+    }
+    if (pay !== 0) Game.applyDelta(pay, { from: this.root ? qs('#taxiRoad', this.root) : null });
+    if (pay >= 0) SFX.play('cash');
+    await Bus.emit('taxi:result', { passengers: this.passengers, tickets: this.tickets, pay });
+  },
+  onKey(e) {
+    if (!qs('#cutscene').hidden) return;
+    if (e.code === 'ArrowLeft') { e.preventDefault(); Taxi.lane(-1); }
+    else if (e.code === 'ArrowRight') { e.preventDefault(); Taxi.lane(1); }
+    else if (e.code === 'Space' && !e.repeat) { e.preventDefault(); Taxi.brake(); }
+  },
+  onTap(e) {
+    const r = e.currentTarget.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width;
+    if (x < 0.33) Taxi.lane(-1); else if (x > 0.66) Taxi.lane(1); else Taxi.brake();
+  },
+};
+UI.register('job-taxi', {
+  template: 'tpl-job-taxi',
+  mount(root) {
+    Taxi.root = root; Taxi.gen++; Taxi.running = false;
+    qs('#btnTaxiStart', root).addEventListener('click', () => { SFX.play('click'); Taxi.start(); });
+    qs('#btnTaxiDone', root).addEventListener('click', () => { SFX.play('click'); Jobs.finishGame('taxi'); });
+    qs('#taxiRoad', root).addEventListener('pointerdown', Taxi.onTap);
+    document.addEventListener('keydown', Taxi.onKey);
+  },
+  unmount() {
+    document.removeEventListener('keydown', Taxi.onKey);
+    clearInterval(Taxi.spawnTimer); if (Taxi.raf) cancelAnimationFrame(Taxi.raf);
+    if (Taxi.running) Jobs.abort();
+    Taxi.gen++; Taxi.root = null; Taxi.running = false; Taxi.entities = [];
   },
 });
 </script>
