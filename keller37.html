@@ -571,7 +571,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
   <div class="finance">
     <section class="counter bank">
       <h2 class="neon" style="--neon: var(--neon-blue)">Bank</h2>
-      <p class="dim">Herr Krause · 30 % Zinsen pro Spin · Limit 3.000 €</p>
+      <p class="dim" id="bankTerms">Herr Krause · 30 % Zinsen pro Spin · Limit 3.000 €</p>
       <div class="paper iou" id="bankIou"></div>
       <div class="bet-bar">
         <button class="btn blue sm" data-loan="200">+200 €</button>
@@ -878,11 +878,15 @@ const Rules = {
     let l = 0;
     if (s.beerTimer > 0) l += Rules.BEER_LUCK[Math.min(s.beers, 3)];
     if (s.brownieTimer > 0) l += Rules.BROWNIE_LUCK;
+    l += Rules.gear(s).luck;
     return l;
   },
-  bankInterest(debt) { return debt > 0 ? Math.round(debt * Rules.BANK_RATE) : 0; },
+  bankInterest(debt, s) {
+    const rate = s ? Rules.gear(s).bankRate : Rules.BANK_RATE;
+    return debt > 0 ? Math.round(debt * rate) : 0;
+  },
   spinCosts(s) {
-    return { interest: Rules.bankInterest(s.bankDebt), meds: s.kidneySold ? Rules.MEDS_PER_SPIN : 0 };
+    return { interest: Rules.bankInterest(s.bankDebt, s), meds: s.kidneySold ? Rules.MEDS_PER_SPIN : 0 };
   },
   maxBet(s) {
     const c = Rules.spinCosts(s);
@@ -896,11 +900,11 @@ const Rules = {
     return { ok: true, total, interest: c.interest, meds: c.meds };
   },
   mafiaBill(debt) { return debt * 3; },
-  bankLoanAllowed(s, amt) { return s.bankDebt + amt <= Rules.BANK_LIMIT; },
+  bankLoanAllowed(s, amt) { return s.bankDebt + amt <= Rules.gear(s).bankLimit; },
   /* Game Over: beide Kreditquellen zu und nicht mal ein 1-€-Spin (inkl. Zinsen/Meds) mehr bezahlbar */
   isGameOver(s) {
     const c = Rules.spinCosts(s);
-    return s.bankDebt >= Rules.BANK_LIMIT && s.mafiaDebt > 0 && s.balance < 1 + c.interest + c.meds;
+    return s.bankDebt >= Rules.gear(s).bankLimit && s.mafiaDebt > 0 && s.balance < 1 + c.interest + c.meds;
   },
   passiveTick(s) { return (s.hasHouse ? 3 : 0) + (s.hasDealer ? 5 : 0); },
   passivePerMin(s) { return (s.hasHouse ? 30 : 0) + (s.hasDealer ? 50 : 0); },
@@ -999,11 +1003,10 @@ const Rules = {
 
   /* ---- Post ---- */
   POST_HOUSES: [{ n: 12, c: '#ffb432' }, { n: 45, c: '#4cc9f0' }, { n: 88, c: '#3ddc84' }, { n: 99, c: '#ff3b3b' }],
-  postmanTier(streak) {
-    if (streak < 2) return { t: 5, r: 5 };
-    if (streak < 6) return { t: 3, r: 10 };
-    if (streak < 11) return { t: 1.5, r: 25 };
-    return { t: 0.5, r: 50 };
+  postmanTier(streak, s) {
+    const g = s ? Rules.gear(s) : { postTime: 0, postPay: 0 };
+    const t = streak < 2 ? { t: 5, r: 5 } : streak < 6 ? { t: 3, r: 10 } : streak < 11 ? { t: 1.5, r: 25 } : { t: 0.5, r: 50 };
+    return { t: t.t + g.postTime, r: t.r + g.postPay };
   },
 
   /* ---- Anlagen ---- */
@@ -1487,7 +1490,7 @@ const UI = {
     notes.innerHTML = '';
     if (s.isHeartbroken) notes.append(h('span', { class: 'note pink' }, `💔 Liebeskummer · ${s.beers}/2 🍺`));
     else if (s.isMarried) notes.append(h('span', { class: 'note pink' }, `💍 Chantal · noch ${Rules.MARRIAGE_SPINS - s.marriageSpins} Spins`));
-    if (s.bankDebt > 0) notes.append(h('span', { class: 'note danger' }, `🏦 ${this.fmt(s.bankDebt)} · −${this.fmt(Rules.bankInterest(s.bankDebt))}/Spin`));
+    if (s.bankDebt > 0) notes.append(h('span', { class: 'note danger' }, `🏦 ${this.fmt(s.bankDebt)} · −${this.fmt(Rules.bankInterest(s.bankDebt, s))}/Spin`));
     if (s.mafiaDebt > 0) notes.append(h('span', { class: 'note danger' }, `🕶️ ${this.fmt(s.mafiaDebt)} · ${s.mafiaSpins} Spins`));
     if (s.kidneySold) notes.append(h('span', { class: 'note danger' }, '💊 −20 €/Spin'));
     if (s.hasHouse || s.hasDealer) notes.append(h('span', { class: 'note gold' }, `💸 +${Rules.passivePerMin(s)} €/min`));
@@ -1827,6 +1830,7 @@ const Game = {
   async afterSpin() {
     const s = State.s;
     s.stats.spins++;
+    if (State.mode === 'free' && s.mugCooldown > 0) s.mugCooldown--;
     if (s.beerTimer > 0) {
       s.beerTimer--;
       if (s.beerTimer === 0) { s.beers = 0; UI.toast({ icon: '🍺', title: 'Ausgenüchtert', text: 'Die Bierwirkung ist verflogen.' }); }
@@ -1978,7 +1982,7 @@ const Finance = {
     if (!this.root) return;
     const s = State.s;
     qs('#bankIou', this.root).innerHTML = s.bankDebt > 0
-      ? `<h4>Schuldschein</h4><div class="amt">${UI.fmt(s.bankDebt)}</div><div>−${UI.fmt(Rules.bankInterest(s.bankDebt))} Zinsen pro Spin</div>`
+      ? `<h4>Schuldschein</h4><div class="amt">${UI.fmt(s.bankDebt)}</div><div>−${UI.fmt(Rules.bankInterest(s.bankDebt, s))} Zinsen pro Spin</div>`
       : `<h4>Schuldschein</h4><div class="amt">0 €</div><div>Sauberes Konto. Noch.</div>`;
     qs('#mafiaIou', this.root).innerHTML = s.mafiaDebt > 0
       ? `<h4>Vitos Zettel</h4><div class="amt">${UI.fmt(s.mafiaDebt)}</div><div class="deadline">Noch ${s.mafiaSpins} Spin${s.mafiaSpins === 1 ? '' : 's'}</div>`
@@ -1987,6 +1991,8 @@ const Finance = {
     qsa('[data-mloan]', this.root).forEach((b) => { b.disabled = s.mafiaDebt > 0; });
     qs('#repayBank', this.root).disabled = s.bankDebt === 0;
     qs('#repayMafia', this.root).disabled = s.mafiaDebt === 0;
+    const g = Rules.gear(s);
+    qs('#bankTerms', this.root).textContent = `Herr Krause · ${Math.round(g.bankRate * 100)} % Zinsen pro Spin · Limit ${UI.fmt(g.bankLimit)}`;
   },
   async loanBank(amt) {
     const s = State.s;
@@ -2966,7 +2972,7 @@ const Postman = {
     if (!this.alive(gen)) return;
     if (State.mode === 'story' && this.streak >= 15) { this.endShift('Feierabend! 15 Briefe ausgetragen.'); return; }
     const prevTier = this.tier;
-    this.tier = Rules.postmanTier(this.streak);
+    this.tier = Rules.postmanTier(this.streak, State.s);
     if (prevTier && prevTier.t !== this.tier.t) this.stamp();
     this.timeLeft = this.tier.t;
     this.target = pick(Rules.POST_HOUSES);
@@ -5054,6 +5060,32 @@ T.test('mugWallet: 50–150', () => {
 T.test('State.fresh: Gear-Felder', () => {
   const f = State.fresh();
   T.eq([f.car, f.shoes, f.strength, f.mugCooldown, f.stats.muggings, f.stats.fightsWon], [null, null, 0, 0, 0, 0]);
+});
+
+/* ---- Ausrüstung wirkt ---- */
+T.test('luck: Auto-Glück addiert sich', () => {
+  T.eq(Rules.luck(base({ car: 'audiRS4' })), 2);
+  T.eq(Rules.luck(base({ car: 'mercG', beers: 3, beerTimer: 1, brownieTimer: 1 })), 64);
+});
+T.test('bankInterest: Mercedes-Zinssatz', () => {
+  T.eq(Rules.bankInterest(1000), 300);
+  T.eq(Rules.bankInterest(1000, base()), 300);
+  T.eq(Rules.bankInterest(1000, base({ car: 'mercC' })), 270);
+  T.eq(Rules.bankInterest(1000, base({ car: 'mercG' })), 200);
+  T.eq(Rules.spinCosts(base({ bankDebt: 1000, car: 'mercS' })).interest, 240);
+});
+T.test('bankLoanAllowed / isGameOver: Mercedes-Limit', () => {
+  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 3000, car: 'mercC' }), 1000), true);
+  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 3000, car: 'mercC' }), 1001), false);
+  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 3000 }), 1), false);
+  T.eq(Rules.isGameOver(base({ bankDebt: 3000, mafiaDebt: 300, balance: 0 })), true);
+  T.eq(Rules.isGameOver(base({ bankDebt: 3000, mafiaDebt: 300, balance: 0, car: 'mercC' })), false);
+});
+T.test('postmanTier: Schuhe geben Zeit und Lohn', () => {
+  T.eq(Rules.postmanTier(0), { t: 5, r: 5 });
+  T.eq(Rules.postmanTier(0, base({ shoes: 'basic' })), { t: 6, r: 5 });
+  T.eq(Rules.postmanTier(11, base({ shoes: 'carbon' })), { t: 2.5, r: 60 });
+  T.eq(Rules.postmanTier(2, base({ shoes: 'trail' })), { t: 4, r: 15 });
 });
 
 /* --- SELFTEST CASES END --- */
