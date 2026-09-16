@@ -914,6 +914,8 @@ async def scenario_mugging(cdp):
     # screenshotten -- der Brief schoss hier noch auf Panel 1 ("Der kurze Weg...", Screenshot ohne
     # Raeuber und ohne Prozent-Buttons); Step 3 verlangt aber genau die Choice-Buttons mit Prozenten.
     await cdp.advance_cutscene(max_steps=5)
+    n_choices = await cdp.eval("document.querySelectorAll('.cs-choices button').length", await_promise=False)
+    record("mug: Wahl-Panel zeigt genau drei Choice-Buttons", n_choices == 3, "n_choices=%s" % n_choices)
     await cdp.screenshot("mug-intro.png")
     await cdp.advance_cutscene(label_hint="Zahlen")
     await asyncio.sleep(0.6)
@@ -921,12 +923,17 @@ async def scenario_mugging(cdp):
     screen = await cdp.eval("UI.current && UI.current.id", await_promise=False)
     cd = await cdp.eval("State.s.mugCooldown", await_promise=False)
     record("mug: Zahlen kostet 200 und fuehrt zu den Slots", bal == 800 and screen == "slots" and cd == 15, "bal=%s screen=%s cd=%s" % (bal, screen, cd))
-    # Kaempfen mit Staerke 20 (sicherer Sieg, Brieftasche)
+    # Kaempfen mit Staerke 20 (Math.random gestubbt, kein zufaelliger Sieg): Rules.fightChance(20)
+    # ist bei Rules.MUG.CHANCE_CAP = 0.9 gedeckelt, also bleibt selbst bei Staerke 20 immer eine
+    # ~10 %-Chance auf eine Niederlage -- ohne Stub war dieser Check entsprechend flakig (siehe
+    # Fix-Report). Math.random() -> 0 macht Math.random() < fightChance immer wahr (Sieg) und
+    # Rules.mugWallet(rng) liefert damit exakt 50 (unterste Grenze 50-150).
     await setup("cousin")
     await cdp.eval("State.s.strength = 20; State.save(); 0", await_promise=False)
     await cdp.click(".door[data-screen=roulette]")
     await asyncio.sleep(0.6)
     await cdp.advance_cutscene(max_steps=5)
+    await cdp.eval("window.__origRandom = Math.random; Math.random = () => 0; 0", await_promise=False)
     await cdp.eval("__pt.advance('Kämpfen')", await_promise=False)
     await asyncio.sleep(0.5)
     # Screenshot mitten in der Ergebnis-Szene (Gasse-Hintergrund, Portrait, Kampftext) statt erst
@@ -934,11 +941,12 @@ async def scenario_mugging(cdp):
     # Durchklicken, als bereits wieder das Roulette-Blatt zu sehen war (siehe Report).
     await cdp.screenshot("mug-fight.png")
     await cdp.advance_cutscene()
+    await cdp.eval("Math.random = window.__origRandom; 0", await_promise=False)
     await asyncio.sleep(0.4)
     bal = await cdp.eval("State.s.balance", await_promise=False)
     st = await cdp.eval("State.s.strength", await_promise=False)
     won = await cdp.eval("State.s.stats.fightsWon", await_promise=False)
-    record("mug: Kampf mit Staerke 20 gewonnen, Brieftasche 50-150, Staerke 21", 1050 <= (bal or 0) <= 1150 and st == 21 and won == 1, "bal=%s st=%s won=%s" % (bal, st, won))
+    record("mug: Kampf mit Staerke 20 gewonnen, Brieftasche 50-150, Staerke 21", bal == 1050 and st == 21 and won == 1, "bal=%s st=%s won=%s" % (bal, st, won))
     # Wegrennen mit R8 + Carbon (90 %) - Ergebnis ist zufaellig, nur Konsistenz pruefen
     await setup("jugend")
     await cdp.eval("State.s.car = 'audiR8'; State.s.shoes = 'carbon'; State.save(); 0", await_promise=False)
