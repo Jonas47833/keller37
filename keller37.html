@@ -455,7 +455,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 #nightfade.on { opacity: 1; pointer-events: auto; }
 @media (max-width: 760px) { .daybar { top: 0; position: static; padding: 6px 12px; gap: 8px; } .day-count { font-size: 1.3rem; } .day-goal { width: 100%; margin-left: 0; } }
 /* -- Jobbörse -- */
-.pinboard { position: relative; background: radial-gradient(circle at 20% 30%, #a8783f 0, #8a5e2e 40%, #6e4a22 100%); background-image: radial-gradient(rgba(0,0,0,.18) 1px, transparent 1.5px); background-size: 6px 6px; border: 10px solid #4a3520; border-radius: 6px; padding: 22px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px; min-height: 260px; box-shadow: inset 0 0 40px rgba(0,0,0,.5); }
+.pinboard { position: relative; background-image: radial-gradient(rgba(0,0,0,.18) 1px, transparent 1.5px), radial-gradient(circle at 20% 30%, #a8783f 0, #8a5e2e 40%, #6e4a22 100%); background-size: 6px 6px, auto; border: 10px solid #4a3520; border-radius: 6px; padding: 22px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px; min-height: 260px; box-shadow: inset 0 0 40px rgba(0,0,0,.5); }
 .jobnote { position: relative; background: var(--paper); color: var(--paper-ink); padding: 26px 14px 14px; font-family: var(--font-mono); box-shadow: 3px 4px 10px rgba(0,0,0,.6); transform: rotate(-1.5deg); display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: transform .15s; }
 .jobnote:nth-child(even) { transform: rotate(1.2deg); background: #f6e6b3; }
 .jobnote:hover { transform: rotate(0) translateY(-3px); }
@@ -1939,6 +1939,12 @@ UI.register('finance', {
   template: 'tpl-finance',
   mount(root) {
     Finance.root = root;
+    if (State.mode === 'story') {
+      const bank = qs('.counter.bank', root), vito = qs('.counter.vito', root);
+      bank.classList.toggle('hidden', !Story.roomUnlocked('bank'));
+      vito.classList.toggle('hidden', !Story.roomUnlocked('mafia'));
+      if (bank.classList.contains('hidden') || vito.classList.contains('hidden')) qs('.finance', root).style.gridTemplateColumns = '1fr';
+    }
     qsa('[data-loan]', root).forEach((b) => b.addEventListener('click', () => Finance.loanBank(parseInt(b.dataset.loan, 10))));
     qsa('[data-mloan]', root).forEach((b) => b.addEventListener('click', () => Finance.loanMafia(parseInt(b.dataset.mloan, 10))));
     qs('#repayBank', root).addEventListener('click', () => Finance.repayBank());
@@ -3409,6 +3415,7 @@ const Story = {
 
   /* ---- Tagesphasen ---- */
   async morning() {
+    if (this.s.jobToday) return this.evening(); // Job heute schon erledigt (z. B. Reload vor „Feierabend")
     this.s.phase = 'morning'; this.lostDay = false;
     State.save(); this.renderDaybar();
     await this.runEvents('morning');
@@ -3462,13 +3469,14 @@ const Story = {
     const c = await Title.show();
     if (c) await Modes.enter(c);
   },
+  /* Buchhaltung eines erledigten Jobs (kein Phasenwechsel) */
   jobDone(jobId, earned) {
     this.s.jobToday = jobId;
     this.s.jobsDone[jobId] = (this.s.jobsDone[jobId] || 0) + 1;
     this.s.stats.jobs++;
     this.s.stats.earned += Math.max(0, earned);
     State.save();
-    return this.evening();
+    this.renderDaybar();
   },
 
   /* ---- Sperren ---- */
@@ -3612,17 +3620,26 @@ const Jobs = {
     const extra = (Story.story.jobEffects || {})[sceneId];
     if (extra) await Story.applyEffects(extra);
     const earned = State.s.balance - before;
+    Story.jobDone(job.id, earned);
     await Bus.emit('job:done', { id: job.id, earned });
-    await Story.jobDone(job.id, earned);
+    await Story.evening();
     if (Story.lostDay) { Story.lostDay = false; UI.toast({ icon: '🚔', title: 'Tag verloren', text: 'Der Abend fällt aus.', tone: 'loss' }); await Story.night(); }
   },
-  async finishGame(id) {
+  /* Lohn verbuchen und den Tag verbrauchen – ohne Navigation. Wird am Ende eines Mini-Spiels
+     gerufen, damit der Job auch bei Escape/Reload vor „Feierabend" als erledigt gilt. */
+  async collect(id) {
     const start = Story.jobStart;
-    if (!start) return;
+    if (!start || start.id !== id) return false;
     Story.jobStart = null;
     const earned = State.s.balance - start.balance;
+    Story.jobDone(id, earned);
     await Bus.emit('job:done', { id, earned });
-    await Story.jobDone(id, earned);
+    return true;
+  },
+  /* „Feierabend": verbuchen (falls noch nicht geschehen) und in den Abend wechseln */
+  async finishGame(id) {
+    const collected = await this.collect(id);
+    if (collected || Story.s.jobToday === id) await Story.evening();
   },
   abort() { Story.jobStart = null; },
 };
@@ -3754,6 +3771,7 @@ const Spueler = {
     if (pay !== 0) Game.applyDelta(pay, { from: this.root ? qs('#belt', this.root) : null });
     if (pay >= 0) SFX.play('cash');
     await Bus.emit('spueler:result', { hits: this.hits, breaks: this.breaks, pay });
+    await Jobs.collect('spueler');
   },
   onKey(e) { if (e.code === 'Space' && qs('#cutscene').hidden && !e.repeat) { e.preventDefault(); Spueler.tap(); } },
 };
@@ -3849,6 +3867,7 @@ const Taxi = {
     if (pay !== 0) Game.applyDelta(pay, { from: this.root ? qs('#taxiRoad', this.root) : null });
     if (pay >= 0) SFX.play('cash');
     await Bus.emit('taxi:result', { passengers: this.passengers, tickets: this.tickets, pay });
+    await Jobs.collect('taxi');
   },
   onKey(e) {
     if (!qs('#cutscene').hidden) return;

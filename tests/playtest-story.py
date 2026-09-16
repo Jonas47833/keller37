@@ -6,7 +6,8 @@ Startet einen echten Headless-Chrome (--headless=new --remote-debugging-port=933
 fährt die in Task-9-Brief/Spec §13 beschriebene Sequenz (Titel -> Story -> Intro ->
 Pinnwand -> Spüler -> Abend-Hub mit Sperren -> Vitos Tisch -> Schlafen -> Tag 2 ->
 Post-Schicht -> Nacht-Ereignisse -> Kapitel -> Taxi -> Kontrolle/Duell -> alle vier
-Enden -> Titel -> freies Spiel) und sammelt dabei Konsolenfehler/Exceptions.
+Enden -> Titel -> freies Spiel, dazu Ein-Job-pro-Tag ohne Feierabend-Klick) und sammelt dabei
+Konsolenfehler/Exceptions.
 
 Wo die Spec ausdrücklich "mit gesetzten Variablen" (§13) vorschreibt, werden
 Story-Felder direkt über Runtime.evaluate gesetzt und dann echte Engine-Methoden
@@ -678,6 +679,44 @@ async def scenario_spueler_taxi_loss(cdp):
            "res=%s before=%s after=%s" % (res, balance_before, balance_after))
 
 
+async def scenario_job_consumed_before_feierabend(cdp):
+    """Ein Job pro Tag auch ohne "Feierabend"-Klick: Spueler-Schicht beenden, dann Escape (statt
+    "Feierabend") -> Pinnwand zeigt "Heute erledigt", Spueler nicht erneut klickbar; Reload danach
+    -> Fortsetzen landet im Abend mit gesetztem jobToday und ohne doppelten Lohn."""
+    await cdp.navigate(URL_BASE + "?fresh&story=schuld&day=1&job=spueler")
+    await asyncio.sleep(1.0)
+    await cdp.inject_helpers()
+    await cdp.click("#btnDishStart")
+    await asyncio.sleep(0.3)
+    await cdp.eval("__pt.autoplaySpueler('win')", timeout=20)
+    await asyncio.sleep(0.3)
+    job_today = await cdp.eval("State.s.story.jobToday", await_promise=False)
+    phase = await cdp.eval("State.s.story.phase", await_promise=False)
+    record("ein-job-pro-tag: Schichtende verbraucht den Tag sofort (vor Feierabend)", job_today == "spueler" and phase == "morning",
+           "jobToday=%s phase=%s" % (job_today, phase))
+    for typ in ("keyDown", "keyUp"):
+        await cdp.send("Input.dispatchKeyEvent", {"type": typ, "key": "Escape", "code": "Escape", "windowsVirtualKeyCode": 27})
+    await cdp.wait_for("UI.current && UI.current.id === 'jobs' && !UI.busy", timeout=3.0)
+    screen = await cdp.eval("UI.current && UI.current.id", await_promise=False)
+    stamps = await cdp.eval("[...document.querySelectorAll('#pinboard .jobnote.done .done-stamp')].map((e) => e.textContent)", await_promise=False)
+    record("ein-job-pro-tag: Escape morgens -> Pinnwand mit 'Heute erledigt'", screen == "jobs" and "Heute erledigt" in (stamps or []),
+           "screen=%s stamps=%s" % (screen, stamps))
+    await cdp.eval("[...document.querySelectorAll('#pinboard .jobnote')].forEach((n) => n.click())", await_promise=False)
+    await asyncio.sleep(0.5)
+    screen = await cdp.eval("UI.current && UI.current.id", await_promise=False)
+    record("ein-job-pro-tag: Spueler nicht erneut klickbar", screen == "jobs", "screen=%s" % screen)
+    balance = await cdp.eval("State.s.balance", await_promise=False)
+    await cdp.navigate(URL_BASE)
+    await asyncio.sleep(1.0)
+    await cdp.inject_helpers()
+    await cdp.click(".title-door[data-choice='story']")
+    await cdp.wait_for("State.mode === 'story' && UI.current && UI.current.id === 'hub' && !UI.busy", timeout=3.0)
+    st = await cdp.eval("({phase: State.s.story.phase, jobToday: State.s.story.jobToday, screen: UI.current && UI.current.id, balance: State.s.balance, jobs: State.s.story.stats.jobs})", await_promise=False) or {}
+    record("ein-job-pro-tag: Reload nach Schichtende -> Abend, jobToday gesetzt, Lohn nur einmal",
+           st.get("phase") == "evening" and st.get("jobToday") == "spueler" and st.get("screen") == "hub" and st.get("balance") == balance and st.get("jobs") == 1,
+           "%s (balance vorher=%s)" % (st, balance))
+
+
 async def scenario_mode_switch_no_dataloss(cdp):
     """Titel <-> Modi ohne Datenverlust (frei -> Titel -> Story -> Titel -> frei)."""
     await cdp.navigate(URL_BASE + "?fresh&mode=free")
@@ -847,6 +886,7 @@ async def main():
         await scenario_job_param(cdp)
         await scenario_all_job_scenes(cdp)
         await scenario_spueler_taxi_loss(cdp)
+        await scenario_job_consumed_before_feierabend(cdp)
         await scenario_mode_switch_no_dataloss(cdp)
         await scenario_reload_mid_day(cdp)
         await scenario_mobile(cdp)
