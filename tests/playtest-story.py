@@ -850,6 +850,166 @@ async def scenario_all_scenes(cdp):
            "gespielt=%d/%d fehler=%s" % (len(played), len(scene_ids), new_errors))
 
 
+async def scenario_stadt_shop(cdp):
+    """Stadt: Kauf abgelehnt ohne Geld, Kauf, Upgrade, Markenwechsel mit Bestaetigung, Abbruch."""
+    await cdp.navigate(URL_BASE + "?fresh&screen=stadt")
+    await asyncio.sleep(1.0)
+    await cdp.inject_helpers()
+    n_buttons = await cdp.eval("document.querySelectorAll('#shopAudi .btn').length", await_promise=False)
+    record("stadt: ohne Geld kein Kaufen-Button", n_buttons == 0, "buttons=%s" % n_buttons)
+    await cdp.screenshot("stadt-arm.png")
+    await cdp.eval("State.s.balance = 20000; State.save(); UI.setBalance(20000, {animate:false}); Stadt.render(); 0", await_promise=False)
+    await asyncio.sleep(0.2)
+    await cdp.eval("Stadt.buyCar('audiA3'); 0", await_promise=False)
+    await asyncio.sleep(0.5)
+    await cdp.advance_cutscene()
+    await asyncio.sleep(0.4)
+    car = await cdp.eval("State.s.car", await_promise=False)
+    bal = await cdp.eval("State.s.balance", await_promise=False)
+    record("stadt: A3 gekauft", car == "audiA3" and bal == 18500, "car=%s bal=%s" % (car, bal))
+    label = await cdp.eval("[...document.querySelectorAll('#shopAudi .gear-card')][1].querySelector('.btn').textContent", await_promise=False)
+    record("stadt: RS 4 zeigt Upgrade-Preis mit Inzahlungnahme", label is not None and "7.250" in label, "label=%s" % label)
+    await cdp.screenshot("stadt-a3.png")
+    # Markenwechsel mit Bestaetigung: erst abbrechen, dann zustimmen
+    await cdp.eval("Stadt.buyCar('mercC'); 0", await_promise=False)
+    await asyncio.sleep(0.5)
+    await cdp.advance_cutscene(label_hint="Doch nicht")
+    await asyncio.sleep(0.3)
+    car = await cdp.eval("State.s.car", await_promise=False)
+    record("stadt: Abbruch laesst Auto unveraendert", car == "audiA3", "car=%s" % car)
+    await cdp.eval("Stadt.buyCar('mercC'); 0", await_promise=False)
+    await asyncio.sleep(0.5)
+    await cdp.advance_cutscene(label_hint="Ja, tauschen")
+    await asyncio.sleep(0.4)
+    car = await cdp.eval("State.s.car", await_promise=False)
+    bal = await cdp.eval("State.s.balance", await_promise=False)
+    record("stadt: Markenwechsel A3 -> C-Klasse kostet 1.250", car == "mercC" and bal == 18500 - 1250, "car=%s bal=%s" % (car, bal))
+    await cdp.eval("Stadt.buyShoes('trail'); 0", await_promise=False)
+    await asyncio.sleep(0.5)
+    await cdp.advance_cutscene()
+    await asyncio.sleep(0.3)
+    shoes = await cdp.eval("State.s.shoes", await_promise=False)
+    record("stadt: Trail-Runner gekauft", shoes == "trail", "shoes=%s" % shoes)
+    line = await cdp.eval("document.querySelector('#gearLine') && document.querySelector('#gearLine').textContent", await_promise=False)
+    record("stadt: Seitenleiste zeigt Besitz", line is not None and "Mercedes C-Klasse" in line and "Trail-Runner" in line and "💪 0" in line, "line=%s" % line)
+    terms = await cdp.eval("UI.show('finance').then(()=>document.querySelector('#bankTerms').textContent)")
+    record("stadt: Bank zeigt Mercedes-Konditionen", terms is not None and "27 %" in terms and "4.000" in terms, "terms=%s" % terms)
+
+
+async def scenario_mugging(cdp):
+    """Ueberfall im freien Spiel: alle drei Ausgaenge per ?mug."""
+    async def setup(mug):
+        await cdp.navigate(URL_BASE + "?fresh&screen=hub&mug=" + mug)
+        await asyncio.sleep(1.0)
+        await cdp.inject_helpers()
+        await cdp.eval("State.s.balance = 1000; State.s.stats.spins = 20; State.save(); UI.setBalance(1000, {animate:false}); 0", await_promise=False)
+    # Zahlen
+    await setup("junkie")
+    await cdp.click(".door[data-screen=slots]")
+    await asyncio.sleep(0.6)
+    active = await cdp.eval("__pt.cutsceneActive()", await_promise=False)
+    record("mug: Szene erscheint beim Tuerwechsel", active is True, "active=%s" % active)
+    # Bis zum Wahl-Panel vorklicken (2 Klicks/Panel: Tipp-Text fertigstellen, dann weiter; das
+    # dritte Panel braucht nur den ersten Klick, um die Choice-Buttons zu rendern) statt gleich zu
+    # screenshotten -- der Brief schoss hier noch auf Panel 1 ("Der kurze Weg...", Screenshot ohne
+    # Raeuber und ohne Prozent-Buttons); Step 3 verlangt aber genau die Choice-Buttons mit Prozenten.
+    await cdp.advance_cutscene(max_steps=5)
+    await cdp.screenshot("mug-intro.png")
+    await cdp.advance_cutscene(label_hint="Zahlen")
+    await asyncio.sleep(0.6)
+    bal = await cdp.eval("State.s.balance", await_promise=False)
+    screen = await cdp.eval("UI.current && UI.current.id", await_promise=False)
+    cd = await cdp.eval("State.s.mugCooldown", await_promise=False)
+    record("mug: Zahlen kostet 200 und fuehrt zu den Slots", bal == 800 and screen == "slots" and cd == 15, "bal=%s screen=%s cd=%s" % (bal, screen, cd))
+    # Kaempfen mit Staerke 20 (sicherer Sieg, Brieftasche)
+    await setup("cousin")
+    await cdp.eval("State.s.strength = 20; State.save(); 0", await_promise=False)
+    await cdp.click(".door[data-screen=roulette]")
+    await asyncio.sleep(0.6)
+    await cdp.advance_cutscene(max_steps=5)
+    await cdp.eval("__pt.advance('Kämpfen')", await_promise=False)
+    await asyncio.sleep(0.5)
+    # Screenshot mitten in der Ergebnis-Szene (Gasse-Hintergrund, Portrait, Kampftext) statt erst
+    # nach deren vollstaendiger Aufloesung -- die Brief-Version schoss erst nach dem kompletten
+    # Durchklicken, als bereits wieder das Roulette-Blatt zu sehen war (siehe Report).
+    await cdp.screenshot("mug-fight.png")
+    await cdp.advance_cutscene()
+    await asyncio.sleep(0.4)
+    bal = await cdp.eval("State.s.balance", await_promise=False)
+    st = await cdp.eval("State.s.strength", await_promise=False)
+    won = await cdp.eval("State.s.stats.fightsWon", await_promise=False)
+    record("mug: Kampf mit Staerke 20 gewonnen, Brieftasche 50-150, Staerke 21", 1050 <= (bal or 0) <= 1150 and st == 21 and won == 1, "bal=%s st=%s won=%s" % (bal, st, won))
+    # Wegrennen mit R8 + Carbon (90 %) - Ergebnis ist zufaellig, nur Konsistenz pruefen
+    await setup("jugend")
+    await cdp.eval("State.s.car = 'audiR8'; State.s.shoes = 'carbon'; State.save(); 0", await_promise=False)
+    await cdp.click(".door[data-screen=blackjack]")
+    await asyncio.sleep(0.6)
+    await cdp.advance_cutscene(label_hint="Wegrennen")
+    await asyncio.sleep(0.6)
+    bal = await cdp.eval("State.s.balance", await_promise=False)
+    st = await cdp.eval("State.s.strength", await_promise=False)
+    record("mug: Flucht laesst Staerke unveraendert, Kontostand 1000 (gelungen) oder 700 (erwischt)", bal in (1000, 700) and st == 0, "bal=%s st=%s" % (bal, st))
+    # Kein Ueberfall bei Cooldown
+    await cdp.eval("Mugging.force = true; State.s.mugCooldown = 5; 0", await_promise=False)
+    await cdp.eval("UI.show('hub'); 0", await_promise=False)
+    await asyncio.sleep(0.6)
+    await cdp.click(".door[data-screen=slots]")
+    await asyncio.sleep(0.6)
+    active = await cdp.eval("__pt.cutsceneActive()", await_promise=False)
+    record("mug: ?mug erzwingt auch im Cooldown (Dev), Szene laeuft", active is True, "active=%s" % active)
+    await cdp.advance_cutscene(label_hint="Zahlen")
+
+
+async def scenario_story_stadt(cdp):
+    """Story: Tag 4 schaltet die Stadt frei, Abend-Ueberfall, Eintreiber ab Staerke 4."""
+    await cdp.navigate(URL_BASE + "?fresh&story=schuld&day=4")
+    await asyncio.sleep(1.2)
+    await cdp.inject_helpers()
+    await cdp.advance_cutscene()
+    await asyncio.sleep(0.4)
+    rooms = await cdp.eval("JSON.stringify(State.s.story.unlocked.rooms)", await_promise=False)
+    record("story: Tag 4 schaltet stadt frei", rooms is not None and "stadt" in rooms, "rooms=%s" % rooms)
+    has_btn = await cdp.eval("!!document.querySelector('#side [data-action=stadt]')", await_promise=False)
+    record("story: Seitenleiste zeigt Stadt-Knopf", has_btn is True, "has=%s" % has_btn)
+    await cdp.screenshot("stadt-story-tag4.png")
+    # Abend-Ueberfall erzwingen
+    await cdp.eval("Mugging.force = 'cousin'; State.s.balance = 500; State.save(); 0", await_promise=False)
+    await cdp.eval("Jobs.take('spueler'); 0", await_promise=False)
+    await asyncio.sleep(0.8)
+    await cdp.eval("Spueler.finish && Spueler.finish(); 0", await_promise=False)
+    await asyncio.sleep(0.8)
+    await cdp.eval("Story.evening(); 0", await_promise=False)
+    await asyncio.sleep(0.8)
+    active = await cdp.eval("__pt.cutsceneActive()", await_promise=False)
+    record("story: Ueberfall am Abend", active is True, "active=%s" % active)
+    await cdp.advance_cutscene(label_hint="Zahlen")
+    await asyncio.sleep(0.5)
+    cd = await cdp.eval("State.s.mugCooldown", await_promise=False)
+    phase = await cdp.eval("State.s.story.phase", await_promise=False)
+    record("story: Cooldown 3 Tage, Abend erreicht", cd == 3 and phase == "evening", "cd=%s phase=%s" % (cd, phase))
+    # Eintreiber
+    await cdp.navigate(URL_BASE + "?fresh&story=schuld&day=13")
+    await asyncio.sleep(1.2)
+    await cdp.inject_helpers()
+    await cdp.advance_cutscene()
+    # Race: der Boot-Kettenaufruf Story.enter() -> applyChapter() -> morning() zeigt 'jobs' selbst
+    # noch an, waehrend advance_cutscene() bereits zurueckkehrt (Cutscene.active wird synchron
+    # false, bevor der then()-Rest von morning() den Screen tatsaechlich neu rendert). Ohne diese
+    # Wartezeile landet der direkt folgende manuelle UI.show('jobs')-Aufruf noch in UI.busy und
+    # wird stillschweigend zum No-Op -- das zuvor gepushte 'eintreiber' fehlt dann auf der
+    # Pinnwand, obwohl State.s.story.unlocked.jobs es bereits enthaelt (siehe Selbst-Review).
+    await cdp.wait_for("UI.current && UI.current.id === 'jobs' && !UI.busy", timeout=3.0)
+    await cdp.eval("Story.s.unlocked.jobs.push('eintreiber'); State.s.strength = 3; State.save(); UI.show('jobs'); 0", await_promise=False)
+    await asyncio.sleep(0.6)
+    locked = await cdp.eval("(()=>{const c=[...document.querySelectorAll('#pinboard .jobnote')].find(e=>e.textContent.includes('Eintreiber')); return c ? c.textContent.includes('Stärke 4') : 'missing'})()", await_promise=False)
+    record("story: Eintreiber bei Staerke 3 gesperrt", locked is True, "locked=%s" % locked)
+    await cdp.eval("State.s.strength = 4; State.save(); UI.show('jobs'); 0", await_promise=False)
+    await asyncio.sleep(0.6)
+    locked = await cdp.eval("(()=>{const c=[...document.querySelectorAll('#pinboard .jobnote')].find(e=>e.textContent.includes('Eintreiber')); return c ? c.textContent.includes('Stärke 4') : 'missing'})()", await_promise=False)
+    record("story: Eintreiber bei Staerke 4 offen", locked is False, "locked=%s" % locked)
+    await cdp.screenshot("stadt-story-eintreiber.png")
+
+
 DIFF_THRESHOLD_PCT = 2.0
 
 
@@ -894,6 +1054,9 @@ async def main():
         await scenario_endings(cdp)
         await scenario_all_scenes(cdp)
         await scenario_free_sandbox_unchanged(cdp)
+        await scenario_stadt_shop(cdp)
+        await scenario_mugging(cdp)
+        await scenario_story_stadt(cdp)
     finally:
         n_errors = len(cdp.console_errors)
         for e in cdp.console_errors:
