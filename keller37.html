@@ -246,10 +246,11 @@ body.cs-open .toast { max-width: 300px; }
 .payline { position: absolute; left: 6px; right: 6px; top: 50%; height: 2px; background: rgba(255,59,59,.5); pointer-events: none; }
 .lever { position: absolute; right: 14px; top: 60px; width: 40px; height: 140px; cursor: pointer; }
 .lever::after { content: ""; position: absolute; left: 12px; bottom: 0; width: 16px; height: 30px; background: #333; border-radius: 4px 4px 0 0; }
-.lever-arm { position: absolute; left: 16px; top: 20px; width: 8px; height: 90px; background: linear-gradient(90deg, #888, #ddd, #777); border-radius: 4px; transform-origin: 50% 100%; transition: transform .25s cubic-bezier(.3,1.4,.5,1); }
-.lever-knob { position: absolute; left: 4px; top: 4px; width: 32px; height: 32px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff7b7b, #a00); box-shadow: 0 3px 6px #000; transition: transform .25s cubic-bezier(.3,1.4,.5,1); }
-.lever.pulled .lever-arm { transform: rotateX(140deg); }
-.lever.pulled .lever-knob { transform: translateY(80px) scale(.8); }
+.lever-arm { position: absolute; left: 16px; top: 20px; width: 8px; height: 90px; background: linear-gradient(90deg, #888, #ddd, #777); border-radius: 4px; transform-origin: 50% 100%; transition: transform .22s cubic-bezier(.4,0,.6,1); }
+.lever-knob { position: absolute; left: 4px; top: 4px; width: 32px; height: 32px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff7b7b, #a00); box-shadow: 0 3px 6px #000; transition: transform .22s cubic-bezier(.4,0,.6,1); }
+.lever:not(.pulled) .lever-arm, .lever:not(.pulled) .lever-knob { transition: transform .45s cubic-bezier(.3,1.5,.5,1); }
+.lever.pulled .lever-arm { transform: scaleY(.22); }
+.lever.pulled .lever-knob { transform: translateY(70px) scale(.92); }
 .paytable { min-width: 190px; }
 .jackpot { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font-size: 3.5rem; z-index: 5; animation: jackpotPop .5s cubic-bezier(.3,1.5,.5,1) both; pointer-events: none; }
 .coin-p { position: absolute; font-size: 1.6rem; pointer-events: none; animation: coinFall 1.5s ease-in both; z-index: 4; }
