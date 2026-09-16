@@ -10,23 +10,52 @@ Ein satirisches Casino-Lebenssimulations-Spiel in einer einzigen HTML-Datei. Fü
 - **Leben:** Villa kaufen, auf Tinder Chantal-Monique heiraten, geschieden werden, Therapie zahlen, einen Dealer anheuern. Bier und Brownies an der Bar. Eine Niere fürs Hinterzimmer.
 - **Kredite:** Bank (30 % Zinsen pro Spin, Limit 3.000 €) oder Don Vito (5 Spins Frist, danach der Doc).
 - **Cutscenes:** 19 Visual-Novel-Szenen mit elf Charakteren, Typewriter-Text, Entscheidungen und Effekten.
-- **Extras:** synthetisierter Sound (Web Audio, keine Dateien), Spielstand in `localStorage`, Game Over mit Statistik, zwölf Trophäen, Mobile-Layout, Reduced-Motion.
+- **Extras:** synthetisierter Sound (Web Audio, keine Dateien), Spielstand in `localStorage`, Game Over mit Statistik, Trophäen, Mobile-Layout, Reduced-Motion.
+
+## Story-Modus
+
+Neben dem freien Spiel gibt es einen zweiten Modus: eine Geschichte über rund 30 Spieltage
+mit eigenen Arbeitsstellen, Kapiteln und mehreren Enden. Der Titelscreen (Neon „Keller 37",
+zwei Türen) fragt beim Start, welcher Modus es sein soll; unten links lassen sich Ton und
+die Trophäenwand öffnen, ohne einen Modus zu betreten.
+
+- **Titelscreen:** Tür „Story" startet oder setzt eine laufende Story fort (Beschriftung
+  zeigt Titel und Tag); Tür „Freies Spiel" lädt den bekannten Sandbox-Spielstand. Ein Wechsel
+  zwischen den Modi – über die Tagesleiste („🚪 Titel") im Story-Modus bzw. das Wallet-Icon
+  🚪 im freien Spiel – verliert in keiner Richtung Spielstand.
+- **Tagesschleife:** Jeder Tag hat einen Morgen (Jobbörse an der Pinnwand: ein Job pro Tag,
+  wahlweise „Kein Job heute") und einen Abend (der bekannte Hub, in dem Türen und Räume, die
+  die Story noch nicht freigegeben hat, mit Brettern vernagelt sind). „Schlafen" löst die
+  Nacht aus – Ereignisse, Kapitelwechsel, Freischaltungen, danach der nächste Tag.
+- **Jobs:** zwei Mini-Spiele (🍽️ Spüler – Teller im Timing-Fenster treffen; 🚕 Nachttaxi –
+  Fahrgäste einsammeln und bei Rot bremsen) und mehrere Schicht-Karten-Jobs (🚪 Türsteher,
+  🃏 Croupier, 💊 Kurier, 👔 Praktikant, 🩺 Arzthelfer), die jeweils kurze Szenen mit echten
+  Entscheidungen zeigen und Geld sowie Story-Variablen verändern.
+- **Enden:** Story 1 „Die Schuld" hat vier unterschiedliche Enden, je nachdem wie die 30 Tage
+  verlaufen – mehr wird hier nicht verraten. Erreichte Enden werden pro Story gemerkt; die
+  Trophäenwand bekommt einen eigenen Abschnitt für Story-Erfolge.
 
 ## Dev-Parameter
 
 | URL-Zusatz | Wirkung |
 |---|---|
-| `?fresh` | Spielstand löschen und neu starten |
-| `?screen=slots` | direkt einen Screen öffnen (`roulette`, `slots`, `horses`, `russian`, `blackjack`, `postman`, `finance`, `invest`, `life`) |
+| `?fresh` | beide Spielstände (frei und Story) löschen und neu starten |
+| `?screen=slots` | direkt einen Screen öffnen (`roulette`, `slots`, `horses`, `russian`, `blackjack`, `postman`, `finance`, `invest`, `life`, im Story-Modus zusätzlich `jobs`, `vito`, `job-spueler`, `job-taxi`) |
 | `?scene=divorce` | eine Szene abspielen |
 | `?selftest` | Regel-Selbsttest im Browser (Ergebnis als Toast und in der Konsole) |
+| `?mode=story` \| `?mode=free` | Titelscreen überspringen, direkt in den Modus |
+| `?story=schuld` | Story erzwingen (impliziert `mode=story`) |
+| `?day=12` | Story-Tag setzen (nur zusammen mit `?fresh`) |
+| `?job=taxi` | Jobbörse überspringen, Job direkt starten |
+| `?ending=sturz` | ein Story-Ende direkt abspielen |
 
 ## Tests
 
 ```sh
-node tests/run-selftest.mjs      # 57 Regel-Tests unter Node
-tests/dom-selftest.sh            # derselbe Selbsttest headless in Chrome (macOS)
+node tests/run-selftest.mjs         # Node-Selbsttest (freies Spiel + Story-Engine)
+tests/dom-selftest.sh               # derselbe Selbsttest headless in Chrome (macOS)
 tests/screenshot.sh out.png "?screen=roulette"
+python3 tests/playtest-story.py     # CDP-Playtest Story-Modus (Chrome, Port 9335)
 ```
 
 `Gamble Game.html` ist das Original, aus dem die Mechanik 1:1 übernommen wurde. Spec, Plan, Abnahme-Checkliste und Screenshots liegen unter `docs/superpowers/`.
