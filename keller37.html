@@ -416,7 +416,7 @@ body.cs-open .toast { max-width: 300px; }
 }
 /* -- Reduced Motion -- */
 @media (prefers-reduced-motion: reduce) {
-  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh { animation: none !important; }
+  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title { animation: none !important; }
   .strip.spinning { animation: none !important; filter: none; }
   .stage, .stage.leaving, .stage.entering { transition: none; animation: none; }
   #wheelCanvas { transition-duration: .3s; }
@@ -3005,6 +3005,7 @@ const StoryRules = {
 const Title = {
   root: null,
   show() {
+    if (!qs('#title').hidden) return Promise.resolve(null);
     return new Promise((resolve) => {
       const root = qs('#title');
       root.innerHTML = '';
@@ -3036,6 +3037,7 @@ const Title = {
     if (Cutscene.active || Game.inFlight > 0) { UI.toast({ icon: '⏳', title: 'Erst die Runde beenden' }); return; }
     State.save();
     const choice = await Title.show();
+    if (!choice) return;
     await Modes.enter(choice);
   },
 };
@@ -3046,11 +3048,11 @@ const Modes = {
       State.setMode('free');
       document.body.classList.remove('mode-story'); document.body.classList.add('mode-free');
       UI.mountShell();
+      const showLoaded = Modes.freeLoaded; Modes.freeLoaded = false;
       await UI.show('hub');
       if (Rules.isGameOver(State.s)) await Bus.emit('gameover', {});
       else if (!State.s.flags.intro) { await Cutscene.play('intro'); State.s.flags.intro = true; State.save(); }
-      if (Modes.freeLoaded && !Rules.isGameOver(State.s)) UI.toast({ icon: '💾', title: 'Spielstand geladen', text: `Willkommen zurück. ${UI.fmt(State.s.balance)} in der Tasche.` });
-      Modes.freeLoaded = false;
+      if (showLoaded && !Rules.isGameOver(State.s)) UI.toast({ icon: '💾', title: 'Spielstand geladen', text: `Willkommen zurück. ${UI.fmt(State.s.balance)} in der Tasche.` });
       return;
     }
     if (typeof Story !== 'undefined') await Story.enter(choice);
@@ -3612,6 +3614,7 @@ T.test('State.init: meta.storyRuns wird aufgefüllt, Story-Save fehlt → hasSto
     State.save();
   }
   if (loaded && !gameOverAtBoot && !params.has('screen')) UI.toast({ icon: '💾', title: 'Spielstand geladen', text: `Willkommen zurück. ${UI.fmt(State.s.balance)} in der Tasche.` });
+  Modes.freeLoaded = false;
 })();
 </script>
 </body>
