@@ -1025,7 +1025,7 @@ Vor `/* --- SELFTEST CASES END --- */`:
 
 ```js
 T.test('Story Schuld: stadtOffen an Tag 4, Eintreiber mit Türsteher freigeschaltet', () => {
-  const st = Stories.all.schuld;
+  const st = STORY_SCHULD; // Konstante aus Block story-schuld (in Node geladen; Stories.define ist dort nicht verfügbar)
   const ev = st.events.find((e) => e.id === 'stadtOffen');
   T.ok(ev, 'Event stadtOffen');
   T.eq(ev.at, 'morning'); T.eq(ev.scene, 'schuld.stadt');
@@ -1043,7 +1043,6 @@ T.test('Story Schuld: stadtOffen an Tag 4, Eintreiber mit Türsteher freigeschal
 });
 ```
 
-Falls `Stories.all` in der Node-Umgebung anders heißt, den Zugriff so wählen, wie der bestehende Test `Stories.validateAll`/`Stories.all` ihn nutzt (siehe Block `story-rules`, Zeile mit `for (const st of Object.values(this.all))`).
 
 - [ ] **Step 2: Test laufen lassen – fehlschlagen**
 
@@ -1258,16 +1257,16 @@ async def scenario_story_stadt(cdp):
     await cdp.advance_cutscene()
     await cdp.eval("Story.s.unlocked.jobs.push('eintreiber'); State.s.strength = 3; State.save(); UI.show('jobs'); 0", await_promise=False)
     await asyncio.sleep(0.6)
-    locked = await cdp.eval("(()=>{const c=[...document.querySelectorAll('#pinboard .job-card')].find(e=>e.textContent.includes('Eintreiber')); return c ? c.textContent.includes('Stärke 4') : 'missing'})()", await_promise=False)
+    locked = await cdp.eval("(()=>{const c=[...document.querySelectorAll('#pinboard .jobnote')].find(e=>e.textContent.includes('Eintreiber')); return c ? c.textContent.includes('Stärke 4') : 'missing'})()", await_promise=False)
     record("story: Eintreiber bei Staerke 3 gesperrt", locked is True, "locked=%s" % locked)
     await cdp.eval("State.s.strength = 4; State.save(); UI.show('jobs'); 0", await_promise=False)
     await asyncio.sleep(0.6)
-    locked = await cdp.eval("(()=>{const c=[...document.querySelectorAll('#pinboard .job-card')].find(e=>e.textContent.includes('Eintreiber')); return c ? c.textContent.includes('Stärke 4') : 'missing'})()", await_promise=False)
+    locked = await cdp.eval("(()=>{const c=[...document.querySelectorAll('#pinboard .jobnote')].find(e=>e.textContent.includes('Eintreiber')); return c ? c.textContent.includes('Stärke 4') : 'missing'})()", await_promise=False)
     record("story: Eintreiber bei Staerke 4 offen", locked is False, "locked=%s" % locked)
     await cdp.screenshot("stadt-story-eintreiber.png")
 ```
 
-Die Selektoren für Pinnwand-Karten (`#pinboard .job-card`) und die Spüler-Abschlussfunktion (`Spueler.finish`) sind gegen den Code zu prüfen (`grep -n "class: 'job-card'\|async finish()" keller37.html`) und ggf. anzupassen; die Prüfung „gesperrt" muss auf den tatsächlich gerenderten Sperrtext (`requireText`) treffen.
+Pinnwand-Karten sind `.jobnote` (gesperrt: Klasse `locked`, Sperrtext in `.why` = `requireText`); `Spueler.finish()` beendet das Spüler-Minispiel und bucht den Lohn.
 
 In `main()` nach `await scenario_free_sandbox_unchanged(cdp)`:
 
