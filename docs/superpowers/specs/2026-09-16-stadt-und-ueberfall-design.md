@@ -66,7 +66,7 @@ Pure Funktion, liefert immer alle Schlüssel:
 
 Kaufregeln (pure):
 
-- `Rules.carUpgradeCost(s, id)` = Preis − `TRADE_IN` × Preis des aktuellen Autos (0, wenn keins). Gilt innerhalb der Linie **und** beim Markenwechsel. Ein Rückschritt (niedrigere Stufe derselben Marke) ist nicht kaufbar.
+- `Rules.carUpgradeCost(s, id)` = max(0, Preis − `TRADE_IN` × Preis des aktuellen Autos) (0 Anrechnung, wenn keins). Gilt innerhalb der Linie **und** beim Markenwechsel; es gibt nie Geld zurück. Ein Rückschritt (niedrigere Stufe derselben Marke) ist nicht kaufbar.
 - `Rules.canBuyCar(s, id)` → `{ok, reason: 'owned' | 'downgrade' | 'funds', cost}`.
 - `Rules.canBuyShoes(s, id)` → `{ok, reason: 'owned' | 'downgrade' | 'funds'}`; Schuhe kosten immer den vollen Preis, nur Aufstieg.
 
@@ -159,7 +159,7 @@ Räubertyp zufällig aus drei (`junkie`, `jugend`, `cousin` – „Igors Cousin"
    - **💸 Zahlen** – `−loot`. Keine Stärke.
 3. Ergebnis-Panel mit `fx` (`shake` bei Kampf, `swipe` bei Flucht, `stats` nicht nötig), Geld animiert über `Game.applyDelta`.
 
-Immer: `stats.muggings += 1`, Cooldown setzen, `State.save()`. Danach der ursprüngliche Raumwechsel bzw. der Abend. Wird das Fenster während der Szene neu geladen, ist nichts passiert (Geld wird erst nach der Wahl gebucht; die Szene hat keinen Skip-Knopf).
+Immer: `stats.muggings += 1`, Cooldown setzen, `State.save()`. Danach der ursprüngliche Raumwechsel bzw. der Abend. Wird das Fenster während der Szene neu geladen, ist nichts passiert (Geld wird erst nach der Wahl gebucht). Der Skip-Knopf springt nur zum Wahl-Panel, das immer das letzte Panel der ersten Szene ist.
 
 Dev-Parameter `?mug=1` erzwingt beim nächsten Auslöser einen Überfall (Chance 1), `?mug=junkie|jugend|cousin` zusätzlich den Typ.
 
@@ -200,7 +200,7 @@ Dev-Parameter `?mug=1` erzwingt beim nächsten Auslöser einen Überfall (Chance
 - `canBuyShoes`: Basic → Carbon erlaubt (Sprung), Carbon → Trail = `downgrade`.
 - `luck`, `bankLoanAllowed`, `bankInterest`, `postmanTier` mit und ohne Ausrüstung.
 - `mugChance`: unter 100 € = 0; Cooldown = 0; Spins < 10 = 0; Story Tag < 4 = 0; ≥ 2000 € verdoppelt; Audi-Multiplikator; Abend-Basis 0,12.
-- `mugLoot`: 100 € → 50; 10.000 € → 1.500; 60 € → 60.
+- `mugLoot`: 100 € → 50; 10.000 € → 1.500; 60 € → 50; 30 € → 30.
 - `fightChance(0) = 0.35`, `fightChance(7) = 0.9`, `fleeChance` Deckel 0,9.
 - `StoryRules.check` mit `strength`; `validate` akzeptiert Raum `stadt` und Job `eintreiber`; `jobAvailable` Eintreiber bei Stärke 3 = nicht ok, 4 = ok.
 - Tick-Regeln: `afterSpin` senkt `mugCooldown`; `advanceDay` senkt ihn in der Story.
