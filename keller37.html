@@ -3486,6 +3486,7 @@ const Jobs = {
     const job = this.POOL[id];
     if (!job || !StoryRules.jobAvailable(job, State.s).ok) return;
     if (job.kind === 'game') {
+      if (!UI.screens.has(job.screen)) { UI.toast({ icon: '🚧', title: 'Job noch nicht verfügbar', tone: 'info' }); return; }
       Story.jobStart = { id, balance: State.s.balance };
       Story.allowOnce = job.screen;
       await UI.show(job.screen);
