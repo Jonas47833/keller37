@@ -4014,6 +4014,7 @@ const Jobs = {
     taxi: { id: 'taxi', name: 'Nachttaxi', icon: '🚕', kind: 'game', screen: 'job-taxi', desc: '60 Sekunden, drei Spuren. Fahrgäste einsammeln, bei Rot bremsen.', pay: 'bis 300 €', requires: { balance: { gte: 200 } }, requireText: 'Kaution 200 €' },
     tuersteher: { id: 'tuersteher', name: 'Türsteher', icon: '🚪', kind: 'shift', base: 100, desc: 'Wer kommt rein, wer nicht. Vito guckt zu.', pay: '100 € + Trinkgeld' },
     croupier: { id: 'croupier', name: 'Croupier', icon: '🃏', kind: 'shift', base: 150, requires: { jobDone: 'tuersteher', gte: 3 }, requireText: '3 Nächte als Türsteher', desc: 'Karten geben, Kessel drehen, Mund halten.', pay: '150 €' },
+    eintreiber: { id: 'eintreiber', name: 'Eintreiber', icon: '🥊', kind: 'shift', base: 150, requires: { strength: { gte: 4 } }, requireText: 'Stärke 4', desc: 'Vito hat eine Liste. Du hast Fäuste.', pay: '150 €' },
     kurier: { id: 'kurier', name: 'Kevins Kurier', icon: '💊', kind: 'shift', base: 300, desc: 'Päckchen von A nach B. Frag nicht, was drin ist.', pay: '300 €' },
     praktikant: { id: 'praktikant', name: 'Praktikant bei Krause', icon: '👔', kind: 'shift', base: 120, desc: 'Kaffee kochen, Akten lesen. Manche Akten sind interessant.', pay: '120 €' },
     docassi: { id: 'docassi', name: 'Assistent beim Doc', icon: '🩺', kind: 'shift', base: 250, desc: 'Handschuhe an. Nicht hinsehen.', pay: '250 €' },
@@ -4406,6 +4407,11 @@ const STORY_SCHULD = {
     'schuld.wirt5': [
       { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Ein Wort unter uns: Vito hat noch nie jemanden *bezahlen* lassen. Die Frist ist ein Spiel. Ich weiß nur nicht, welches.' },
     ],
+    'schuld.stadt': [
+      { bg: 'strasse', who: 'kevin', mood: 'happy', text: 'Komm mit. Ich zeig dir was. Nein, nicht das. Was Legales.' },
+      { bg: 'autohaus', who: 'kevin', mood: 'happy', text: 'Guck mal, was man hier alles nicht bezahlen kann. Audi links, Mercedes rechts, und gegenüber verkaufen sie Schuhe, mit denen man vor beiden wegrennen kann.' },
+      { bg: 'autohaus', who: 'kevin', mood: 'calm', text: 'Vito fährt Mercedes. Igor fährt gar nicht. Denk mal drüber nach, was das über die Gasse sagt.' },
+    ],
     'schuld.kontrolle.ok': [
       { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Tag zehn. Ich wollte nur sehen, ob du arbeitest oder nur spielst. Du arbeitest. Gut.' },
       { bg: 'hinterzimmer', who: 'vito', mood: 'happy', text: 'Igor mag dich. Das passiert selten. Weiter so.' },
@@ -4477,6 +4483,14 @@ const STORY_SCHULD = {
     'schuld.tuerJob': [
       { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Du hältst dich. Igor sagt, du zahlst, du spielst, du klaust nicht. Ich brauche jemanden an der Tür. Nachts. Bist du das?' },
       { bg: 'hinterzimmer', who: 'vito', mood: 'happy', text: 'Hundert die Nacht, plus was die Gäste dir zustecken. Und du siehst, wer rein will. Das ist mehr wert als das Geld.' },
+    ],
+    'schuld.eintreiber.kiosk': [
+      { bg: 'strasse', who: 'vito', mood: 'calm', text: 'Der Kiosk an der Ecke. Zweihundert, seit drei Wochen. Sei höflich. Einmal.' },
+      { bg: 'strasse', who: 'du', mood: 'angry', text: 'Du musst nicht mal die Stimme heben. Er sieht deine Hände und zählt. Vito nickt, als du zurückkommst.' },
+    ],
+    'schuld.eintreiber.zahnarzt': [
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Ein Zahnarzt. Spielt bei uns, verliert bei uns, zahlt nicht bei uns. Erste Etage, Praxis Dr. Leuchtenberg.' },
+      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Er zahlt, bevor du das Wartezimmer verlässt. Und bietet dir eine Prophylaxe an. Umsonst. Du sagst ja.' },
     ],
     'schuld.buero': [
       { bg: 'keller', who: 'igor', mood: 'calm', text: 'Vito will seinen Mantel. Büro, hinten. Ich bleibe an der Tür.' },
@@ -4617,11 +4631,12 @@ const STORY_SCHULD = {
   events: [
     { id: 'chantal3', when: { day: { eq: 3 } }, once: true, at: 'night', scene: 'schuld.chantal3', effects: [{ flag: 'chantalKennt' }] },
     { id: 'wirt5', when: { day: { eq: 5 } }, once: true, at: 'night', scene: 'schuld.wirt5' },
+    { id: 'stadtOffen', when: { day: { eq: 4 } }, once: true, at: 'morning', scene: 'schuld.stadt', effects: [{ unlock: { rooms: ['stadt'] } }] },
     { id: 'kontrolleOk', when: { all: [{ day: { eq: 10 } }, { any: [{ balance: { gte: 5000 } }, { var: 'schuld', lte: 45000 }, { stat: 'jobs', gte: 7 }] }] }, once: true, at: 'night', scene: 'schuld.kontrolle.ok', effects: [{ var: 'vertrauen', add: 1 }, { flag: 'kontrolle' }] },
     { id: 'kontrolleFail', when: { all: [{ day: { eq: 10 } }, { not: { any: [{ balance: { gte: 5000 } }, { var: 'schuld', lte: 45000 }, { stat: 'jobs', gte: 7 }] } }] }, once: true, at: 'night', scene: 'schuld.kontrolle.fail', effects: [{ force: 'duel' }] },
     { id: 'duelLostBill', when: { all: [{ flag: 'duelLost' }, { notFlag: 'duelLostBilled' }] }, once: true, at: 'night', scene: 'schuld.duelLost', effects: [{ balance: -500 }, { flag: 'duelLostBilled' }] },
     { id: 'duelWonNote', when: { all: [{ flag: 'duelWon' }, { notFlag: 'duelWonNoted' }] }, once: true, at: 'night', scene: 'schuld.duelWon', effects: [{ flag: 'duelWonNoted' }, { var: 'vertrauen', add: 1 }] },
-    { id: 'tuerJob', when: { all: [{ day: { gte: 13 } }, { var: 'vertrauen', gte: 4 }] }, once: true, at: 'morning', scene: 'schuld.tuerJob', effects: [{ unlock: { jobs: ['tuersteher'] } }] },
+    { id: 'tuerJob', when: { all: [{ day: { gte: 13 } }, { var: 'vertrauen', gte: 4 }] }, once: true, at: 'morning', scene: 'schuld.tuerJob', effects: [{ unlock: { jobs: ['tuersteher', 'eintreiber'] } }] },
     { id: 'buero', when: { all: [{ jobDone: 'tuersteher', gte: 1 }, { notFlag: 'bueroGesehen' }] }, once: true, at: 'morning', scene: 'schuld.buero', effects: [{ flag: 'bueroGesehen' }] },
     { id: 'chantalBeichte', when: { all: [{ day: { gte: 15 } }, { flag: 'chantalKennt' }] }, once: true, at: 'night', scene: 'schuld.chantalBeichte', effects: [{ flag: 'chantalBeichte' }] },
     { id: 'igorZweifel', when: { var: 'duellSiege', gte: 3 }, once: true, at: 'spin:after', scene: 'schuld.igorZweifel', effects: [{ flag: 'igorZweifelt' }] },
@@ -4639,10 +4654,12 @@ const STORY_SCHULD = {
     tuersteher: ['schuld.tuer.hundert', 'schuld.tuer.chantal', 'schuld.tuer.kevin'],
     croupier: ['schuld.croup.kessel', 'schuld.croup.vito', 'schuld.croup.safe'],
     docassi: ['schuld.doc.niere', 'schuld.doc.vorbesitzer', 'schuld.doc.igor'],
+    eintreiber: ['schuld.eintreiber.kiosk', 'schuld.eintreiber.zahnarzt'],
   },
   jobEffects: {
     'schuld.prakt.praemie': [{ balance: 100 }], 'schuld.kurier.doc': [{ var: 'ruf', add: 1 }], 'schuld.prakt.konto': [{ flag: 'vitoPleite' }],
     'schuld.doc.vorbesitzer': [{ var: 'ruf', add: 1 }], 'schuld.doc.igor': [{ var: 'vertrauen', add: 1 }, { flag: 'igorDank' }],
+    'schuld.eintreiber.kiosk': [{ var: 'ruf', add: 1 }], 'schuld.eintreiber.zahnarzt': [{ var: 'ruf', add: 1 }],
   },
   endings: [
     { id: 'ehrlich', title: 'Der Ehrliche', priority: 30, when: { var: 'schuld', lte: 0 }, scene: 'schuld.ende.ehrlich' },
@@ -5223,7 +5240,7 @@ T.test('StoryRules.applyEffect: chance würfelt', () => {
 });
 T.test('STORY_SCHULD ist gültig', () => {
   const sceneIds = Object.keys(STORY_SCHULD.scenes);
-  T.eq(StoryRules.validate(STORY_SCHULD, sceneIds, ['spueler', 'post', 'taxi', 'tuersteher', 'croupier', 'kurier', 'praktikant', 'docassi']), []);
+  T.eq(StoryRules.validate(STORY_SCHULD, sceneIds, ['spueler', 'post', 'taxi', 'tuersteher', 'croupier', 'kurier', 'praktikant', 'docassi', 'eintreiber']), []);
   T.eq(STORY_SCHULD.days, 30);
   T.eq(STORY_SCHULD.start.vars.schuld, 50000);
   T.ok(!STORY_SCHULD.dev);
@@ -5426,6 +5443,23 @@ T.test('jobAvailable: Eintreiber braucht Stärke 4', () => {
   const s = storyBase({ unlocked: { jobs: ['eintreiber'], doors: [], rooms: [] } });
   s.strength = 3; T.eq(StoryRules.jobAvailable(job, s).ok, false);
   s.strength = 4; T.eq(StoryRules.jobAvailable(job, s).ok, true);
+});
+T.test('Story Schuld: stadtOffen an Tag 4, Eintreiber mit Türsteher freigeschaltet', () => {
+  const st = STORY_SCHULD; // Konstante aus Block story-schuld (in Node geladen; Stories.define ist dort nicht verfügbar)
+  const ev = st.events.find((e) => e.id === 'stadtOffen');
+  T.ok(ev, 'Event stadtOffen');
+  T.eq(ev.at, 'morning'); T.eq(ev.scene, 'schuld.stadt');
+  T.ok(ev.effects.some((e) => e.unlock && e.unlock.rooms && e.unlock.rooms.includes('stadt')));
+  const s4 = storyBase({ id: 'schuld', day: 4 });
+  T.ok(StoryRules.dueEvents(st, s4, 'morning').some((e) => e.id === 'stadtOffen'));
+  const s3 = storyBase({ id: 'schuld', day: 3 });
+  T.ok(!StoryRules.dueEvents(st, s3, 'morning').some((e) => e.id === 'stadtOffen'));
+  const tuer = st.events.find((e) => e.id === 'tuerJob');
+  T.ok(tuer.effects.some((e) => e.unlock && e.unlock.jobs && e.unlock.jobs.includes('eintreiber')));
+  T.eq(st.jobScenes.eintreiber, ['schuld.eintreiber.kiosk', 'schuld.eintreiber.zahnarzt']);
+  T.eq(st.jobEffects['schuld.eintreiber.kiosk'], [{ var: 'ruf', add: 1 }]);
+  T.eq(st.jobEffects['schuld.eintreiber.zahnarzt'], [{ var: 'ruf', add: 1 }]);
+  for (const id of ['schuld.stadt', 'schuld.eintreiber.kiosk', 'schuld.eintreiber.zahnarzt']) T.ok(Array.isArray(st.scenes[id]) && st.scenes[id].length >= 2, id);
 });
 
 /* --- SELFTEST CASES END --- */
