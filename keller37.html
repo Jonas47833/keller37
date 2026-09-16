@@ -433,7 +433,6 @@ div#title[hidden] { display: none; }
 .title-foot { display: flex; gap: 8px; }
 @media (max-width: 760px) { .title-neon { font-size: 3rem; } .title-doors { grid-template-columns: 1fr; } .title-door { height: 170px; } }
 /* -- Story: Tagesleiste, Sperren, Nacht -- */
-body.mode-story #brand { pointer-events: none; }
 body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .daybar { position: sticky; top: 58px; z-index: 19; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 6px 20px; background: rgba(20,17,12,.95); border-bottom: 1px solid rgba(201,162,39,.25); font-family: var(--font-display); letter-spacing: .08em; }
 .day-count { font-size: 1.6rem; color: var(--gold-2); }
@@ -1324,13 +1323,13 @@ const UI = {
       const a = Actions[b.dataset.action];
       if (a) a(); else console.warn('[ui] Aktion fehlt:', b.dataset.action);
     };
-    if (openIdx >= 0) { qsa('.side-sec', side)[openIdx].classList.add('active'); qsa('.side-tabs button', side)[openIdx].classList.add('on'); side.classList.add('open'); }
+    if (openIdx >= 0 && openIdx < qsa('.side-sec', side).length) { qsa('.side-sec', side)[openIdx].classList.add('active'); qsa('.side-tabs button', side)[openIdx].classList.add('on'); side.classList.add('open'); }
   },
   mountShell() {
     const w = qs('#wallet');
     w.innerHTML = '';
     w.append(
-      h('button', { class: 'brand neon', id: 'brand', style: '--neon: var(--neon-amber)', title: 'Zurück in den Gang', onclick: () => UI.show('hub') }, 'Keller 37'),
+      h('button', { class: 'brand neon', id: 'brand', style: '--neon: var(--neon-amber)', title: 'Zurück in den Gang', onclick: () => { if (State.mode === 'story' && Story.s && Story.s.phase === 'morning') UI.show(UI.screens.has('jobs') ? 'jobs' : 'hub'); else UI.show('hub'); } }, 'Keller 37'),
       h('div', { class: 'wallet-mid' }, h('div', { class: 'luck', id: 'luck' }), h('div', { class: 'notes', id: 'notes' })),
       h('div', { class: 'wallet-right' },
         h('button', { class: 'icon-btn', id: 'mute', title: 'Ton an/aus', onclick: () => { SFX.setMuted(!State.meta.muted); UI.renderWallet(); } }, '🔊'),
@@ -1345,6 +1344,7 @@ const UI = {
     if (!this._shellKeys) {
       this._shellKeys = true;
       document.addEventListener('keydown', (e) => {
+        if (typeof Russian !== 'undefined' && Russian.inDuel && Russian.duel && Russian.duel.forced) return;
         if (e.key === 'Escape' && qs('#cutscene').hidden && qs('#title').hidden && UI.current && UI.current.id !== 'hub') UI.show('hub');
       });
     }
@@ -2574,7 +2574,12 @@ const Russian = {
     SFX.loop('heartbeat', Math.max(380, 900 - duel.idx * 110));
   },
   /* Duell ohne Abrechnung abbrechen (Screen verlassen) – Einsatz ist bereits abgezogen */
-  drop(duel) { if (duel && !duel.done) { duel.done = true; Game.forfeit(); } },
+  drop(duel) {
+    if (!duel || duel.done) return;
+    duel.done = true;
+    if (duel.forced) { Bus.emit('rr:forced', { victim: 'aborted' }); return; }
+    Game.forfeit();
+  },
   async start(opts = {}) {
     if (this.inDuel || !this.root) return;
     const forced = !!opts.forced;
@@ -2690,8 +2695,9 @@ UI.register('russian', {
     SFX.stop('heartbeat');
     if (Russian.inDuel) {
       /* Zwischen zwei Zügen verlassen: Duell sofort abbrechen. Läuft noch ein Zug (busy), räumt der selbst auf bzw. rechnet ab. */
+      const wasForced = Russian.duel && Russian.duel.forced;
       if (!Russian.busy) Russian.drop(Russian.duel);
-      UI.toast({ icon: '🔫', title: 'Duell abgebrochen', text: 'Einsatz verfallen.', tone: 'loss' });
+      if (!wasForced) UI.toast({ icon: '🔫', title: 'Duell abgebrochen', text: 'Einsatz verfallen.', tone: 'loss' });
     }
     Russian.root = null;
     Russian.inDuel = false;
@@ -2926,9 +2932,9 @@ Bus.on('gameover', async () => {
 });
 
 Bus.on('newgame.request', async () => {
-  if (State.mode === 'story') return Story.enter('newstory');
   if (Cutscene.active) return;
   if (Game.inFlight > 0) { UI.toast({ icon: '⏳', title: 'Erst die Runde beenden', text: 'Ein Spiel läuft noch.', tone: 'loss' }); return; }
+  if (State.mode === 'story') return Story.enter('newstory');
   const c = await Cutscene.play('newgame.confirm', {});
   if (c !== 'yes') return;
   await restartGame({ playIntro: true });
@@ -3081,6 +3087,8 @@ const Title = {
   hide() { const root = qs('#title'); root.hidden = true; root.innerHTML = ''; document.body.classList.remove('title-open'); },
   /* Vom Wallet-Knopf: zurück zum Titel, dann Modus wechseln */
   async open() {
+    if (typeof Story !== 'undefined' && Story.sleeping) { UI.toast({ icon: '⏳', title: 'Erst die Nacht abwarten' }); return; }
+    if (typeof Russian !== 'undefined' && Russian.inDuel && Russian.duel && Russian.duel.forced) { UI.toast({ icon: '⏳', title: 'Erst das Duell beenden' }); return; }
     if (Cutscene.active || Game.inFlight > 0) { UI.toast({ icon: '⏳', title: 'Erst die Runde beenden' }); return; }
     State.save();
     const choice = await Title.show();
@@ -3141,6 +3149,7 @@ const Story = {
   story: null,
   allowOnce: null,
   lostDay: false,
+  sleeping: false,
   get s() { return State.s.story; },
 
   /* ---- Einstieg ---- */
@@ -3224,13 +3233,18 @@ const Story = {
     const ch = StoryRules.chapterFor(this.story, State.s);
     if (!ch || ch.id === this.s.chapter) return;
     this.s.chapter = ch.id;
-    const before = JSON.stringify(this.s.unlocked);
-    if (ch.unlock) StoryRules.applyEffect(State.s, { unlock: ch.unlock }, this.story);
+    const before = { jobs: [...this.s.unlocked.jobs], doors: [...this.s.unlocked.doors], rooms: [...this.s.unlocked.rooms] };
+    if (ch.unlock) StoryRules.applyEffect(State.s, { unlock: (ch.unlock || {}) }, this.story);
     State.save();
     UI.toast({ icon: '📖', title: `Kapitel: ${ch.title}`, tone: 'gold', ms: 4000 });
     if (ch.intro) await this.playScene(ch.intro);
-    if (JSON.stringify(this.s.unlocked) !== before) {
-      const names = [...(ch.unlock.jobs || []).map((j) => (typeof Jobs !== 'undefined' && Jobs.POOL[j] ? Jobs.POOL[j].name : j)), ...(ch.unlock.doors || []), ...(ch.unlock.rooms || [])];
+    const added = {
+      jobs: this.s.unlocked.jobs.filter((j) => !before.jobs.includes(j)),
+      doors: this.s.unlocked.doors.filter((d) => !before.doors.includes(d)),
+      rooms: this.s.unlocked.rooms.filter((r) => !before.rooms.includes(r)),
+    };
+    if (added.jobs.length || added.doors.length || added.rooms.length) {
+      const names = [...added.jobs.map((j) => (typeof Jobs !== 'undefined' && Jobs.POOL[j] ? Jobs.POOL[j].name : j)), ...added.doors, ...added.rooms];
       UI.toast({ icon: '🔓', title: 'Neu freigeschaltet', text: names.join(' · '), tone: 'info', ms: 5000 });
     }
     UI.renderSide(); this.renderDaybar();
@@ -3250,19 +3264,26 @@ const Story = {
     await UI.show('hub');
   },
   async night() {
+    if (this.sleeping) return;
     if (this.s.phase !== 'evening' || Cutscene.active || Game.inFlight > 0) { if (Game.inFlight > 0) UI.toast({ icon: '⏳', title: 'Erst die Runde beenden' }); return; }
-    await this.fade(`Nacht ${this.s.day}`);
-    await this.runEvents('night');
-    let end = StoryRules.ending(this.story, State.s);
-    if (end) return this.finish(end);
-    StoryRules.advanceDay(State.s);
-    State.save();
-    await Bus.emit('story:day', { day: this.s.day });
-    end = StoryRules.ending(this.story, State.s);
-    if (end) return this.finish(end);
-    await this.fade(`Tag ${this.s.day}`);
-    await this.applyChapter();
-    await this.morning();
+    this.sleeping = true;
+    this.renderDaybar();
+    try {
+      await this.fade(`Nacht ${this.s.day}`);
+      await this.runEvents('night');
+      let end = StoryRules.ending(this.story, State.s);
+      if (end) return this.finish(end);
+      StoryRules.advanceDay(State.s);
+      State.save();
+      await Bus.emit('story:day', { day: this.s.day });
+      end = StoryRules.ending(this.story, State.s);
+      if (end) return this.finish(end);
+      await this.fade(`Tag ${this.s.day}`);
+      await this.applyChapter();
+      await this.morning();
+    } finally {
+      this.sleeping = false;
+    }
   },
   async finish(end) {
     this.s.ended = end.id;
@@ -3271,7 +3292,7 @@ const Story = {
     run.lastPlayed = Date.now();
     State.saveMeta(); State.save();
     const st = this.s.stats;
-    const stats = { Tage: this.s.day, Verdient: UI.fmt(st.earned), Verzockt: UI.fmt(st.gambled), Jobs: st.jobs, Ende: end.title };
+    const stats = { Tage: Math.min(this.s.day, this.story.days), Verdient: UI.fmt(st.earned), Verzockt: UI.fmt(st.gambled), Jobs: st.jobs, Ende: end.title };
     const panels = (this.story.scenes[end.scene] || []).map((p) => Object.assign({}, p));
     const last = panels[panels.length - 1];
     last.fx = 'stats';
@@ -3281,7 +3302,7 @@ const Story = {
     await Bus.emit('story:ended', { id: this.story.id, ending: end.id });
     if (choice === 'next') return this.enter('newstory');
     const c = await Title.show();
-    await Modes.enter(c);
+    if (c) await Modes.enter(c);
   },
   jobDone(jobId, earned) {
     this.s.jobToday = jobId;
@@ -3338,7 +3359,7 @@ const Story = {
     qs('#dayMax', slot).textContent = this.story.days;
     qs('#phaseMorning', slot).classList.toggle('on', this.s.phase === 'morning');
     qs('#phaseEvening', slot).classList.toggle('on', this.s.phase === 'evening');
-    qs('#btnSleep', slot).disabled = this.s.phase !== 'evening';
+    qs('#btnSleep', slot).disabled = this.s.phase !== 'evening' || this.sleeping;
     qs('#dayGoal', slot).textContent = this.story.goal ? this.story.goal(State.s) : '';
   },
   fade(text) {
