@@ -523,6 +523,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .cs-bg.intersport { background: linear-gradient(180deg, #1a1a1a 0%, #2b2b2b 50%, #ff6a3d 51%, #b03d1c 100%); }
 @media (max-width: 1100px) { .stadt { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 760px) { .stadt { grid-template-columns: 1fr; } }
+.cs-bg.gasse { background: linear-gradient(180deg, #05060a 0%, #14161e 55%, #2a2418 56%, #0d0b07 100%); }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
@@ -1449,6 +1450,10 @@ const UI = {
     const def = this.screens.get(id);
     if (!def) { console.warn('[ui] Screen fehlt:', id); return; }
     if (typeof Story !== 'undefined' && Story.isLocked(id)) { UI.toast({ icon: '🔒', title: Story.lockReason(id), tone: 'loss' }); SFX.play('lose'); return; }
+    if (State.mode === 'free' && this.current && this.current.id === 'hub' && typeof Mugging !== 'undefined' && Mugging.CASINO.includes(id)) {
+      await Mugging.maybe('door');
+      if (this.busy) return;
+    }
     this.busy = true;
     const stage = qs('#stage');
     if (this.current) {
@@ -1635,11 +1640,12 @@ const Cutscene = {
     postmeister: { name: 'Der Postmeister', emoji: '📬', color: 'var(--day)' },
     verkaeufer: { name: 'Der Verkäufer', emoji: '🤵', color: '#cfd8e3' },
     du: { name: 'Du', emoji: '🤠', color: '#ffffff' },
+    raeuber: { name: 'Der Räuber', emoji: '🥷', color: 'var(--neon-red)' },
   },
   PROPS: {
     bar: ['🍾', '🪑'], hinterzimmer: ['🕯️', '🚬'], standesamt: ['💐', '🔔'], villa: ['🏙️', '🌙'], hafen: ['🏗️', '🌙'],
     'hafen-morgen': ['🏗️', '🌅'], klinik: ['🩺', '💡'], bank: ['🏧', '🪴'], strasse: ['🏠', '🚗'], keller: ['💡', '🪑'],
-    autohaus: ['🚗', '🪴'], intersport: ['👟', '🏷️'],
+    autohaus: ['🚗', '🪴'], intersport: ['👟', '🏷️'], gasse: ['🗑️', '🌙'],
   },
   SCENES: {},
   define(id, panels) { this.SCENES[id] = panels; },
@@ -3103,8 +3109,9 @@ UI.register('russian', {
   },
 });
 
-Cutscene.define('igor.first', [
+Cutscene.define('igor.first', () => [
   { bg: 'keller', who: 'igor', mood: 'calm', text: '…' },
+  ...(State.s.strength >= Rules.MUG.STR_RESPECT ? [{ bg: 'keller', who: 'igor', mood: 'happy', text: 'Respekt. Man hört Dinge. Mein Cousin humpelt noch.' }] : []),
   { bg: 'keller', who: 'igor', mood: 'calm', text: 'Eine Kugel. Sechs Kammern. Du zuerst. Ich habe Zeit.' },
 ]);
 Cutscene.define('rr.headshot', [
@@ -3372,6 +3379,125 @@ Bus.on('newgame.request', async () => {
   if (c !== 'yes') return;
   await restartGame({ playIntro: true });
 });
+</script>
+
+<script id="mugging">
+/* ================= ÜBERFALL – auf dem Weg in den Keller ================= */
+const Mugging = {
+  force: null,     // Dev-Parameter ?mug=1|junkie|jugend|cousin – erzwingt den nächsten Überfall
+  running: false,
+  CASINO: ['roulette', 'slots', 'horses', 'russian', 'blackjack'],
+  TYPES: {
+    junkie: {
+      name: 'Der Junkie', emoji: '🧟',
+      intro: ['Ey. EY. Hast du mal… {{loot}}? Ich hab ein Messer. Glaub ich. Irgendwo.', 'Seine Hand zittert. Das Messer nicht. Doch, das auch.'],
+      fightWon: 'Ein Schubser. Er sitzt im Müll und weint. Du fühlst dich nicht gut dabei, aber stärker.',
+      fightLost: 'Er trifft dich mit irgendwas Hartem. Als du hochkommst, ist er weg. Dein Geld auch.',
+      fled: 'Du rennst. Er rennt auch – in die andere Richtung. Keiner weiß warum.',
+      caught: 'Du stolperst. Er nicht. Er nimmt {{loot}} und, weil er sauer ist, noch {{extra}} dazu.',
+      paid: 'Er nimmt die Scheine, murmelt „danke, Bruder" und ist weg.',
+    },
+    jugend: {
+      name: 'Zwei Jugendliche', emoji: '🧢',
+      intro: ['„Handy, Geld, Jacke. Los." Der Kleinere filmt.', 'Der Größere hat einen Schlagring. Der Kleinere hat 40.000 Follower.'],
+      fightWon: 'Der Schlagring landet im Gully, der Größere auf dem Boden, das Video im Netz. Du siehst gut aus darauf.',
+      fightLost: 'Zu zweit. Du kommst nicht mal zum Schwingen. {{loot}} weg – und das Video hat schon 200 Likes.',
+      fled: 'Du bist schneller als beide. Der Kleinere filmt noch deinen Rücken.',
+      caught: 'Der Kleinere stellt dir ein Bein. {{loot}} und {{extra}} extra, „fürs Wegrennen".',
+      paid: '„Klug." Sie nehmen {{loot}} und machen ein Selfie mit dir.',
+    },
+    cousin: {
+      name: 'Igors Cousin', emoji: '🐻',
+      intro: ['„Igor sagt, du hast Geld. Igor sagt auch, du bist Freund. Ich bin nicht Igor."', 'Er ist größer als Igor. Das sollte nicht möglich sein.'],
+      fightWon: 'Du triffst ihn genau einmal. Es reicht. Er nickt anerkennend, bevor er umfällt.',
+      fightLost: 'Er hebt dich hoch wie einen Sack Mehl und schüttelt {{loot}} aus dir raus.',
+      fled: 'Er kommt nicht mal aus dem Stand. „Nächstes Mal", ruft er. Klingt fast freundlich.',
+      caught: 'Zwei Schritte. Er hat dich am Kragen. {{loot}} plus {{extra}} „für Laufen".',
+      paid: '„Igor hatte recht. Du bist vernünftig." {{loot}} wechseln den Besitzer.',
+    },
+  },
+  blocked() {
+    if (Cutscene.active || Game.inFlight > 0 || gameOverPending || this.running) return true;
+    if (typeof Story !== 'undefined' && Story.sleeping) return true;
+    return false;
+  },
+  /* Gibt true zurück, wenn ein Überfall gelaufen ist. Aufrufer wartet, bevor er weitermacht. */
+  async maybe(where) {
+    if (this.blocked()) return false;
+    const s = State.s;
+    const forced = this.force;
+    const chance = forced ? 1 : Rules.mugChance(s, where);
+    if (Math.random() >= chance) return false;
+    this.force = null;
+    this.running = true;
+    try {
+      const typeId = typeof forced === 'string' && this.TYPES[forced] ? forced : pick(Object.keys(this.TYPES));
+      await this.run(typeId);
+    } finally { this.running = false; }
+    return true;
+  },
+  async run(typeId) {
+    const s = State.s;
+    const T = this.TYPES[typeId];
+    const loot = Rules.mugLoot(s.balance);
+    const gear = Rules.gear(s);
+    const ctx = { loot: UI.fmt(loot), type: T, fight: Math.round(Rules.fightChance(s.strength) * 100), flee: Math.round(Rules.fleeChance(gear) * 100) };
+    const choice = await Cutscene.play('mug.intro', ctx);
+    let outcome, delta = 0, wallet = 0;
+    if (choice === 'fight') {
+      const won = Math.random() < Rules.fightChance(s.strength);
+      if (won) {
+        outcome = 'fightWon';
+        if (s.strength >= Rules.MUG.STR_WALLET) wallet = Rules.mugWallet();
+        delta = wallet;
+        s.stats.fightsWon++;
+      } else { outcome = 'fightLost'; delta = -loot; }
+      s.strength++;
+    } else if (choice === 'flee') {
+      if (Math.random() < Rules.fleeChance(gear)) outcome = 'fled';
+      else { outcome = 'caught'; delta = -Math.min(s.balance, loot + Rules.fleeFailExtra(s.balance)); }
+    } else { outcome = 'paid'; delta = -loot; }
+    s.stats.muggings++;
+    s.mugCooldown = State.mode === 'story' ? Rules.MUG.COOLDOWN_DAYS : Rules.MUG.COOLDOWN_SPINS;
+    if (delta !== 0) Game.applyDelta(delta, { quiet: true });
+    State.save();
+    await Cutscene.play('mug.' + outcome, Object.assign({}, ctx, { extra: UI.fmt(Math.max(0, -delta - loot)), wallet: UI.fmt(wallet), strength: s.strength }));
+    if (outcome === 'fightWon' || outcome === 'fightLost') UI.toast({ icon: '💪', title: `Stärke ${s.strength}`, text: outcome === 'fightWon' ? 'Gewonnen. Du wirst härter.' : 'Verloren. Du wirst trotzdem härter.', tone: outcome === 'fightWon' ? 'win' : 'loss' });
+    UI.renderWallet(); UI.renderSide();
+    await Bus.emit('mug:done', { outcome, loot, strength: s.strength });
+  },
+};
+Cutscene.define('mug.intro', (ctx) => [
+  { bg: 'gasse', who: 'du', mood: 'calm', text: 'Der kurze Weg zum Keller. Durch die Gasse. Immer durch die Gasse.' },
+  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'flash', text: ctx.type.intro[0] },
+  { bg: 'gasse', who: 'raeuber', mood: 'calm', text: ctx.type.intro[1] + ` Er will ${ctx.loot}.`,
+    choices: [
+      { label: `💪 Kämpfen (${ctx.fight} %)`, value: 'fight', cls: 'red' },
+      { label: `👟 Wegrennen (${ctx.flee} %)`, value: 'flee', cls: 'blue' },
+      { label: `💸 Zahlen (${ctx.loot})`, value: 'pay', cls: 'ghost' },
+    ] },
+]);
+Cutscene.define('mug.fightWon', (ctx) => [
+  { bg: 'gasse', who: 'du', mood: 'angry', fx: 'shake', text: ctx.type.fightWon },
+  { bg: 'gasse', who: 'du', mood: 'happy', fx: ctx.wallet !== '0 €' ? 'gain' : undefined, text: ctx.wallet !== '0 €' ? `Seine Brieftasche: ${ctx.wallet}. Finderlohn. Stärke ${ctx.strength}.` : `Nichts verloren. Stärke ${ctx.strength}.` },
+]);
+Cutscene.define('mug.fightLost', (ctx) => [
+  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'shake', text: ctx.type.fightLost },
+  { bg: 'gasse', who: 'du', mood: 'dead', fx: 'drain', text: `Du hast eingesteckt. Du hast gelernt. Stärke ${ctx.strength}.` },
+]);
+Cutscene.define('mug.fled', (ctx) => [
+  { bg: 'gasse', who: 'du', mood: 'shock', fx: 'flash', text: ctx.type.fled },
+  { bg: 'keller', who: 'du', mood: 'happy', text: 'Unten. Alles noch da. Die Beine zittern, das Geld nicht.' },
+]);
+Cutscene.define('mug.caught', (ctx) => [
+  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'shake', text: ctx.type.caught },
+  { bg: 'gasse', who: 'du', mood: 'dead', fx: 'drain', text: 'Hätte ich mal bezahlt.' },
+]);
+Cutscene.define('mug.paid', (ctx) => [
+  { bg: 'gasse', who: 'raeuber', mood: 'calm', fx: 'drain', text: ctx.type.paid },
+  { bg: 'gasse', who: 'du', mood: 'calm', text: 'Kein Kratzer. Kein Stolz. Weiter.' },
+]);
+Bus.on('mug:done', () => { if (State.s.stats.fightsWon >= 5) Achievements.unlock('strassenkaempfer'); });
 </script>
 
 <script id="story-rules">
@@ -3734,8 +3860,10 @@ const Story = {
     await UI.show(UI.screens.has('jobs') ? 'jobs' : 'hub');
   },
   async evening() {
+    const fromMorning = this.s.phase === 'morning';
     this.s.phase = 'evening';
     State.save(); this.renderDaybar();
+    if (fromMorning && typeof Mugging !== 'undefined') await Mugging.maybe('evening');
     await UI.show('hub');
   },
   async night() {
@@ -5312,6 +5440,7 @@ T.test('jobAvailable: Eintreiber braucht Stärke 4', () => {
     storage = { data: {}, getItem(k) { return k in this.data ? this.data[k] : null; }, setItem(k, v) { this.data[k] = String(v); }, removeItem(k) { delete this.data[k]; } };
   }
   if (params.has('fresh')) { try { storage.removeItem('keller37.state'); storage.removeItem('keller37.story'); } catch (e) { /* egal */ } }
+  if (params.has('mug')) Mugging.force = params.get('mug') === '1' || params.get('mug') === '' ? true : params.get('mug');
   const { loaded, discarded } = State.init(storage);
   Modes.freeLoaded = loaded;
   UI.mountShell();
