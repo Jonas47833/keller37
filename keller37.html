@@ -468,6 +468,16 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 /* -- Vitos Tisch -- */
 .vito-panel { background: radial-gradient(circle at 50% 10%, #3a2210, #150a03 70%); border-color: rgba(255,59,59,.3); }
 .vito-panel .dim { color: var(--dim); }
+/* -- Spüler -- */
+.kitchen { background: linear-gradient(180deg, #17202a, #0d1319); border-color: rgba(76,201,240,.25); }
+.dish-counter { display: flex; gap: 20px; font-family: var(--font-mono); color: var(--dim); }
+.belt { position: relative; width: 100%; max-width: 640px; height: 90px; background: repeating-linear-gradient(90deg, #2a2f36 0 30px, #22262c 30px 60px); border: 4px solid #3a3f46; border-radius: 10px; overflow: hidden; box-shadow: inset 0 8px 16px rgba(0,0,0,.6); }
+.belt.running { animation: beltMove .6s linear infinite; }
+.zone { position: absolute; top: 0; bottom: 0; background: rgba(61,220,132,.25); border-left: 2px solid var(--neon-green); border-right: 2px solid var(--neon-green); box-shadow: inset 0 0 20px rgba(61,220,132,.3); }
+.plate { position: absolute; top: 50%; left: 0; transform: translate(-50%, -50%); font-size: 3rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,.7)); }
+.plate.hit { animation: plateHit .35s ease both; }
+.plate.broken { animation: plateBreak .5s ease both; }
+@media (max-width: 760px) { .belt { height: 70px; } .plate { font-size: 2.3rem; } }
 
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -501,6 +511,9 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 @keyframes sparkle { from { transform: scale(.8) rotate(0); } to { transform: scale(1.2) rotate(30deg); } }
 @keyframes stampIn { from { transform: translate(-50%, -50%) rotate(-12deg) scale(3); opacity: 0; } to { transform: translate(-50%, -50%) rotate(-12deg) scale(1); opacity: 1; } }
 @keyframes dogJump { 0% { transform: translateX(-50%) translateY(30px); opacity: 0; } 40% { transform: translateX(-50%) translateY(-20px); opacity: 1; } 100% { transform: translateX(-50%) translateY(0); opacity: 1; } }
+@keyframes beltMove { from { background-position: 0 0; } to { background-position: 60px 0; } }
+@keyframes plateHit { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -80%) scale(1.2); } 100% { transform: translate(-50%, -50%) scale(0); opacity: 0; } }
+@keyframes plateBreak { 0% { transform: translate(-50%, -50%) rotate(0); } 100% { transform: translate(-50%, 40%) rotate(60deg); opacity: 0; } }
 </style>
 </head>
 <body>
@@ -776,6 +789,22 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
       <button class="btn red" id="btnVitoPay">Rate zahlen</button>
     </div>
     <div class="status" id="vitoStatus"></div>
+  </div>
+</template>
+<template id="tpl-job-spueler">
+  <div class="panel kitchen">
+    <h2 class="neon" style="--neon: var(--neon-blue)">Spülküche</h2>
+    <div class="dish-counter"><span id="dishNum">Teller 0/10</span><span id="dishScore">Sauber 0 · Bruch 0</span></div>
+    <div class="belt" id="belt">
+      <div class="zone" id="dishZone"></div>
+      <div class="plate" id="dishPlate">🍽️</div>
+    </div>
+    <div class="status" id="dishStatus">Klick oder Leertaste, wenn der Teller in der Zone ist.</div>
+    <div class="bet-bar">
+      <button class="btn solid" id="btnDishStart">Schicht beginnen</button>
+      <button class="btn blue hidden" id="btnDishTap">Abwaschen!</button>
+      <button class="btn ghost hidden" id="btnDishDone">Feierabend</button>
+    </div>
   </div>
 </template>
 <!-- /TEMPLATES -->
@@ -3568,6 +3597,105 @@ UI.register('vito', {
   unmount() { VitoRoom.root = null; },
 });
 Actions.vito = () => UI.show('vito');
+</script>
+
+<script id="job-spueler">
+/* ================= JOB: SPÜLER – Timing am Band ================= */
+const Spueler = {
+  root: null, gen: 0, running: false, raf: null, plate: 0, hits: 0, breaks: 0, pos: 0, t0: 0, dur: 1600, zone: { c: 0.5, w: 0.3 }, resolved: false,
+  TOTAL: 10,
+  alive(gen) { return !!this.root && this.gen === gen; },
+  start() {
+    if (this.running || !this.root) return;
+    this.running = true; this.plate = 0; this.hits = 0; this.breaks = 0;
+    qs('#btnDishStart', this.root).classList.add('hidden');
+    qs('#btnDishTap', this.root).classList.remove('hidden');
+    qs('#belt', this.root).classList.add('running');
+    qs('#dishStatus', this.root).textContent = 'Los!';
+    this.nextPlate();
+  },
+  nextPlate() {
+    const gen = this.gen;
+    if (!this.alive(gen) || !this.running) return;
+    if (this.plate >= this.TOTAL) return this.finish();
+    this.plate++;
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const k = (this.plate - 1) / (this.TOTAL - 1);
+    this.dur = reduced ? 1800 : Math.round(1600 - k * 700);          // 1600 → 900 ms
+    this.zone = { c: rand(0.35, 0.75), w: reduced ? 0.3 : 0.3 - k * 0.18 }; // 30 % → 12 %
+    this.resolved = false;
+    const zone = qs('#dishZone', this.root), plate = qs('#dishPlate', this.root);
+    zone.style.left = `${(this.zone.c - this.zone.w / 2) * 100}%`; zone.style.width = `${this.zone.w * 100}%`;
+    plate.className = 'plate'; plate.style.left = '0%';
+    qs('#dishNum', this.root).textContent = `Teller ${this.plate}/${this.TOTAL}`;
+    this.t0 = performance.now();
+    const step = (now) => {
+      if (!this.alive(gen) || !this.running || this.resolved) return;
+      this.pos = Math.min(1, (now - this.t0) / this.dur);
+      plate.style.left = `${this.pos * 100}%`;
+      if (this.pos >= 1) { this.miss('Runtergefallen!'); return; }
+      this.raf = requestAnimationFrame(step);
+    };
+    this.raf = requestAnimationFrame(step);
+  },
+  tap() {
+    if (!this.running || this.resolved || !this.root) return;
+    const inZone = Math.abs(this.pos - this.zone.c) <= this.zone.w / 2;
+    if (inZone) {
+      this.resolved = true; this.hits++;
+      qs('#dishPlate', this.root).classList.add('hit');
+      SFX.play('coin');
+      qs('#dishStatus', this.root).innerHTML = '<span class="win">Sauber!</span>';
+      this.score();
+      setTimeout(() => this.nextPlate(), 380);
+    } else {
+      this.miss('Daneben – Bruch!');
+    }
+  },
+  miss(msg) {
+    this.resolved = true; this.breaks++;
+    if (this.root) {
+      qs('#dishPlate', this.root).classList.add('broken');
+      qs('#dishStatus', this.root).innerHTML = `<span class="loss">${msg}</span>`;
+      UI.shake(qs('#belt', this.root));
+    }
+    SFX.play('lose');
+    this.score();
+    setTimeout(() => this.nextPlate(), 520);
+  },
+  score() { if (this.root) qs('#dishScore', this.root).textContent = `Sauber ${this.hits} · Bruch ${this.breaks}`; },
+  async finish() {
+    this.running = false;
+    const pay = Math.max(StoryRules.spuelerPay(this.hits, this.breaks), -State.s.balance);
+    if (this.root) {
+      qs('#belt', this.root).classList.remove('running');
+      qs('#btnDishTap', this.root).classList.add('hidden');
+      qs('#btnDishDone', this.root).classList.remove('hidden');
+      qs('#dishStatus', this.root).innerHTML = pay >= 0 ? `<span class="win">Schicht vorbei · ${this.hits} sauber · Lohn ${UI.fmt(pay)}</span>` : `<span class="loss">Schicht vorbei · ${this.breaks} Bruch · Abzug ${UI.fmt(-pay)}</span>`;
+    }
+    if (pay !== 0) Game.applyDelta(pay, { from: this.root ? qs('#belt', this.root) : null });
+    if (pay >= 0) SFX.play('cash');
+    await Bus.emit('spueler:result', { hits: this.hits, breaks: this.breaks, pay });
+  },
+  onKey(e) { if (e.code === 'Space' && qs('#cutscene').hidden && !e.repeat) { e.preventDefault(); Spueler.tap(); } },
+};
+UI.register('job-spueler', {
+  template: 'tpl-job-spueler',
+  mount(root) {
+    Spueler.root = root; Spueler.gen++; Spueler.running = false;
+    qs('#btnDishStart', root).addEventListener('click', () => { SFX.play('click'); Spueler.start(); });
+    qs('#btnDishTap', root).addEventListener('click', () => Spueler.tap());
+    qs('#belt', root).addEventListener('pointerdown', () => Spueler.tap());
+    qs('#btnDishDone', root).addEventListener('click', () => { SFX.play('click'); Jobs.finishGame('spueler'); });
+    document.addEventListener('keydown', Spueler.onKey);
+  },
+  unmount() {
+    document.removeEventListener('keydown', Spueler.onKey);
+    if (Spueler.raf) cancelAnimationFrame(Spueler.raf);
+    if (Spueler.running) Jobs.abort();
+    Spueler.gen++; Spueler.root = null; Spueler.running = false;
+  },
+});
 </script>
 
 <script id="story-probe">
