@@ -451,6 +451,23 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 #nightfade { position: fixed; inset: 0; z-index: 85; background: #000; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 4rem; letter-spacing: .2em; color: #fff; text-shadow: 0 0 20px var(--neon-amber); opacity: 0; pointer-events: none; transition: opacity .35s; }
 #nightfade.on { opacity: 1; pointer-events: auto; }
 @media (max-width: 760px) { .daybar { top: 0; position: static; padding: 6px 12px; gap: 8px; } .day-count { font-size: 1.3rem; } .day-goal { width: 100%; margin-left: 0; } }
+/* -- Jobbörse -- */
+.pinboard { position: relative; background: radial-gradient(circle at 20% 30%, #a8783f 0, #8a5e2e 40%, #6e4a22 100%); background-image: radial-gradient(rgba(0,0,0,.18) 1px, transparent 1.5px); background-size: 6px 6px; border: 10px solid #4a3520; border-radius: 6px; padding: 22px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px; min-height: 260px; box-shadow: inset 0 0 40px rgba(0,0,0,.5); }
+.jobnote { position: relative; background: var(--paper); color: var(--paper-ink); padding: 26px 14px 14px; font-family: var(--font-mono); box-shadow: 3px 4px 10px rgba(0,0,0,.6); transform: rotate(-1.5deg); display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: transform .15s; }
+.jobnote:nth-child(even) { transform: rotate(1.2deg); background: #f6e6b3; }
+.jobnote:hover { transform: rotate(0) translateY(-3px); }
+.jobnote::before { content: ""; position: absolute; top: 8px; left: 50%; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff6b6b, #8a1010); box-shadow: 0 2px 3px rgba(0,0,0,.6); }
+.jobnote h4 { font-family: var(--font-display); letter-spacing: .1em; font-size: 1.3rem; display: flex; align-items: center; gap: 8px; }
+.jobnote .pay { color: #7a4a10; font-weight: 700; }
+.jobnote p { font-size: .8rem; }
+.jobnote.locked { opacity: .55; filter: grayscale(.8); cursor: not-allowed; }
+.jobnote.locked:hover { transform: rotate(-1.5deg); }
+.jobnote .why { font-size: .75rem; color: #b3261e; font-weight: 700; }
+.jobnote.done { opacity: .7; }
+.jobnote .done-stamp { position: absolute; right: 10px; top: 30px; transform: rotate(-14deg); font-family: var(--font-display); color: #2f7a1f; border: 3px solid #2f7a1f; padding: 2px 8px; letter-spacing: .1em; }
+/* -- Vitos Tisch -- */
+.vito-panel { background: radial-gradient(circle at 50% 10%, #3a2210, #150a03 70%); border-color: rgba(255,59,59,.3); }
+.vito-panel .dim { color: var(--dim); }
 
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -735,8 +752,30 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
     <div class="day-count"><span class="day-label">Tag</span> <span id="dayNum">1</span><span class="day-of">/<span id="dayMax">30</span></span></div>
     <div class="day-phase"><span id="phaseMorning">☀️ Morgen</span><span class="arrow">→</span><span id="phaseEvening">🌙 Abend</span></div>
     <button class="btn solid sm" id="btnSleep">💤 Schlafen</button>
+    <button class="btn ghost sm" id="btnBoard">📌 Pinnwand</button>
     <div class="day-goal" id="dayGoal"></div>
     <button class="icon-btn" id="btnTitleBack" title="Zum Titel">🚪</button>
+  </div>
+</template>
+<template id="tpl-jobs">
+  <div class="panel stretch jobs-panel">
+    <div class="pinboard" id="pinboard"></div>
+    <div class="bet-bar"><button class="btn ghost" id="btnNoJob">Kein Job heute → Abend</button></div>
+  </div>
+</template>
+<template id="tpl-vito">
+  <div class="panel vito-panel">
+    <h2 class="neon" style="--neon: var(--neon-red)">Vitos Tisch</h2>
+    <p class="dim" id="vitoLine">Er sitzt da. Er wartet. Er hat Zeit.</p>
+    <div class="paper iou" id="vitoIou"></div>
+    <div class="bet-bar">
+      <div class="bet-field"><button data-step="-100">−</button><input type="number" id="vitoPay" value="500" min="100" step="100"><button data-step="100">+</button></div>
+      <button class="chip" data-chip="500" data-v="50">500</button>
+      <button class="chip" data-chip="1000" data-v="100">1k</button>
+      <button class="chip" data-chip="max" data-v="max">MAX</button>
+      <button class="btn red" id="btnVitoPay">Rate zahlen</button>
+    </div>
+    <div class="status" id="vitoStatus"></div>
   </div>
 </template>
 <!-- /TEMPLATES -->
@@ -2740,6 +2779,7 @@ const Postman = {
   nextStep(gen) {
     clearInterval(this.timer);
     if (!this.alive(gen)) return;
+    if (State.mode === 'story' && this.streak >= 15) { this.endShift('Feierabend! 15 Briefe ausgetragen.'); return; }
     const prevTier = this.tier;
     this.tier = Rules.postmanTier(this.streak);
     if (prevTier && prevTier.t !== this.tier.t) this.stamp();
@@ -2810,7 +2850,20 @@ const Postman = {
     qs('#jobStatus', this.root).innerHTML = `<span class="loss">${msg} 25 € Strafe. Schicht beendet nach ${this.streak} Briefen.</span>`;
     qs('#btnShift', this.root).classList.remove('hidden');
     this.tier = null;
+    if (State.mode === 'story') Jobs.finishGame('post');
     if (Rules.isGameOver(State.s)) Bus.emit('gameover', {});
+  },
+  endShift(msg) {
+    clearInterval(this.timer);
+    this.active = false;
+    if (this.root) {
+      qs('#fuseWrap', this.root).classList.add('hidden');
+      qs('#letter', this.root).classList.add('hidden');
+      qs('#jobStatus', this.root).innerHTML = `<span class="win">${msg}</span>`;
+      qs('#btnShift', this.root).classList.remove('hidden');
+    }
+    this.tier = null;
+    if (State.mode === 'story') Jobs.finishGame('post');
   },
 };
 
@@ -2824,6 +2877,7 @@ UI.register('postman', {
     qs('#btnShift', root).addEventListener('click', () => Postman.startShift());
   },
   unmount() {
+    if (State.mode === 'story' && Postman.active) Jobs.abort();
     Postman.gen++;
     clearInterval(Postman.timer);
     Postman.root = null;
@@ -3317,6 +3371,8 @@ const Story = {
   isLocked(screen) {
     if (State.mode !== 'story' || !this.story) return false;
     if (screen === this.allowOnce) { this.allowOnce = null; return false; }
+    if (['jobs', 'vito'].includes(screen)) return false;
+    if (['job-spueler', 'job-taxi'].includes(screen)) return this.s.phase !== 'morning';
     if (this.DOORS.includes(screen)) {
       if (screen === 'postman') return true; // Post ist ein Job (morgens)
       return !this.s.unlocked.doors.includes(screen);
@@ -3354,12 +3410,14 @@ const Story = {
       slot.appendChild(qs('#tpl-daybar').content.cloneNode(true));
       qs('#btnSleep', slot).addEventListener('click', () => { SFX.play('click'); Story.night(); });
       qs('#btnTitleBack', slot).addEventListener('click', () => Title.open());
+      qs('#btnBoard', slot).addEventListener('click', () => { SFX.play('click'); UI.show('jobs'); });
     }
     qs('#dayNum', slot).textContent = this.s.day;
     qs('#dayMax', slot).textContent = this.story.days;
     qs('#phaseMorning', slot).classList.toggle('on', this.s.phase === 'morning');
     qs('#phaseEvening', slot).classList.toggle('on', this.s.phase === 'evening');
     qs('#btnSleep', slot).disabled = this.s.phase !== 'evening' || this.sleeping;
+    qs('#btnBoard', slot).classList.toggle('hidden', this.s.phase !== 'morning');
     qs('#dayGoal', slot).textContent = this.story.goal ? this.story.goal(State.s) : '';
   },
   fade(text) {
@@ -3393,6 +3451,122 @@ Cutscene.define('story.newConfirm', [
 
 Bus.on('spin:after', () => { if (State.mode === 'story' && Story.story) return Story.runEvents('spin:after'); });
 Bus.on('loss', ({ amount }) => { if (State.mode === 'story' && Story.story) { Story.s.stats.gambled += amount; State.save(); } });
+</script>
+
+<script id="jobs">
+/* ================= JOBS – Pinnwand, Schicht-Karten ================= */
+const Jobs = {
+  POOL: {
+    spueler: { id: 'spueler', name: 'Spüler', icon: '🍽️', kind: 'game', screen: 'job-spueler', desc: 'Teller im Takt vom Band. 5 € pro Teller, Bruch kostet 10 €.', pay: '0–50 €' },
+    post: { id: 'post', name: 'Postbote', icon: '📬', kind: 'game', screen: 'postman', desc: 'Briefe in den richtigen Kasten. Schicht endet nach 15 Briefen oder beim ersten Fehler.', pay: '5–50 € pro Brief' },
+    taxi: { id: 'taxi', name: 'Nachttaxi', icon: '🚕', kind: 'game', screen: 'job-taxi', desc: '60 Sekunden, drei Spuren. Fahrgäste einsammeln, bei Rot bremsen.', pay: 'bis 300 €', requires: { balance: { gte: 200 } }, requireText: 'Kaution 200 €' },
+    tuersteher: { id: 'tuersteher', name: 'Türsteher', icon: '🚪', kind: 'shift', base: 100, desc: 'Wer kommt rein, wer nicht. Vito guckt zu.', pay: '100 € + Trinkgeld' },
+    croupier: { id: 'croupier', name: 'Croupier', icon: '🃏', kind: 'shift', base: 150, requires: { jobDone: 'tuersteher', gte: 3 }, requireText: '3 Nächte als Türsteher', desc: 'Karten geben, Kessel drehen, Mund halten.', pay: '150 €' },
+    kurier: { id: 'kurier', name: 'Kevins Kurier', icon: '💊', kind: 'shift', base: 300, desc: 'Päckchen von A nach B. Frag nicht, was drin ist.', pay: '300 €' },
+    praktikant: { id: 'praktikant', name: 'Praktikant bei Krause', icon: '👔', kind: 'shift', base: 120, desc: 'Kaffee kochen, Akten lesen. Manche Akten sind interessant.', pay: '120 €' },
+    docassi: { id: 'docassi', name: 'Assistent beim Doc', icon: '🩺', kind: 'shift', base: 250, desc: 'Handschuhe an. Nicht hinsehen.', pay: '250 €' },
+  },
+  render(root) {
+    const board = qs('#pinboard', root);
+    board.innerHTML = '';
+    const s = State.s;
+    for (const job of Object.values(this.POOL)) {
+      if (!s.story.unlocked.jobs.includes(job.id)) continue;
+      const av = StoryRules.jobAvailable(job, s);
+      const note = h('div', { class: 'jobnote' + (av.ok ? '' : av.reason === 'done' ? ' done' : ' locked') },
+        h('h4', {}, job.icon, job.name), h('p', {}, job.desc), h('div', { class: 'pay' }, job.pay));
+      if (!av.ok && av.reason !== 'done') note.append(h('div', { class: 'why' }, av.reason === 'locked' ? 'Gesperrt' : av.reason));
+      if (av.reason === 'done') note.append(h('div', { class: 'done-stamp' }, 'Heute erledigt'));
+      if (av.ok) note.addEventListener('click', () => { SFX.play('stamp'); Jobs.take(job.id); });
+      board.append(note);
+    }
+    if (!board.children.length) board.append(h('p', { class: 'paper' }, 'Nichts an der Pinnwand. Komm morgen wieder.'));
+  },
+  async take(id) {
+    const job = this.POOL[id];
+    if (!job || !StoryRules.jobAvailable(job, State.s).ok) return;
+    if (job.kind === 'game') {
+      Story.jobStart = { id, balance: State.s.balance };
+      Story.allowOnce = job.screen;
+      await UI.show(job.screen);
+      return;
+    }
+    await this.runShift(job);
+  },
+  async runShift(job) {
+    const list = (Story.story.jobScenes || {})[job.id] || [];
+    const seen = Story.s.seenJobScenes[job.id] || (Story.s.seenJobScenes[job.id] = []);
+    let cands = list.filter((sid) => !seen.includes(sid));
+    if (!cands.length && list.length) { seen.length = 0; cands = list.slice(); }
+    const sceneId = cands.length ? pick(cands) : null;
+    if (sceneId) seen.push(sceneId);
+    const before = State.s.balance;
+    Game.applyDelta(job.base, { quiet: true });
+    UI.toast({ icon: job.icon, title: `${job.name}: Schicht`, text: `+${UI.fmt(job.base)} Lohn.`, tone: 'win' });
+    if (sceneId) await Story.playScene(sceneId);
+    const earned = State.s.balance - before;
+    await Bus.emit('job:done', { id: job.id, earned });
+    await Story.jobDone(job.id, earned);
+    if (Story.lostDay) { Story.lostDay = false; UI.toast({ icon: '🚔', title: 'Tag verloren', text: 'Der Abend fällt aus.', tone: 'loss' }); await Story.night(); }
+  },
+  async finishGame(id) {
+    const start = Story.jobStart;
+    Story.jobStart = null;
+    const earned = start ? State.s.balance - start.balance : 0;
+    await Bus.emit('job:done', { id, earned });
+    await Story.jobDone(id, earned);
+  },
+  abort() { Story.jobStart = null; },
+};
+
+UI.register('jobs', {
+  template: 'tpl-jobs',
+  mount(root) {
+    Jobs.render(root);
+    qs('#btnNoJob', root).addEventListener('click', () => { SFX.play('click'); Story.evening(); });
+  },
+});
+
+/* ---- Raum: Vitos Tisch (Story 1) ---- */
+const VitoRoom = {
+  root: null,
+  render() {
+    if (!this.root) return;
+    const st = State.s.story;
+    const left = Story.story.days - st.day + 1;
+    qs('#vitoIou', this.root).innerHTML = `<h4>Vitos Zettel</h4><div class="amt">${UI.fmt(st.vars.schuld || 0)}</div><div class="deadline">Noch ${left} Tag${left === 1 ? '' : 'e'}</div><div>Bisher gezahlt: ${UI.fmt(st.vars.gezahlt || 0)}</div>`;
+    qs('#btnVitoPay', this.root).disabled = (st.vars.schuld || 0) <= 0;
+  },
+  pay() {
+    const s = State.s; const st = s.story;
+    let amt = parseInt(qs('#vitoPay', this.root).value, 10);
+    if (!Number.isFinite(amt) || amt < 100) { UI.toast({ icon: '🕶️', title: 'Mindestens 100 €', tone: 'loss' }); return; }
+    amt = Math.min(amt, st.vars.schuld || 0);
+    if (s.balance < amt) { UI.toast({ icon: '🕶️', title: 'Zu wenig Geld', text: `Du hast ${UI.fmt(s.balance)}.`, tone: 'loss' }); SFX.play('lose'); return; }
+    Game.applyDelta(-amt, { from: qs('#vitoIou', this.root) });
+    const beforeSteps = Math.floor((st.vars.gezahlt || 0) / 5000);
+    st.vars.gezahlt = (st.vars.gezahlt || 0) + amt;
+    st.vars.schuld = Math.max(0, (st.vars.schuld || 0) - amt);
+    const steps = Math.floor(st.vars.gezahlt / 5000) - beforeSteps;
+    if (steps > 0) StoryRules.applyEffect(s, { var: 'vertrauen', add: steps }, Story.story);
+    State.save();
+    SFX.play('stamp');
+    qs('#vitoStatus', this.root).innerHTML = `<span class="win">${UI.fmt(amt)} auf den Tisch. Vito nickt${steps > 0 ? ' anerkennend' : ''}.</span>`;
+    this.render(); UI.renderWallet(); UI.renderSide(); Story.renderDaybar();
+  },
+};
+UI.register('vito', {
+  template: 'tpl-vito',
+  mount(root) {
+    VitoRoom.root = root;
+    Game.bindBet(root, 'vitoPay');
+    qsa('[data-chip="max"]', root).forEach((c) => c.addEventListener('click', () => { qs('#vitoPay', root).value = Math.max(100, Math.min(State.s.balance, State.s.story.vars.schuld || 0)); }));
+    qs('#btnVitoPay', root).addEventListener('click', () => VitoRoom.pay());
+    VitoRoom.render();
+  },
+  unmount() { VitoRoom.root = null; },
+});
+Actions.vito = () => UI.show('vito');
 </script>
 
 <script id="story-probe">
