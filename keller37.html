@@ -372,6 +372,7 @@ body.cs-open .toast { max-width: 300px; }
 .trophy.on { opacity: 1; filter: none; border-style: solid; border-color: var(--gold); box-shadow: inset 0 0 12px rgba(201,162,39,.2); }
 .trophy .t-ic { font-size: 1.3rem; }
 .trophy.fresh { animation: popIn .4s cubic-bezier(.3,1.5,.5,1) both; }
+.trophy-sep { grid-column: 1 / -1; font-family: var(--font-display); letter-spacing: .12em; color: var(--dim); margin-top: 6px; }
 /* -- Mobile (< 760px): Seitenleiste wird Bottom-Bar mit Tabs -- */
 .side-tabs { display: none; }
 @media (max-width: 760px) {
@@ -2963,6 +2964,13 @@ const Achievements = {
     { id: 'vitosFriend', title: 'Vitos Freund', icon: '🕶️', desc: 'Mafia-Kredit fristgerecht getilgt.' },
     { id: 'postman', title: 'Fleißiger Bote', icon: '📬', desc: '11 Briefe in Folge.' },
     { id: 'phoenix', title: 'Auferstanden', icon: '🔥', desc: 'Nach dem Game Over weitergespielt.' },
+    { id: 'jobFirst', title: 'Erster Arbeitstag', icon: '🧾', desc: 'Einen Job in der Story beendet.', group: 'story' },
+    { id: 'teller10', title: 'Tellerwäscher', icon: '🍽️', desc: '10 von 10 Tellern sauber.', group: 'story' },
+    { id: 'nachtschicht', title: 'Nachtschicht', icon: '🚕', desc: 'Taxi-Schicht mit mindestens 200 €.', group: 'story' },
+    { id: 'endeEhrlich', title: 'Der Ehrliche', icon: '🤝', desc: 'Vito bis auf den Cent bezahlt.', group: 'story' },
+    { id: 'endeTaxi', title: 'Das Taxi', icon: '⛴️', desc: 'Mit der Fähre um vier verschwunden.', group: 'story' },
+    { id: 'endeSturz', title: 'Der Sturz', icon: '📕', desc: 'Vito durch die Hintertür geschickt.', group: 'story' },
+    { id: 'alleEnden', title: 'Alle Wege', icon: '🗺️', desc: 'Alle vier Enden einer Story gesehen.', group: 'story' },
   ],
   has(id) { return State.meta.achievements.includes(id); },
   unlock(id) {
@@ -2979,7 +2987,9 @@ const Achievements = {
   },
   renderWall(grid) {
     grid.innerHTML = '';
+    let sepDone = false;
     for (const d of this.DEFS) {
+      if (d.group === 'story' && !sepDone) { grid.append(h('div', { class: 'trophy-sep' }, 'Story')); sepDone = true; }
       grid.append(h('div', { class: 'trophy' + (this.has(d.id) ? ' on' : ''), 'data-id': d.id, title: d.desc }, h('span', { class: 't-ic' }, d.icon), h('span', {}, d.title)));
     }
   },
@@ -2996,6 +3006,15 @@ Bus.on('divorce', () => Achievements.unlock('divorced'));
 Bus.on('mafia.repaid', () => Achievements.unlock('vitosFriend'));
 Bus.on('post:streak', ({ streak }) => { if (streak >= 11) Achievements.unlock('postman'); });
 Bus.on('gameover:restart', () => Achievements.unlock('phoenix'));
+Bus.on('job:done', () => Achievements.unlock('jobFirst'));
+Bus.on('spueler:result', ({ hits }) => { if (hits >= 10) Achievements.unlock('teller10'); });
+Bus.on('taxi:result', ({ pay }) => { if (pay >= 200) Achievements.unlock('nachtschicht'); });
+Bus.on('story:ended', ({ id, ending }) => {
+  const map = { ehrlich: 'endeEhrlich', taxi: 'endeTaxi', sturz: 'endeSturz' };
+  if (map[ending]) Achievements.unlock(map[ending]);
+  const run = State.meta.storyRuns[id];
+  if (run && run.endings.length >= 4) Achievements.unlock('alleEnden');
+});
 </script>
 
 <script id="gameover">
@@ -3973,10 +3992,149 @@ const STORY_SCHULD = {
       { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'blackout', text: 'Zwei Nieren, ein Hobby. Zähl rückwärts von zehn.' },
       { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Er wacht wieder auf. Irgendwann. Das war deine Geschichte.' },
     ],
+    /* ---- Kapitel 3/4 ---- */
+    'schuld.k3': [
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Woche drei. Der Doc sucht einen Assistenten, falls du einen Magen hast. Und Vito redet über dich. Das ist gut. Oder schlecht.' },
+    ],
+    'schuld.tuerJob': [
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Du hältst dich. Igor sagt, du zahlst, du spielst, du klaust nicht. Ich brauche jemanden an der Tür. Nachts. Bist du das?' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'happy', text: 'Hundert die Nacht, plus was die Gäste dir zustecken. Und du siehst, wer rein will. Das ist mehr wert als das Geld.' },
+    ],
+    'schuld.buero': [
+      { bg: 'keller', who: 'igor', mood: 'calm', text: 'Vito will seinen Mantel. Büro, hinten. Ich bleibe an der Tür.' },
+      { bg: 'hinterzimmer', who: 'du', mood: 'shock', text: 'Der Mantel hängt am Haken. Auf dem Schreibtisch liegt das Hauptbuch. Offen. Mein Name steht drin – mit einem Datum, an dem ich nicht hier war.',
+        choices: [
+          { label: 'Reinschauen', value: 'lesen', cls: 'red', effects: [{ flag: 'hauptbuch' }, { scene: 'schuld.buero2' }] },
+          { label: 'Mantel nehmen, gehen', value: 'gehen', cls: 'ghost', effects: [{ var: 'tuerSauber', add: 1 }] },
+        ] },
+    ],
+    'schuld.buero2': [
+      { bg: 'hinterzimmer', who: 'du', mood: 'calm', text: 'Zwölf Namen, zwölf Schulden, keiner hat je gezahlt. Neben jedem ein Datum – und ein Vermerk: „Doc". Ich mache ein Foto. Meine Hand zittert nicht mal.' },
+    ],
+    'schuld.chantalBeichte': [
+      { bg: 'hafen', who: 'chantal', mood: 'calm', text: 'Okay. Ehrlich jetzt. Der Abend, an den du dich nicht erinnerst? Vito hat mich geschickt. Ich sollte dich abfüllen und an den Tisch setzen.' },
+      { bg: 'hafen', who: 'chantal', mood: 'angry', text: 'Du hast gar nicht gespielt. Er hat die Zahl in sein Buch geschrieben, als du schon unterm Tisch lagst. Das Hauptbuch. Im Büro. Ich hab es gesehen.' },
+      { bg: 'hafen', who: 'chantal', mood: 'calm', text: 'Ich sag dir das, weil ich die Nächste auf der Liste bin. Und weil du süß bist. Hauptsächlich das Erste.' },
+    ],
+    'schuld.igorZweifel': [
+      { bg: 'keller', who: 'igor', mood: 'calm', text: 'Dreimal. Dreimal hast du den Revolver gehalten und nicht gezittert. Vito zittert, wenn er das Buch aufschlägt.' },
+      { bg: 'keller', who: 'igor', mood: 'calm', text: 'Ich arbeite für Vito, seit ich zwölf bin. Ich habe nie gefragt, was in dem Buch steht. Vielleicht sollte ich.' },
+    ],
+    'schuld.k4': [
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Letzte Woche. Ich zähle mit. Alle Tische sind offen, jede Tür. Nutz sie – oder nutz sie nicht. Am Tag dreißig sitzen wir hier.' },
+    ],
+    'schuld.croupierJob': [
+      { bg: 'hinterzimmer', who: 'vito', mood: 'happy', text: 'Du bist an der Tür der Beste, den ich je hatte. Also nehme ich dich von der Tür. Der Tisch. Karten, Kessel, Tageskasse. Ab morgen.' },
+    ],
+    'schuld.erinnerung': [
+      { bg: 'keller', who: 'igor', mood: 'calm', text: 'Tag fünfundzwanzig. Vito lässt grüßen. Zwanzig Prozent, sagt er. Eine Erinnerung. Es tut mir leid.' },
+    ],
+    'schuld.fluchtAngebot': [
+      { bg: 'strasse', who: 'kevin', mood: 'calm', text: 'Digga, hör zu. Du hast Geld, du hast ein Taxi, du hast noch Beine. Ich kenn einen, der macht Papiere. Neuer Name, Hafen, Fähre um vier Uhr morgens.' },
+      { bg: 'strasse', who: 'kevin', mood: 'happy', text: 'Wenn du willst, sag es mir nachts. Ich frag jeden Abend einmal. Nur einmal.' },
+    ],
+    'schuld.fluchtFrage': [
+      { bg: 'strasse', who: 'kevin', mood: 'calm', text: 'Heute Nacht? Fähre um vier. Danach fragt keiner mehr nach {{schuld}}.',
+        choices: [
+          { label: 'Heute Nacht', value: 'ja', cls: 'red', effects: [{ flag: 'fluchtHeute' }] },
+          { label: 'Noch nicht', value: 'nein', cls: 'ghost' },
+        ] },
+    ],
+    'schuld.igorSah': [
+      { bg: 'keller', who: 'igor', mood: 'angry', text: 'Kevin redet zu viel. Papiere, Hafen, Fähre. Vito weiß es noch nicht. Ich noch nicht lange. Enttäusch mich nicht.' },
+    ],
+    'schuld.sturzFrage': [
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Du hast das Buch. Du hast den Safe. Igor steht hinter dir. Jetzt oder nie – morgen ist Vito wieder vorsichtig.',
+        choices: [
+          { label: 'Jetzt', value: 'jetzt', cls: 'red', effects: [{ flag: 'sturzJetzt' }] },
+          { label: 'Noch einen Tag', value: 'warten', cls: 'ghost' },
+        ] },
+    ],
+    'schuld.tuerSauber': [{ bg: 'keller', who: 'igor', mood: 'calm', text: 'Drei Nächte, keiner reingelassen, der nicht auf der Liste stand. Vito hat es gesehen.' }],
+    /* ---- Türsteher ---- */
+    'schuld.tuer.hundert': [
+      { bg: 'keller', who: 'makler', mood: 'happy', text: 'Hundert Euro, und Sie haben mich nie gesehen. Ich stehe nicht auf der Liste, aber ich stehe auf Roulette.',
+        choices: [
+          { label: 'Rein mit dir (+100 €)', value: 'rein', cls: 'red', effects: [{ balance: 100 }, { var: 'vertrauen', add: -1 }, { flag: 'gastRein' }] },
+          { label: 'Liste ist Liste', value: 'nein', cls: 'ghost', effects: [{ var: 'tuerSauber', add: 1 }] },
+        ] },
+    ],
+    'schuld.tuer.chantal': [
+      { bg: 'keller', who: 'chantal', mood: 'calm', text: 'Lass mich rein. Ich muss mit Vito reden. Bitte – er hört sonst nicht zu.',
+        choices: [
+          { label: 'Reinlassen', value: 'rein', effects: [{ flag: 'chantalRein' }] },
+          { label: 'Nicht heute', value: 'nein', cls: 'ghost', effects: [{ var: 'tuerSauber', add: 1 }, { scene: 'schuld.tuer.chantal2' }] },
+        ] },
+    ],
+    'schuld.tuer.chantal2': [{ bg: 'keller', who: 'chantal', mood: 'angry', text: 'Sie sieht mich an, als hätte ich sie schon einmal enttäuscht. Vielleicht habe ich das.' }],
+    'schuld.tuer.kevin': [
+      { bg: 'keller', who: 'kevin', mood: 'happy', text: 'Digga, ich bin auf der Liste. Unter „K". Guck nicht so, ich liefere hier nur ab. An Igor. Winke, winke.',
+        choices: [
+          { label: 'Durchwinken', value: 'ja', effects: [{ var: 'ruf', add: 1 }] },
+          { label: 'Igor holen', value: 'igor', cls: 'ghost', effects: [{ var: 'vertrauen', add: 1 }, { var: 'ruf', add: -2 }, { flag: 'kevinVerpfiffen' }] },
+        ] },
+    ],
+    /* ---- Croupier ---- */
+    'schuld.croup.kessel': [
+      { bg: 'hinterzimmer', who: 'makler', mood: 'happy', text: 'Halten Sie den Kessel ein bisschen. Rot, nur heute. Dreihundert für Sie, und keiner merkt was.',
+        choices: [
+          { label: 'Halten (+300 €)', value: 'halten', cls: 'red', effects: [{ balance: 300 }, { flag: 'kesselGehalten' }, { chance: 0.3, effects: [{ scene: 'schuld.croup.erwischt' }, { var: 'vertrauen', add: -2 }] }] },
+          { label: 'Der Kessel läuft, wie er läuft', value: 'nein', cls: 'ghost', effects: [{ var: 'vertrauen', add: 1 }] },
+        ] },
+    ],
+    'schuld.croup.erwischt': [{ bg: 'hinterzimmer', who: 'vito', mood: 'angry', text: 'Ich habe Augen an jedem Tisch. Rot, dreimal, für den Makler? Ich bin enttäuscht. Igor auch.' }],
+    'schuld.croup.vito': [
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Gib Karten. Und erzähl mir, was der Wirt so redet, wenn ich nicht da bin.',
+        choices: [
+          { label: 'Nichts. Er wischt Gläser.', value: 'nichts', effects: [{ var: 'vertrauen', add: 1 }] },
+          { label: 'Er sagt, du lässt niemanden zahlen', value: 'verrat', cls: 'red', effects: [{ var: 'vertrauen', add: -1 }, { flag: 'wirtVerraten' }] },
+        ] },
+    ],
+    'schuld.croup.safe': [
+      { bg: 'hinterzimmer', who: 'igor', mood: 'calm', text: 'Vito ist weg. Die Tageskasse in den Safe. Die Kombination ist drei-sieben. Ich sage das nur einmal.',
+        choices: [
+          { label: 'Umsehen', value: 'safe', cls: 'red', effects: [{ flag: 'safe' }, { scene: 'schuld.croup.safe2' }] },
+          { label: 'Kasse rein, Klappe zu', value: 'zu', cls: 'ghost', effects: [{ var: 'vertrauen', add: 1 }] },
+        ] },
+    ],
+    'schuld.croup.safe2': [{ bg: 'hinterzimmer', who: 'du', mood: 'shock', text: 'Neben dem Geld: Fotos. Zwölf Leute, jeder unterm Tisch, jeder mit einem Datum. Und eine Quittung vom Doc. Ich schließe den Safe. Drei-sieben.' }],
+    /* ---- Doc-Assistent ---- */
+    'schuld.doc.niere': [
+      { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Ein Patient, zwei Nieren, kein Geld. Er schläft. Halt die Schale.',
+        choices: [
+          { label: 'Schale halten (+150 €)', value: 'halten', cls: 'red', effects: [{ balance: 150 }, { flag: 'komplize' }, { var: 'ruf', add: 1 }] },
+          { label: 'Ich geh', value: 'gehen', cls: 'ghost', effects: [{ scene: 'schuld.doc.gehen' }] },
+        ] },
+    ],
+    'schuld.doc.gehen': [{ bg: 'klinik', who: 'doc', mood: 'calm', text: 'Schade. Du hättest ruhige Hände. Die Tür ist da hinten, schließ sie leise.' }],
+    'schuld.doc.vorbesitzer': [
+      { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Wusstest du, dass der Keller mal jemand anderem gehörte? Vor drei Jahren. Der Mann lag auf genau diesem Tisch. Vito hat die Rechnung bezahlt. Großzügig.' },
+    ],
+    'schuld.doc.igor': [
+      { bg: 'klinik', who: 'igor', mood: 'shock', text: 'Streifschuss. Ein Duell. Der andere hatte Glück. Halt mich fest, der Doc näht schlecht, wenn ich zucke.' },
+      { bg: 'klinik', who: 'igor', mood: 'calm', text: 'Du hast ruhige Hände. Das habe ich schon einmal gesagt. Ich sage es nicht oft.' },
+    ],
+    /* ---- Enden ---- */
+    'schuld.ende.sturz': [
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Tag der Abrechnung. Setz dich. Igor, die Tür.' },
+      { bg: 'hinterzimmer', who: 'igor', mood: 'calm', text: 'Nein. Heute nicht. Das Buch, Vito. Der Safe. Zwölf Namen. Ich habe nie gefragt. Jetzt frage ich.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'shock', fx: 'blackout', text: 'Du… weißt nicht, was du tust. Igor. IGOR.' },
+      { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Vito ist durch die Hintertür. Der Keller gehört jetzt dem, der die Schlüssel hat – mir. Und du fängst morgen an. Als Croupier. Der Kessel läuft, wie er läuft.' },
+    ],
+    'schuld.ende.taxi': (ctx) => {
+      const panels = [
+        { bg: 'strasse', who: 'kevin', mood: 'calm', text: 'Vier Uhr. Papiere im Handschuhfach. Neuer Name, klingt nach Zahnarzt. Fahr.' },
+      ];
+      if (ctx.flags.chantalKennt && !ctx.flags.komplize) panels.push({ bg: 'hafen', who: 'chantal', mood: 'happy', text: 'Rutsch rüber. Ehrlich jetzt – dachtest du, ich bleibe hier? Ich bin die Nächste auf der Liste. Fahr.' });
+      panels.push({ bg: 'hafen', who: 'du', mood: 'calm', text: 'Die Fähre legt ab. Das Handy vibriert. Eine Nachricht, unbekannte Nummer: „Ich bin kein Unmensch. Aber ich habe Zeit. – V."' });
+      return panels;
+    },
   },
   chapters: [
     { id: 'k1', title: 'Der Zettel', when: { day: { gte: 1 } } },
     { id: 'k2', title: 'Kleine Fische', when: { day: { gte: 6 } }, intro: 'schuld.k2', unlock: { jobs: ['kurier', 'praktikant', 'taxi'], doors: ['roulette', 'blackjack', 'russian'], rooms: ['bank'] } },
+    { id: 'k3', title: 'Die Tür', when: { day: { gte: 13 } }, intro: 'schuld.k3', unlock: { jobs: ['docassi'], rooms: ['invest'] } },
+    { id: 'k4', title: 'Abrechnung', when: { day: { gte: 21 } }, intro: 'schuld.k4', unlock: { doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack'] } },
   ],
   events: [
     { id: 'chantal3', when: { day: { eq: 3 } }, once: true, at: 'night', scene: 'schuld.chantal3', effects: [{ flag: 'chantalKennt' }] },
@@ -3985,18 +4143,44 @@ const STORY_SCHULD = {
     { id: 'kontrolleFail', when: { all: [{ day: { eq: 10 } }, { not: { any: [{ balance: { gte: 5000 } }, { var: 'schuld', lte: 45000 }] } }] }, once: true, at: 'night', scene: 'schuld.kontrolle.fail', effects: [{ force: 'duel' }] },
     { id: 'duelLostBill', when: { all: [{ flag: 'duelLost' }, { notFlag: 'duelLostBilled' }] }, once: true, at: 'night', scene: 'schuld.duelLost', effects: [{ balance: -500 }, { flag: 'duelLostBilled' }] },
     { id: 'duelWonNote', when: { all: [{ flag: 'duelWon' }, { notFlag: 'duelWonNoted' }] }, once: true, at: 'night', scene: 'schuld.duelWon', effects: [{ flag: 'duelWonNoted' }, { var: 'vertrauen', add: 1 }] },
+    { id: 'tuerJob', when: { all: [{ day: { gte: 13 } }, { var: 'vertrauen', gte: 4 }] }, once: true, at: 'morning', scene: 'schuld.tuerJob', effects: [{ unlock: { jobs: ['tuersteher'] } }] },
+    { id: 'buero', when: { all: [{ jobDone: 'tuersteher', gte: 1 }, { notFlag: 'bueroGesehen' }] }, once: true, at: 'morning', scene: 'schuld.buero', effects: [{ flag: 'bueroGesehen' }] },
+    { id: 'chantalBeichte', when: { all: [{ day: { gte: 15 } }, { flag: 'chantalKennt' }] }, once: true, at: 'night', scene: 'schuld.chantalBeichte', effects: [{ flag: 'chantalBeichte' }] },
+    { id: 'igorZweifel', when: { var: 'duellSiege', gte: 3 }, once: true, at: 'spin:after', scene: 'schuld.igorZweifel', effects: [{ flag: 'igorZweifelt' }] },
+    { id: 'tuerSauber', when: { var: 'tuerSauber', gte: 3 }, at: 'night', scene: 'schuld.tuerSauber', effects: [{ var: 'vertrauen', add: 1 }, { var: 'tuerSauber', set: 0 }] },
+    { id: 'croupierJob', when: { all: [{ day: { gte: 21 } }, { var: 'vertrauen', gte: 7 }] }, once: true, at: 'morning', scene: 'schuld.croupierJob', effects: [{ unlock: { jobs: ['croupier'] } }] },
+    { id: 'erinnerung', when: { day: { eq: 25 } }, once: true, at: 'night', scene: 'schuld.erinnerung', effects: [{ balancePct: -20, min: 100 }] },
+    { id: 'fluchtAngebot', when: { all: [{ day: { gte: 20 } }, { jobDone: 'taxi', gte: 1 }, { balance: { gte: 8000 } }, { notFlag: 'fluchtBereit' }] }, once: true, at: 'night', scene: 'schuld.fluchtAngebot', effects: [{ flag: 'fluchtBereit' }] },
+    { id: 'fluchtFrage', when: { all: [{ flag: 'fluchtBereit' }, { notFlag: 'fluchtHeute' }] }, at: 'night', scene: 'schuld.fluchtFrage' },
+    { id: 'igorSah', when: { all: [{ flag: 'fluchtBereit' }, { notFlag: 'igorSah' }] }, once: true, at: 'morning', scene: 'schuld.igorSah', effects: [{ flag: 'igorSah' }, { var: 'vertrauen', add: -3 }] },
+    { id: 'sturzFrage', when: { all: [{ day: { gte: 28 } }, { flag: 'hauptbuch' }, { flag: 'safe' }, { flag: 'igorZweifelt' }, { notFlag: 'sturzJetzt' }] }, at: 'night', scene: 'schuld.sturzFrage' },
   ],
   jobScenes: {
     kurier: ['schuld.kurier.polizei', 'schuld.kurier.doc', 'schuld.kurier.igor'],
     praktikant: ['schuld.prakt.insider', 'schuld.prakt.konto', 'schuld.prakt.praemie'],
+    tuersteher: ['schuld.tuer.hundert', 'schuld.tuer.chantal', 'schuld.tuer.kevin'],
+    croupier: ['schuld.croup.kessel', 'schuld.croup.vito', 'schuld.croup.safe'],
+    docassi: ['schuld.doc.niere', 'schuld.doc.vorbesitzer', 'schuld.doc.igor'],
   },
-  jobEffects: { 'schuld.prakt.praemie': [{ balance: 100 }], 'schuld.kurier.doc': [{ var: 'ruf', add: 1 }], 'schuld.prakt.konto': [{ flag: 'vitoPleite' }] },
+  jobEffects: {
+    'schuld.prakt.praemie': [{ balance: 100 }], 'schuld.kurier.doc': [{ var: 'ruf', add: 1 }], 'schuld.prakt.konto': [{ flag: 'vitoPleite' }],
+    'schuld.doc.vorbesitzer': [{ var: 'ruf', add: 1 }], 'schuld.doc.igor': [{ var: 'vertrauen', add: 1 }, { flag: 'igorDank' }],
+  },
   endings: [
     { id: 'ehrlich', title: 'Der Ehrliche', priority: 30, when: { var: 'schuld', lte: 0 }, scene: 'schuld.ende.ehrlich' },
+    { id: 'sturz', title: 'Der Sturz', priority: 20, when: { all: [{ flag: 'hauptbuch' }, { flag: 'safe' }, { flag: 'igorZweifelt' }, { any: [{ flag: 'sturzJetzt' }, { day: { gte: 30 } }] }] }, scene: 'schuld.ende.sturz' },
+    { id: 'taxi', title: 'Das Taxi', priority: 10, when: { flag: 'fluchtHeute' }, scene: 'schuld.ende.taxi' },
     { id: 'doc', title: 'Der Doc', priority: 0, scene: 'schuld.ende.doc', fallback: true },
   ],
 };
 if (typeof Stories !== 'undefined') Stories.define(STORY_SCHULD);
+Bus.on('rr:result', ({ victim }) => {
+  if (State.mode !== 'story' || !State.s.story || State.s.story.id !== 'schuld' || victim !== 'igor') return;
+  const v = State.s.story.vars;
+  v.duellSiege = (v.duellSiege || 0) + 1;
+  if (v.duellSiege <= 3) StoryRules.applyEffect(State.s, { var: 'vertrauen', add: 1 }, STORY_SCHULD);
+  State.save(); UI.renderWallet();
+});
 </script>
 
 <script id="selftest">
@@ -4553,6 +4737,33 @@ T.test('STORY_SCHULD: Kontrolle Tag 10 und Enden', () => {
   T.eq(StoryRules.ending(STORY_SCHULD, s).id, 'ehrlich');
   s.story.vars.schuld = 1; s.story.day = 31;
   T.eq(StoryRules.ending(STORY_SCHULD, s).id, 'doc');
+});
+T.test('STORY_SCHULD: vier Enden, Prioritäten, Sturz-Bedingung', () => {
+  T.eq(STORY_SCHULD.endings.map((e) => e.id).sort(), ['doc', 'ehrlich', 'sturz', 'taxi']);
+  const s = Object.assign(base({ balance: 100 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
+  s.story.day = 28; Object.assign(s.story.flags, { hauptbuch: true, safe: true, igorZweifelt: true });
+  T.eq(StoryRules.ending(STORY_SCHULD, s), null, 'Sturz braucht sturzJetzt oder Tag 30');
+  s.story.flags.sturzJetzt = true;
+  T.eq(StoryRules.ending(STORY_SCHULD, s).id, 'sturz');
+  s.story.flags.fluchtHeute = true;
+  T.eq(StoryRules.ending(STORY_SCHULD, s).id, 'sturz', 'Sturz vor Taxi');
+  s.story.vars.schuld = 0;
+  T.eq(StoryRules.ending(STORY_SCHULD, s).id, 'ehrlich', 'Ehrlich vor allem');
+  const t = Object.assign(base({ balance: 100 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
+  t.story.flags.fluchtHeute = true;
+  T.eq(StoryRules.ending(STORY_SCHULD, t).id, 'taxi');
+});
+T.test('STORY_SCHULD: Kapitel 3/4 und Job-Freischaltung per Vertrauen', () => {
+  const s = Object.assign(base({ balance: 100 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
+  s.story.day = 13;
+  T.eq(StoryRules.chapterFor(STORY_SCHULD, s).id, 'k3');
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), []);
+  s.story.vars.vertrauen = 4;
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), ['tuerJob']);
+  s.story.day = 21; s.story.vars.vertrauen = 7; s.story.seen.push('tuerJob');
+  T.eq(StoryRules.chapterFor(STORY_SCHULD, s).id, 'k4');
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), ['croupierJob']);
+  T.eq(STORY_SCHULD.jobScenes.tuersteher.length, 3); T.eq(STORY_SCHULD.jobScenes.croupier.length, 3); T.eq(STORY_SCHULD.jobScenes.docassi.length, 3);
 });
 
 /* --- SELFTEST CASES END --- */
