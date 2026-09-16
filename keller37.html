@@ -502,6 +502,27 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 @media (min-width: 1440px) and (min-height: 820px) { .body, .title-inner { zoom: 1.15; } }
 @media (min-width: 1700px) and (min-height: 900px) { .body, .title-inner { zoom: 1.35; } }
 @media (min-width: 2200px) and (min-height: 1100px) { .body, .title-inner { zoom: 1.65; } }
+/* ==== Stadt – Autohaus & INTERSPORT ==== */
+.stadt { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
+.shop { background: var(--panel-2); border: 1px solid rgba(255,255,255,.06); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow); }
+.shop h3 { font-family: var(--font-display); letter-spacing: .12em; font-size: 1.25rem; text-align: center; }
+.shop.audi h3 { color: #d8d8d8; text-shadow: 0 0 10px rgba(255,255,255,.35); }
+.shop.merc h3 { color: #cfd8e3; text-shadow: 0 0 10px rgba(76,201,240,.45); }
+.shop.sport h3 { color: #ff6a3d; text-shadow: 0 0 10px rgba(255,106,61,.5); }
+.shop .seller { font-family: var(--font-mono); font-size: .8rem; color: var(--dim); text-align: center; font-style: italic; min-height: 2.2em; }
+.gear-card { background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; padding: 12px; display: grid; grid-template-columns: 52px 1fr; gap: 6px 12px; align-items: center; }
+.gear-card.owned { border-color: var(--gold); box-shadow: 0 0 14px rgba(201,162,39,.25); }
+.gear-card .pic { font-size: 2.2rem; grid-row: span 3; text-align: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,.6)); }
+.gear-card .name { font-weight: 700; }
+.gear-card .price { font-family: var(--font-mono); color: var(--gold-2); font-size: .85rem; }
+.gear-card ul { list-style: none; font-family: var(--font-mono); font-size: .75rem; color: var(--dim); display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.gear-card .btn { grid-column: 2; justify-self: start; font-size: .9rem; padding: 6px 14px; }
+.gear-card .reason { grid-column: 2; font-family: var(--font-mono); font-size: .75rem; color: var(--dim); }
+.gear-line { font-family: var(--font-mono); font-size: .78rem; color: var(--gold-2); }
+.cs-bg.autohaus { background: linear-gradient(180deg, #e8eef3 0%, #b9c4cf 45%, #3c4249 46%, #1b1f23 100%); }
+.cs-bg.intersport { background: linear-gradient(180deg, #1a1a1a 0%, #2b2b2b 50%, #ff6a3d 51%, #b03d1c 100%); }
+@media (max-width: 1100px) { .stadt { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 760px) { .stadt { grid-template-columns: 1fr; } }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
@@ -565,6 +586,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
     <div class="door" data-screen="russian" style="--neon: var(--neon-blue)"><div class="sign">Igor</div><div class="glyph">🔫</div><div class="chalk-tag">Duell · 1 Kugel</div><div class="knob"></div></div>
     <div class="door" data-screen="blackjack" style="--neon: var(--neon-green)"><div class="sign">Black Jack</div><div class="glyph">🃏</div><div class="chalk-tag">bis 21</div><div class="knob"></div></div>
     <div class="door day" data-screen="postman" style="--neon: var(--day)"><div class="sign">Ausgang</div><div class="glyph">📬</div><div class="chalk-tag">Post austragen</div><div class="knob"></div></div>
+    <div class="door day" data-screen="stadt" style="--neon: var(--day)"><div class="sign">Stadt</div><div class="glyph">🏙️</div><div class="chalk-tag">Autohaus · INTERSPORT</div><div class="knob"></div></div>
   </div>
 </template>
 <template id="tpl-finance">
@@ -851,6 +873,16 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
     <div class="bet-bar">
       <button class="btn solid" id="btnTaxiStart">Schicht beginnen</button>
       <button class="btn ghost hidden" id="btnTaxiDone">Feierabend</button>
+    </div>
+  </div>
+</template>
+<template id="tpl-stadt">
+  <div class="panel stretch">
+    <h2>🏙️ Stadt</h2>
+    <div class="stadt">
+      <section class="shop audi"><h3>Audi Zentrum</h3><p class="seller" id="sellerAudi"></p><div id="shopAudi"></div></section>
+      <section class="shop merc"><h3>Mercedes-Benz Niederlassung</h3><p class="seller" id="sellerMerc"></p><div id="shopMerc"></div></section>
+      <section class="shop sport"><h3>INTERSPORT</h3><p class="seller" id="sellerSport"></p><div id="shopSport"></div></section>
     </div>
   </div>
 </template>
@@ -1401,6 +1433,7 @@ const Actions = {
   invest: () => UI.show('invest'),
   life: () => UI.show('life'),
   vito: () => UI.show('vito'),
+  stadt: () => UI.show('stadt'),
 };
 
 const UI = {
@@ -1519,6 +1552,9 @@ const UI = {
     if (inStory && room('vito')) hz.push(btn('🕶️ Vitos Tisch', s.story.vars.schuld != null ? this.fmt(s.story.vars.schuld) : '', 'vito'));
     if (hz.length) secs.push(sec('Hinterzimmer', ...hz));
     if (room('life')) secs.push(sec('Zuhause', btn('🏡 Leben', s.hasHouse ? '🏰' : '', 'life')));
+    if (room('stadt')) secs.push(sec('Stadt',
+      btn('🏙️ Autohaus · INTERSPORT', s.car || s.shoes ? '✓' : '', 'stadt'),
+      h('p', { class: 'side-hint gear-line', id: 'gearLine' }, Stadt.line(s))));
     side.append(...secs);
     const tabs = h('div', { class: 'side-tabs' });
     qsa('.side-sec h3', side).map((el) => el.textContent).forEach((label, i) => {
@@ -1597,11 +1633,13 @@ const Cutscene = {
     schmalz: { name: 'Dr. Schmalz', emoji: '⚖️', color: '#c0c0c0' },
     kevin: { name: 'Kevin', emoji: '🧢', color: 'var(--neon-purple)' },
     postmeister: { name: 'Der Postmeister', emoji: '📬', color: 'var(--day)' },
+    verkaeufer: { name: 'Der Verkäufer', emoji: '🤵', color: '#cfd8e3' },
     du: { name: 'Du', emoji: '🤠', color: '#ffffff' },
   },
   PROPS: {
     bar: ['🍾', '🪑'], hinterzimmer: ['🕯️', '🚬'], standesamt: ['💐', '🔔'], villa: ['🏙️', '🌙'], hafen: ['🏗️', '🌙'],
     'hafen-morgen': ['🏗️', '🌅'], klinik: ['🩺', '💡'], bank: ['🏧', '🪴'], strasse: ['🏠', '🚗'], keller: ['💡', '🪑'],
+    autohaus: ['🚗', '🪴'], intersport: ['👟', '🏷️'],
   },
   SCENES: {},
   define(id, panels) { this.SCENES[id] = panels; },
@@ -2238,6 +2276,136 @@ Cutscene.bind('divorce', 'divorce');
 Cutscene.bind('heartbreak.collapse', 'heartbreak.collapse');
 Cutscene.bind('therapy.done', 'therapy.done');
 Cutscene.bind('dealer.hired', 'dealer.hired');
+</script>
+
+<script id="room-stadt">
+/* ================= STADT – Autohaus (Audi / Mercedes) und INTERSPORT ================= */
+const Stadt = {
+  root: null,
+  SELLER: {
+    none: 'Zu Fuß gekommen? Mutig.',
+    same: 'Schön, dass du wieder da bist.',
+    other: 'Der Wechsel lohnt sich. Sagen alle.',
+    sport: 'Für Leute, die es eilig haben.',
+  },
+  REASON: { funds: 'Zu wenig Bargeld', downgrade: 'Kein Rückschritt', owned: 'Deins' },
+  carPerks(c) {
+    const out = [];
+    if (c.mugMult != null) out.push(`Überfälle −${Math.round((1 - c.mugMult) * 100)} %`);
+    if (c.flee) out.push(`Flucht +${c.flee} %`);
+    if (c.bankLimit) out.push(`Bank-Limit ${UI.fmt(c.bankLimit)}`);
+    if (c.bankRate) out.push(`Zinsen ${Math.round(c.bankRate * 100)} %`);
+    if (c.luck) out.push(`Glück +${c.luck} %`);
+    return out;
+  },
+  shoePerks(sh) {
+    const out = [`Flucht +${sh.flee} %`];
+    if (sh.postTime) out.push(`Post: +${sh.postTime} s pro Brief`);
+    if (sh.postPay) out.push(`Post: +${sh.postPay} € pro Brief`);
+    if (sh.spuelerBand) out.push('Spüler: leichteres Timing');
+    if (sh.taxiTip) out.push(`Taxi: +${sh.taxiTip} € Trinkgeld`);
+    return out;
+  },
+  card(item, perks, check, label, onBuy) {
+    const owned = check.reason === 'owned';
+    const el = h('div', { class: 'gear-card' + (owned ? ' owned' : '') },
+      h('div', { class: 'pic' }, item.icon),
+      h('div', { class: 'name' }, item.name),
+      h('div', { class: 'price' }, UI.fmt(item.price)),
+      h('ul', {}, ...perks.map((p) => h('li', {}, p))));
+    if (check.ok) el.append(h('button', { class: 'btn', onclick: onBuy }, label));
+    else el.append(h('span', { class: 'reason' }, this.REASON[check.reason] || check.reason));
+    return el;
+  },
+  render() {
+    if (!this.root) return;
+    const s = State.s;
+    const cur = s.car ? Rules.GEAR.cars[s.car] : null;
+    for (const [brand, boxId, sellerId] of [['audi', '#shopAudi', '#sellerAudi'], ['merc', '#shopMerc', '#sellerMerc']]) {
+      const box = qs(boxId, this.root); box.innerHTML = '';
+      qs(sellerId, this.root).textContent = !cur ? this.SELLER.none : cur.brand === brand ? this.SELLER.same : this.SELLER.other;
+      Object.entries(Rules.GEAR.cars).filter(([, c]) => c.brand === brand).sort((a, b) => a[1].tier - b[1].tier).forEach(([id, c]) => {
+        const check = Rules.canBuyCar(s, id);
+        const label = cur ? `Upgrade · ${UI.fmt(check.cost)}` : `Kaufen · ${UI.fmt(check.cost)}`;
+        box.append(this.card(c, this.carPerks(c), check, label, () => this.buyCar(id)));
+      });
+    }
+    const box = qs('#shopSport', this.root); box.innerHTML = '';
+    qs('#sellerSport', this.root).textContent = this.SELLER.sport;
+    Object.entries(Rules.GEAR.shoes).sort((a, b) => a[1].tier - b[1].tier).forEach(([id, sh]) => {
+      box.append(this.card(sh, this.shoePerks(sh), Rules.canBuyShoes(s, id), `Kaufen · ${UI.fmt(sh.price)}`, () => this.buyShoes(id)));
+    });
+  },
+  busy() { return Cutscene.active || Game.inFlight > 0; },
+  async buyCar(id) {
+    const s = State.s;
+    if (this.busy()) return;
+    const check = Rules.canBuyCar(s, id);
+    if (!check.ok) return;
+    const car = Rules.GEAR.cars[id];
+    const old = s.car ? Rules.GEAR.cars[s.car] : null;
+    if (old) {
+      const tradeIn = Math.round(old.price * Rules.GEAR.TRADE_IN);
+      const choice = await Cutscene.play('stadt.tradein', { old: old.name, tradeIn: UI.fmt(tradeIn), neu: car.name, cost: UI.fmt(check.cost) });
+      if (choice !== 'yes' || this.busy() || !Rules.canBuyCar(s, id).ok) return; // Zustand kann sich während der Szene geändert haben
+    }
+    SFX.play('cash');
+    Game.applyDelta(-Rules.canBuyCar(s, id).cost, { from: this.root ? qs(car.brand === 'audi' ? '#shopAudi' : '#shopMerc', this.root) : null });
+    s.car = id;
+    State.save();
+    await Cutscene.play('stadt.car', { name: car.name });
+    UI.toast({ icon: car.icon, title: car.name, text: 'Steht vor der Tür. Deins.', tone: 'gold' });
+    UI.renderWallet(); UI.renderSide(); this.render();
+    await Bus.emit('gear:car', { id });
+  },
+  async buyShoes(id) {
+    const s = State.s;
+    if (this.busy()) return;
+    if (!Rules.canBuyShoes(s, id).ok) return;
+    const sh = Rules.GEAR.shoes[id];
+    SFX.play('cash');
+    Game.applyDelta(-sh.price, { from: this.root ? qs('#shopSport', this.root) : null });
+    s.shoes = id;
+    State.save();
+    await Cutscene.play('stadt.shoes', { name: sh.name });
+    UI.toast({ icon: '👟', title: sh.name, text: 'Passt. Lauf.', tone: 'gold' });
+    UI.renderWallet(); UI.renderSide(); this.render();
+    await Bus.emit('gear:shoes', { id });
+  },
+  /* Kurze Zeile für Seitenleiste und Kopfzeile: „🚗 Audi RS 4 quattro · 👟 Trail-Runner Pro · 💪 3" */
+  line(s) {
+    const parts = [];
+    if (s.car) parts.push(`${Rules.GEAR.cars[s.car].icon} ${Rules.GEAR.cars[s.car].name}`);
+    if (s.shoes) parts.push(`${Rules.GEAR.shoes[s.shoes].icon} ${Rules.GEAR.shoes[s.shoes].name}`);
+    if (!parts.length) parts.push('Zu Fuß');
+    parts.push(`💪 ${s.strength || 0}`);
+    return parts.join(' · ');
+  },
+  /* Trophäe „Vollausgestattet": Top-Tier-Auto (Stufe 3) + Carbon-Sprinter */
+  checkFullSet() {
+    const s = State.s;
+    if (s.car && Rules.GEAR.cars[s.car].tier === 3 && s.shoes === 'carbon') Achievements.unlock('vollausgestattet');
+  },
+};
+UI.register('stadt', {
+  template: 'tpl-stadt',
+  mount(root) { Stadt.root = root; Stadt.render(); },
+  unmount() { Stadt.root = null; },
+});
+Cutscene.define('stadt.tradein', (ctx) => [
+  { bg: 'autohaus', who: 'verkaeufer', mood: 'calm', text: `Dein ${ctx.old} geht mit ${ctx.tradeIn} in Zahlung. Bleiben ${ctx.cost} für den ${ctx.neu}. Weiter?`,
+    choices: [{ label: 'Ja, tauschen', value: 'yes', cls: 'green' }, { label: 'Doch nicht', value: 'no', cls: 'ghost' }] },
+]);
+Cutscene.define('stadt.car', [
+  { bg: 'autohaus', who: 'verkaeufer', mood: 'happy', text: 'Bar. Ich frag nicht, woher. Das ist Teil des Service.' },
+  { bg: 'autohaus', who: 'verkaeufer', mood: 'calm', fx: 'flash', text: 'Der Schlüssel. Der {{name}} steht vorne. Fahren Sie vorsichtig – oder wenigstens schnell.' },
+]);
+Cutscene.define('stadt.shoes', [
+  { bg: 'intersport', who: 'verkaeufer', mood: 'happy', text: '{{name}}. Dämpfung, Grip, und man hört Sie nicht kommen. Oder gehen.' },
+  { bg: 'intersport', who: 'verkaeufer', mood: 'calm', text: 'Karton bleibt hier. Sie sehen aus, als würden Sie ihn gleich brauchen.' },
+]);
+Bus.on('gear:car', () => Stadt.checkFullSet());
+Bus.on('gear:shoes', () => Stadt.checkFullSet());
 </script>
 
 <script id="game-slots">
@@ -3094,6 +3262,8 @@ const Achievements = {
     { id: 'vitosFriend', title: 'Vitos Freund', icon: '🕶️', desc: 'Mafia-Kredit fristgerecht getilgt.' },
     { id: 'postman', title: 'Fleißiger Bote', icon: '📬', desc: '11 Briefe in Folge.' },
     { id: 'phoenix', title: 'Auferstanden', icon: '🔥', desc: 'Nach dem Game Over weitergespielt.' },
+    { id: 'strassenkaempfer', title: 'Straßenkämpfer', icon: '🥊', desc: 'Fünf Räuber verprügelt.' },
+    { id: 'vollausgestattet', title: 'Vollausgestattet', icon: '🏁', desc: 'Top-Auto und Carbon-Sprinter.' },
     { id: 'jobFirst', title: 'Erster Arbeitstag', icon: '🧾', desc: 'Einen Job in der Story beendet.', group: 'story' },
     { id: 'teller10', title: 'Tellerwäscher', icon: '🍽️', desc: '10 von 10 Tellern sauber.', group: 'story' },
     { id: 'nachtschicht', title: 'Nachtschicht', icon: '🚕', desc: 'Taxi-Schicht mit mindestens 200 €.', group: 'story' },
