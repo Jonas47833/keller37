@@ -432,6 +432,8 @@ div#title[hidden] { display: none; }
 .title-doors { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; width: 100%; }
 .title-door { height: 240px; }
 .title-foot { display: flex; gap: 8px; }
+.title-trophies-panel { width: 100%; max-height: 50vh; overflow: auto; }
+.title-trophies-panel .btn { margin-top: 10px; }
 @media (max-width: 760px) { .title-neon { font-size: 3rem; } .title-doors { grid-template-columns: 1fr; } .title-door { height: 170px; } }
 /* -- Story: Tagesleiste, Sperren, Nacht -- */
 body.mode-story #newgame, body.mode-story #toTitle { display: none; }
@@ -774,7 +776,15 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
       <div class="door title-door" data-choice="free" style="--neon: var(--neon-green)"><div class="sign">Freies Spiel</div><div class="glyph">🎰</div><div class="chalk-tag" id="titleFreeTag">Der Keller wie er ist</div><div class="knob"></div></div>
     </div>
     <button class="btn ghost sm hidden" id="titleNewStory">Neue Story beginnen</button>
-    <div class="title-foot"><button class="icon-btn" id="titleMute">🔊</button></div>
+    <div class="title-foot">
+      <button class="icon-btn" id="titleMute">🔊</button>
+      <button class="icon-btn" id="titleTrophiesBtn" title="Trophäen">🏆 Trophäen</button>
+    </div>
+    <div class="chalk title-trophies-panel hidden" id="titleTrophiesPanel">
+      <h4>🏆 Trophäenwand</h4>
+      <div class="trophy-grid" id="titleTrophyGrid"></div>
+      <button class="btn ghost sm" id="titleTrophiesClose">Schließen</button>
+    </div>
   </div>
 </template>
 <template id="tpl-daybar">
@@ -3215,6 +3225,11 @@ const Title = {
       }
       qs('#titleMute', root).textContent = State.meta.muted ? '🔇' : '🔊';
       qs('#titleMute', root).addEventListener('click', (e) => { SFX.setMuted(!State.meta.muted); e.currentTarget.textContent = State.meta.muted ? '🔇' : '🔊'; });
+      qs('#titleTrophiesBtn', root).addEventListener('click', () => {
+        Achievements.renderWall(qs('#titleTrophyGrid', root));
+        qs('#titleTrophiesPanel', root).classList.remove('hidden');
+      });
+      qs('#titleTrophiesClose', root).addEventListener('click', () => qs('#titleTrophiesPanel', root).classList.add('hidden'));
       const done = (v) => { Title.hide(); resolve(v); };
       qsa('.title-door', root).forEach((d) => {
         d.addEventListener('mouseenter', () => SFX.play('neonBuzz'));
@@ -3315,6 +3330,7 @@ const Story = {
       await this.applyChapter();
       if (params.has('ending')) { const end = story.endings.find((e) => e.id === params.get('ending')); if (end) return this.finish(end); }
       await this.morning();
+      if (params.has('job')) await Jobs.take(params.get('job'));
       return;
     }
     State.setMode('story');
@@ -3322,6 +3338,7 @@ const Story = {
     if (!this.story) { UI.toast({ icon: '🐛', title: 'Story unbekannt', text: State.s.story.id, tone: 'loss' }); return Modes.enter('free'); }
     this.setup();
     if (this.s.phase === 'morning') await this.morning(); else await this.evening();
+    if (params.has('job') && this.s.phase === 'morning') await Jobs.take(params.get('job'));
     UI.toast({ icon: '📖', title: this.story.title, text: `Tag ${this.s.day} von ${this.story.days}.` });
   },
   setup() {
@@ -4148,7 +4165,7 @@ const STORY_SCHULD = {
     { id: 'chantalBeichte', when: { all: [{ day: { gte: 15 } }, { flag: 'chantalKennt' }] }, once: true, at: 'night', scene: 'schuld.chantalBeichte', effects: [{ flag: 'chantalBeichte' }] },
     { id: 'igorZweifel', when: { var: 'duellSiege', gte: 3 }, once: true, at: 'spin:after', scene: 'schuld.igorZweifel', effects: [{ flag: 'igorZweifelt' }] },
     { id: 'tuerSauber', when: { var: 'tuerSauber', gte: 3 }, at: 'night', scene: 'schuld.tuerSauber', effects: [{ var: 'vertrauen', add: 1 }, { var: 'tuerSauber', set: 0 }] },
-    { id: 'croupierJob', when: { all: [{ day: { gte: 21 } }, { var: 'vertrauen', gte: 7 }] }, once: true, at: 'morning', scene: 'schuld.croupierJob', effects: [{ unlock: { jobs: ['croupier'] } }] },
+    { id: 'croupierJob', when: { all: [{ day: { gte: 21 } }, { var: 'vertrauen', gte: 7 }, { jobDone: 'tuersteher', gte: 3 }] }, once: true, at: 'morning', scene: 'schuld.croupierJob', effects: [{ unlock: { jobs: ['croupier'] } }] },
     { id: 'erinnerung', when: { day: { eq: 25 } }, once: true, at: 'night', scene: 'schuld.erinnerung', effects: [{ balancePct: -20, min: 100 }] },
     { id: 'fluchtAngebot', when: { all: [{ day: { gte: 20 } }, { jobDone: 'taxi', gte: 1 }, { balance: { gte: 8000 } }, { notFlag: 'fluchtBereit' }] }, once: true, at: 'night', scene: 'schuld.fluchtAngebot', effects: [{ flag: 'fluchtBereit' }] },
     { id: 'fluchtFrage', when: { all: [{ flag: 'fluchtBereit' }, { notFlag: 'fluchtHeute' }] }, at: 'night', scene: 'schuld.fluchtFrage' },
@@ -4760,7 +4777,8 @@ T.test('STORY_SCHULD: Kapitel 3/4 und Job-Freischaltung per Vertrauen', () => {
   T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), []);
   s.story.vars.vertrauen = 4;
   T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), ['tuerJob']);
-  s.story.day = 21; s.story.vars.vertrauen = 7; s.story.seen.push('tuerJob');
+  s.story.day = 21; s.story.vars.vertrauen = 7; s.story.seen.push('tuerJob', 'buero');
+  s.story.jobsDone.tuersteher = 3;
   T.eq(StoryRules.chapterFor(STORY_SCHULD, s).id, 'k4');
   T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), ['croupierJob']);
   T.eq(STORY_SCHULD.jobScenes.tuersteher.length, 3); T.eq(STORY_SCHULD.jobScenes.croupier.length, 3); T.eq(STORY_SCHULD.jobScenes.docassi.length, 3);
@@ -4789,8 +4807,8 @@ T.test('STORY_SCHULD: Kapitel 3/4 und Job-Freischaltung per Vertrauen', () => {
     r.failures.forEach((f) => console.error('[selftest] FAIL', f));
     UI.toast({ icon: r.failed ? '❌' : '✅', title: 'Selbsttest', text: `${r.passed} bestanden, ${r.failed} fehlgeschlagen`, tone: r.failed ? 'loss' : 'win', ms: 6000 });
   }
-  const wantsStory = params.has('story') || params.get('mode') === 'story';
-  const skipTitle = params.has('mode') || params.has('story') || params.has('screen') || params.has('scene') || params.has('selftest');
+  const wantsStory = params.has('story') || params.get('mode') === 'story' || params.has('job');
+  const skipTitle = params.has('mode') || params.has('story') || params.has('screen') || params.has('scene') || params.has('selftest') || params.has('job');
   if (wantsStory) { await Modes.enter(State.hasStoryRun() && !params.has('fresh') ? 'story' : 'newstory'); return; }
   if (!skipTitle) { const choice = await Title.show(); await Modes.enter(choice); return; }
   /* Dev-Pfad freies Spiel: wie bisher */
