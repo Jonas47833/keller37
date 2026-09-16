@@ -30,6 +30,12 @@ import urllib.request
 
 import websockets
 
+try:
+    from PIL import Image, ImageChops
+    HAVE_PIL = True
+except ImportError:
+    HAVE_PIL = False
+
 PORT = 9335
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HTML = os.path.join(ROOT, "keller37.html")
@@ -284,6 +290,37 @@ RESULTS = []
 def record(name, ok, detail=""):
     RESULTS.append((name, ok, detail))
     print(("OK  " if ok else "FAIL"), name, "-", detail)
+
+
+def compare_screenshots(ref_path, new_path, luminance_threshold=10):
+    """Vergleicht zwei PNGs pixelweise und gibt (changed_pct, detail) zurueck.
+
+    Beide Bilder werden auf ihre gemeinsame Breite/Hoehe zugeschnitten (Page.captureScreenshot
+    liefert die tatsaechliche Viewport-Hoehe, waehrend die Referenzbilder per CLI-Screenshot mit
+    festem --window-size aufgenommen wurden -- ein reiner Aufnahme-Unterschied, kein Layout-Diff).
+    Ein Pixel gilt als "veraendert", wenn die Luminanz-Differenz > luminance_threshold ist (klein
+    genug, um echte Inhaltsaenderungen zu erfassen, aber grob genug, um Anti-Aliasing-Rauschen und
+    minimale Kompressionsartefakte zu ignorieren). Ohne Pillow (sollte in dieser Umgebung nicht
+    vorkommen, siehe Header-Kommentar) faellt die Funktion auf einen reinen Dateigroessen-Vergleich
+    zurueck -- deutlich als Notloesung im detail-String markiert.
+    """
+    if not HAVE_PIL:
+        size_ref = os.path.getsize(ref_path)
+        size_new = os.path.getsize(new_path)
+        pct = 100.0 * abs(size_ref - size_new) / max(size_ref, 1)
+        return pct, "PILLOW FEHLT -- nur Dateigroessen-Vergleich (ref=%d new=%d bytes)" % (size_ref, size_new)
+    a = Image.open(ref_path).convert("RGB")
+    b = Image.open(new_path).convert("RGB")
+    w = min(a.size[0], b.size[0])
+    h = min(a.size[1], b.size[1])
+    a2 = a.crop((0, 0, w, h))
+    b2 = b.crop((0, 0, w, h))
+    diff_l = ImageChops.difference(a2, b2).convert("L")
+    hist = diff_l.histogram()
+    changed = sum(hist[luminance_threshold + 1:])
+    total = w * h
+    pct = 100.0 * changed / total if total else 0.0
+    return pct, "ref=%s neu=%s zugeschnitten=%dx%d veraenderte_px=%d/%d (%.2f%%)" % (a.size, b.size, w, h, changed, total, pct)
 
 
 async def scenario_title_and_intro(cdp):
@@ -774,17 +811,28 @@ async def scenario_all_scenes(cdp):
            "gespielt=%d/%d fehler=%s" % (len(played), len(scene_ids), new_errors))
 
 
+DIFF_THRESHOLD_PCT = 2.0
+
+
 async def scenario_free_sandbox_unchanged(cdp):
-    """Freies Spiel unveraendert: ?screen=-Screenshots gegen docs/screenshots vergleichen."""
+    """Freies Spiel unveraendert: ?screen=-Screenshots per echtem Pixel-Diff (Pillow) gegen
+    docs/superpowers/screenshots/*.png vergleichen -- nicht nur "Datei existiert"."""
     ref_dir = os.path.join(ROOT, "docs", "superpowers", "screenshots")
+    if not HAVE_PIL:
+        record("freie sandbox: Pillow verfuegbar", False, "import PIL schlug fehl -- Vergleich faellt auf Dateigroesse zurueck")
     for screen in ["slots", "roulette", "blackjack", "hub"]:
         await cdp.send("Emulation.clearDeviceMetricsOverride")
         await cdp.navigate(URL_BASE + "?fresh&screen=%s" % screen)
         await asyncio.sleep(0.8)
         path = await cdp.screenshot("story-free-%s.png" % screen)
         ref = os.path.join(ref_dir, "%s.png" % screen)
-        detail = "kein Referenzbild" if not os.path.exists(ref) else "vorhanden: %s" % ref
-        record("freie sandbox: ?screen=%s Screenshot erstellt" % screen, path is not None, detail)
+        if not (path and os.path.exists(ref)):
+            record("freie sandbox: ?screen=%s unveraendert (Pixel-Diff)" % screen, False,
+                   "Screenshot oder Referenzbild fehlt (path=%s ref_exists=%s)" % (path, os.path.exists(ref)))
+            continue
+        pct, detail = compare_screenshots(ref, path)
+        record("freie sandbox: ?screen=%s unveraendert (Pixel-Diff < %.0f%%)" % (screen, DIFF_THRESHOLD_PCT),
+               pct < DIFF_THRESHOLD_PCT, detail)
 
 
 async def main():

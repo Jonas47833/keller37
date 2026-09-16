@@ -3330,7 +3330,7 @@ const Story = {
       await this.applyChapter();
       if (params.has('ending')) { const end = story.endings.find((e) => e.id === params.get('ending')); if (end) return this.finish(end); }
       await this.morning();
-      if (params.has('job')) await Jobs.take(params.get('job'));
+      if (params.has('job') && this.s.phase === 'morning') await Jobs.take(params.get('job'));
       return;
     }
     State.setMode('story');

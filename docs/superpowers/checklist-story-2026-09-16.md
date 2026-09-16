@@ -97,10 +97,12 @@ Bus-Error-Handling-Test, kein Fehlschlag – zählt nicht zu den 81.)
   - Spüler Gewinn: `scenario_spueler_and_hub()`, `{'hits': 10, 'breaks': 0}` → Lohn 50 €.
   - Spüler Verlust: `scenario_spueler_taxi_loss()`, `{'hits': 0, 'breaks': 10}`, Konto 50 €→0 €
     (Formel ergäbe −100 €, korrekt auf den vorhandenen Betrag gekappt statt negativ zu werden).
-  - Taxi Gewinn: `scenario_fast_forward()`, `{'passengers': 50, 'tickets': 0}` (Screenshot
+  - Taxi Gewinn: `scenario_fast_forward()`, `{'passengers': 54, 'tickets': 0}` (Screenshot
     `story-taxi.png` mitten in der Schicht).
-  - Taxi Verlust: `scenario_spueler_taxi_loss()`, `{'passengers': 19, 'tickets': 18}`, Konto
-    500 €→0 € (ebenfalls gekappt statt negativ).
+  - Taxi Verlust: `scenario_spueler_taxi_loss()`, `{'passengers': 10, 'tickets': 18}`, Konto
+    500 €→0 € (ebenfalls gekappt statt negativ; die genauen Fahrgast-/Strafzettel-Zahlen
+    schwanken von Lauf zu Lauf, da Fahrgäste/Ampeln ungesteuert per `Math.random()` spawnen –
+    entscheidend ist Tickets > 0 und ein sinkendes Konto, siehe Protokoll unten).
 - [x] ✅ **Titel ↔ Modi-Wechsel ohne Datenverlust** – `scenario_mode_switch_no_dataloss()`:
   freies Spiel Kontostand auf 12.345 € gesetzt → Titel → Story (neu) → Story-Kontostand auf 777 €
   und `vars.schuld` auf 42.000 € gesetzt → Titel → Freies Spiel: Kontostand wieder **12.345 €**
@@ -128,16 +130,27 @@ Bus-Error-Handling-Test, kein Fehlschlag – zählt nicht zu den 81.)
   („Reduced-Motion für Mini-Spiele"), hier erneut bestätigt.
 - [x] ✅ **Selbsttests 81** – siehe Abschnitt 1, `81 bestanden, 0 fehlgeschlagen` in beiden
   Runnern.
-- [x] ✅ **Freie Sandbox unverändert** – `scenario_free_sandbox_unchanged()`:
-  `?screen=slots|roulette|blackjack|hub` (frischer freier Spielstand) gegen
-  `docs/superpowers/screenshots/{slots,roulette,blackjack,hub}.png` verglichen (Pixel-Diff via
-  Pillow, nach Zuschnitt auf die gemeinsame Höhe – die Referenzbilder wurden mit
+- [x] ✅ **Freie Sandbox unverändert** – `scenario_free_sandbox_unchanged()` in
+  `tests/playtest-story.py` implementiert den Vergleich jetzt tatsächlich im Skript (Funktion
+  `compare_screenshots()`, Pillow – `import PIL` wird beim Skriptstart geprüft, kein rein
+  optischer Check mehr): `?screen=slots|roulette|blackjack|hub` (frischer freier Spielstand) wird
+  gegen `docs/superpowers/screenshots/{slots,roulette,blackjack,hub}.png` pixelweise verglichen,
+  nach Zuschnitt auf die gemeinsame Breite/Höhe (die Referenzbilder wurden mit
   `--window-size=1280,900` per CLI-Screenshot aufgenommen, `Page.captureScreenshot` liefert die
-  tatsächliche Content-Höhe 813 px; das ist ein Aufnahme-Unterschied, keine Layout-Änderung):
-  Slots 0,19 %, Roulette 0,11 %, Blackjack 0,09 %, Hub 0,10 % unterschiedliche Pixel – ausschließlich
-  dynamischer Inhalt (Kontostand, Walzenposition), keine Layout-Verschiebung. Alle vier Screenshots
-  wurden zusätzlich visuell angesehen (Hub- und Slots-Screen: Türen, Positionen, Beschriftungen
-  identisch zum Referenzbild).
+  tatsächliche Content-Höhe 813 px – ein Aufnahme-Unterschied, keine Layout-Änderung). Ein Pixel
+  gilt als „verändert", wenn die Luminanz-Differenz > 10 ist (ignoriert Anti-Aliasing-Rauschen);
+  der Check schlägt fehl, wenn mehr als 2 % der Pixel verändert sind. Ergebnis aus dem
+  reproduzierbaren Lauf unten (`python3 tests/playtest-story.py`):
+  ```
+  OK   freie sandbox: ?screen=slots unveraendert (Pixel-Diff < 2%) - ref=(1280, 900) neu=(1280, 813) zugeschnitten=1280x813 veraenderte_px=876/1040640 (0.08%)
+  OK   freie sandbox: ?screen=roulette unveraendert (Pixel-Diff < 2%) - ref=(1280, 900) neu=(1280, 813) zugeschnitten=1280x813 veraenderte_px=984/1040640 (0.09%)
+  OK   freie sandbox: ?screen=blackjack unveraendert (Pixel-Diff < 2%) - ref=(1280, 900) neu=(1280, 813) zugeschnitten=1280x813 veraenderte_px=876/1040640 (0.08%)
+  OK   freie sandbox: ?screen=hub unveraendert (Pixel-Diff < 2%) - ref=(1280, 900) neu=(1280, 813) zugeschnitten=1280x813 veraenderte_px=876/1040640 (0.08%)
+  ```
+  Slots 0,08 %, Roulette 0,09 %, Blackjack 0,08 %, Hub 0,08 % veränderte Pixel – weit unter der
+  2 %-Schwelle, ausschließlich dynamischer Inhalt (Kontostand, Walzenposition), keine
+  Layout-Verschiebung. Alle vier Screenshots wurden zusätzlich visuell angesehen (Hub- und
+  Slots-Screen: Türen, Positionen, Beschriftungen identisch zum Referenzbild).
 
 ### 3. Freies Spiel
 
@@ -149,7 +162,7 @@ Bus-Error-Handling-Test, kein Fehlschlag – zählt nicht zu den 81.)
 
 ---
 
-## Vollständiges CDP-Protokoll (letzter grüner Lauf)
+## Vollständiges CDP-Protokoll (letzter grüner Lauf, reproduzierbar per `python3 tests/playtest-story.py`)
 
 ```
 $ python3 tests/playtest-story.py
@@ -172,17 +185,17 @@ OK   post: Postbote-Schicht (mid) erreichbar - screen=postman
 OK   nacht: Tag-3-Ereignis (Chantal) ausgeloest - seen=['chantal3'] day=4
 OK   kapitel: Tag 6 -> Kapitel k2, Taxi/Kurier/Praktikant frei - chapter=k2 jobs=['spueler', 'post', 'kurier', 'praktikant', 'taxi']
 OK   taxi: Job-Screen geladen - screen=job-taxi
-OK   taxi: Schicht abgeschlossen - {'passengers': 50, 'tickets': 0}
+OK   taxi: Schicht abgeschlossen - {'passengers': 54, 'tickets': 0}
 OK   kontrolle: Tag 10 Fehlschlag loest erzwungenes Duell aus - duel_seen=True
-OK   duell: Ausgang als Flag gemeldet (duelWon/duelLost) - {'chantalKennt': True, 'duelLost': True}
+OK   duell: Ausgang als Flag gemeldet (duelWon/duelLost) - {'chantalKennt': True, 'duelWon': True}
 OK   ?job=spueler: startet Job direkt ohne Pinnwand-Klick - screen=job-spueler
-OK   schicht-karten tuersteher: alle 3 Szenen gesehen
-OK   schicht-karten croupier: alle 3 Szenen gesehen
-OK   schicht-karten kurier: alle 3 Szenen gesehen
-OK   schicht-karten praktikant: alle 3 Szenen gesehen
-OK   schicht-karten docassi: alle 3 Szenen gesehen
+OK   schicht-karten tuersteher: alle 3 Szenen gesehen - seen=['schuld.tuer.chantal', 'schuld.tuer.hundert', 'schuld.tuer.kevin'] expected=['schuld.tuer.hundert', 'schuld.tuer.chantal', 'schuld.tuer.kevin']
+OK   schicht-karten croupier: alle 3 Szenen gesehen - seen=['schuld.croup.kessel', 'schuld.croup.vito', 'schuld.croup.safe'] expected=['schuld.croup.kessel', 'schuld.croup.vito', 'schuld.croup.safe']
+OK   schicht-karten kurier: alle 3 Szenen gesehen - seen=['schuld.kurier.igor', 'schuld.kurier.doc', 'schuld.kurier.polizei'] expected=['schuld.kurier.polizei', 'schuld.kurier.doc', 'schuld.kurier.igor']
+OK   schicht-karten praktikant: alle 3 Szenen gesehen - seen=['schuld.prakt.konto', 'schuld.prakt.insider', 'schuld.prakt.praemie'] expected=['schuld.prakt.insider', 'schuld.prakt.konto', 'schuld.prakt.praemie']
+OK   schicht-karten docassi: alle 3 Szenen gesehen - seen=['schuld.doc.igor', 'schuld.doc.vorbesitzer', 'schuld.doc.niere'] expected=['schuld.doc.niere', 'schuld.doc.vorbesitzer', 'schuld.doc.igor']
 OK   spueler verliert: Lohn negativ, Konto sinkt - res={'hits': 0, 'breaks': 10} before=50 after=0
-OK   taxi verliert: nur Strafzettel, Konto sinkt - res={'passengers': 19, 'tickets': 18} before=500 after=0
+OK   taxi verliert: nur Strafzettel, Konto sinkt - res={'passengers': 10, 'tickets': 18} before=500 after=0
 OK   modus-wechsel: freies Spiel behaelt Kontostand nach Story-Ausflug - vorher=12345 nachher=12345
 OK   modus-wechsel: Story behaelt Stand nach freiem Ausflug - balance=777 schuld=42000
 OK   reload mitten im Tag: Tag/Phase/Variablen erhalten - day=4 phase=evening vertrauen=3 screen=hub
@@ -191,19 +204,19 @@ OK   mobile 400px: Abend-Hub kein horizontales Scrollen - scrollWidth=400 client
 OK   reduced-motion: Cutscene-Text erscheint sofort komplett - text=82 full=82
 OK   reduced-motion: Spueler-Zone bleibt 30% (kein Schrumpfen) - zone.w=0.3
 OK   ende ehrlich: erreicht - ended=ehrlich
-OK   ende ehrlich: in meta.storyRuns vermerkt
+OK   ende ehrlich: in meta.storyRuns vermerkt - {'lastPlayed': 1789533645926, 'endings': ['ehrlich']}
 OK   ende sturz: erreicht - ended=sturz
-OK   ende sturz: in meta.storyRuns vermerkt
+OK   ende sturz: in meta.storyRuns vermerkt - {'lastPlayed': 1789533650530, 'endings': ['ehrlich', 'sturz']}
 OK   ende taxi: erreicht - ended=taxi
-OK   ende taxi: in meta.storyRuns vermerkt
+OK   ende taxi: in meta.storyRuns vermerkt - {'lastPlayed': 1789533656673, 'endings': ['ehrlich', 'sturz', 'taxi']}
 OK   ende doc (Fallback ?day=30): erreicht - ended=doc
-OK   titel: nach Ende wieder am Titel
+OK   titel: nach Ende wieder am Titel - 
 OK   titel: 'Neue Story' bei bestehendem Lauf fragt nach - active=True
 OK   story-1: jede Szene einmal gerendert (48 Szenen) - gespielt=48/48 fehler=[]
-OK   freie sandbox: ?screen=slots Screenshot erstellt
-OK   freie sandbox: ?screen=roulette Screenshot erstellt
-OK   freie sandbox: ?screen=blackjack Screenshot erstellt
-OK   freie sandbox: ?screen=hub Screenshot erstellt
+OK   freie sandbox: ?screen=slots unveraendert (Pixel-Diff < 2%) - ref=(1280, 900) neu=(1280, 813) zugeschnitten=1280x813 veraenderte_px=876/1040640 (0.08%)
+OK   freie sandbox: ?screen=roulette unveraendert (Pixel-Diff < 2%) - ref=(1280, 900) neu=(1280, 813) zugeschnitten=1280x813 veraenderte_px=984/1040640 (0.09%)
+OK   freie sandbox: ?screen=blackjack unveraendert (Pixel-Diff < 2%) - ref=(1280, 900) neu=(1280, 813) zugeschnitten=1280x813 veraenderte_px=876/1040640 (0.08%)
+OK   freie sandbox: ?screen=hub unveraendert (Pixel-Diff < 2%) - ref=(1280, 900) neu=(1280, 813) zugeschnitten=1280x813 veraenderte_px=876/1040640 (0.08%)
 
 === ZUSAMMENFASSUNG ===
 Checks: 51, davon fehlgeschlagen: 0
