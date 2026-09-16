@@ -3327,6 +3327,7 @@ const Story = {
   async enter(choice) {
     Stories.validateAll();
     const params = new URLSearchParams(location.search);
+    this.consumeDevParams(); // `params` ist eine Kopie – gilt für diesen Einstieg, danach nicht mehr
     if (choice === 'newstory' && State.hasStoryRun() && !params.has('fresh')) {
       State.setMode('story');
       this.story = Stories.get(State.s.story.id);
@@ -3354,9 +3355,20 @@ const Story = {
     this.story = Stories.get(State.s.story.id);
     if (!this.story) { UI.toast({ icon: '🐛', title: 'Story unbekannt', text: State.s.story.id, tone: 'loss' }); return Modes.enter('free'); }
     this.setup();
+    await this.applyChapter();
     if (this.s.phase === 'morning') await this.morning(); else await this.evening();
     if (params.has('job') && this.s.phase === 'morning') await Jobs.take(params.get('job'));
     UI.toast({ icon: '📖', title: this.story.title, text: `Tag ${this.s.day} von ${this.story.days}.` });
+  },
+  /* Dev-Parameter gelten genau einmal: aus der URL entfernen, damit „Nächste Story"/Reload nicht wieder
+     dieselbe Story mit ?fresh&day=… erzwingen. */
+  consumeDevParams() {
+    const params = new URLSearchParams(location.search);
+    const dev = ['story', 'day', 'job', 'ending', 'fresh'];
+    if (!dev.some((k) => params.has(k))) return;
+    dev.forEach((k) => params.delete(k));
+    const q = params.toString();
+    try { history.replaceState(null, '', location.pathname + (q ? `?${q}` : '') + location.hash); } catch (e) { /* file:// o. ä. – egal */ }
   },
   setup() {
     document.body.classList.remove('mode-free'); document.body.classList.add('mode-story');
@@ -3559,6 +3571,7 @@ const Story = {
     const victim = await new Promise((resolve) => {
       const off = Bus.on('rr:forced', ({ victim: v }) => { off(); resolve(v); });
       Russian.start({ forced: true });
+      if (!Russian.inDuel) { off(); resolve('aborted'); } // Screen nicht bereit – nicht ewig warten
     });
     this.s.flags[victim === 'igor' ? 'duelWon' : 'duelLost'] = true;
     State.save();

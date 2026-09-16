@@ -170,3 +170,18 @@ Neue Trophäen: „Erster Arbeitstag", „Tellerwäscher" (10/10 Teller), „Nac
 5. Story 1 Kapitel 3–4 + vier Enden + Achievements.
 6. Playtest-Skript, Checkliste, Screenshots.
 7. (Später) Story 2, Story 3.
+
+## 15. Abweichungen in der Umsetzung
+
+Rulings während der Umsetzung (Branch `story-mode`), die von den Abschnitten oben abweichen:
+
+- **Raum `life` bleibt in Story 1 gesperrt** (§9): ohne Tinder gibt es keinen Liebeskummer, der Raum wäre leer. Story 1 schaltet nur `bar`, `vito`, `bank` (Kap. 2) und `invest` (Kap. 3) frei.
+- **Platzhalter** (§7): Story-Variablen werden direkt per Namen eingesetzt – `{{schuld}}` statt `{{var.schuld}}`; formatiert als Geld, wenn die Variable im `hud` mit `fmt: 'money'` steht, sonst als Zahl. `{{day}}` und `{{balance}}` wie beschrieben.
+- **Kontrolle Tag 10** (§9): besteht auch, wer bis dahin **mindestens 7 Jobs** gemacht hat (`{ stat: 'jobs', gte: 7 }` – neue Bedingung `stat` liest `story.stats`). Damit ist die Kontrolle durch reines Arbeiten erreichbar, nicht nur über 5.000 € Konto oder 5.000 € Tilgung.
+- **`igorSah`** (§9, „Igor sieht die Flucht"): feuert **nachts** und nur in einer Nacht, in der der Tagesjob Türsteher war (`{ jobToday: 'tuersteher' }`, neue Bedingung) – nicht am nächsten Morgen ohne Türsteher-Schicht.
+- **Konto fällt nie unter 0** (§7): negative `balance`-Effekte und negative Mini-Spiel-Löhne werden auf den Kontostand gekappt. `balancePct` mit negativem Prozentsatz zieht `max(Prozent, min)` ab, aber nie mehr als vorhanden – `min` ist ein **Mindestabzug**, kein Untergrenze, der Effekt erhöht das Konto nie (50 € −20 %/min 100 → 0 €; 300 € → 200 €; 1.000 € → 800 €).
+- **Ruf** (§9): +1 pro Taxi-Schicht ≥ 150 € (`taxi:result`), +1 Kurier (Doc-Szene), +1 Doc (Vorbesitzer-Szene). Kevins Fluchtangebot setzt zusätzlich `ruf ≥ 2` voraus.
+- **Casino morgens gesperrt** (§5): am Morgen führen Escape und das Neonschild „Keller 37" an die Pinnwand, nicht in den Hub; die Türen sind erst am Abend erreichbar. Ein abgeschlossenes Mini-Spiel verbraucht den Tag sofort (auch bei Escape/Reload vor „Feierabend").
+- **Titel-Rückweg** (§3): im freien Spiel gibt es im Wallet den Knopf 🚪 „Zum Titel"; im Story-Modus sitzt derselbe Knopf in der Tagesleiste (das Wallet-Icon ist dort ausgeblendet).
+- **Sandbox-Kredite** (§9): der Finanz-Screen zeigt im Story-Modus nur die Schalter, deren Raum freigeschaltet ist (`bank` bzw. `mafia`); Vitos Sandbox-Kredit ist in Story 1 nie erreichbar.
+

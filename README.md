@@ -40,14 +40,17 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
 | URL-Zusatz | Wirkung |
 |---|---|
 | `?fresh` | beide Spielstände (frei und Story) löschen und neu starten |
-| `?screen=slots` | direkt einen Screen öffnen (`roulette`, `slots`, `horses`, `russian`, `blackjack`, `postman`, `finance`, `invest`, `life`, im Story-Modus zusätzlich `jobs`, `vito`, `job-spueler`, `job-taxi`) |
-| `?scene=divorce` | eine Szene abspielen |
+| `?screen=slots` | nur freies Spiel: Titelscreen überspringen und direkt einen Screen öffnen (`roulette`, `slots`, `horses`, `russian`, `blackjack`, `postman`, `finance`, `invest`, `life`). Story-Screens erreicht man stattdessen über `?story=…&job=…` (Mini-Spiele) bzw. nach dem Einstieg per `UI.show('jobs'|'vito')` |
+| `?scene=divorce` | nur freies Spiel: eine Szene abspielen |
 | `?selftest` | Regel-Selbsttest im Browser (Ergebnis als Toast und in der Konsole) |
 | `?mode=story` \| `?mode=free` | Titelscreen überspringen, direkt in den Modus |
 | `?story=schuld` | Story erzwingen (impliziert `mode=story`) |
-| `?day=12` | Story-Tag setzen (nur zusammen mit `?fresh`) |
-| `?job=taxi` | Jobbörse überspringen, Job direkt starten |
-| `?ending=sturz` | ein Story-Ende direkt abspielen |
+| `?day=12` | Story-Tag setzen (nur zusammen mit `?fresh`; überspringt das Intro) |
+| `?job=spueler` | Jobbörse überspringen, Job direkt starten (impliziert `mode=story`; der Job muss freigeschaltet und seine Voraussetzung erfüllt sein) |
+| `?ending=sturz` | ein Story-Ende direkt abspielen (nur beim Story-Neustart, z. B. `?fresh&story=schuld&ending=sturz`) |
+
+`story`, `day`, `job`, `ending` und `fresh` gelten genau einmal: die Engine entfernt sie nach dem Einstieg
+aus der URL, damit „Nächste Story" oder ein Reload nicht wieder dieselbe erzwungene Story starten.
 
 ## Tests
 
