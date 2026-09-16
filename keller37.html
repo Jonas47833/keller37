@@ -283,7 +283,7 @@ body.cs-open .toast { max-width: 300px; }
 /* -- Roulette -- */
 .roulette-top { display: flex; gap: 24px; align-items: center; justify-content: center; flex-wrap: wrap; }
 .wheel-box { position: relative; width: 320px; height: 320px; flex: 0 0 auto; }
-#wheelCanvas { border-radius: 50%; transition: transform 4s cubic-bezier(0.12, 0.88, 0.22, 1); box-shadow: 0 10px 30px rgba(0,0,0,.8), 0 0 0 6px #2b1a0c, 0 0 0 9px #c9a227; }
+#wheelCanvas { width: 320px; height: 320px; border-radius: 50%; transition: transform 4s cubic-bezier(0.12, 0.88, 0.22, 1); box-shadow: 0 10px 30px rgba(0,0,0,.8), 0 0 0 6px #2b1a0c, 0 0 0 9px #c9a227; }
 .ball { position: absolute; left: 0; top: 0; width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #999); box-shadow: 0 2px 4px rgba(0,0,0,.8); z-index: 5; transform: translate(153px, 8px); pointer-events: none; }
 .pointer { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); color: var(--gold-2); font-size: 1.6rem; z-index: 7; filter: drop-shadow(0 2px 3px #000); }
 .result-num { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0); width: 74px; height: 74px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
@@ -498,6 +498,10 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .ticket-pop { position: absolute; left: 50%; top: 40%; transform: translateX(-50%) rotate(-8deg); font-family: var(--font-display); font-size: 2rem; color: #fff; background: #b3261e; padding: 4px 14px; letter-spacing: .1em; animation: stampIn .4s cubic-bezier(.3,1.6,.5,1) both; }
 @media (max-width: 760px) { .taxi-road { height: 340px; } }
 
+/* -- Große Bildschirme: Spielfläche mitwachsen lassen (zoom skaliert Layout + Canvas sauber) -- */
+@media (min-width: 1440px) and (min-height: 820px) { .body, .title-inner { zoom: 1.15; } }
+@media (min-width: 1700px) and (min-height: 900px) { .body, .title-inner { zoom: 1.35; } }
+@media (min-width: 2200px) and (min-height: 1100px) { .body, .title-inner { zoom: 1.65; } }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
@@ -2400,6 +2404,9 @@ const Roulette = {
     if (!c) return;
     const ctx = c.getContext('2d');
     const cx = 160, cy = 160, r = 150, total = 37, slice = (2 * Math.PI) / total;
+    /* 2× Auflösung, damit der Kessel bei Zoom auf großen Bildschirmen scharf bleibt */
+    if (c.width !== 640) { c.width = 640; c.height = 640; }
+    ctx.setTransform(2, 0, 0, 2, 0, 0);
     ctx.clearRect(0, 0, 320, 320);
     ctx.beginPath(); ctx.arc(cx, cy, r + 8, 0, 2 * Math.PI); ctx.fillStyle = '#4a2c14'; ctx.fill();
     for (let i = 0; i < total; i++) {
