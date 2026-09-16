@@ -3236,6 +3236,7 @@ const StoryRules = {
     if ('flag' in cond) return !!st.flags[cond.flag];
     if ('notFlag' in cond) return !st.flags[cond.notFlag];
     if ('unlocked' in cond) return ['jobs', 'doors', 'rooms'].some((k) => st.unlocked[k].includes(cond.unlocked));
+    if ('strength' in cond) return StoryRules._ops(cond.strength, s.strength || 0);
     throw new Error(`Ungültige Bedingung: ${JSON.stringify(cond)}`);
   },
   applyEffect(s, eff, story = {}, rng = Math.random) {
@@ -3296,7 +3297,7 @@ const StoryRules = {
     if (s.story.day > story.days) return story.endings.find((e) => e.fallback) || null;
     return null;
   },
-  advanceDay(s) { s.story.day++; s.story.phase = 'morning'; s.story.jobToday = null; },
+  advanceDay(s) { s.story.day++; s.story.phase = 'morning'; s.story.jobToday = null; if ((s.mugCooldown || 0) > 0) s.mugCooldown--; },
   jobAvailable(job, s) {
     const st = s.story;
     if (!st.unlocked.jobs.includes(job.id)) return { ok: false, reason: 'locked' };
@@ -3304,16 +3305,20 @@ const StoryRules = {
     if (job.requires && !StoryRules.check(job.requires, s)) return { ok: false, reason: job.requireText || 'Voraussetzung fehlt' };
     return { ok: true };
   },
+  ROOMS: ['bar', 'doc', 'bank', 'mafia', 'invest', 'life', 'vito', 'stadt'],
   spuelerPay(hits, breaks) { return hits * 5 - breaks * 10; },
-  taxiPay(passengers, tickets) { return passengers * 15 - tickets * 50; },
+  taxiPay(passengers, tickets, tip = 0) { return passengers * (15 + tip) - tickets * 50; },
+  tuerBonus(strength) { return Math.min(50, 10 * (strength || 0)); },
   validate(story, sceneIds, jobIds) {
     const errs = [];
     const scene = (id, where) => { if (id && !sceneIds.includes(id)) errs.push(`${story.id}: Szene "${id}" fehlt (${where})`); };
     const jobs = (list, where) => (list || []).forEach((j) => { if (!jobIds.includes(j)) errs.push(`${story.id}: Job "${j}" unbekannt (${where})`); });
+    const rooms = (list, where) => (list || []).forEach((r) => { if (!StoryRules.ROOMS.includes(r)) errs.push(`${story.id}: Raum "${r}" unbekannt (${where})`); });
     scene(story.intro, 'intro');
     jobs(story.start && story.start.unlocked && story.start.unlocked.jobs, 'start');
-    for (const ch of story.chapters || []) { scene(ch.intro, ch.id); jobs(ch.unlock && ch.unlock.jobs, ch.id); }
-    for (const e of story.events || []) { scene(e.scene, e.id); for (const eff of e.effects || []) { scene(eff.scene, e.id); jobs(eff.unlock && eff.unlock.jobs, e.id); } }
+    rooms(story.start && story.start.unlocked && story.start.unlocked.rooms, 'start');
+    for (const ch of story.chapters || []) { scene(ch.intro, ch.id); jobs(ch.unlock && ch.unlock.jobs, ch.id); rooms(ch.unlock && ch.unlock.rooms, ch.id); }
+    for (const e of story.events || []) { scene(e.scene, e.id); for (const eff of e.effects || []) { scene(eff.scene, e.id); jobs(eff.unlock && eff.unlock.jobs, e.id); rooms(eff.unlock && eff.unlock.rooms, e.id); } }
     for (const [job, list] of Object.entries(story.jobScenes || {})) { jobs([job], 'jobScenes'); list.forEach((id) => scene(id, `jobScenes.${job}`)); }
     for (const e of story.endings || []) scene(e.scene, e.id);
     if ((story.endings || []).filter((e) => e.fallback).length !== 1) errs.push(`${story.id}: genau ein Fallback-Ende nötig`);
@@ -3428,7 +3433,7 @@ const Stories = {
 
 const Story = {
   DOORS: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'postman'],
-  ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'] },
+  ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'] },
   story: null,
   allowOnce: null,
   lostDay: false,
@@ -3751,8 +3756,9 @@ const Jobs = {
     const sceneId = cands.length ? pick(cands) : null;
     if (sceneId) seen.push(sceneId);
     const before = State.s.balance;
-    Game.applyDelta(job.base, { quiet: true });
-    UI.toast({ icon: job.icon, title: `${job.name}: Schicht`, text: `+${UI.fmt(job.base)} Lohn.`, tone: 'win' });
+    const bonus = job.id === 'tuersteher' ? StoryRules.tuerBonus(State.s.strength) : 0;
+    Game.applyDelta(job.base + bonus, { quiet: true });
+    UI.toast({ icon: job.icon, title: `${job.name}: Schicht`, text: bonus > 0 ? `+${UI.fmt(job.base)} Lohn, +${UI.fmt(bonus)} weil keiner mit dir diskutiert.` : `+${UI.fmt(job.base)} Lohn.`, tone: 'win' });
     if (sceneId) await Story.playScene(sceneId);
     const extra = (Story.story.jobEffects || {})[sceneId];
     if (extra) await Story.applyEffects(extra);
@@ -3854,7 +3860,8 @@ const Spueler = {
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const k = (this.plate - 1) / (this.TOTAL - 1);
     this.dur = reduced ? 1800 : Math.round(1600 - k * 700);          // 1600 → 900 ms
-    this.zone = { c: rand(0.35, 0.75), w: reduced ? 0.3 : 0.3 - k * 0.18 }; // 30 % → 12 %
+    const band = 1 + Rules.gear(State.s).spuelerBand; // Trail-Runner/Carbon: Band 20 % breiter
+    this.zone = { c: rand(0.35, 0.75), w: (reduced ? 0.3 : 0.3 - k * 0.18) * band }; // 30 % → 12 %
     this.resolved = false;
     const zone = qs('#dishZone', this.root), plate = qs('#dishPlate', this.root);
     zone.style.left = `${(this.zone.c - this.zone.w / 2) * 100}%`; zone.style.width = `${this.zone.w * 100}%`;
@@ -3935,13 +3942,13 @@ UI.register('job-spueler', {
 <script id="job-taxi">
 /* ================= JOB: NACHTTAXI – drei Spuren, 60 Sekunden ================= */
 const Taxi = {
-  root: null, gen: 0, running: false, raf: null, spawnTimer: null, timeLeft: 60, laneIdx: 1, passengers: 0, tickets: 0, braking: false, brakeUntil: 0, entities: [], speed: 160, lastT: 0,
+  root: null, gen: 0, running: false, raf: null, spawnTimer: null, timeLeft: 60, laneIdx: 1, passengers: 0, tickets: 0, tip: 0, braking: false, brakeUntil: 0, entities: [], speed: 160, lastT: 0,
   DURATION: 60,
   alive(gen) { return !!this.root && this.gen === gen; },
   start() {
     if (this.running || !this.root) return;
     const gen = this.gen;
-    this.running = true; this.timeLeft = this.DURATION; this.laneIdx = 1; this.passengers = 0; this.tickets = 0; this.entities = []; this.speed = 160;
+    this.running = true; this.timeLeft = this.DURATION; this.laneIdx = 1; this.passengers = 0; this.tickets = 0; this.tip = Rules.gear(State.s).taxiTip; this.entities = []; this.speed = 160;
     qs('#btnTaxiStart', this.root).classList.add('hidden');
     qs('#taxiRoad', this.root).classList.add('running');
     this.placeCar();
@@ -3959,7 +3966,7 @@ const Taxi = {
         e.y += this.speed * dt; e.el.style.top = `${e.y}px`;
         if (!e.done && e.y >= carY - 20 && e.y <= carY + 30) {
           e.done = true;
-          if (e.kind === 'rider') { if (e.lane === this.laneIdx) { this.passengers++; SFX.play('coin'); e.el.textContent = '💨'; this.floatText('+15 €', 'win'); } }
+          if (e.kind === 'rider') { if (e.lane === this.laneIdx) { this.passengers++; SFX.play('coin'); e.el.textContent = '💨'; this.floatText(`+${15 + this.tip} €`, 'win'); } }
           else if (this.braking) { SFX.play('click'); } else { this.tickets++; SFX.play('stamp'); this.ticket(); }
           this.score();
         }
@@ -3994,7 +4001,7 @@ const Taxi = {
   async finish() {
     this.running = false;
     clearInterval(this.spawnTimer);
-    const pay = Math.max(StoryRules.taxiPay(this.passengers, this.tickets), -Math.max(0, State.s.balance));
+    const pay = Math.max(StoryRules.taxiPay(this.passengers, this.tickets, this.tip), -Math.max(0, State.s.balance));
     if (this.root) {
       qs('#taxiRoad', this.root).classList.remove('running');
       this.entities.forEach((e) => e.el.remove()); this.entities = [];
@@ -5086,6 +5093,41 @@ T.test('postmanTier: Schuhe geben Zeit und Lohn', () => {
   T.eq(Rules.postmanTier(0, base({ shoes: 'basic' })), { t: 6, r: 5 });
   T.eq(Rules.postmanTier(11, base({ shoes: 'carbon' })), { t: 2.5, r: 60 });
   T.eq(Rules.postmanTier(2, base({ shoes: 'trail' })), { t: 4, r: 15 });
+});
+
+/* ---- Story: Stärke, Räume, Cooldown ---- */
+T.test('StoryRules.check: strength', () => {
+  const s = storyBase(); s.strength = 4;
+  T.ok(StoryRules.check({ strength: { gte: 4 } }, s));
+  T.ok(!StoryRules.check({ strength: { gte: 5 } }, s));
+  T.ok(!StoryRules.check({ strength: { gte: 1 } }, storyBase()));
+});
+T.test('StoryRules.validate: Räume', () => {
+  T.ok(StoryRules.ROOMS.includes('stadt'));
+  const st = probeStory();
+  st.start.unlocked.rooms = ['bar', 'stadt'];
+  T.eq(StoryRules.validate(st, ['p.k2', 'p.e1', 'p.gut', 'p.mid', 'p.aus'], ['spueler']), []);
+  st.start.unlocked.rooms = ['bar', 'garage'];
+  T.ok(StoryRules.validate(st, ['p.k2', 'p.e1', 'p.gut', 'p.mid', 'p.aus'], ['spueler']).some((e) => e.includes('garage')));
+  st.start.unlocked.rooms = ['bar'];
+  st.events = [{ id: 'x', when: { day: { gte: 1 } }, at: 'morning', scene: 'p.e1', effects: [{ unlock: { rooms: ['keller'] } }] }];
+  T.ok(StoryRules.validate(st, ['p.k2', 'p.e1', 'p.gut', 'p.mid', 'p.aus'], ['spueler']).some((e) => e.includes('keller')));
+});
+T.test('advanceDay: Überfall-Cooldown sinkt pro Tag', () => {
+  const s = storyBase(); s.mugCooldown = 3;
+  StoryRules.advanceDay(s); T.eq(s.mugCooldown, 2);
+  StoryRules.advanceDay(s); StoryRules.advanceDay(s); StoryRules.advanceDay(s); T.eq(s.mugCooldown, 0);
+});
+T.test('taxiPay mit Trinkgeld, tuerBonus-Deckel', () => {
+  T.eq(StoryRules.taxiPay(12, 1), 130);
+  T.eq(StoryRules.taxiPay(12, 1, 5), 190);
+  T.eq(StoryRules.tuerBonus(0), 0); T.eq(StoryRules.tuerBonus(3), 30); T.eq(StoryRules.tuerBonus(9), 50);
+});
+T.test('jobAvailable: Eintreiber braucht Stärke 4', () => {
+  const job = { id: 'eintreiber', requires: { strength: { gte: 4 } }, requireText: 'Stärke 4' };
+  const s = storyBase({ unlocked: { jobs: ['eintreiber'], doors: [], rooms: [] } });
+  s.strength = 3; T.eq(StoryRules.jobAvailable(job, s).ok, false);
+  s.strength = 4; T.eq(StoryRules.jobAvailable(job, s).ok, true);
 });
 
 /* --- SELFTEST CASES END --- */
