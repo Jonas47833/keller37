@@ -432,6 +432,27 @@ div#title[hidden] { display: none; }
 .title-door { height: 240px; }
 .title-foot { display: flex; gap: 8px; }
 @media (max-width: 760px) { .title-neon { font-size: 3rem; } .title-doors { grid-template-columns: 1fr; } .title-door { height: 170px; } }
+/* -- Story: Tagesleiste, Sperren, Nacht -- */
+body.mode-story #brand { pointer-events: none; }
+body.mode-story #newgame, body.mode-story #toTitle { display: none; }
+.daybar { position: sticky; top: 58px; z-index: 19; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 6px 20px; background: rgba(20,17,12,.95); border-bottom: 1px solid rgba(201,162,39,.25); font-family: var(--font-display); letter-spacing: .08em; }
+.day-count { font-size: 1.6rem; color: var(--gold-2); }
+.day-count .day-label, .day-count .day-of { font-size: 1rem; color: var(--dim); }
+.day-phase { display: flex; gap: 8px; align-items: center; font-size: 1rem; color: var(--dim); }
+.day-phase .on { color: #fff; text-shadow: 0 0 8px var(--neon-amber); }
+.day-phase .arrow { opacity: .5; }
+.day-goal { margin-left: auto; font-family: var(--font-mono); font-size: .85rem; color: var(--text); letter-spacing: 0; }
+.door.locked { cursor: not-allowed; filter: brightness(.55) saturate(.4); }
+.door.locked:hover { transform: none; }
+.door.locked:hover::after { opacity: 0; }
+.door .boards { position: absolute; inset: 0; pointer-events: none; }
+.door .boards span { position: absolute; left: -10%; right: -10%; top: 45%; height: 16px; background: linear-gradient(180deg, #7a5a34, #4a3520); border: 1px solid #2a1c10; box-shadow: 0 3px 6px rgba(0,0,0,.6); transform: rotate(-18deg); }
+.door .boards span:last-child { transform: rotate(16deg); top: 55%; }
+.door.locked .chalk-tag { color: #ffb3b3; }
+#nightfade { position: fixed; inset: 0; z-index: 85; background: #000; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 4rem; letter-spacing: .2em; color: #fff; text-shadow: 0 0 20px var(--neon-amber); opacity: 0; pointer-events: none; transition: opacity .35s; }
+#nightfade.on { opacity: 1; pointer-events: auto; }
+@media (max-width: 760px) { .daybar { top: 0; position: static; padding: 6px 12px; gap: 8px; } .day-count { font-size: 1.3rem; } .day-goal { width: 100%; margin-left: 0; } }
+
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
@@ -471,6 +492,7 @@ div#title[hidden] { display: none; }
 <div class="vignette" aria-hidden="true"></div>
 <div class="shell" id="shell">
   <header class="wallet" id="wallet"></header>
+  <div id="daybarSlot"></div>
   <div class="body">
     <main class="stage" id="stage"></main>
     <aside class="side" id="side"></aside>
@@ -479,6 +501,7 @@ div#title[hidden] { display: none; }
 <div id="toasts" aria-live="polite"></div>
 <div id="cutscene" hidden></div>
 <div id="title" hidden></div>
+<div id="nightfade" aria-hidden="true"></div>
 
 <!-- TEMPLATES -->
 <template id="tpl-hub">
@@ -706,6 +729,15 @@ div#title[hidden] { display: none; }
     </div>
     <button class="btn ghost sm hidden" id="titleNewStory">Neue Story beginnen</button>
     <div class="title-foot"><button class="icon-btn" id="titleMute">🔊</button></div>
+  </div>
+</template>
+<template id="tpl-daybar">
+  <div class="daybar">
+    <div class="day-count"><span class="day-label">Tag</span> <span id="dayNum">1</span><span class="day-of">/<span id="dayMax">30</span></span></div>
+    <div class="day-phase"><span id="phaseMorning">☀️ Morgen</span><span class="arrow">→</span><span id="phaseEvening">🌙 Abend</span></div>
+    <button class="btn solid sm" id="btnSleep">💤 Schlafen</button>
+    <div class="day-goal" id="dayGoal"></div>
+    <button class="icon-btn" id="btnTitleBack" title="Zum Titel">🚪</button>
   </div>
 </template>
 <!-- /TEMPLATES -->
@@ -1001,6 +1033,9 @@ const State = {
   hasStoryRun() {
     try { const raw = this.storage.getItem(this.STORY_KEY); if (!raw) return false; const p = JSON.parse(raw); return !!(p && p.v === this.VERSION && p.story && !p.story.ended); } catch (e) { return false; }
   },
+  peekStory() {
+    try { const raw = this.storage.getItem(this.STORY_KEY); if (!raw) return null; const p = JSON.parse(raw); return p && p.v === this.VERSION && p.story ? p : null; } catch (e) { return null; }
+  },
   freshStory(story) {
     const s = this.fresh();
     s.balance = story.start.balance;
@@ -1150,6 +1185,7 @@ const Actions = {
   finance: () => UI.show('finance'),
   invest: () => UI.show('invest'),
   life: () => UI.show('life'),
+  vito: () => UI.show('vito'),
 };
 
 const UI = {
@@ -1164,6 +1200,7 @@ const UI = {
     if (this.busy) return;
     const def = this.screens.get(id);
     if (!def) { console.warn('[ui] Screen fehlt:', id); return; }
+    if (typeof Story !== 'undefined' && Story.isLocked(id)) { UI.toast({ icon: '🔒', title: Story.lockReason(id), tone: 'loss' }); SFX.play('lose'); return; }
     this.busy = true;
     const stage = qs('#stage');
     if (this.current) {
@@ -1242,6 +1279,7 @@ const UI = {
     if (s.mafiaDebt > 0) notes.append(h('span', { class: 'note danger' }, `🕶️ ${this.fmt(s.mafiaDebt)} · ${s.mafiaSpins} Spins`));
     if (s.kidneySold) notes.append(h('span', { class: 'note danger' }, '💊 −20 €/Spin'));
     if (s.hasHouse || s.hasDealer) notes.append(h('span', { class: 'note gold' }, `💸 +${Rules.passivePerMin(s)} €/min`));
+    if (State.mode === 'story' && typeof Story !== 'undefined' && Story.story) notes.append(...Story.hudNotes());
     qs('#mute').textContent = State.meta.muted ? '🔇' : '🔊';
   },
   renderSide() {
@@ -1252,19 +1290,23 @@ const UI = {
     const sec = (title, ...kids) => h('section', { class: 'side-sec' }, h('h3', {}, title), ...kids);
     const btn = (label, price, action, disabled = false) =>
       h('button', { class: 'side-btn', 'data-action': action, disabled: disabled ? '' : null }, h('span', {}, label), h('span', { class: 'price' }, price));
-    side.append(
-      sec('Die Bar',
-        btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/3)` : ''}`, '50 €', 'beer', !Rules.canBeer(s).ok),
-        btn('🍪 Brownie', s.brownieCost >= 10000 ? '10.000 €' : '1.000 €', 'brownie', !Rules.canBrownie(s).ok),
-        h('p', { class: 'side-hint' }, 'Bier hält 2 Spins, Brownie 1 Spin.')),
-      sec('Hinterzimmer',
-        btn(s.kidneySold ? '🫁 Niere verkauft' : '🫁 Niere verkaufen', s.kidneySold ? '' : '+2.000 €', 'kidney', s.kidneySold),
-        btn('🏦 Kredite', s.bankDebt + s.mafiaDebt > 0 ? `−${this.fmt(s.bankDebt + s.mafiaDebt)}` : '', 'finance'),
-        btn('📈 Anlagen', s.investments.length ? `${s.investments.length} aktiv` : '', 'invest')),
-      sec('Zuhause', btn('🏡 Leben', s.hasHouse ? '🏰' : '', 'life')),
-    );
+    const inStory = State.mode === 'story' && typeof Story !== 'undefined' && Story.story;
+    const room = (r) => !inStory || Story.roomUnlocked(r);
+    const secs = [];
+    if (room('bar')) secs.push(sec('Die Bar',
+      btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/3)` : ''}`, '50 €', 'beer', !Rules.canBeer(s).ok),
+      btn('🍪 Brownie', s.brownieCost >= 10000 ? '10.000 €' : '1.000 €', 'brownie', !Rules.canBrownie(s).ok),
+      h('p', { class: 'side-hint' }, 'Bier hält 2 Spins, Brownie 1 Spin.')));
+    const hz = [];
+    if (room('doc') || !inStory) hz.push(btn(s.kidneySold ? '🫁 Niere verkauft' : '🫁 Niere verkaufen', s.kidneySold ? '' : '+2.000 €', 'kidney', s.kidneySold));
+    if (room('bank') || room('mafia')) hz.push(btn('🏦 Kredite', s.bankDebt + s.mafiaDebt > 0 ? `−${this.fmt(s.bankDebt + s.mafiaDebt)}` : '', 'finance'));
+    if (room('invest')) hz.push(btn('📈 Anlagen', s.investments.length ? `${s.investments.length} aktiv` : '', 'invest'));
+    if (inStory && room('vito')) hz.push(btn('🕶️ Vitos Tisch', s.story.vars.schuld != null ? this.fmt(s.story.vars.schuld) : '', 'vito'));
+    if (hz.length) secs.push(sec('Hinterzimmer', ...hz));
+    if (room('life')) secs.push(sec('Zuhause', btn('🏡 Leben', s.hasHouse ? '🏰' : '', 'life')));
+    side.append(...secs);
     const tabs = h('div', { class: 'side-tabs' });
-    ['Bar', 'Hinterzimmer', 'Zuhause'].forEach((label, i) => {
+    qsa('.side-sec h3', side).map((el) => el.textContent).forEach((label, i) => {
       tabs.append(h('button', { onclick: () => {
         const secs = qsa('.side-sec', side);
         const wasOpen = side.classList.contains('open') && secs[i].classList.contains('active');
@@ -1316,6 +1358,7 @@ UI.register('hub', {
       d.addEventListener('click', () => { SFX.play('click'); UI.show(d.dataset.screen); });
       d.addEventListener('mouseenter', () => SFX.play('neonBuzz'));
     });
+    if (typeof Story !== 'undefined' && State.mode === 'story') Story.decorateHub(root);
   },
 });
 </script>
@@ -2532,12 +2575,13 @@ const Russian = {
   },
   /* Duell ohne Abrechnung abbrechen (Screen verlassen) – Einsatz ist bereits abgezogen */
   drop(duel) { if (duel && !duel.done) { duel.done = true; Game.forfeit(); } },
-  async start() {
+  async start(opts = {}) {
     if (this.inDuel || !this.root) return;
-    const bet = Game.readBet('rrBet');
-    if (!Game.beginSpin(bet)) return;
+    const forced = !!opts.forced;
+    const bet = forced ? 0 : Game.readBet('rrBet');
+    if (!forced && !Game.beginSpin(bet)) return;
     const gen = this.gen;
-    const duel = { cylinder: Rules.rrCylinder(Math.random), idx: 0, bet, gen, run: Game.run, done: false };
+    const duel = { cylinder: Rules.rrCylinder(Math.random), idx: 0, bet, gen, run: forced ? null : Game.run, done: false, forced };
     this.duel = duel;
     this.inDuel = true;
     if (this.alive(gen)) {
@@ -2550,7 +2594,7 @@ const Russian = {
     }
     if (!State.s.flags.igor) { State.s.flags.igor = true; State.save(); await Cutscene.play('igor.first', {}); }
     if (!this.alive(gen)) return;
-    qs('#rrStatus', this.root).textContent = 'Du bist dran. Drück ab.';
+    qs('#rrStatus', this.root).textContent = forced ? 'Vitos Prüfung. Kein Einsatz – nur dein Kopf. Drück ab.' : 'Du bist dran. Drück ab.';
     this.setTurn('player');
     this.heartbeat(duel);
   },
@@ -2575,7 +2619,7 @@ const Russian = {
       this.rotateTo(duel.idx, gen);
       await wait(350);
       if (duel.cylinder[duel.idx]) {
-        if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = `<span class="loss">PÄNG · Streifschuss · −${UI.fmt(duel.bet)} & 100 € Spital</span>`;
+        if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = duel.forced ? `<span class="loss">PÄNG · Streifschuss</span>` : `<span class="loss">PÄNG · Streifschuss · −${UI.fmt(duel.bet)} & 100 € Spital</span>`;
         await this.bang('player', gen);
         await this.end('player', duel);
         return;
@@ -2589,7 +2633,7 @@ const Russian = {
       this.rotateTo(duel.idx, gen);
       await wait(350);
       if (duel.cylinder[duel.idx]) {
-        if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = `<span class="win">PÄNG · Igor liegt · +${UI.fmt(duel.bet)}</span>`;
+        if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = duel.forced ? `<span class="win">PÄNG · Igor liegt</span>` : `<span class="win">PÄNG · Igor liegt · +${UI.fmt(duel.bet)}</span>`;
         await this.bang('igor', gen);
         await this.end('igor', duel);
         return;
@@ -2623,6 +2667,7 @@ const Russian = {
     } finally {
       if (this.gen === gen) { this.inDuel = false; this.busy = false; }
     }
+    if (duel.forced) { await Bus.emit('rr:forced', { victim }); return; }
     const delta = Rules.rrDelta(victim, duel.bet);
     await Bus.emit('rr:result', { victim, bet: duel.bet });
     if (victim === 'player' && this.alive(gen)) await Cutscene.play('rr.headshot', {});
@@ -2855,6 +2900,7 @@ async function restartGame({ playIntro }) {
 
 let gameOverPending = false;
 Bus.on('gameover', async () => {
+  if (State.mode === 'story') return;
   if (gameOverPending) return;
   gameOverPending = true;
   const s = State.s;
@@ -2880,6 +2926,7 @@ Bus.on('gameover', async () => {
 });
 
 Bus.on('newgame.request', async () => {
+  if (State.mode === 'story') return Story.enter('newstory');
   if (Cutscene.active) return;
   if (Game.inFlight > 0) { UI.toast({ icon: '⏳', title: 'Erst die Runde beenden', text: 'Ein Spiel läuft noch.', tone: 'loss' }); return; }
   const c = await Cutscene.play('newgame.confirm', {});
@@ -3048,6 +3095,7 @@ const Modes = {
       State.setMode('free');
       document.body.classList.remove('mode-story'); document.body.classList.add('mode-free');
       UI.mountShell();
+      if (typeof Story !== 'undefined') Story.renderDaybar();
       const showLoaded = Modes.freeLoaded; Modes.freeLoaded = false;
       await UI.show('hub');
       if (Rules.isGameOver(State.s)) await Bus.emit('gameover', {});
@@ -3059,6 +3107,307 @@ const Modes = {
     else { UI.toast({ icon: '🚧', title: 'Story kommt noch', tone: 'info' }); await Modes.enter('free'); }
   },
 };
+</script>
+
+<script id="story-engine">
+/* ================= STORY ENGINE – Tage, Sperren, Szenen, Enden ================= */
+const Stories = {
+  all: {},
+  define(story) {
+    for (const [id, panels] of Object.entries(story.scenes || {})) Cutscene.define(id, panels);
+    this.all[story.id] = story;
+  },
+  get(id) { return this.all[id]; },
+  list() { return Object.values(this.all).filter((s) => !s.dev); },
+  runInfo() {
+    const p = State.peekStory();
+    if (!p) return null;
+    const st = this.get(p.story.id);
+    return { id: p.story.id, title: st ? st.title : p.story.id, day: p.story.day, days: st ? st.days : '?' };
+  },
+  validateAll() {
+    const sceneIds = Object.keys(Cutscene.SCENES);
+    const jobIds = typeof Jobs !== 'undefined' ? Object.keys(Jobs.POOL) : null;
+    const errs = [];
+    for (const st of Object.values(this.all)) errs.push(...StoryRules.validate(st, sceneIds, jobIds || (st.start.unlocked.jobs)));
+    if (errs.length) { errs.forEach((e) => console.error('[story]', e)); UI.toast({ icon: '🐛', title: 'Story-Daten fehlerhaft', text: errs[0], tone: 'loss', ms: 8000 }); }
+    return errs;
+  },
+};
+
+const Story = {
+  DOORS: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'postman'],
+  ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'] },
+  story: null,
+  allowOnce: null,
+  lostDay: false,
+  get s() { return State.s.story; },
+
+  /* ---- Einstieg ---- */
+  async enter(choice) {
+    Stories.validateAll();
+    const params = new URLSearchParams(location.search);
+    if (choice === 'newstory' && State.hasStoryRun() && !params.has('fresh')) {
+      State.setMode('story');
+      this.story = Stories.get(State.s.story.id);
+      this.setup();
+      const c = await Cutscene.play('story.newConfirm', {});
+      if (c !== 'yes') return this.enter('story');
+    }
+    if (choice === 'newstory' || !State.hasStoryRun()) {
+      const forced = params.get('story');
+      const id = forced && Stories.get(forced) ? forced : StoryRules.pickStory(Stories.list(), State.meta.storyRuns, Math.random);
+      const story = Stories.get(id);
+      State.startStory(story);
+      if (params.has('day') && params.has('fresh')) State.s.story.day = Math.max(1, parseInt(params.get('day'), 10) || 1);
+      this.story = story;
+      this.setup();
+      State.save();
+      if (!params.has('day')) await this.playScene(story.intro);
+      await this.applyChapter();
+      if (params.has('ending')) { const end = story.endings.find((e) => e.id === params.get('ending')); if (end) return this.finish(end); }
+      await this.morning();
+      return;
+    }
+    State.setMode('story');
+    this.story = Stories.get(State.s.story.id);
+    if (!this.story) { UI.toast({ icon: '🐛', title: 'Story unbekannt', text: State.s.story.id, tone: 'loss' }); return Modes.enter('free'); }
+    this.setup();
+    if (this.s.phase === 'morning') await this.morning(); else await this.evening();
+    UI.toast({ icon: '📖', title: this.story.title, text: `Tag ${this.s.day} von ${this.story.days}.` });
+  },
+  setup() {
+    document.body.classList.remove('mode-free'); document.body.classList.add('mode-story');
+    UI.mountShell();
+    this.renderDaybar();
+  },
+
+  /* ---- Kontext & Szenen ---- */
+  ctx(extra = {}) {
+    const s = State.s;
+    const c = { day: this.s.day, balance: UI.fmt(s.balance) };
+    for (const [k, v] of Object.entries(this.s.vars)) {
+      const hud = (this.story.hud || []).find((h) => h.var === k);
+      c[k] = hud && hud.fmt === 'money' ? UI.fmt(v) : String(v);
+    }
+    return Object.assign(c, extra);
+  },
+  async playScene(id, extra = {}) {
+    if (!id) return undefined;
+    const result = await Cutscene.play(id, this.ctx(extra));
+    const panels = this.story.scenes[id] || [];
+    if (result !== undefined) {
+      for (const p of panels) for (const ch of p.choices || []) if (ch.value === result && ch.effects) await this.applyEffects(ch.effects);
+    }
+    return result;
+  },
+  async applyEffects(list) {
+    for (const eff of list || []) {
+      const out = StoryRules.applyEffect(State.s, eff, this.story);
+      if (out.scene) await this.playScene(out.scene);
+      if (out.force === 'duel') await this.forceDuel();
+      if (out.loseDay) this.lostDay = true;
+    }
+    State.save();
+    UI.setBalance(State.s.balance);
+    UI.renderWallet(); UI.renderSide();
+    this.renderDaybar();
+  },
+  async runEvents(at) {
+    for (const e of StoryRules.dueEvents(this.story, State.s, at)) {
+      if (e.once) this.s.seen.push(e.id);
+      if (e.scene) await this.playScene(e.scene);
+      await this.applyEffects(e.effects || []);
+    }
+  },
+  async applyChapter() {
+    const ch = StoryRules.chapterFor(this.story, State.s);
+    if (!ch || ch.id === this.s.chapter) return;
+    this.s.chapter = ch.id;
+    const before = JSON.stringify(this.s.unlocked);
+    if (ch.unlock) StoryRules.applyEffect(State.s, { unlock: ch.unlock }, this.story);
+    State.save();
+    UI.toast({ icon: '📖', title: `Kapitel: ${ch.title}`, tone: 'gold', ms: 4000 });
+    if (ch.intro) await this.playScene(ch.intro);
+    if (JSON.stringify(this.s.unlocked) !== before) {
+      const names = [...(ch.unlock.jobs || []).map((j) => (typeof Jobs !== 'undefined' && Jobs.POOL[j] ? Jobs.POOL[j].name : j)), ...(ch.unlock.doors || []), ...(ch.unlock.rooms || [])];
+      UI.toast({ icon: '🔓', title: 'Neu freigeschaltet', text: names.join(' · '), tone: 'info', ms: 5000 });
+    }
+    UI.renderSide(); this.renderDaybar();
+  },
+
+  /* ---- Tagesphasen ---- */
+  async morning() {
+    this.s.phase = 'morning'; this.lostDay = false;
+    State.save(); this.renderDaybar();
+    await this.runEvents('morning');
+    if (this.lostDay) return this.evening();
+    await UI.show(UI.screens.has('jobs') ? 'jobs' : 'hub');
+  },
+  async evening() {
+    this.s.phase = 'evening';
+    State.save(); this.renderDaybar();
+    await UI.show('hub');
+  },
+  async night() {
+    if (this.s.phase !== 'evening' || Cutscene.active || Game.inFlight > 0) { if (Game.inFlight > 0) UI.toast({ icon: '⏳', title: 'Erst die Runde beenden' }); return; }
+    await this.fade(`Nacht ${this.s.day}`);
+    await this.runEvents('night');
+    let end = StoryRules.ending(this.story, State.s);
+    if (end) return this.finish(end);
+    StoryRules.advanceDay(State.s);
+    State.save();
+    await Bus.emit('story:day', { day: this.s.day });
+    end = StoryRules.ending(this.story, State.s);
+    if (end) return this.finish(end);
+    await this.fade(`Tag ${this.s.day}`);
+    await this.applyChapter();
+    await this.morning();
+  },
+  async finish(end) {
+    this.s.ended = end.id;
+    const run = State.meta.storyRuns[this.story.id] || (State.meta.storyRuns[this.story.id] = { lastPlayed: 0, endings: [] });
+    if (!run.endings.includes(end.id)) run.endings.push(end.id);
+    run.lastPlayed = Date.now();
+    State.saveMeta(); State.save();
+    const st = this.s.stats;
+    const stats = { Tage: this.s.day, Verdient: UI.fmt(st.earned), Verzockt: UI.fmt(st.gambled), Jobs: st.jobs, Ende: end.title };
+    const panels = (this.story.scenes[end.scene] || []).map((p) => Object.assign({}, p));
+    const last = panels[panels.length - 1];
+    last.fx = 'stats';
+    last.choices = [{ label: 'Nächste Story', value: 'next', cls: 'red' }, { label: 'Zum Titel', value: 'title', cls: 'ghost' }];
+    Cutscene.define('story.ending.tmp', panels);
+    const choice = await Cutscene.play('story.ending.tmp', this.ctx({ stats }));
+    await Bus.emit('story:ended', { id: this.story.id, ending: end.id });
+    if (choice === 'next') return this.enter('newstory');
+    const c = await Title.show();
+    await Modes.enter(c);
+  },
+  jobDone(jobId, earned) {
+    this.s.jobToday = jobId;
+    this.s.jobsDone[jobId] = (this.s.jobsDone[jobId] || 0) + 1;
+    this.s.stats.jobs++;
+    this.s.stats.earned += Math.max(0, earned);
+    State.save();
+    return this.evening();
+  },
+
+  /* ---- Sperren ---- */
+  isLocked(screen) {
+    if (State.mode !== 'story' || !this.story) return false;
+    if (screen === this.allowOnce) { this.allowOnce = null; return false; }
+    if (this.DOORS.includes(screen)) {
+      if (screen === 'postman') return true; // Post ist ein Job (morgens)
+      return !this.s.unlocked.doors.includes(screen);
+    }
+    if (this.ROOM_OF[screen]) return !this.ROOM_OF[screen].some((r) => this.s.unlocked.rooms.includes(r));
+    return false;
+  },
+  lockReason(screen) {
+    if (screen === 'postman') return 'Morgens, an der Pinnwand';
+    return (this.story.lockReason || {})[screen] || 'Noch geschlossen';
+  },
+  roomUnlocked(room) { return State.mode !== 'story' || this.s.unlocked.rooms.includes(room); },
+  decorateHub(root) {
+    qsa('.door', root).forEach((d) => {
+      const id = d.dataset.screen;
+      if (!this.isLocked(id)) return;
+      d.classList.add('locked');
+      d.append(h('div', { class: 'boards' }, h('span'), h('span')));
+      qs('.chalk-tag', d).textContent = this.lockReason(id);
+    });
+  },
+
+  /* ---- HUD ---- */
+  hudNotes() {
+    return (this.story.hud || []).map((hd) => {
+      const v = this.s.vars[hd.var] || 0;
+      const txt = hd.fmt === 'money' ? UI.fmt(v) : (hd.max ? `${v}/${hd.max}` : String(v));
+      return h('span', { class: `note ${hd.tone || 'gold'}` }, `${hd.label} ${txt}`);
+    });
+  },
+  renderDaybar() {
+    const slot = qs('#daybarSlot');
+    if (State.mode !== 'story' || !this.story) { slot.innerHTML = ''; return; }
+    if (!qs('.daybar', slot)) {
+      slot.appendChild(qs('#tpl-daybar').content.cloneNode(true));
+      qs('#btnSleep', slot).addEventListener('click', () => { SFX.play('click'); Story.night(); });
+      qs('#btnTitleBack', slot).addEventListener('click', () => Title.open());
+    }
+    qs('#dayNum', slot).textContent = this.s.day;
+    qs('#dayMax', slot).textContent = this.story.days;
+    qs('#phaseMorning', slot).classList.toggle('on', this.s.phase === 'morning');
+    qs('#phaseEvening', slot).classList.toggle('on', this.s.phase === 'evening');
+    qs('#btnSleep', slot).disabled = this.s.phase !== 'evening';
+    qs('#dayGoal', slot).textContent = this.story.goal ? this.story.goal(State.s) : '';
+  },
+  fade(text) {
+    const el = qs('#nightfade');
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.textContent = text;
+    el.classList.add('on');
+    return wait(reduced ? 300 : 1100).then(() => { el.classList.remove('on'); return wait(reduced ? 50 : 350); });
+  },
+
+  /* ---- Erzwungenes Duell ---- */
+  async forceDuel() {
+    this.allowOnce = 'russian';
+    await UI.show('russian');
+    const victim = await new Promise((resolve) => {
+      const off = Bus.on('rr:forced', ({ victim: v }) => { off(); resolve(v); });
+      Russian.start({ forced: true });
+    });
+    this.s.flags[victim === 'igor' ? 'duelWon' : 'duelLost'] = true;
+    State.save();
+    await wait(800);
+    return victim;
+  },
+};
+
+/* Story-weite Szenen */
+Cutscene.define('story.newConfirm', [
+  { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Eine neue Geschichte? Die alte ist dann weg – Tag, Geld, alles. Sicher?',
+    choices: [{ label: 'Ja, neu anfangen', value: 'yes', cls: 'red' }, { label: 'Weiterspielen', value: 'no', cls: 'ghost' }] },
+]);
+
+Bus.on('spin:after', () => { if (State.mode === 'story' && Story.story) return Story.runEvents('spin:after'); });
+Bus.on('loss', ({ amount }) => { if (State.mode === 'story' && Story.story) { Story.s.stats.gambled += amount; State.save(); } });
+</script>
+
+<script id="story-probe">
+/* ================= STORY PROBE – Dev-Story für Engine-Tests (?story=probe) ================= */
+const STORY_PROBE = {
+  id: 'probe', title: 'Probelauf', days: 3, dev: true,
+  start: { balance: 500, unlocked: { jobs: ['spueler', 'post'], doors: ['slots'], rooms: ['bar'] }, vars: { mut: 0 } },
+  varMax: { mut: 3 },
+  hud: [{ var: 'mut', label: '💪 Mut', max: 3 }],
+  goal: (s) => `Probelauf · Mut ${s.story.vars.mut}/3`,
+  lockReason: { roulette: 'Erst ab Tag 2' },
+  intro: 'probe.intro',
+  scenes: {
+    'probe.intro': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'Probelauf. Drei Tage, ein Ziel: Mut sammeln. Tag {{day}}, {{balance}} in der Tasche.' }],
+    'probe.k2': [{ bg: 'bar', who: 'wirt', mood: 'happy', text: 'Tag zwei. Roulette ist offen.' }],
+    'probe.n1': [{ bg: 'keller', who: 'igor', mood: 'calm', text: 'Nacht eins. Mutig?', choices: [{ label: 'Ja', value: 'ja', effects: [{ var: 'mut', add: 1 }] }, { label: 'Nein', value: 'nein', cls: 'ghost' }] }],
+    'probe.spin': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'Du hast gespielt und Mut. Igor will dich testen.', choices: [{ label: 'Los', value: 'los', effects: [{ force: 'duel' }] }] }],
+    'probe.mutig': [{ bg: 'hafen-morgen', who: 'vito', mood: 'happy', text: 'Mutig. Das war der Probelauf.' }],
+    'probe.aus': [{ bg: 'klinik', who: 'doc', mood: 'calm', text: 'Drei Tage rum. Nichts passiert. Das war der Probelauf.' }],
+  },
+  chapters: [
+    { id: 'k1', title: 'Eins', when: { day: { gte: 1 } } },
+    { id: 'k2', title: 'Zwei', when: { day: { gte: 2 } }, intro: 'probe.k2', unlock: { doors: ['roulette'] } },
+  ],
+  events: [
+    { id: 'n1', when: { day: { eq: 1 } }, once: true, at: 'night', scene: 'probe.n1' },
+    { id: 'sp', when: { var: 'mut', gte: 1 }, once: true, at: 'spin:after', scene: 'probe.spin' },
+    { id: 'dw', when: { flag: 'duelWon' }, once: true, at: 'night', effects: [{ var: 'mut', add: 1 }] },
+  ],
+  jobScenes: {},
+  endings: [
+    { id: 'mutig', title: 'Mutig', priority: 1, when: { var: 'mut', gte: 2 }, scene: 'probe.mutig' },
+    { id: 'aus', title: 'Aus', priority: 0, scene: 'probe.aus', fallback: true },
+  ],
+};
+if (typeof Stories !== 'undefined') Stories.define(STORY_PROBE);
 </script>
 
 <script id="selftest">
@@ -3572,6 +3921,23 @@ T.test('State.init: meta.storyRuns wird aufgefüllt, Story-Save fehlt → hasSto
   State.init(st);
   T.eq(State.meta.storyRuns, {});
   T.ok(!State.hasStoryRun());
+});
+
+/* ---- Story-Probe validiert ---- */
+T.test('STORY_PROBE ist gültig', () => {
+  T.eq(StoryRules.validate(STORY_PROBE, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), []);
+  T.eq(STORY_PROBE.dev, true);
+  T.eq(StoryRules.pickStory([STORY_PROBE, { id: 'x' }], {}, seq(0)), 'x', 'dev-Story wird nie gezogen');
+});
+T.test('STORY_PROBE: Tagesablauf mit StoryRules', () => {
+  const s = Object.assign(base({ balance: 500 }), { story: StoryRules.freshStoryPart(STORY_PROBE) });
+  T.eq(StoryRules.chapterFor(STORY_PROBE, s).id, 'k1');
+  T.eq(StoryRules.dueEvents(STORY_PROBE, s, 'night').map((e) => e.id), ['n1']);
+  StoryRules.applyEffect(s, { var: 'mut', add: 5 }, STORY_PROBE);
+  T.eq(s.story.vars.mut, 3, 'varMax clamp');
+  T.eq(StoryRules.ending(STORY_PROBE, s).id, 'mutig');
+  s.story.vars.mut = 0; s.story.day = 4;
+  T.eq(StoryRules.ending(STORY_PROBE, s).id, 'aus');
 });
 
 /* --- SELFTEST CASES END --- */
