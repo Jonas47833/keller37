@@ -416,7 +416,7 @@ body.cs-open .toast { max-width: 300px; }
 }
 /* -- Reduced Motion -- */
 @media (prefers-reduced-motion: reduce) {
-  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title { animation: none !important; }
+  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running, .plate.hit, .plate.broken, .taxi-road.running, .brake-flash.on, .ticket-pop { animation: none !important; }
   .strip.spinning { animation: none !important; filter: none; }
   .stage, .stage.leaving, .stage.entering { transition: none; animation: none; }
   #wheelCanvas { transition-duration: .3s; }
@@ -3572,8 +3572,9 @@ const Jobs = {
   },
   async finishGame(id) {
     const start = Story.jobStart;
+    if (!start) return;
     Story.jobStart = null;
-    const earned = start ? State.s.balance - start.balance : 0;
+    const earned = State.s.balance - start.balance;
     await Bus.emit('job:done', { id, earned });
     await Story.jobDone(id, earned);
   },
@@ -3633,7 +3634,7 @@ Actions.vito = () => UI.show('vito');
 <script id="job-spueler">
 /* ================= JOB: SPÜLER – Timing am Band ================= */
 const Spueler = {
-  root: null, gen: 0, running: false, raf: null, plate: 0, hits: 0, breaks: 0, pos: 0, t0: 0, dur: 1600, zone: { c: 0.5, w: 0.3 }, resolved: false,
+  root: null, gen: 0, running: false, raf: null, nextTimer: null, plate: 0, hits: 0, breaks: 0, pos: 0, t0: 0, dur: 1600, zone: { c: 0.5, w: 0.3 }, resolved: false,
   TOTAL: 10,
   alive(gen) { return !!this.root && this.gen === gen; },
   start() {
@@ -3678,7 +3679,7 @@ const Spueler = {
       SFX.play('coin');
       qs('#dishStatus', this.root).innerHTML = '<span class="win">Sauber!</span>';
       this.score();
-      setTimeout(() => this.nextPlate(), 380);
+      this.nextTimer = setTimeout(() => this.nextPlate(), 380);
     } else {
       this.miss('Daneben – Bruch!');
     }
@@ -3692,7 +3693,7 @@ const Spueler = {
     }
     SFX.play('lose');
     this.score();
-    setTimeout(() => this.nextPlate(), 520);
+    this.nextTimer = setTimeout(() => this.nextPlate(), 520);
   },
   score() { if (this.root) qs('#dishScore', this.root).textContent = `Sauber ${this.hits} · Bruch ${this.breaks}`; },
   async finish() {
@@ -3717,12 +3718,13 @@ UI.register('job-spueler', {
     qs('#btnDishStart', root).addEventListener('click', () => { SFX.play('click'); Spueler.start(); });
     qs('#btnDishTap', root).addEventListener('click', () => Spueler.tap());
     qs('#belt', root).addEventListener('pointerdown', () => Spueler.tap());
-    qs('#btnDishDone', root).addEventListener('click', () => { SFX.play('click'); Jobs.finishGame('spueler'); });
+    qs('#btnDishDone', root).addEventListener('click', (e) => { e.currentTarget.disabled = true; SFX.play('click'); Jobs.finishGame('spueler'); });
     document.addEventListener('keydown', Spueler.onKey);
   },
   unmount() {
     document.removeEventListener('keydown', Spueler.onKey);
     if (Spueler.raf) cancelAnimationFrame(Spueler.raf);
+    clearTimeout(Spueler.nextTimer);
     if (Spueler.running) Jobs.abort();
     Spueler.gen++; Spueler.root = null; Spueler.running = false;
   },
@@ -3818,7 +3820,7 @@ UI.register('job-taxi', {
   mount(root) {
     Taxi.root = root; Taxi.gen++; Taxi.running = false;
     qs('#btnTaxiStart', root).addEventListener('click', () => { SFX.play('click'); Taxi.start(); });
-    qs('#btnTaxiDone', root).addEventListener('click', () => { SFX.play('click'); Jobs.finishGame('taxi'); });
+    qs('#btnTaxiDone', root).addEventListener('click', (e) => { e.currentTarget.disabled = true; SFX.play('click'); Jobs.finishGame('taxi'); });
     qs('#taxiRoad', root).addEventListener('pointerdown', Taxi.onTap);
     document.addEventListener('keydown', Taxi.onKey);
   },
