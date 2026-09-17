@@ -2530,7 +2530,7 @@ const Royal = {
   inStory() { return State.mode === 'story' && typeof Story !== 'undefined' && Story.story; },
   async enter() {
     const s = State.s;
-    if (Cutscene.active || Game.inFlight > 0) return;
+    if (Cutscene.active || Game.inFlight > 0 || UI.busy) return;
     const chk = RoyalRules.canEnter(s);
     if (!chk.ok) { UI.toast({ icon: '🎩', title: 'Casino Royal', text: chk.text, tone: 'loss' }); SFX.play('lose'); return; }
     if (this.inStory() && Story.isLocked('royal')) { UI.toast({ icon: '🔒', title: Story.lockReason('royal'), tone: 'loss' }); SFX.play('lose'); return; }
@@ -2556,7 +2556,7 @@ const Royal = {
     await Cutscene.play('royal.guest', { amount: UI.fmt(amount) });
     if (typeof Story !== 'undefined') await Story.hook('royal:guest');
   },
-  line() { return State.s.flags.royalGuest ? 'Gast des Hauses. Madame Sylvie grüßt nicht, aber sie sieht her.' : 'Madame Sylvie steht am Ende des Saals. Sie zählt. Nicht Geld – Leute.'; },
+  line() { return State.s.flags.royalGuest ? this.SYLVIE.guest : this.SYLVIE.first; },
 };
 Actions.royal = () => Royal.enter();
 UI.register('royal', {
