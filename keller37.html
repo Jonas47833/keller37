@@ -5626,7 +5626,30 @@ const STORY_KATER = {
     'kater.leber': [
       { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Deine Leber und ich haben gesprochen. Sie war kurz angebunden. Dreißig Prozent, sagt sie. Ich sage: Ich hab ein Bett frei.' },
     ],
-    'kater.k3': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.k3': [
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Ich werd\'s verkaufen. Den Keller. Vierzigtausend, plus was auf deinem Deckel steht. Nicht an dich – an wen auch immer zuerst kommt.' },
+      { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Außer du kommst zuerst. Bis Tag dreißig. Und der Doc hat ein Programm, falls du die Hände brauchst. Kostet, hilft, macht nüchtern. Nüchtern spielt sich schlecht.' },
+    ],
+    'kater.doc.angebot': [
+      { bg: 'bar', who: 'doc', mood: 'calm', text: 'Drei Bier für zwanzig Prozent Glück. Ein Brownie für vierzig. Rechne selbst, du warst Filialleiter.' },
+      { bg: 'bar', who: 'doc', mood: 'calm', text: 'Dreihundert das Stück, für dich. Deine Leber bezahlt den Rest.',
+        choices: [{ label: 'Nein, danke', value: 'nein', cls: 'ghost', effects: [{ var: 'docNein', add: 1 }] }, { label: 'Was kostet das?', value: 'ja', cls: 'red', effects: [{ flag: 'sucht' }, { price: { brownie: 300, therapy: 8000 } }] }] },
+    ],
+    'kater.doc.angebot2': [
+      { bg: 'bar', who: 'doc', mood: 'calm', text: 'Deine Leber weiß, was du gestern gemacht hast. Ich auch. Der Brownie wäre schneller gewesen.',
+        choices: [{ label: 'Nein', value: 'nein', cls: 'ghost', effects: [{ var: 'docNein', add: 1 }] }, { label: 'Gib her', value: 'ja', cls: 'red', effects: [{ flag: 'sucht' }, { price: { brownie: 300, therapy: 8000 } }] }] },
+    ],
+    'kater.doc.angebot3': [
+      { bg: 'gasse', who: 'doc', mood: 'angry', text: 'Letztes Angebot. Danach frag ich nicht mehr, ich warte nur noch.',
+        choices: [{ label: 'Nein.', value: 'nein', cls: 'ghost', effects: [{ var: 'docNein', add: 1 }] }, { label: 'Okay.', value: 'ja', cls: 'red', effects: [{ flag: 'sucht' }, { price: { brownie: 300, therapy: 8000 } }] }] },
+    ],
+    'kater.therapie': (ctx) => ctx.raw.flags.sucht ? [
+      { bg: 'klinik', who: 'doc', mood: 'angry', text: 'Achttausend. Du kaufst dich bei mir raus. Ich muss dich gehen lassen – das Programm ist echt, leider.' },
+      { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Kein Bier, kein Brownie, kein Glück aus der Flasche. Du wirst am Tisch merken, wie ehrlich der Kessel ist.' },
+    ] : [
+      { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Fünftausend. Vier Wochen Programm in drei Tagen, ich hab Beziehungen. Ab morgen zittert nichts mehr.' },
+      { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Der Wirt schenkt dir nichts mehr ein, ich hab\'s ihm gesagt. Und das Glück im Glas? Gibt\'s nicht mehr. Nüchtern spielt sich anders.' },
+    ],
     'kater.k4': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
     'kater.royal.zitter': [
       { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Der Türsteher hebt die Hand. Sie zittern. Wir haben eine Hausordnung – kommen Sie wieder, wenn die Hände still sind.' },
@@ -5663,7 +5686,16 @@ const STORY_KATER = {
     { id: 'entzugSucht', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }, { flag: 'sucht' }, { var: 'pegel', lt: 3 }, { var: 'brownieHeute', lt: 1 }] }, at: 'sleep', effects: [{ var: 'leber', add: -4 }, { flag: 'zitter' }, { luckMod: -15 }, { jobMod: { spuelerZone: 0.7, taxiBrakeDelay: 150, postTime: 0.75, shiftPay: 0.5 } }] },
     { id: 'pegelReset', when: { flag: 'abgestuerzt' }, at: 'sleep', effects: [{ var: 'pegel', set: 0 }, { var: 'bierHeute', set: 0 }] },
     { id: 'leberWarnung', when: { all: [{ flag: 'abgestuerzt' }, { var: 'leber', lte: 30 }, { var: 'leber', gt: 0 }] }, once: true, at: 'night', scene: 'kater.leber' },
-    /* Task 5–8 */
+    /* ---- Drogen ---- */
+    { id: 'docAngebot', when: { all: [{ day: { eq: 6 } }, { notFlag: 'sucht' }] }, once: true, at: 'night', scene: 'kater.doc.angebot' },
+    { id: 'docAngebot2', when: { all: [{ day: { eq: 12 } }, { notFlag: 'sucht' }, { notFlag: 'nuechtern' }] }, once: true, at: 'night', scene: 'kater.doc.angebot2' },
+    { id: 'docAngebot3', when: { all: [{ day: { eq: 18 } }, { notFlag: 'sucht' }, { notFlag: 'nuechtern' }] }, once: true, at: 'night', scene: 'kater.doc.angebot3' },
+    { id: 'standhaft', when: { all: [{ var: 'docNein', gte: 3 }, { notFlag: 'sucht' }] }, once: true, at: 'night', effects: [{ flag: 'docAbgelehnt' }, { achievement: 'standhaft' }] },
+    { id: 'brownie', when: { all: [{ flag: 'abgestuerzt' }] }, at: 'buy:brownie', effects: [{ var: 'brownieHeute', add: 1 }, { var: 'leber', add: -4 }] },
+    { id: 'zitterEndeBrownie', when: { flag: 'zitter' }, at: 'buy:brownie', effects: [{ unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }] },
+    /* ---- Therapie ---- */
+    { id: 'therapieFrei', when: { all: [{ day: { gte: 11 } }, { flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }] }, once: true, at: 'morning', effects: [{ enable: ['therapy'] }] },
+    { id: 'therapie', when: { flag: 'abgestuerzt' }, at: 'buy:therapy', scene: 'kater.therapie', effects: [{ flag: 'nuechtern' }, { disable: ['beer', 'brownie', 'therapy'] }, { unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }, { price: { beer: 50 } }] },
   ],
   actions: [ /* Task 7 */ ],
   jobScenes: { /* Task 6 */ },
@@ -6761,6 +6793,48 @@ T.test('STORY_KATER: Ende „Bett" ist sofort, wenn Leber 0', () => {
   const s = katerDay(12); s.story.vars.leber = 1; runHook(s, 'morning'); runHook(s, 'buy:beer');
   T.eq(s.story.vars.leber, 0);
   T.eq(StoryRules.ending(STORY_KATER, s, { immediateOnly: true }).id, 'bett');
+});
+T.test('STORY_KATER: Doc-Angebot Tag 6/12/18, dreimal Nein → Standhaft', () => {
+  const s = katerDay(6);
+  T.eq(runHook(s, 'night'), ['docAngebot']);
+  StoryRules.applyEffect(s, { var: 'docNein', add: 1 }, STORY_KATER); s.story.seen.push('docAngebot');
+  s.story.day = 12; T.eq(runHook(s, 'night'), ['docAngebot2']); StoryRules.applyEffect(s, { var: 'docNein', add: 1 }, STORY_KATER);
+  s.story.day = 18; T.eq(runHook(s, 'night'), ['docAngebot3']);
+  StoryRules.applyEffect(s, { var: 'docNein', add: 1 }, STORY_KATER);
+  T.eq(runHook(s, 'night'), ['standhaft'], 'dritter Nein-Abend: Trophäe');
+  T.eq(s.story.flags.docAbgelehnt, true);
+});
+T.test('STORY_KATER: Sucht – Brownie 300 €, Therapie 8.000 €, Brownie deckt den Pegel, Entzug −4', () => {
+  const s = katerDay(6);
+  const panels = STORY_KATER.scenes['kater.doc.angebot'];
+  const ja = panels[panels.length - 1].choices.find((c) => c.value === 'ja');
+  for (const eff of ja.effects) StoryRules.applyEffect(s, eff, STORY_KATER);
+  T.eq(s.story.flags.sucht, true);
+  T.eq(StoryRules.price(s, 'brownie'), 300); T.eq(StoryRules.price(s, 'therapy'), 8000);
+  s.story.day = 7; runHook(s, 'morning');
+  runHook(s, 'buy:brownie');
+  T.eq([s.story.vars.brownieHeute, s.story.vars.leber], [1, 96]);
+  T.ok(!runHook(s, 'sleep').includes('entzugSucht'), 'Brownie deckt den Bedarf');
+  s.story.day = 8; runHook(s, 'morning');
+  const ids = runHook(s, 'sleep');
+  T.ok(ids.includes('entzugSucht') && !ids.includes('entzug'), ids.join());
+  T.eq(s.story.vars.leber, 92, '96 − 4');
+});
+T.test('STORY_KATER: Therapie – ab Kapitel 3 erlaubt, danach kein Bier, kein Entzug, Leber stabil', () => {
+  const s = katerDay(11);
+  T.eq(StoryRules.purchaseAllowed(s, 'therapy'), null, 'vor dem Kapitel-3-Effekt nicht freigegeben');
+  StoryRules.applyEffect(s, { enable: ['therapy'] }, STORY_KATER); // macht Kapitel 3 per chapters[].unlock nicht – daher als Event, siehe Implementierung
+  runHook(s, 'buy:therapy');
+  T.eq(s.story.flags.nuechtern, true);
+  T.eq(StoryRules.purchaseAllowed(s, 'beer'), false); T.eq(StoryRules.purchaseAllowed(s, 'brownie'), false);
+  T.eq(StoryRules.purchaseAllowed(s, 'therapy'), false, 'Therapie ist einmalig – sperrt sich selbst');
+  T.eq(runHook(s, 'sleep').filter((id) => id.startsWith('entzug')), []);
+  s.story.day = 12; T.eq(runHook(s, 'morning').includes('freibier'), false);
+});
+T.test('STORY_KATER: Kapitel-3-Morgen gibt Therapie frei', () => {
+  const s = katerDay(11);
+  T.ok(runHook(s, 'morning').includes('therapieFrei'));
+  T.eq(StoryRules.purchaseAllowed(s, 'therapy'), true);
 });
 
 /* ---- Gear: Katalog, Boni, Kauf ---- */
