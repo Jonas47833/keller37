@@ -3839,6 +3839,11 @@ const Achievements = {
     { id: 'endeTaxi', title: 'Das Taxi', icon: '⛴️', desc: 'Mit der Fähre um vier verschwunden.', group: 'story' },
     { id: 'endeSturz', title: 'Der Sturz', icon: '📕', desc: 'Vito durch die Hintertür geschickt.', group: 'story' },
     { id: 'alleEnden', title: 'Alle Wege', icon: '🗺️', desc: 'Alle Enden einer Story gesehen.', group: 'story' },
+    { id: 'endeWirt', title: 'Hausherr', icon: '🔑', desc: 'Den Keller vom Wirt gekauft.', group: 'story' },
+    { id: 'endeNuechtern', title: 'Nüchtern', icon: '🌅', desc: 'Am Keller vorbeigegangen.', group: 'story' },
+    { id: 'endeBrownie', title: 'Der Brownie', icon: '💊', desc: 'Der Doc hat einen Partner.', group: 'story' },
+    { id: 'endeBett', title: 'Das Bett beim Doc', icon: '🛏️', desc: 'Die Niere war ein Vorschuss.', group: 'story' },
+    { id: 'standhaft', title: 'Standhaft', icon: '🙅', desc: 'Dem Doc dreimal Nein gesagt.', group: 'story' },
   ],
   has(id) { return State.meta.achievements.includes(id); },
   unlock(id) {
@@ -4875,6 +4880,7 @@ const Jobs = {
     kurier: { id: 'kurier', name: 'Kevins Kurier', icon: '💊', kind: 'shift', base: 300, desc: 'Päckchen von A nach B. Frag nicht, was drin ist.', pay: '300 €' },
     praktikant: { id: 'praktikant', name: 'Praktikant bei Krause', icon: '👔', kind: 'shift', base: 120, desc: 'Kaffee kochen, Akten lesen. Manche Akten sind interessant.', pay: '120 €' },
     docassi: { id: 'docassi', name: 'Assistent beim Doc', icon: '🩺', kind: 'shift', base: 250, desc: 'Handschuhe an. Nicht hinsehen.', pay: '250 €' },
+    filialleiter: { id: 'filialleiter', name: 'Filialleiter bei Krause', icon: '🏦', kind: 'shift', base: 400, desc: 'Anzug, Schlüssel, Unterschriftenmappe. Ihre Frau ruft öfter an.', pay: '400 €' },
   },
   render(root) {
     const board = qs('#pinboard', root);
@@ -5551,6 +5557,66 @@ Bus.on('rr:result', ({ victim }) => {
   if (v.duellSiege <= 3) StoryRules.applyEffect(State.s, { var: 'vertrauen', add: 1 }, STORY_SCHULD);
   State.save(); UI.renderWallet();
 });
+</script>
+
+<script id="story-kater">
+/* ================= STORY 2: DER KATER – Fortsetzung von „Die Schuld" ================= */
+const STORY_KATER = {
+  id: 'kater', title: 'Der Kater', days: 30, requires: 'schuld',
+  start: {
+    balance: 2000,
+    unlocked: { jobs: ['filialleiter'], doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack'], rooms: ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal'] },
+    vars: { pegel: 0, leber: 100, deckel: 0, bierHeute: 0, brownieHeute: 0, docNein: 0 },
+  },
+  varMax: { pegel: 3, leber: 100 },
+  prices: { brownie: 1000, therapy: 5000 },
+  disabled: ['tinder', 'house', 'dealer'],
+  /* Zahlen der Schleife – an einer Stelle */
+  N: { kaufpreis: 40000, buecherRabatt: 5000, freibier: 50, bedarf: 3, leberBier: 1, leberBrownie: 4, leberEntzug: 2, leberEntzugSucht: 4, leberNiere: 20, leberWarnung: 30, brownieSucht: 300, therapieSucht: 8000, chantalGeld: 15000, leberDoc: 70, luckZitter: -15, jobZitter: { spuelerZone: 0.7, taxiBrakeDelay: 150, postTime: 0.75, shiftPay: 0.5 } },
+  hud: [
+    { var: 'leber', label: '🫀 Leber', max: 100, tone: 'danger' },
+    { var: 'pegel', label: (s) => (s.story.flags.sucht ? '💊 Pegel' : '🍺 Pegel'), max: 3 },
+    { var: 'deckel', label: '🧾 Deckel', fmt: 'money' },
+  ],
+  goal: (s) => (s.story.flags.gekauft ? 'Der Keller gehört dir.' : s.story.flags.abgestuerzt ? `Ziel: Keller ${UI.fmt(STORY_KATER.N.kaufpreis + (s.story.vars.deckel || 0))} bis Tag 30` : 'Flitterwochen. Genieß es.'),
+  lockReason: { royal: 'Parkservice only' },
+  gates: { royal: [{ when: { flag: 'zitter' }, text: 'Sie zittern. Wir haben eine Hausordnung.', scene: 'kater.royal.zitter' }] },
+  intro: 'kater.intro',
+  scenes: {
+    /* ---- Platzhalter (Task 3–8 ersetzen jede Szene) ---- */
+    'kater.intro': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.k2': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.k3': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.k4': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.royal.zitter': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.ende.bett': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.ende.wirt': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.ende.nuechtern': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.ende.brownie': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.ende.taxi': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.ende.stammgast': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+  },
+  chapters: [
+    { id: 'k1', title: 'Flitterwochen', when: { day: { gte: 1 } } },
+    { id: 'k2', title: 'Der Morgen danach', when: { day: { gte: 4 } }, intro: 'kater.k2', unlock: { jobs: ['spueler', 'post', 'taxi'] } },
+    { id: 'k3', title: 'Der Wagen', when: { day: { gte: 11 } }, intro: 'kater.k3', unlock: { jobs: ['tuersteher', 'croupier'], rooms: ['royal'] } },
+    { id: 'k4', title: 'Letzte Runde', when: { day: { gte: 21 } }, intro: 'kater.k4' },
+  ],
+  events: [ /* Task 4–8 */ ],
+  actions: [ /* Task 7 */ ],
+  jobScenes: { /* Task 6 */ },
+  jobEffects: { /* Task 6 */ },
+  endings: [
+    { id: 'bett', title: 'Das Bett beim Doc', priority: 60, immediate: true, when: { var: 'leber', lte: 0 }, scene: 'kater.ende.bett' },
+    { id: 'wirt', title: 'Der Wirt', priority: 50, immediate: true, when: { flag: 'gekauft' }, scene: 'kater.ende.wirt' },
+    { id: 'nuechtern', title: 'Nüchtern', priority: 40, when: { all: [{ flag: 'nuechtern' }, { day: { gte: 30 } }] }, scene: 'kater.ende.nuechtern' },
+    { id: 'brownie', title: 'Der Brownie', priority: 30, when: { all: [{ flag: 'sucht' }, { var: 'leber', lte: 15 }, { day: { gte: 30 } }] }, scene: 'kater.ende.brownie' },
+    { id: 'taxi', title: 'Chantals Taxi', priority: 20, when: { all: [{ flag: 'chantalZurueck' }, { balance: { gte: 15000 } }, { day: { gte: 30 } }] }, scene: 'kater.ende.taxi' },
+    { id: 'stammgast', title: 'Der Stammgast', priority: 0, scene: 'kater.ende.stammgast', fallback: true },
+  ],
+  trophies: { wirt: 'endeWirt', nuechtern: 'endeNuechtern', brownie: 'endeBrownie', bett: 'endeBett' },
+};
+if (typeof Stories !== 'undefined') Stories.define(STORY_KATER);
 </script>
 
 <script id="selftest">
@@ -6522,6 +6588,49 @@ T.test('STORY_SCHULD: Flucht braucht Ruf, Igor sieht sie nur nach einer Tür-Sch
   T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), []);
   s.story.jobToday = 'tuersteher';
   T.eq(night(), ['fluchtFrage', 'igorSah']);
+});
+
+/* ---- Story 2: Der Kater ---- */
+const KATER_JOBS = ['spueler', 'post', 'taxi', 'tuersteher', 'croupier', 'eintreiber', 'filialleiter'];
+const katerState = (o = {}, prev = { schuld: 'ehrlich' }) => {
+  const s = Object.assign(base({ balance: 2000, car: 'mercC', hasHouse: true, flags: {} }), { story: StoryRules.freshStoryPart(STORY_KATER, { schuld: { lastPlayed: 1, endings: [prev.schuld], last: prev.schuld } }) }, o);
+  return s;
+};
+/* Events eines Hooks wie die Engine anwenden (Szenen ohne Wahl), gibt die Event-IDs zurück */
+const runHook = (s, at) => {
+  const ids = [];
+  for (const e of StoryRules.dueEvents(STORY_KATER, s, at)) {
+    ids.push(e.id);
+    for (const eff of e.effects || []) StoryRules.applyEffect(s, eff, STORY_KATER);
+    if (e.once) s.story.seen.push(e.id);
+  }
+  return ids;
+};
+T.test('STORY_KATER ist gültig und setzt Die Schuld voraus', () => {
+  T.eq(StoryRules.validate(STORY_KATER, Object.keys(STORY_KATER.scenes), KATER_JOBS, ['probe', 'schuld', 'kater']), []);
+  T.eq(STORY_KATER.requires, 'schuld'); T.eq(STORY_KATER.days, 30);
+  T.eq(STORY_KATER.endings.length, 6);
+  T.eq(STORY_KATER.endings.filter((e) => e.fallback).map((e) => e.id), ['stammgast']);
+  T.eq(STORY_KATER.endings.find((e) => e.id === 'bett').immediate, true);
+  T.eq(STORY_KATER.endings.find((e) => e.id === 'wirt').immediate, true);
+  T.eq(Object.keys(STORY_KATER.trophies).sort(), ['bett', 'brownie', 'nuechtern', 'wirt']);
+});
+T.test('STORY_KATER: Start – Flitterwochen', () => {
+  const s = katerState();
+  T.eq(s.story.vars, { pegel: 0, leber: 100, deckel: 0, bierHeute: 0, brownieHeute: 0, docNein: 0 });
+  T.eq(s.story.unlocked.jobs, ['filialleiter']);
+  T.eq(s.story.unlocked.doors, ['roulette', 'slots', 'horses', 'russian', 'blackjack']);
+  T.eq(s.story.unlocked.rooms, ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal']);
+  T.eq(s.story.prices, { brownie: 1000, therapy: 5000 });
+  T.eq(s.story.disabled, ['tinder', 'house', 'dealer']);
+  T.eq(StoryRules.chapterFor(STORY_KATER, s).id, 'k1');
+});
+T.test('STORY_KATER: Kapitelgrenzen 4/11/21', () => {
+  const s = katerState();
+  for (const [day, id] of [[3, 'k1'], [4, 'k2'], [10, 'k2'], [11, 'k3'], [20, 'k3'], [21, 'k4'], [30, 'k4']]) { s.story.day = day; T.eq(StoryRules.chapterFor(STORY_KATER, s).id, id, `Tag ${day}`); }
+});
+T.test('Jobs: filialleiter im Pool', () => {
+  T.eq(typeof Jobs === 'undefined' || (Jobs.POOL.filialleiter && Jobs.POOL.filialleiter.base), typeof Jobs === 'undefined' ? true : 400);
 });
 
 /* ---- Gear: Katalog, Boni, Kauf ---- */
