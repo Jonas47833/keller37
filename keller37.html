@@ -3837,10 +3837,13 @@ const RoyalRules = {
   crapsSettle(bets, point, dice) {
     const sum = dice[0] + dice[1];
     let delta = 0, pass = null, field = null, newPoint = point;
-    if (bets.pass > 0) {
+    if (bets.pass > 0 || point != null) {
       const p = RoyalRules.crapsPass(point, sum);
-      pass = p.result; newPoint = p.point;
-      if (p.result === 'win') delta += bets.pass; else if (p.result === 'lose') delta -= bets.pass;
+      newPoint = p.point;
+      if (bets.pass > 0) {
+        pass = p.result;
+        if (p.result === 'win') delta += bets.pass; else if (p.result === 'lose') delta -= bets.pass;
+      }
     }
     if (bets.field > 0) {
       const m = RoyalRules.crapsField(sum);
@@ -5493,6 +5496,9 @@ T.test('crapsSettle: Punktphase, nur Pass', () => {
   T.eq(RoyalRules.crapsSettle({ pass: 100, field: 0 }, 8, [3, 4]), { delta: -100, pass: 'lose', field: null, point: null, sum: 7 });
   T.eq(RoyalRules.crapsSettle({ pass: 100, field: 0 }, 8, [1, 1]), { delta: 0, pass: 'none', field: null, point: 8, sum: 2 });
   T.eq(RoyalRules.crapsSettle({ pass: 0, field: 100 }, null, [6, 6]), { delta: 200, pass: null, field: 'win', point: null, sum: 12 }, 'Field ohne Pass, 12 zahlt doppelt');
+  T.eq(RoyalRules.crapsSettle({ pass: 0, field: 100 }, 8, [3, 4]), { delta: -100, pass: null, field: 'lose', point: null, sum: 7 }, 'Seven-out löst den Punkt auch ohne Pass-Einsatz auf');
+  T.eq(RoyalRules.crapsSettle({ pass: 0, field: 100 }, 8, [4, 4]), { delta: -100, pass: null, field: 'lose', point: null, sum: 8 }, 'Punkt getroffen ohne Pass-Einsatz: Punkt endet, kein Geld');
+  T.eq(RoyalRules.crapsSettle({ pass: 0, field: 100 }, null, [3, 3]).point, null, 'ohne Pass-Einsatz entsteht kein Punkt');
 });
 T.test('crapsLuckOverride: verlierender Wurf wird verschoben, Gewinner nie', () => {
   T.eq(RoyalRules.crapsLuckOverride([3, 4], 8, true, 0, seq(0)), [3, 4], 'ohne Glück');
