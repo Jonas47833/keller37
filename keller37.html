@@ -537,6 +537,39 @@ body[data-zone="royal"] .neon { animation: none; color: var(--gold-2); text-shad
 body[data-zone="royal"] .panel { background: var(--panel); border: 1px solid var(--bronze); border-radius: 4px; }
 @media (max-width: 760px) { body[data-zone="royal"] .side { background: #0b0a0c; border-top: 1px solid var(--gold); } }
 @media (prefers-reduced-motion: reduce) { #zonefade { transition: none; } }
+/* Lobby */
+.royal-foyer { display: flex; flex-direction: column; gap: 18px; align-items: center; }
+.deco-arch { position: relative; width: 100%; height: 120px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--bronze); }
+.deco-arch::before { content: ""; position: absolute; inset: 0; background: conic-gradient(from 180deg at 50% 100%, transparent 0deg, rgba(201,169,97,.06) 3.75deg, transparent 7.5deg); }
+.deco-arch::after { content: ""; position: absolute; left: 50%; bottom: -1px; width: 420px; height: 210px; transform: translateX(-50%); border: 2px solid var(--gold); border-bottom: 0; border-radius: 210px 210px 0 0; box-shadow: inset 0 0 0 4px #0b0a0c, inset 0 0 0 5px var(--bronze); pointer-events: none; }
+.deco-arch h2 { position: relative; z-index: 1; margin: 0 0 18px; font-family: var(--font-display); font-weight: 700; font-size: 2.4rem; letter-spacing: .25em; text-transform: uppercase; color: var(--gold-2); text-shadow: 0 0 18px rgba(201,169,97,.45); }
+.deco-card { display: flex; align-items: center; gap: 10px; background: var(--ivory); color: #2a2418; border: 1px solid var(--bronze); padding: 8px 16px; font-family: var(--font-mono); font-style: italic; font-size: .9rem; box-shadow: 2px 3px 8px rgba(0,0,0,.6); transform: rotate(-.6deg); max-width: 640px; }
+.deco-card .hat { font-size: 1.2rem; }
+.deco-card p { margin: 0; }
+.deco-portals { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; width: 100%; padding: 28px 22px 34px;
+  background: linear-gradient(180deg, #0b0a0c 0%, transparent 45%), repeating-linear-gradient(45deg, #141216 0 28px, #1a171c 28px 56px), repeating-linear-gradient(-45deg, transparent 0 28px, rgba(0,0,0,.35) 28px 56px); }
+.portal { position: relative; height: 260px; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 34px 12px 16px; cursor: pointer; background: #141216; border: 2px solid var(--gold); box-shadow: inset 0 0 0 4px #141216, inset 0 0 0 5px var(--bronze), var(--shadow); color: var(--ivory); font-family: inherit; transition: transform .12s; }
+.portal-crown { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 60%; height: 4px; background: var(--gold); }
+.portal-crown::before, .portal-crown::after { content: ""; position: absolute; left: 50%; transform: translateX(-50%); height: 4px; background: var(--gold); }
+.portal-crown::before { top: 7px; width: 66%; }
+.portal-crown::after { top: 14px; width: 33%; }
+.plaque { display: inline-block; flex-shrink: 0; margin-top: 12px; padding: 6px 18px; background: linear-gradient(160deg, #b8923f, #e2c77a 45%, #9a7a2f); color: #2a1d08; font-family: var(--font-display); font-weight: 700; letter-spacing: .12em; font-size: 1.15rem; text-transform: uppercase; text-shadow: 0 1px 0 rgba(255,255,255,.35); border: 1px solid #5a4520; box-shadow: inset 0 0 0 1px #e2c77a; position: relative; overflow: hidden; }
+.portal .glyph { font-size: 3rem; line-height: 1; }
+.engraved { margin-top: auto; font-family: var(--font-display); font-size: .75rem; letter-spacing: .12em; color: var(--bronze); text-transform: uppercase; }
+.portal:active { transform: scale(.98); }
+@media (hover: hover) {
+  .portal .glyph { filter: drop-shadow(0 4px 6px rgba(0,0,0,.7)); }
+  .portal:hover { background: radial-gradient(ellipse at 50% 60%, rgba(201,169,97,.12), #141216 70%); }
+  .portal:hover .plaque::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,.45) 50%, transparent 70%); animation: royalSheen .5s ease both; }
+}
+@keyframes royalSheen { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@media (max-width: 760px) {
+  .deco-arch { height: 90px; } .deco-arch h2 { font-size: 1.6rem; margin-bottom: 12px; } .deco-arch::after { width: 300px; height: 150px; }
+  .deco-portals { grid-template-columns: 1fr 1fr; gap: 12px; padding: 18px 12px 22px; }
+  .portal { min-height: 170px; padding-top: 28px; gap: 6px; } .portal .glyph { font-size: 2.2rem; } .plaque { font-size: .95rem; padding: 4px 10px; }
+  .portal:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) { .portal:hover .plaque::after { animation: none; display: none; } }
 /* -- Reduced Motion -- */
 @media (prefers-reduced-motion: reduce) {
   .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running, .plate.hit, .plate.broken, .taxi-road.running, .brake-flash.on, .ticket-pop, .mega-grid .cell.spin, .die.rolling, .lv-badge.point { animation: none !important; }
@@ -1135,12 +1168,13 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
   </div>
 </template>
 <template id="tpl-royal">
-  <div class="panel stretch royal">
-    <div class="royal-head"><h2>🎩 Casino Royal</h2><p class="royal-sylvie" id="royalLine"></p></div>
-    <div class="hub royal-hub">
-      <div class="door" data-screen="megaslots" style="--neon: var(--gold-2)"><div class="sign">Mega Seven</div><div class="glyph">🎰</div><div class="chalk-tag">5 Walzen · Freispiele</div><div class="knob"></div></div>
-      <div class="door" data-screen="craps" style="--neon: var(--neon-green)"><div class="sign">Craps</div><div class="glyph">🎲</div><div class="chalk-tag">Pass Line · Field</div><div class="knob"></div></div>
-      <div class="door" data-screen="wheel" style="--neon: var(--neon-red)"><div class="sign">Glücksrad</div><div class="glyph">🎡</div><div class="chalk-tag">bis 10×</div><div class="knob"></div></div>
+  <div class="royal-foyer">
+    <div class="deco-arch"><h2>Casino Royal</h2></div>
+    <div class="deco-card"><span class="hat">🎩</span><p id="royalLine"></p></div>
+    <div class="deco-portals">
+      <button class="portal" data-screen="megaslots"><span class="portal-crown"></span><span class="plaque">Mega Seven</span><span class="glyph">🎰</span><span class="engraved">5 Walzen · Freispiele</span></button>
+      <button class="portal" data-screen="craps"><span class="portal-crown"></span><span class="plaque">Craps</span><span class="glyph">🎲</span><span class="engraved">Pass Line · Field</span></button>
+      <button class="portal" data-screen="wheel"><span class="portal-crown"></span><span class="plaque">Glücksrad</span><span class="glyph">🎡</span><span class="engraved">bis 10×</span></button>
     </div>
     <div class="bet-bar"><button class="btn ghost sm" id="royalLeave">← Zurück in die Stadt</button></div>
   </div>
@@ -3162,7 +3196,7 @@ UI.register('royal', {
   template: 'tpl-royal',
   mount(root) {
     qs('#royalLine', root).textContent = Royal.line();
-    qsa('.door', root).forEach((d) => d.addEventListener('click', () => { SFX.play('click'); UI.show(d.dataset.screen); }));
+    qsa('.portal, .door', root).forEach((d) => d.addEventListener('click', () => { SFX.play('click'); UI.show(d.dataset.screen); }));
     qs('#royalLeave', root).addEventListener('click', () => { SFX.play('click'); UI.show('stadt'); });
     if (typeof Story !== 'undefined') Story.decorateHub(root);
   },
