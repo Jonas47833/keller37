@@ -5615,10 +5615,22 @@ const STORY_KATER = {
       { bg: 'bank', who: 'krause', mood: 'calm', text: 'Ihre Frau hat die Vollmacht genutzt. Konto, Wagen, Villa – alles rechtens. Und die Filiale… Sie verstehen, das Vertrauen.' },
       { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Setz dich. Das erste geht aufs Haus. Das zweite auch, ich schreib\'s an. Du siehst aus, als bräuchtest du drei.' },
     ],
-    'kater.k2': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.k2': [
+      { bg: 'strasse', who: 'du', mood: 'shock', text: 'Tag vier. Null auf dem Konto, kein Auto, kein Schlüssel. Der Wirt hat einen Deckel für mich angelegt. Ich hab ihn nicht drum gebeten.' },
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Pinnwand ist da hinten. Spülen, Post, Taxi. Und drei Bier am Tag – nicht meine Regel, deine Hände haben das entschieden.' },
+    ],
+    'kater.entzug': [
+      { bg: 'keller', who: 'wirt', mood: 'calm', text: 'Du hast gestern nur zwei gehabt. Ich seh das. Deine Hände sehen das auch.' },
+      { bg: 'keller', who: 'du', mood: 'shock', text: 'Das Glas klirrt, bevor ich es anfasse. Heute wird kein guter Tag. Bis zum ersten Bier.' },
+    ],
+    'kater.leber': [
+      { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Deine Leber und ich haben gesprochen. Sie war kurz angebunden. Dreißig Prozent, sagt sie. Ich sage: Ich hab ein Bett frei.' },
+    ],
     'kater.k3': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
     'kater.k4': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
-    'kater.royal.zitter': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.royal.zitter': [
+      { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Der Türsteher hebt die Hand. Sie zittern. Wir haben eine Hausordnung – kommen Sie wieder, wenn die Hände still sind.' },
+    ],
     'kater.ende.bett': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
     'kater.ende.wirt': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
     'kater.ende.nuechtern': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
@@ -5637,6 +5649,20 @@ const STORY_KATER = {
     { id: 'niereWeg', when: { all: [{ day: { eq: 1 } }, { prevEnding: { story: 'schuld', id: 'doc' } }] }, once: true, at: 'morning', effects: [{ var: 'leber', set: 70 }, { set: { kidneySold: true } }] },
     { id: 'absturz', when: { day: { eq: 3 } }, once: true, at: 'night', scene: 'kater.absturz',
       effects: [{ balancePct: -100, min: 0 }, { set: { car: null, hasHouse: false } }, { lock: { jobs: ['filialleiter'], rooms: ['royal'] } }, { flag: 'abgestuerzt' }, { price: { beer: 0 } }] },
+    /* ---- Tagesbeginn: erstes Bier umsonst ---- */
+    { id: 'freibier', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }] }, at: 'morning', effects: [{ price: { beer: 0 } }, { var: 'bierHeute', set: 0 }, { var: 'brownieHeute', set: 0 }] },
+    /* ---- Bierkauf ---- */
+    { id: 'deckel', when: { all: [{ flag: 'abgestuerzt' }, { var: 'bierHeute', eq: 0 }] }, at: 'buy:beer', effects: [{ var: 'deckel', add: 50 }, { price: { beer: 50 } }] },
+    { id: 'bier', when: { flag: 'abgestuerzt' }, at: 'buy:beer', effects: [{ var: 'bierHeute', add: 1 }, { var: 'pegel', add: 1 }, { var: 'leber', add: -1 }] },
+    { id: 'zitterEnde', when: { flag: 'zitter' }, at: 'buy:beer', effects: [{ unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }] },
+    /* ---- Niere ---- */
+    { id: 'niere', when: { flag: 'abgestuerzt' }, at: 'buy:kidney', effects: [{ var: 'leber', add: -20 }] },
+    /* ---- Nacht: Entzug, Pegel-Reset, Warnung ---- */
+    { id: 'entzugSzene', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }, { notFlag: 'entzugGesehen' }, { var: 'pegel', lt: 3 }, { not: { all: [{ flag: 'sucht' }, { var: 'brownieHeute', gte: 1 }] } }] }, once: true, at: 'sleep', scene: 'kater.entzug', effects: [{ flag: 'entzugGesehen' }] },
+    { id: 'entzug', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }, { notFlag: 'sucht' }, { var: 'pegel', lt: 3 }] }, at: 'sleep', effects: [{ var: 'leber', add: -2 }, { flag: 'zitter' }, { luckMod: -15 }, { jobMod: { spuelerZone: 0.7, taxiBrakeDelay: 150, postTime: 0.75, shiftPay: 0.5 } }] },
+    { id: 'entzugSucht', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }, { flag: 'sucht' }, { var: 'pegel', lt: 3 }, { var: 'brownieHeute', lt: 1 }] }, at: 'sleep', effects: [{ var: 'leber', add: -4 }, { flag: 'zitter' }, { luckMod: -15 }, { jobMod: { spuelerZone: 0.7, taxiBrakeDelay: 150, postTime: 0.75, shiftPay: 0.5 } }] },
+    { id: 'pegelReset', when: { flag: 'abgestuerzt' }, at: 'sleep', effects: [{ var: 'pegel', set: 0 }, { var: 'bierHeute', set: 0 }] },
+    { id: 'leberWarnung', when: { all: [{ flag: 'abgestuerzt' }, { var: 'leber', lte: 30 }, { var: 'leber', gt: 0 }] }, once: true, at: 'night', scene: 'kater.leber' },
     /* Task 5–8 */
   ],
   actions: [ /* Task 7 */ ],
@@ -6694,6 +6720,47 @@ T.test('STORY_KATER: Intro-Szene je vorigem Ende', () => {
     T.ok(panels.length >= 4, `${prev}: Variante + Hochzeit`);
     T.eq(panels[panels.length - 1].bg, 'standesamt', `${prev}: endet im Standesamt`);
   }
+});
+const katerDay = (day, extra = {}) => { const s = katerState({ balance: 200, car: null, hasHouse: false }); s.story.day = day; s.story.flags.abgestuerzt = true; s.story.seen.push('einrichten', 'absturz'); s.story.unlocked.rooms = ['bar', 'doc', 'bank', 'invest', 'life', 'stadt']; Object.assign(s.story.flags, extra); return s; };
+T.test('STORY_KATER: Freibier morgens, Deckel beim ersten Bier, danach 50 €', () => {
+  const s = katerDay(5);
+  runHook(s, 'morning');
+  T.eq(StoryRules.price(s, 'beer'), 0, 'erstes Bier des Tages umsonst');
+  runHook(s, 'buy:beer');
+  T.eq([s.story.vars.deckel, s.story.vars.bierHeute, s.story.vars.pegel, s.story.vars.leber], [50, 1, 1, 99]);
+  T.eq(StoryRules.price(s, 'beer'), 50);
+  runHook(s, 'buy:beer'); runHook(s, 'buy:beer'); runHook(s, 'buy:beer');
+  T.eq([s.story.vars.deckel, s.story.vars.bierHeute, s.story.vars.pegel, s.story.vars.leber], [50, 4, 3, 96], 'Bier 4: Pegel bleibt 3, Leber zahlt');
+});
+T.test('STORY_KATER: Entzugsnacht → Zitter-Tag → erstes Bier hebt ihn auf', () => {
+  const s = katerDay(5);
+  runHook(s, 'morning'); runHook(s, 'buy:beer'); runHook(s, 'buy:beer');
+  const ids = runHook(s, 'sleep');
+  T.ok(ids.includes('entzug') && ids.includes('entzugSzene'), ids.join());
+  T.eq(s.story.vars.leber, 96, '98 − 2 Entzug');
+  T.eq(s.story.flags.zitter, true); T.eq(s.story.luckMod, -15); T.eq(StoryRules.jobMod(s).shiftPay, 0.5);
+  T.eq(s.story.vars.pegel, 0, 'Pegel nachts zurückgesetzt'); T.eq(s.story.vars.bierHeute, 0);
+  T.eq(StoryRules.gate(STORY_KATER, s, 'royal'), 'Sie zittern. Wir haben eine Hausordnung.');
+  s.story.day = 6; runHook(s, 'morning');
+  T.eq(runHook(s, 'buy:beer').includes('zitterEnde'), true);
+  T.eq([s.story.flags.zitter, s.story.luckMod, StoryRules.jobMod(s)], [false, 0, {}]);
+  T.eq(StoryRules.gate(STORY_KATER, s, 'royal'), null);
+  runHook(s, 'buy:beer'); runHook(s, 'buy:beer');
+  const n2 = runHook(s, 'sleep');
+  T.ok(!n2.includes('entzug'), 'drei Bier → kein Entzug');
+  T.ok(!n2.includes('entzugSzene'), 'Szene nur beim ersten Mal');
+});
+T.test('STORY_KATER: Leber-Rechnung 27 Tage Minimum = 19; Warnung bei ≤ 30; Niere −20', () => {
+  const s = katerDay(4);
+  for (let d = 4; d <= 30; d++) { s.story.day = d; runHook(s, 'morning'); runHook(s, 'buy:beer'); runHook(s, 'buy:beer'); runHook(s, 'buy:beer'); runHook(s, 'night'); runHook(s, 'sleep'); }
+  T.eq(s.story.vars.leber, 19);
+  T.ok(s.story.seen.includes('leberWarnung'), 'Warnszene kam');
+  const k = katerDay(5); runHook(k, 'buy:kidney'); T.eq(k.story.vars.leber, 80);
+});
+T.test('STORY_KATER: Ende „Bett" ist sofort, wenn Leber 0', () => {
+  const s = katerDay(12); s.story.vars.leber = 1; runHook(s, 'morning'); runHook(s, 'buy:beer');
+  T.eq(s.story.vars.leber, 0);
+  T.eq(StoryRules.ending(STORY_KATER, s, { immediateOnly: true }).id, 'bett');
 });
 
 /* ---- Gear: Katalog, Boni, Kauf ---- */
