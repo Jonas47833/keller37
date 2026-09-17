@@ -40,9 +40,9 @@ html, body { min-height: 100%; }
 body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 15px; line-height: 1.45; overflow-x: hidden; }
 button { font-family: inherit; cursor: pointer; color: inherit; }
 input { font-family: var(--font-mono); }
-.grain { position: fixed; inset: 0; pointer-events: none; z-index: 90; opacity: .06; background-size: 200px 200px;
+.grain { position: fixed; inset: 0; pointer-events: none; z-index: 90; opacity: .06; background-size: 200px 200px; transform: translateZ(0);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-.vignette { position: fixed; inset: 0; pointer-events: none; z-index: 89; background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.75) 100%); }
+.vignette { position: fixed; inset: 0; pointer-events: none; z-index: 89; background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.75) 100%); transform: translateZ(0); }
 .felt { background: repeating-linear-gradient(45deg, rgba(255,255,255,.02) 0 2px, transparent 2px 4px), radial-gradient(ellipse at 50% 30%, #145240 0%, var(--felt) 45%, var(--felt-2) 100%); }
 .neon { font-family: var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: #fff;
   text-shadow: 0 0 4px #fff, 0 0 10px var(--neon, var(--neon-amber)), 0 0 24px var(--neon, var(--neon-amber)), 0 0 48px var(--neon, var(--neon-amber));
@@ -298,6 +298,7 @@ body.cs-open .toast { max-width: 300px; }
 .rcell.red { background: #b3261e; }
 .rcell.zero { grid-row: 1 / span 3; background: #1f7a4d; }
 .rcell.out { grid-column: span 3; background: rgba(0,0,0,.35); font-family: var(--font-display); letter-spacing: .08em; font-size: 1rem; }
+.rcell.out.red { grid-column: 2 / span 3; }
 .rcell.out.red { background: #b3261e; }
 .rcell.out.black { background: #111; }
 .rcell:hover { filter: brightness(1.35); }
@@ -386,27 +387,71 @@ body.cs-open .toast { max-width: 300px; }
 .side-tabs { display: none; }
 @media (max-width: 760px) {
   .body { grid-template-columns: 1fr; padding: 12px 12px 110px; gap: 12px; }
-  .wallet { padding: 8px 12px; gap: 8px; }
-  .brand { font-size: 1.5rem; }
-  .balance { font-size: 1.15rem; min-width: 110px; padding: 4px 10px; }
-  .wallet-mid { order: 3; width: 100%; }
+  /* Performance: kein Backdrop-Blur, kein Filmkorn, Buehne nur per Opacity */
+  .grain { display: none; }
+  .wallet { padding: 8px 12px; gap: 8px; backdrop-filter: none; -webkit-backdrop-filter: none; background: #0c0e0a; }
+  .stage { transition: opacity .12s ease; will-change: opacity; }
+  .stage.leaving { transform: none; transition-duration: .12s; }
+  .stage.entering { animation: screenInMobile .18s ease both; }
+  .door { box-shadow: inset 0 0 0 6px #1d1610; transition: none; }
+  .door::after { display: none; }
+  .door .sign { text-shadow: 0 0 8px var(--neon); box-shadow: 0 0 8px var(--neon); }
+  .door .glyph { filter: none; }
+  .neon { text-shadow: 0 0 6px var(--neon), 0 0 14px var(--neon); }
+  /* Header: Touch-Groessen, einklappbare Mittelzeile */
+  .brand { font-size: 1.3rem; padding: 2px 4px; }
+  .balance { font-size: 1.15rem; min-width: 96px; padding: 4px 10px; }
+  .wallet-right { gap: 8px; }
+  .icon-btn { width: 44px; height: 44px; font-size: 1.15rem; }
+  .wallet-mid { order: 3; flex: 1 1 100%; max-height: 200px; padding: 2px 0; overflow: hidden; transition: max-height .22s ease, opacity .18s ease; }
+  body.scrolled .wallet-mid { max-height: 0; padding: 0; opacity: 0; }
+  /* Seitenleiste als Tab-Leiste */
   .side { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; gap: 0; background: rgba(12,14,10,.97); border-top: 1px solid rgba(201,162,39,.25); }
   .side-sec { display: none; border-radius: 0; box-shadow: none; border: 0; padding: 10px 12px 6px; }
   .side.open .side-sec.active { display: block; }
   .side-sec h3 { display: none; }
-  .side-btn { padding: 8px 10px; font-size: .85rem; }
+  .side-btn { padding: 10px 10px; font-size: .9rem; min-height: 44px; }
   .side-tabs { display: flex; }
-  .side-tabs button { flex: 1; background: none; border: 0; border-top: 3px solid transparent; padding: 8px 4px; font-family: var(--font-display); letter-spacing: .1em; font-size: 1rem; color: var(--dim); }
+  .side-tabs button { flex: 1 1 0; min-width: 0; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: none; border: 0; border-top: 3px solid transparent; padding: 5px 2px 7px; font-family: var(--font-display); letter-spacing: .04em; font-size: .72rem; color: var(--dim); }
   .side-tabs button.on { color: var(--gold-2); border-top-color: var(--gold); }
+  .side-tabs .tab-ic { font-size: 1.25rem; line-height: 1; }
+  .side-tabs .tab-lb { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Keller */
   .hub { grid-template-columns: 1fr 1fr; gap: 10px; }
   .door { height: 150px; padding-top: 14px; gap: 6px; }
   .door .sign { font-size: 1.2rem; padding: 2px 8px; }
   .door .glyph { font-size: 2rem; }
+  .door .chalk-tag { max-width: 92%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; }
+  .door:last-child:nth-child(odd) { grid-column: 1 / -1; }   /* einzelne letzte Tuer ueber beide Spalten */
   .finance, .invest-grid, .life-grid { grid-template-columns: 1fr; }
-  .roulette-top { flex-direction: column; }
-  .rtable { grid-template-columns: 23px repeat(12, 23px); grid-auto-rows: 23px; gap: 1px; padding: 5px; }
-  .rcell { font-size: .58rem; }
-  .rcell.out { font-size: .5rem; letter-spacing: .02em; }
+  /* Einsatz-Leiste: Stepper-Zeile, Chip-Zeile, Hauptknopf volle Breite */
+  .bet-bar { width: 100%; gap: 8px 10px; }
+  .bet-bar > .dim { display: none; }
+  .bet-bar .bet-field { flex: 1 1 100%; }
+  .bet-field button { flex: 0 0 44px; width: 44px; height: 44px; font-size: 1.25rem; }
+  .bet-field input { min-width: 0; }
+  .bet-bar .bet-field input { flex: 1; width: auto; font-size: 1.2rem; }
+  .bet-bar .bet-field button { flex: 0 0 48px; width: 48px; height: 46px; font-size: 1.3rem; }
+  .bet-bar > .btn { flex: 1 1 100%; min-height: 48px; font-size: 1.15rem; }
+  .bet-bar > .btn:has(+ .btn), .bet-bar > .btn + .btn { flex: 1 1 40%; }
+  .bet-bar > .btn.sm { flex: 1 1 30%; min-height: 42px; font-size: .95rem; }
+  /* Roulette: kleineres Rad, hochkant gedrehter Tisch mit Touch-Feldern */
+  .roulette-top { flex-direction: column; gap: 8px; }
+  .wheel-box { transform: scale(.75); margin: -40px 0; }
+  .table-box { width: 100%; }
+  .table-box .bet-bar { order: 2; }
+  .table-box .insider-hint { order: 2; }
+  .table-box .table-bar { order: 3; }
+  .table-box .status { order: 4; }
+  .rtable { width: 100%; grid-template-columns: repeat(6, 1fr); grid-auto-rows: 40px; gap: 3px; padding: 6px; }
+  .rcell { grid-row: var(--mr); grid-column: var(--mc); font-size: .9rem; }
+  .rcell.zero { grid-row: 1; grid-column: 1 / -1; }
+  .rcell.out, .rcell.out.red { grid-column: var(--mc); font-size: .85rem; }
+  .table-bar { width: 100%; gap: 8px; }
+  .table-total { flex: 1 1 100%; text-align: center; margin: 0; }
+  .table-bar .btn.ghost.sm { flex: 1 1 28%; order: 1; min-height: 42px; }
+  .table-bar #btnSpin { flex: 1 1 100%; order: 2; min-height: 50px; font-size: 1.2rem; }
+  /* Spiele */
   .slot-machine { --cell: 64px; padding: 12px 56px 16px 14px; }
   .lever { right: 8px; top: 50px; transform: scale(.8); }
   .pcard { width: 46px; height: 66px; }
@@ -423,6 +468,13 @@ body.cs-open .toast { max-width: 300px; }
   #toasts { right: 10px; left: 10px; bottom: 120px; }
   body.cs-open #toasts { top: 70px; bottom: auto; left: 10px; right: 10px; }
   .toast { max-width: none; }
+}
+/* -- Touch: keine Hover-Transforms -- */
+@media (hover: none) {
+  .door:hover, .chip:hover, .house:hover, .pick:hover, .side-btn:hover:not(:disabled) { transform: none; }
+  .door:hover::after { opacity: 0; }
+  .door:hover .sign { opacity: .8; }
+  .rcell:hover { filter: none; }
 }
 /* -- Reduced Motion -- */
 @media (prefers-reduced-motion: reduce) {
@@ -462,7 +514,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .door.locked .chalk-tag { color: #ffb3b3; }
 #nightfade { position: fixed; inset: 0; z-index: 85; background: #000; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 4rem; letter-spacing: .2em; color: #fff; text-shadow: 0 0 20px var(--neon-amber); opacity: 0; pointer-events: none; transition: opacity .35s; }
 #nightfade.on { opacity: 1; pointer-events: auto; }
-@media (max-width: 760px) { .daybar { top: 0; position: static; padding: 6px 12px; gap: 8px; } .day-count { font-size: 1.3rem; } .day-goal { width: 100%; margin-left: 0; } }
+@media (max-width: 760px) { .daybar { top: 0; position: static; padding: 6px 12px; gap: 8px; } .day-count { font-size: 1.3rem; } .day-goal { width: 100%; margin-left: 0; order: 5; } .daybar #btnTitleBack { margin-left: auto; } .daybar .btn.sm { min-height: 42px; } }
 /* -- Jobbörse -- */
 .pinboard { position: relative; background-image: radial-gradient(rgba(0,0,0,.18) 1px, transparent 1.5px), radial-gradient(circle at 20% 30%, #a8783f 0, #8a5e2e 40%, #6e4a22 100%); background-size: 6px 6px, auto; border: 10px solid #4a3520; border-radius: 6px; padding: 22px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px; min-height: 260px; box-shadow: inset 0 0 40px rgba(0,0,0,.5); }
 .jobnote { position: relative; background: var(--paper); color: var(--paper-ink); padding: 26px 14px 14px; font-family: var(--font-mono); box-shadow: 3px 4px 10px rgba(0,0,0,.6); transform: rotate(-1.5deg); display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: transform .15s; }
@@ -575,6 +627,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .slot-machine .insider-hint { display: block; padding: 0 12px; margin-bottom: 6px; }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes screenInMobile { from { opacity: 0; } to { opacity: 1; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
 @keyframes popIn { from { transform: scale(.6) rotate(-6deg); opacity: 0; } to { opacity: 1; } }
 @keyframes pulseGold { 0% { box-shadow: 0 0 0 0 rgba(232,198,90,.7); } 100% { box-shadow: 0 0 0 18px rgba(232,198,90,0); } }
@@ -1725,6 +1778,7 @@ const UI = {
   tweenId: null,
   fmt(n) { return Math.round(n).toLocaleString('de-DE') + ' €'; },
   register(id, def) { this.screens.set(id, def); },
+  mobile() { return window.matchMedia('(max-width: 760px)').matches; },
   async show(id) {
     if (this.busy) return;
     const def = this.screens.get(id);
@@ -1739,7 +1793,7 @@ const UI = {
     if (this.current) {
       try { this.current.def.unmount?.(); } catch (e) { console.error(e); }
       stage.classList.add('leaving');
-      await wait(180);
+      await wait(UI.mobile() ? 120 : 180);
     }
     stage.innerHTML = '';
     stage.classList.remove('leaving');
@@ -1748,7 +1802,7 @@ const UI = {
     document.body.dataset.screen = id;
     stage.classList.add('entering');
     try { def.mount?.(stage); } catch (e) { console.error(e); }
-    await wait(250);
+    await wait(UI.mobile() ? 180 : 250);
     stage.classList.remove('entering');
     this.busy = false;
   },
@@ -1846,6 +1900,7 @@ const UI = {
       h('p', { class: 'side-hint gear-line', id: 'gearLine' }, Stadt.line(s))));
     side.append(...secs);
     const tabs = h('div', { class: 'side-tabs' });
+    const TAB_ICONS = { 'Die Bar': '🍺', 'Hinterzimmer': '🚪', 'Zuhause': '🏠', 'Kopf': '🧠', 'Stadt': '🏙️' };
     qsa('.side-sec h3', side).map((el) => el.textContent).forEach((label, i) => {
       tabs.append(h('button', { onclick: () => {
         const secs = qsa('.side-sec', side);
@@ -1854,7 +1909,7 @@ const UI = {
         qsa('button', tabs).forEach((b, j) => b.classList.toggle('on', j === i && !wasOpen));
         side.classList.toggle('open', !wasOpen);
         SFX.play('click');
-      } }, label));
+      } }, TAB_ICONS[label] ? h('span', { class: 'tab-ic' }, TAB_ICONS[label]) : null, h('span', { class: 'tab-lb' }, label)));
     });
     side.append(tabs);
     side.onclick = (e) => {
@@ -1884,6 +1939,11 @@ const UI = {
     this.renderSide();
     if (!this._shellKeys) {
       this._shellKeys = true;
+      window.addEventListener('scroll', () => {
+        const y = window.scrollY;
+        const room = document.documentElement.scrollHeight - window.innerHeight > 240;   // sonst wuerde das Einklappen die Seite unter den Schwellwert kuerzen
+        if (y > 80 && room) document.body.classList.add('scrolled'); else if (y < 10) document.body.classList.remove('scrolled');
+      }, { passive: true });
       document.addEventListener('keydown', (e) => {
         if (typeof Russian !== 'undefined' && Russian.inDuel && Russian.duel && Russian.duel.forced) return;
         if (e.key !== 'Escape' || !qs('#cutscene').hidden || !qs('#title').hidden || !UI.current) return;
@@ -3105,15 +3165,16 @@ const Roulette = {
   buildTable() {
     const t = qs('#rtable', this.root);
     t.innerHTML = '';
-    const cell = (label, cls, type, chosen, style) =>
-      h('button', { class: `rcell ${cls}`, style, 'data-key': type === 'number' ? `n${chosen}` : type, onclick: (e) => this.place(type, chosen, e.currentTarget) }, label);
-    t.append(cell('0', 'zero', 'number', 0));
+    // --mr/--mc: Zeile/Spalte im hochkant gedrehten Handy-Tisch (Desktop platziert automatisch)
+    const cell = (label, cls, type, chosen, mr, mc) =>
+      h('button', { class: `rcell ${cls}`, style: `--mr: ${mr}; --mc: ${mc}`, 'data-key': type === 'number' ? `n${chosen}` : type, onclick: (e) => this.place(type, chosen, e.currentTarget) }, label);
+    t.append(cell('0', 'zero', 'number', 0, 1, '1 / -1'));
     for (let row = 0; row < 3; row++) for (let col = 0; col < 12; col++) {
       const n = col * 3 + (3 - row);
-      t.append(cell(String(n), Rules.isRed(n) ? 'red' : 'black', 'number', n));
+      t.append(cell(String(n), Rules.isRed(n) ? 'red' : 'black', 'number', n, col + 2, `${(n - 1) % 3 * 2 + 1} / span 2`));
     }
-    t.append(cell('Rot', 'out red', 'red', null, 'grid-column: 2 / span 3'), cell('Schwarz', 'out black', 'black', null),
-      cell('Gerade', 'out', 'even', null), cell('Ungerade', 'out', 'odd', null));
+    t.append(cell('Rot', 'out red', 'red', null, 14, '1 / span 3'), cell('Schwarz', 'out black', 'black', null, 14, '4 / span 3'),
+      cell('Gerade', 'out', 'even', null, 15, '1 / span 3'), cell('Ungerade', 'out', 'odd', null, 15, '4 / span 3'));
     this.applyExcluded();
   },
   excluded() { return Perks.mods().rouletteExclude > 0 ? (State.s.insiderExcluded || []) : []; },

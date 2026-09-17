@@ -13,7 +13,8 @@ Ein satirisches Casino-Lebenssimulations-Spiel in einer einzigen HTML-Datei. Fü
 - **Stadt:** Autohaus (Audi-Linie senkt das Überfallrisiko und erhöht die Fluchtchance, Mercedes-Linie hebt Bank-Limit und senkt die Zinsen) und INTERSPORT (Laufschuhe verbessern die Flucht, bringen mehr Zeit/Lohn beim Postboten und helfen bei den Job-Minispielen). Ein neues Auto nimmt das alte mit 50 % seines Preises in Zahlung, Schuhe gibt es nur zum vollen Preis.
 - **Überfälle & Stärke:** auf dem Weg in den Keller kann es einen Überfall geben – Kämpfen, Wegrennen oder Zahlen. Ein Kampf (gewonnen oder verloren) erhöht 💪 Stärke; Stärke verbessert die Kampfchance und den Türsteher-Bonus, schaltet den Job „Eintreiber" frei und macht ab 10 gefürchtet (seltener Ziel für Überfälle).
 - **Cutscenes:** 31 Visual-Novel-Szenen mit 13 Charakteren, Typewriter-Text, Entscheidungen und Effekten.
-- **Extras:** synthetisierter Sound (Web Audio, keine Dateien), Spielstand in `localStorage`, Game Over mit Statistik, Trophäen, Mobile-Layout, Reduced-Motion.
+- **Extras:** synthetisierter Sound (Web Audio, keine Dateien), Spielstand in `localStorage`, Game Over mit Statistik, Trophäen, Reduced-Motion.
+- **Handy (≤ 760 px):** Roulette-Tisch hochkant (Zero oben, 1-2-3 nebeneinander, Außenfelder unten), Einsatz-Leiste in drei festen Zeilen (Stepper / Chips / Hauptknopf), Tab-Leiste mit Icons, Header-Knöpfe in Touch-Größe, die Glück/Level-Zeile klappt beim Scrollen ein. Auf dem Handy entfallen Backdrop-Blur, Filmkorn und die Tür-Schatten, der Screen-Wechsel blendet nur über – das spart Mobile-Chrome das Ruckeln beim Wechsel zurück in den Keller. Am Desktop ändert sich nichts.
 
 ## Story-Modus
 
@@ -95,8 +96,9 @@ node tests/run-selftest.mjs         # Node-Selbsttest (freies Spiel + Story-Engi
 tests/dom-selftest.sh               # derselbe Selbsttest headless in Chrome (macOS)
 tests/screenshot.sh out.png "?screen=roulette"
 python3 tests/playtest-story.py     # CDP-Playtest Story-Modus (Chrome, Port 9335)
+python3 tests/mobile-check.py       # Handy-Ansicht 400×800: Screenshots + Layout-Checks (Port 9361)
 ```
 
-`K37_PORT`, `K37_PROFILE`, `K37_SHOTS` überschreiben Port, Chrome-Profilordner und Screenshot-Ordner des Playtests (Default wie oben) – nützlich, um mehrere Läufe parallel zu isolieren.
+`K37_PORT`, `K37_PROFILE`, `K37_SHOTS` überschreiben Port, Chrome-Profilordner und Screenshot-Ordner des Playtests (Default wie oben) – nützlich, um mehrere Läufe parallel zu isolieren. `mobile-check.py` prüft pro Screen horizontale Überbreite und Tap-Ziele ≥ 40 px, dazu Roulette-Tisch, Einsatz-Leiste, Tab-Leiste, Header-Einklappen und als Gegenprobe den Desktop-Tisch; Screenshots landen in `/tmp/k37mobile` (bzw. `K37_SHOTS`).
 
 `Gamble Game.html` ist das Original, aus dem die Mechanik 1:1 übernommen wurde. Spec, Plan, Abnahme-Checkliste und Screenshots liegen unter `docs/superpowers/`.
