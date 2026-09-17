@@ -1707,23 +1707,28 @@ const UI = {
       h('button', { class: 'side-btn', 'data-action': action, disabled: disabled ? '' : null }, h('span', {}, label), h('span', { class: 'price' }, price));
     const inStory = State.mode === 'story' && typeof Story !== 'undefined' && Story.story;
     const room = (r) => !inStory || Story.roomUnlocked(r);
+    const acts = (r) => inStory ? StoryRules.actionsFor(Story.story, s, r).map((a) => h('button', { class: 'side-btn story-action', 'data-story-action': a.id }, h('span', {}, a.label))) : [];
     const secs = [];
     if (room('bar')) secs.push(sec('Die Bar',
       btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/3)` : ''}`, this.fmt(StoryRules.price(s, 'beer')), 'beer', !Rules.canBeer(s, StoryRules.price(s, 'beer')).ok || StoryRules.purchaseAllowed(s, 'beer') === false),
       btn('🍪 Brownie', this.fmt(s.brownieCost), 'brownie', !Rules.canBrownie(s).ok || StoryRules.purchaseAllowed(s, 'brownie') === false),
+      ...acts('bar'),
       h('p', { class: 'side-hint' }, 'Bier hält 2 Spins, Brownie 1 Spin.')));
     const hz = [];
     if (room('doc') || !inStory) hz.push(btn(s.kidneySold ? '🫁 Niere verkauft' : '🫁 Niere verkaufen', s.kidneySold ? '' : '+2.000 €', 'kidney', s.kidneySold));
     if (room('bank') || room('mafia')) hz.push(btn('🏦 Kredite', s.bankDebt + s.mafiaDebt > 0 ? `−${this.fmt(s.bankDebt + s.mafiaDebt)}` : '', 'finance'));
     if (room('invest')) hz.push(btn('📈 Anlagen', s.investments.length ? `${s.investments.length} aktiv` : '', 'invest'));
     if (inStory && room('vito')) hz.push(btn('🕶️ Vitos Tisch', s.story.vars.schuld != null ? this.fmt(s.story.vars.schuld) : '', 'vito'));
+    hz.push(...acts('doc'), ...acts('bank'));
     if (hz.length) secs.push(sec('Hinterzimmer', ...hz));
-    if (room('life')) secs.push(sec('Zuhause', btn('🏡 Leben', s.hasHouse ? '🏰' : '', 'life')));
+    if (room('life')) secs.push(sec('Zuhause', btn('🏡 Leben', s.hasHouse ? '🏰' : '', 'life'), ...acts('life')));
     if (room('stadt')) secs.push(sec('Stadt',
       btn('🏙️ Autohaus · INTERSPORT', s.car || s.shoes ? '✓' : '', 'stadt'),
-      h('p', { class: 'side-hint gear-line', id: 'gearLine' }, Stadt.line(s))));
+      h('p', { class: 'side-hint gear-line', id: 'gearLine' }, Stadt.line(s)),
+      ...acts('stadt')));
     if (room('royal') && typeof Royal !== 'undefined') secs.push(sec('Casino Royal',
-      btn('🎩 Casino Royal', s.flags.royalGuest ? 'Gast' : (s.car ? this.fmt(RoyalRules.ENTRY_FEE) : '🚗 nötig'), 'royal', !s.car)));
+      btn('🎩 Casino Royal', s.flags.royalGuest ? 'Gast' : (s.car ? this.fmt(RoyalRules.ENTRY_FEE) : '🚗 nötig'), 'royal', !s.car),
+      ...acts('royal')));
     side.append(...secs);
     const tabs = h('div', { class: 'side-tabs' });
     qsa('.side-sec h3', side).map((el) => el.textContent).forEach((label, i) => {
@@ -1738,6 +1743,8 @@ const UI = {
     });
     side.append(tabs);
     side.onclick = (e) => {
+      const sa = e.target.closest('[data-story-action]');
+      if (sa) { SFX.play('click'); return Story.action(sa.dataset.storyAction); }
       const b = e.target.closest('[data-action]');
       if (!b || b.disabled) return;
       SFX.play('click');
@@ -2661,7 +2668,11 @@ const Royal = {
     if (UI.current && ['royal', ...this.GAMES].includes(UI.current.id)) { if (UI.current.id !== 'royal') await UI.show('royal'); return; }
     const chk = RoyalRules.canEnter(s);
     if (!chk.ok) { UI.toast({ icon: '🎩', title: 'Casino Royal', text: chk.text, tone: 'loss' }); SFX.play('lose'); return; }
-    if (this.inStory() && Story.isLocked('royal')) { UI.toast({ icon: '🔒', title: Story.lockReason('royal'), tone: 'loss' }); SFX.play('lose'); return; }
+    if (this.inStory() && Story.isLocked('royal')) {
+      const g = StoryRules.gateEntry(Story.story, State.s, 'royal');
+      if (g && g.scene) { await Story.playScene(g.scene); return; }
+      UI.toast({ icon: '🔒', title: Story.lockReason('royal'), tone: 'loss' }); SFX.play('lose'); return;
+    }
     const fee = RoyalRules.entryFee(s);
     if (fee > 0 && s.balance < fee) { UI.toast({ icon: '🎩', title: 'Eintritt 100 €', text: 'So viel hast du nicht dabei.', tone: 'loss' }); SFX.play('lose'); return; }
     if (fee > 0) {
@@ -3827,7 +3838,7 @@ const Achievements = {
     { id: 'endeEhrlich', title: 'Der Ehrliche', icon: '🤝', desc: 'Vito bis auf den Cent bezahlt.', group: 'story' },
     { id: 'endeTaxi', title: 'Das Taxi', icon: '⛴️', desc: 'Mit der Fähre um vier verschwunden.', group: 'story' },
     { id: 'endeSturz', title: 'Der Sturz', icon: '📕', desc: 'Vito durch die Hintertür geschickt.', group: 'story' },
-    { id: 'alleEnden', title: 'Alle Wege', icon: '🗺️', desc: 'Alle vier Enden einer Story gesehen.', group: 'story' },
+    { id: 'alleEnden', title: 'Alle Wege', icon: '🗺️', desc: 'Alle Enden einer Story gesehen.', group: 'story' },
   ],
   has(id) { return State.meta.achievements.includes(id); },
   unlock(id) {
@@ -3867,10 +3878,12 @@ Bus.on('job:done', () => Achievements.unlock('jobFirst'));
 Bus.on('spueler:result', ({ hits }) => { if (hits >= 10) Achievements.unlock('teller10'); });
 Bus.on('taxi:result', ({ pay }) => { if (pay >= 200) Achievements.unlock('nachtschicht'); });
 Bus.on('story:ended', ({ id, ending }) => {
-  const map = { ehrlich: 'endeEhrlich', taxi: 'endeTaxi', sturz: 'endeSturz' };
+  const st = typeof Stories !== 'undefined' ? Stories.get(id) : null;
+  const map = Object.assign({ ehrlich: 'endeEhrlich', taxi: 'endeTaxi', sturz: 'endeSturz' }, st && st.trophies);
   if (map[ending]) Achievements.unlock(map[ending]);
   const run = State.meta.storyRuns[id];
-  if (run && run.endings.length >= 4) Achievements.unlock('alleEnden');
+  const total = st ? st.endings.length : 4;
+  if (run && run.endings.length >= total) Achievements.unlock('alleEnden');
 });
 </script>
 
@@ -4127,6 +4140,9 @@ const StoryRules = {
     }
     if ('enable' in eff) { st.enabled = st.enabled || {}; st.disabled = (st.disabled || []).filter((k) => !eff.enable.includes(k)); for (const k of eff.enable) st.enabled[k] = true; return {}; }
     if ('disable' in eff) { st.disabled = Array.from(new Set([...(st.disabled || []), ...eff.disable])); st.enabled = st.enabled || {}; for (const k of eff.disable) delete st.enabled[k]; return {}; }
+    if ('set' in eff) { for (const [k, v] of Object.entries(eff.set)) { if (!StoryRules.SET_KEYS.includes(k)) throw new Error(`set-Key "${k}" nicht erlaubt`); s[k] = v; } return {}; }
+    if ('lock' in eff) { for (const k of ['jobs', 'doors', 'rooms']) if (eff.lock[k]) st.unlocked[k] = st.unlocked[k].filter((x) => !eff.lock[k].includes(x)); return {}; }
+    if ('achievement' in eff) return { achievement: eff.achievement };
     const out = {};
     if ('force' in eff) out.force = eff.force;
     if ('loseDay' in eff) out.loseDay = true;
@@ -4186,10 +4202,16 @@ const StoryRules = {
   },
   ROOMS: ['bar', 'doc', 'bank', 'mafia', 'invest', 'life', 'vito', 'stadt', 'royal'],
   HOOKS: ['morning', 'night', 'sleep', 'spin:after', 'buy:beer', 'buy:brownie', 'buy:kidney', 'buy:therapy', 'royal:enter', 'royal:guest'],
-  /* Bedingte Sperre eines Screens: erste zutreffende Regel liefert den Kreidetext, sonst null */
-  gate(story, s, screen) {
-    for (const g of ((story.gates || {})[screen] || [])) if (StoryRules.check(g.when, s)) return g.text;
+  SET_KEYS: ['car', 'shoes', 'hasHouse', 'hasDealer', 'kidneySold'],
+  actionsFor(story, s, room) { return (story.actions || []).filter((a) => a.room === room && StoryRules.check(a.when, s)); },
+  /* Bedingte Sperre eines Screens: erster zutreffender Eintrag (oder null); gate() ist die Text-Variante darauf */
+  gateEntry(story, s, screen) {
+    for (const g of ((story.gates || {})[screen] || [])) if (StoryRules.check(g.when, s)) return g;
     return null;
+  },
+  gate(story, s, screen) {
+    const g = StoryRules.gateEntry(story, s, screen);
+    return g ? g.text : null;
   },
   spuelerPay(hits, breaks) { return hits * 5 - breaks * 10; },
   taxiPay(passengers, tickets, tip = 0) { return passengers * (15 + tip) - tickets * 50; },
@@ -4219,12 +4241,16 @@ const StoryRules = {
       if (!StoryRules.HOOKS.includes(e.at)) errs.push(`${story.id}: Hook "${e.at}" in Event ${e.id}`);
       scene(e.scene, e.id); for (const eff of e.effects || []) { scene(eff.scene, e.id); jobs(eff.unlock && eff.unlock.jobs, e.id); rooms(eff.unlock && eff.unlock.rooms, e.id); }
     }
+    for (const a of story.actions || []) { scene(a.scene, `action ${a.id}`); if (!StoryRules.ROOMS.includes(a.room)) errs.push(`${story.id}: Raum "${a.room}" unbekannt (action ${a.id})`); }
+    const setKeys = (list, where) => (list || []).forEach((eff) => { if (eff.set) for (const k of Object.keys(eff.set)) if (!StoryRules.SET_KEYS.includes(k)) errs.push(`${story.id}: set-Key "${k}" nicht erlaubt (${where})`); });
+    for (const e of story.events || []) setKeys(e.effects, e.id);
     for (const [job, list] of Object.entries(story.jobScenes || {})) { jobs([job], 'jobScenes'); list.forEach((id) => scene(id, `jobScenes.${job}`)); }
     for (const e of story.endings || []) { scene(e.scene, e.id); if (e.immediate && e.fallback) errs.push(`${story.id}: Ende ${e.id} – immediate und fallback schließen sich aus`); }
     if ((story.endings || []).filter((e) => e.fallback).length !== 1) errs.push(`${story.id}: genau ein Fallback-Ende nötig`);
     if (story.requires && storyIds && !storyIds.includes(story.requires)) errs.push(`${story.id}: requires "${story.requires}" unbekannt`);
     for (const k of Object.keys(story.prices || {})) if (!(k in Rules.PRICES)) errs.push(`${story.id}: Preis "${k}" unbekannt`);
-    for (const [screen, list] of Object.entries(story.gates || {})) list.forEach((g, i) => { if (!g.when || !g.text) errs.push(`${story.id}: Gate ${screen}[${i}] braucht when und text`); });
+    for (const [screen, list] of Object.entries(story.gates || {})) list.forEach((g, i) => { scene(g.scene, `gate ${screen}[${i}]`); if (!g.when || !g.text) errs.push(`${story.id}: Gate ${screen}[${i}] braucht when und text`); });
+    for (const [end] of Object.entries(story.trophies || {})) if (!(story.endings || []).some((e) => e.id === end)) errs.push(`${story.id}: Trophäe für unbekanntes Ende "${end}"`);
     return errs;
   },
   freshStoryPart(story, storyRuns = {}) {
@@ -4537,6 +4563,7 @@ const Story = {
     await this.applyChapter();
     if (this.stale(st)) return;
     if (st.phase === 'morning') await this.morning(); else await this.evening();
+    if (this.stale(st)) return; // ein sofortiges Ende im Morgen-Event darf Jobs.take/Toast nicht mehr auf einer toten Story ausführen
     if (params.has('job') && this.s.phase === 'morning') await Jobs.take(params.get('job'));
     UI.toast({ icon: '📖', title: this.story.title, text: `Tag ${this.s.day} von ${this.story.days}.` });
   },
@@ -4566,6 +4593,8 @@ const Story = {
       const hud = (this.story.hud || []).find((h) => h.var === k);
       c[k] = hud && hud.fmt === 'money' ? UI.fmt(v) : String(v);
     }
+    c.raw = { balance: s.balance, day: this.s.day, vars: Object.assign({}, this.s.vars), flags: Object.assign({}, this.s.flags) };
+    c.prev = this.s.prev || {};
     return Object.assign(c, extra);
   },
   async playScene(id, extra = {}) {
@@ -4584,6 +4613,7 @@ const Story = {
     if (this.stale(st)) return;
     for (const eff of list || []) {
       const out = StoryRules.applyEffect(State.s, eff, this.story);
+      if (out.achievement && typeof Achievements !== 'undefined') Achievements.unlock(out.achievement);
       if (out.scene) { await this.playScene(out.scene); if (this.stale(st)) return; }
       if (out.force === 'duel') { await this.forceDuel(); if (this.stale(st)) return; }
       if (out.loseDay) this.lostDay = true;
@@ -4623,6 +4653,14 @@ const Story = {
     /* Hat ein Event die Story schon beendet (runEvents → applyEffects → checkImmediate), nichts mehr prüfen */
     if (this.stale(st)) return;
     await this.checkImmediate();
+  },
+  /* Story-Aktion aus der Seitenleiste: spielt ihre Szene, wendet Choice-Effekte an, prüft sofortige Enden */
+  async action(id) {
+    const a = (this.story.actions || []).find((x) => x.id === id);
+    if (!a || !StoryRules.check(a.when, State.s) || Cutscene.active || Game.inFlight > 0) return;
+    await this.playScene(a.scene);
+    await this.checkImmediate();
+    UI.renderSide(); this.renderDaybar();
   },
   async applyChapter() {
     const st = this.s;
@@ -4793,6 +4831,7 @@ const Story = {
 
   /* ---- Erzwungenes Duell ---- */
   async forceDuel() {
+    const st = this.s;
     this.allowOnce = 'russian';
     await UI.show('russian');
     const victim = await new Promise((resolve) => {
@@ -4800,6 +4839,7 @@ const Story = {
       Russian.start({ forced: true });
       if (!Russian.inDuel) { off(); resolve('aborted'); } // Screen nicht bereit – nicht ewig warten
     });
+    if (this.stale(st)) return victim; // Story zwischenzeitlich beendet – keine Flags mehr auf eine tote Story schreiben
     this.s.flags[victim === 'igor' ? 'duelWon' : 'duelLost'] = true;
     State.save();
     await wait(800);
@@ -6064,9 +6104,20 @@ T.test('StoryRules.gate: bedingte Sperre mit Text', () => {
   T.eq(StoryRules.gate(st, s, 'slots'), null, 'ohne Gate offen');
   T.eq(StoryRules.gate(STORY_PROBE, s, 'royal'), null, 'Story ohne gates');
 });
+T.test('StoryRules.gateEntry: liefert den ersten zutreffenden Eintrag inkl. Szene', () => {
+  const st = Object.assign({}, STORY_PROBE, { gates: { royal: [{ when: { var: 'mut', lte: 0 }, text: 'Zu wenig Mut.', scene: 'probe.n1' }] } });
+  const s = Object.assign(base(), { story: StoryRules.freshStoryPart(st) });
+  T.eq(StoryRules.gateEntry(st, s, 'royal'), { when: { var: 'mut', lte: 0 }, text: 'Zu wenig Mut.', scene: 'probe.n1' });
+  s.story.vars.mut = 1;
+  T.eq(StoryRules.gateEntry(st, s, 'royal'), null);
+});
 T.test('StoryRules.validate: gates brauchen when und text, Raum royal bekannt', () => {
   const st = Object.assign({}, STORY_PROBE, { id: 'x', gates: { royal: [{ text: 'ohne when' }] }, start: Object.assign({}, STORY_PROBE.start, { unlocked: { jobs: ['spueler'], doors: [], rooms: ['royal'] } }) });
   T.eq(StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), ['x: Gate royal[0] braucht when und text']);
+});
+T.test('StoryRules.validate: fehlende Gate-Szene', () => {
+  const st = Object.assign({}, STORY_PROBE, { id: 'x', gates: { royal: [{ when: { flag: 'a' }, text: 't', scene: 'x' }] } });
+  T.eq(StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), ['x: Szene "x" fehlt (gate royal[0])']);
 });
 
 /* ---- StoryRules ---- */
@@ -6142,6 +6193,38 @@ T.test('StoryRules.applyEffect: nicht-pure Effekte werden gemeldet', () => {
   T.eq(StoryRules.applyEffect(s, { force: 'duel' }, {}), { force: 'duel' });
   T.eq(StoryRules.applyEffect(s, { loseDay: true }, {}), { loseDay: true });
   T.eq(StoryRules.applyEffect(s, { scene: 'x.y' }, {}), { scene: 'x.y' });
+});
+T.test('StoryRules.applyEffect: set (Whitelist), lock, achievement', () => {
+  const s = Object.assign(base({ car: 'audiA3', hasHouse: true }), { story: StoryRules.freshStoryPart(STORY_PROBE) });
+  StoryRules.applyEffect(s, { set: { car: null, hasHouse: false } }, STORY_PROBE);
+  T.eq([s.car, s.hasHouse], [null, false]);
+  T.throws(() => StoryRules.applyEffect(s, { set: { balance: 9 } }, STORY_PROBE), 'balance ist nicht erlaubt');
+  s.story.unlocked = { jobs: ['spueler', 'post'], doors: ['slots'], rooms: ['bar', 'royal'] };
+  StoryRules.applyEffect(s, { lock: { jobs: ['post'], rooms: ['royal'] } }, STORY_PROBE);
+  T.eq(s.story.unlocked, { jobs: ['spueler'], doors: ['slots'], rooms: ['bar'] });
+  T.eq(StoryRules.applyEffect(s, { achievement: 'x' }, STORY_PROBE), { achievement: 'x' }, 'wird an die Engine gemeldet');
+});
+T.test('StoryRules.actionsFor: Aktionen je Raum mit Bedingung', () => {
+  const st = Object.assign({}, STORY_PROBE, { actions: [
+    { id: 'a', room: 'bar', label: 'A', when: { var: 'mut', gte: 1 }, scene: 'probe.n1' },
+    { id: 'b', room: 'bar', label: 'B', scene: 'probe.n1' },
+    { id: 'c', room: 'doc', label: 'C', scene: 'probe.n1' },
+  ] });
+  const s = Object.assign(base(), { story: StoryRules.freshStoryPart(st) });
+  T.eq(StoryRules.actionsFor(st, s, 'bar').map((a) => a.id), ['b']);
+  s.story.vars.mut = 1;
+  T.eq(StoryRules.actionsFor(st, s, 'bar').map((a) => a.id), ['a', 'b']);
+  T.eq(StoryRules.actionsFor(st, s, 'doc').map((a) => a.id), ['c']);
+  T.eq(StoryRules.actionsFor(STORY_PROBE, s, 'bar'), []);
+});
+T.test('StoryRules.validate: actions und trophies und set-Keys', () => {
+  const bad = Object.assign({}, STORY_PROBE, { id: 'x',
+    actions: [{ id: 'a', room: 'nirgends', label: 'A', scene: 'fehlt' }],
+    trophies: { gibtsnicht: 'endeX' },
+    events: [{ id: 'e', at: 'night', effects: [{ set: { balance: 1 } }] }] });
+  T.eq(StoryRules.validate(bad, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), [
+    'x: Szene "fehlt" fehlt (action a)', 'x: Raum "nirgends" unbekannt (action a)', 'x: set-Key "balance" nicht erlaubt (e)', 'x: Trophäe für unbekanntes Ende "gibtsnicht"',
+  ]);
 });
 T.test('StoryRules: Effekte luckMod/jobMod/price/enable/disable', () => {
   const story = Object.assign({}, STORY_PROBE, { prices: { brownie: 300 }, disabled: ['tinder'] });
