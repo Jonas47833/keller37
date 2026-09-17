@@ -947,16 +947,20 @@ async def scenario_mugging(cdp):
     st = await cdp.eval("State.s.strength", await_promise=False)
     won = await cdp.eval("State.s.stats.fightsWon", await_promise=False)
     record("mug: Kampf mit Staerke 20 gewonnen, Brieftasche 50-150, Staerke 21", bal == 1050 and st == 21 and won == 1, "bal=%s st=%s won=%s" % (bal, st, won))
-    # Wegrennen mit R8 + Carbon (90 %) - Ergebnis ist zufaellig, nur Konsistenz pruefen
+    # Wegrennen mit R8 + Carbon (90 % Fluchtchance): Math.random gestubbt (>= jeder moeglichen
+    # Fluchtchance) macht die Flucht deterministisch erwischt, analog zum Kampf-Stub oben (siehe
+    # Fix-Report) -- ohne Stub war dieser Check entsprechend flakig (bal 1000 oder 700).
     await setup("jugend")
     await cdp.eval("State.s.car = 'audiR8'; State.s.shoes = 'carbon'; State.save(); 0", await_promise=False)
     await cdp.click(".door[data-screen=blackjack]")
     await asyncio.sleep(0.6)
+    await cdp.eval("window.__origRandom = Math.random; Math.random = () => 0.99; 0", await_promise=False)
     await cdp.advance_cutscene(label_hint="Wegrennen")
+    await cdp.eval("Math.random = window.__origRandom; 0", await_promise=False)
     await asyncio.sleep(0.6)
     bal = await cdp.eval("State.s.balance", await_promise=False)
     st = await cdp.eval("State.s.strength", await_promise=False)
-    record("mug: Flucht laesst Staerke unveraendert, Kontostand 1000 (gelungen) oder 700 (erwischt)", bal in (1000, 700) and st == 0, "bal=%s st=%s" % (bal, st))
+    record("mug: Flucht erwischt (RNG gestubbt) kostet 300, Staerke bleibt 0", bal == 700 and st == 0, "bal=%s st=%s" % (bal, st))
     # Kein Ueberfall bei Cooldown
     await cdp.eval("Mugging.force = true; State.s.mugCooldown = 5; 0", await_promise=False)
     await cdp.eval("UI.show('hub'); 0", await_promise=False)

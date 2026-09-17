@@ -2041,8 +2041,8 @@ const Finance = {
   async loanBank(amt) {
     const s = State.s;
     if (!Rules.bankLoanAllowed(s, amt)) {
-      if (!s.flags.bankLimit) { s.flags.bankLimit = true; State.save(); await Cutscene.play('bank.limit', {}); }
-      else UI.toast({ icon: '👔', title: 'Kreditlimit erreicht', text: 'Herr Krause bedauert. 3.000 € sind das Ende.', tone: 'loss' });
+      if (!s.flags.bankLimit) { s.flags.bankLimit = true; State.save(); await Cutscene.play('bank.limit', { limit: UI.fmt(Rules.gear(s).bankLimit) }); }
+      else UI.toast({ icon: '👔', title: 'Kreditlimit erreicht', text: `Herr Krause bedauert. ${UI.fmt(Rules.gear(s).bankLimit)} sind das Ende.`, tone: 'loss' });
       return;
     }
     s.bankDebt += amt;
@@ -2115,7 +2115,7 @@ Cutscene.define('bank.loan', [
   { bg: 'bank', who: 'krause', mood: 'happy', text: 'Dreißig Prozent Zinsen – pro Spin, versteht sich. Marktüblich. Hier unten. Unterschreiben Sie bitte da, da und da.' },
 ]);
 Cutscene.define('bank.limit', [
-  { bg: 'bank', who: 'krause', mood: 'calm', text: 'Dreitausend Euro Gesamtschuld. Da geht nichts mehr, tut mir leid. Ich kann Ihnen einen Kaffee anbieten. Der ist auch nicht umsonst.' },
+  { bg: 'bank', who: 'krause', mood: 'calm', text: '„{{limit}} Gesamtschuld." Da geht nichts mehr, tut mir leid. Ich kann Ihnen einen Kaffee anbieten. Der ist auch nicht umsonst.' },
 ]);
 Cutscene.define('mafia.loan', [
   { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Setz dich. Du brauchst Geld, ich habe Geld. So einfach ist das Leben manchmal.' },
@@ -2312,7 +2312,7 @@ const Stadt = {
     if (sh.taxiTip) out.push(`Taxi: +${sh.taxiTip} € Trinkgeld`);
     return out;
   },
-  card(item, perks, check, label, onBuy) {
+  card(item, perks, check, label, onBuy, reasonSuffix = '') {
     const owned = check.reason === 'owned';
     const el = h('div', { class: 'gear-card' + (owned ? ' owned' : '') },
       h('div', { class: 'pic' }, item.icon),
@@ -2320,7 +2320,7 @@ const Stadt = {
       h('div', { class: 'price' }, UI.fmt(item.price)),
       h('ul', {}, ...perks.map((p) => h('li', {}, p))));
     if (check.ok) el.append(h('button', { class: 'btn', onclick: onBuy }, label));
-    else el.append(h('span', { class: 'reason' }, this.REASON[check.reason] || check.reason));
+    else el.append(h('span', { class: 'reason' }, (this.REASON[check.reason] || check.reason) + reasonSuffix));
     return el;
   },
   render() {
@@ -2332,8 +2332,11 @@ const Stadt = {
       qs(sellerId, this.root).textContent = !cur ? this.SELLER.none : cur.brand === brand ? this.SELLER.same : this.SELLER.other;
       Object.entries(Rules.GEAR.cars).filter(([, c]) => c.brand === brand).sort((a, b) => a[1].tier - b[1].tier).forEach(([id, c]) => {
         const check = Rules.canBuyCar(s, id);
-        const label = cur ? `Upgrade · ${UI.fmt(check.cost)}` : `Kaufen · ${UI.fmt(check.cost)}`;
-        box.append(this.card(c, this.carPerks(c), check, label, () => this.buyCar(id)));
+        const brandSwitch = cur && cur.brand !== c.brand;
+        const verb = cur ? (brandSwitch && check.cost === 0 ? 'Wechsel' : 'Upgrade') : 'Kaufen';
+        const label = `${verb} · ${UI.fmt(check.cost)}`;
+        const reasonSuffix = check.reason === 'funds' && cur ? ` · ${UI.fmt(check.cost)}` : '';
+        box.append(this.card(c, this.carPerks(c), check, label, () => this.buyCar(id), reasonSuffix));
       });
     }
     const box = qs('#shopSport', this.root); box.innerHTML = '';
@@ -4631,7 +4634,7 @@ const STORY_SCHULD = {
   events: [
     { id: 'chantal3', when: { day: { eq: 3 } }, once: true, at: 'night', scene: 'schuld.chantal3', effects: [{ flag: 'chantalKennt' }] },
     { id: 'wirt5', when: { day: { eq: 5 } }, once: true, at: 'night', scene: 'schuld.wirt5' },
-    { id: 'stadtOffen', when: { day: { eq: 4 } }, once: true, at: 'morning', scene: 'schuld.stadt', effects: [{ unlock: { rooms: ['stadt'] } }] },
+    { id: 'stadtOffen', when: { day: { gte: 4 } }, once: true, at: 'morning', scene: 'schuld.stadt', effects: [{ unlock: { rooms: ['stadt'] } }] },
     { id: 'kontrolleOk', when: { all: [{ day: { eq: 10 } }, { any: [{ balance: { gte: 5000 } }, { var: 'schuld', lte: 45000 }, { stat: 'jobs', gte: 7 }] }] }, once: true, at: 'night', scene: 'schuld.kontrolle.ok', effects: [{ var: 'vertrauen', add: 1 }, { flag: 'kontrolle' }] },
     { id: 'kontrolleFail', when: { all: [{ day: { eq: 10 } }, { not: { any: [{ balance: { gte: 5000 } }, { var: 'schuld', lte: 45000 }, { stat: 'jobs', gte: 7 }] } }] }, once: true, at: 'night', scene: 'schuld.kontrolle.fail', effects: [{ force: 'duel' }] },
     { id: 'duelLostBill', when: { all: [{ flag: 'duelLost' }, { notFlag: 'duelLostBilled' }] }, once: true, at: 'night', scene: 'schuld.duelLost', effects: [{ balance: -500 }, { flag: 'duelLostBilled' }] },
@@ -5275,6 +5278,7 @@ T.test('STORY_SCHULD: vier Enden, Prioritäten, Sturz-Bedingung', () => {
 });
 T.test('STORY_SCHULD: Kapitel 3/4 und Job-Freischaltung per Vertrauen', () => {
   const s = Object.assign(base({ balance: 100 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
+  s.story.seen.push('stadtOffen'); // Tag ist bereits > 4: für diesen Test irrelevant, sonst stört es dueEvents('morning')
   s.story.day = 13;
   T.eq(StoryRules.chapterFor(STORY_SCHULD, s).id, 'k3');
   T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), []);
@@ -5288,7 +5292,7 @@ T.test('STORY_SCHULD: Kapitel 3/4 und Job-Freischaltung per Vertrauen', () => {
 });
 T.test('STORY_SCHULD: Flucht braucht Ruf, Igor sieht sie nur nach einer Tür-Schicht', () => {
   const s = Object.assign(base({ balance: 8000 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
-  s.story.day = 22; s.story.jobsDone.taxi = 1; s.story.seen.push('croupierJob');
+  s.story.day = 22; s.story.jobsDone.taxi = 1; s.story.seen.push('croupierJob', 'stadtOffen');
   const night = () => StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id);
   T.eq(night(), [], 'ohne Ruf kein Angebot');
   s.story.vars.ruf = 2;
@@ -5444,7 +5448,7 @@ T.test('jobAvailable: Eintreiber braucht Stärke 4', () => {
   s.strength = 3; T.eq(StoryRules.jobAvailable(job, s).ok, false);
   s.strength = 4; T.eq(StoryRules.jobAvailable(job, s).ok, true);
 });
-T.test('Story Schuld: stadtOffen an Tag 4, Eintreiber mit Türsteher freigeschaltet', () => {
+T.test('Story Schuld: stadtOffen ab Tag 4, Eintreiber mit Türsteher freigeschaltet', () => {
   const st = STORY_SCHULD; // Konstante aus Block story-schuld (in Node geladen; Stories.define ist dort nicht verfügbar)
   const ev = st.events.find((e) => e.id === 'stadtOffen');
   T.ok(ev, 'Event stadtOffen');
@@ -5454,6 +5458,8 @@ T.test('Story Schuld: stadtOffen an Tag 4, Eintreiber mit Türsteher freigeschal
   T.ok(StoryRules.dueEvents(st, s4, 'morning').some((e) => e.id === 'stadtOffen'));
   const s3 = storyBase({ id: 'schuld', day: 3 });
   T.ok(!StoryRules.dueEvents(st, s3, 'morning').some((e) => e.id === 'stadtOffen'));
+  const s7 = storyBase({ id: 'schuld', day: 7 });
+  T.ok(StoryRules.dueEvents(st, s7, 'morning').some((e) => e.id === 'stadtOffen'), 'Tag 7 (altes Save) ist stadtOffen faellig');
   const tuer = st.events.find((e) => e.id === 'tuerJob');
   T.ok(tuer.effects.some((e) => e.unlock && e.unlock.jobs && e.unlock.jobs.includes('eintreiber')));
   T.eq(st.jobScenes.eintreiber, ['schuld.eintreiber.kiosk', 'schuld.eintreiber.zahnarzt']);

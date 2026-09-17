@@ -217,3 +217,10 @@ Dev-Parameter `?mug=1` erzwingt beim nächsten Auslöser einen Überfall (Chance
 ## 7. Ablauf
 
 Branch `feature/stadt-ueberfall` von `main`, Umsetzung per Plan (`writing-plans` → `subagent-driven-development`), Merge nach `main` und Push nur nach Rückfrage.
+
+## 8. Abweichungen in der Umsetzung
+
+- `gameOverPending` ist ein modulweites `let` im Block `gameover` (nicht `Game.gameOverPending`); alle Prüfstellen (u. a. `Mugging.maybe`) lesen die freie Variable direkt.
+- Das Ergebnis-Panel bei Flucht nutzt `fx: 'flash'` statt `swipe` – ein `swipe`-Effekt existiert im Cutscene-Katalog nicht.
+- Nicht kaufbare Karten (Stadt) zeigen wie im Leben-Raum einen Grund-Span statt eines deaktivierten Buttons mit Tooltip; bei `funds` **mit** vorhandenem Auto steht dort zusätzlich der wirksame Preis (nach Inzahlungnahme), z. B. „Zu wenig Bargeld · 7.250 €".
+- `stadtOffen` prüft `day ≥ 4` statt `day === 4` (weiterhin `once`), damit auch Saves, die Tag 4 bereits hinter sich haben, die Stadt bei nächster Gelegenheit freigeschaltet bekommen.
