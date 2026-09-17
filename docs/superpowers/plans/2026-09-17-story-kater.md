@@ -1040,7 +1040,8 @@ async def scenario_kater(cdp):
     await cdp.inject_helpers()
     await cdp.advance_cutscene(max_steps=10)
     # Kauf-Ende
-    await cdp.eval("State.s.story.phase = 'evening'; State.s.balance = 60000; State.save(); UI.renderSide();")
+    # ?day=22 überspringt Intro und Absturz-Nacht – das Flag setzen, sonst bleibt die Kauf-Aktion gesperrt
+    await cdp.eval("State.s.story.flags.abgestuerzt = true; State.s.story.phase = 'evening'; State.s.balance = 60000; State.save(); UI.renderSide();")
     await asyncio.sleep(0.3)
     has_action = await cdp.eval("!!document.querySelector('[data-story-action=\"kauf\"]')", await_promise=False)
     record("kater: Kauf-Aktion in der Seitenleiste", has_action is True, "")
