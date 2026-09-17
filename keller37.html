@@ -1891,6 +1891,7 @@ const Cutscene = {
     verkaeufer: { name: 'Der Verkäufer', emoji: '🤵', color: '#cfd8e3' },
     du: { name: 'Du', emoji: '🤠', color: '#ffffff' },
     raeuber: { name: 'Der Räuber', emoji: '🥷', color: 'var(--neon-red)' },
+    insider: { name: 'Der Insider', emoji: '🕵️', color: 'var(--neon-blue)' },
   },
   PROPS: {
     bar: ['🍾', '🪑'], hinterzimmer: ['🕯️', '🚬'], standesamt: ['💐', '🔔'], villa: ['🏙️', '🌙'], hafen: ['🏗️', '🌙'],
@@ -3730,6 +3731,7 @@ async function restartGame({ playIntro }) {
   State.reset();
   State.s.flags.intro = true;
   State.save();
+  if (typeof Perks !== 'undefined') Perks.refreshExcluded();
   Roulette.lastBets = [];
   UI.setBalance(State.s.balance, { animate: false });
   UI.renderWallet();
@@ -3980,6 +3982,28 @@ const Perks = {
     UI.toast({ icon: '🧠', title: 'Kopf frei', text: 'Alle Skill-Punkte sind wieder verfügbar.', tone: 'info' });
     this.render(); this.renderBadge(); UI.renderWallet(); UI.renderSide();
   },
+  refreshExcluded() {
+    const s = State.s;
+    s.insiderExcluded = this.mods().rouletteExclude > 0 ? Rules.pickExcluded(Math.random) : [];
+    State.save();
+  },
+  async offerInsider(storyId) {
+    const meta = State.meta;
+    if (meta.insiderClaimed[storyId]) return null;
+    const draw = Rules.insiderDraw(meta, Math.random);
+    if (!draw.length) { UI.toast({ icon: '🕵️', title: 'Der Insider', text: 'Er hat nichts Neues für dich.', tone: 'info' }); return null; }
+    const defs = draw.map((id) => Rules.INSIDER.find((i) => i.id === id));
+    const choice = await Cutscene.play('insider.offer', { choices: defs.map((d) => ({ label: `${d.icon} ${d.name}`, value: d.id, cls: 'blue' })), texts: defs.map((d) => `${d.name}: ${d.text}`).join(' · ') });
+    if (!choice || !draw.includes(choice)) return null;
+    meta.insider.push(choice); meta.insiderClaimed[storyId] = true;
+    State.saveMeta();
+    this.refreshExcluded();
+    const def = Rules.INSIDER.find((i) => i.id === choice);
+    UI.toast({ icon: def.icon, title: `Insider: ${def.name}`, text: def.text, tone: 'gold', ms: 4500 });
+    SFX.play('unlock');
+    await Bus.emit('insider:granted', { id: choice });
+    return choice;
+  },
 };
 UI.register('skills', {
   template: 'tpl-skills',
@@ -3989,6 +4013,10 @@ UI.register('skills', {
 Cutscene.define('perks.respec', (ctx) => [
   { bg: 'bar', who: 'wirt', mood: 'calm', text: `Alles vergessen für ${ctx.price}? Der Doc hat da so ein Pulver. Danach bist du wieder ein unbeschriebenes Blatt.`,
     choices: [{ label: 'Ja, alles vergessen', value: 'yes', cls: 'red' }, { label: 'Doch nicht', value: 'no', cls: 'ghost' }] },
+]);
+Cutscene.define('insider.offer', (ctx) => [
+  { bg: 'hinterzimmer', who: 'insider', mood: 'calm', text: 'Du hast ein Kapitel überlebt. Das sehen nicht viele. Ich habe da ein paar Dinge, die man nicht kaufen kann – nur wissen.' },
+  { bg: 'hinterzimmer', who: 'insider', mood: 'happy', text: `Such dir eins aus. ${ctx.texts}`, choices: ctx.choices },
 ]);
 /* XP-Quellen */
 Bus.on('spin:after', () => Perks.addXp(Rules.XP_GAIN.spin, 'spin'));
@@ -4154,7 +4182,12 @@ const Title = {
       qs('#titleMute', root).textContent = State.meta.muted ? '🔇' : '🔊';
       qs('#titleMute', root).addEventListener('click', (e) => { SFX.setMuted(!State.meta.muted); e.currentTarget.textContent = State.meta.muted ? '🔇' : '🔊'; });
       qs('#titleTrophiesBtn', root).addEventListener('click', () => {
-        Achievements.renderWall(qs('#titleTrophyGrid', root));
+        const grid = qs('#titleTrophyGrid', root);
+        Achievements.renderWall(grid);
+        grid.append(h('div', { class: 'trophy-sep' }, 'Insider'));
+        const ins = (State.meta.insider || []).map((id) => Rules.INSIDER.find((i) => i.id === id)).filter(Boolean);
+        if (!ins.length) grid.append(h('div', { class: 'insider-chip' }, 'Noch keins'));
+        else for (const i of ins) grid.append(h('div', { class: 'insider-chip' }, h('b', {}, `${i.icon} ${i.name}`), i.text));
         qs('#titleTrophiesPanel', root).classList.remove('hidden');
       });
       qs('#titleTrophiesClose', root).addEventListener('click', () => qs('#titleTrophiesPanel', root).classList.add('hidden'));
@@ -4251,6 +4284,7 @@ const Story = {
       const id = forced && Stories.get(forced) ? forced : StoryRules.pickStory(Stories.list(), State.meta.storyRuns, Math.random);
       const story = Stories.get(id);
       State.startStory(story);
+      if (typeof Perks !== 'undefined') Perks.refreshExcluded();
       if (params.has('day') && params.has('fresh')) State.s.story.day = Math.max(1, parseInt(params.get('day'), 10) || 1);
       this.story = story;
       this.setup();
@@ -4401,6 +4435,7 @@ const Story = {
     last.choices = [{ label: 'Nächste Story', value: 'next', cls: 'red' }, { label: 'Zum Titel', value: 'title', cls: 'ghost' }];
     Cutscene.define('story.ending.tmp', panels);
     const choice = await Cutscene.play('story.ending.tmp', this.ctx({ stats }));
+    if (typeof Perks !== 'undefined') await Perks.offerInsider(this.story.id);
     await Bus.emit('story:ended', { id: this.story.id, ending: end.id });
     if (choice === 'next') return this.enter('newstory');
     const c = await Title.show();
@@ -6148,6 +6183,13 @@ T.test('Anlagen/Post/Überfall mit mods', () => {
   near(Rules.mugChance(mugBase(), 'door', M({ mugChanceMult: 0.5 })), 0.03);
   near(Rules.fightChance(0, M({ fightAdd: 0.15 })), 0.5); near(Rules.fightChance(50, M({ fightAdd: 0.15 })), 0.9);
   T.eq(Rules.mugWallet(() => 0, M({ walletMult: 2 })), 100);
+});
+
+if (typeof Perks !== 'undefined') T.test('Perks.refreshExcluded: 12 Zahlen nur mit Croupier-Auge', () => {
+  const s = State.s, m = State.meta; const bakS = s.insiderExcluded, bakM = m.insider;
+  m.insider = ['croupierauge']; Perks.refreshExcluded(); T.eq(s.insiderExcluded.length, 12);
+  m.insider = []; Perks.refreshExcluded(); T.eq(s.insiderExcluded, []);
+  s.insiderExcluded = bakS; m.insider = bakM;
 });
 
 /* --- SELFTEST CASES END --- */
