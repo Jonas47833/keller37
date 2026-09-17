@@ -517,6 +517,9 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .door .boards { position: absolute; inset: 0; pointer-events: none; }
 .door .boards span { position: absolute; left: -10%; right: -10%; top: 45%; height: 16px; background: linear-gradient(180deg, #7a5a34, #4a3520); border: 1px solid #2a1c10; box-shadow: 0 3px 6px rgba(0,0,0,.6); transform: rotate(-18deg); }
 .door .boards span:last-child { transform: rotate(16deg); top: 55%; }
+.door.broken { filter: saturate(.3); }
+.door.broken .glyph { transform: rotate(-12deg) translateY(6px); opacity: .55; }
+.door .repair { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 3; white-space: nowrap; }
 .door.locked .chalk-tag { color: #ffb3b3; }
 #nightfade { position: fixed; inset: 0; z-index: 85; background: #000; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 4rem; letter-spacing: .2em; color: #fff; text-shadow: 0 0 20px var(--neon-amber); opacity: 0; pointer-events: none; transition: opacity .35s; }
 #nightfade.on { opacity: 1; pointer-events: auto; }
@@ -4874,6 +4877,8 @@ const StoryRules = {
     }
     if ('luckMod' in eff) { st.luckMod = eff.luckMod || 0; return {}; }
     if ('jobMod' in eff) { st.jobMod = eff.jobMod ? Object.assign({}, eff.jobMod) : {}; return {}; }
+    if ('break' in eff) { st.broken = st.broken || {}; st.broken[eff.break] = eff.price; return {}; }
+    if ('repair' in eff) { if (st.broken) delete st.broken[eff.repair]; return {}; }
     if ('price' in eff) {
       st.prices = Object.assign(st.prices || {}, eff.price);
       /* Brownie-Preis lebt zusätzlich in s.brownieCost (Rules.canBrownie, Seitenleiste, Kauf) – sonst greift der Story-Preis erst nach dem nächsten Kauf */
@@ -4985,6 +4990,7 @@ const StoryRules = {
     for (const e of story.events || []) {
       if (!StoryRules.HOOKS.includes(e.at)) errs.push(`${story.id}: Hook "${e.at}" in Event ${e.id}`);
       scene(e.scene, e.id); for (const eff of e.effects || []) { scene(eff.scene, e.id); jobs(eff.unlock && eff.unlock.jobs, e.id); rooms(eff.unlock && eff.unlock.rooms, e.id); }
+      for (const eff of e.effects || []) if ('break' in eff && !(eff.price > 0)) errs.push(`${story.id}: break "${eff.break}" ohne price (${e.id})`);
     }
     for (const a of story.actions || []) { scene(a.scene, `action ${a.id}`); if (!StoryRules.ROOMS.includes(a.room)) errs.push(`${story.id}: Raum "${a.room}" unbekannt (action ${a.id})`); }
     const setKeys = (list, where) => (list || []).forEach((eff) => { if (eff.set) for (const k of Object.keys(eff.set)) if (!StoryRules.SET_KEYS.includes(k)) errs.push(`${story.id}: set-Key "${k}" nicht erlaubt (${where})`); });
@@ -5006,7 +5012,7 @@ const StoryRules = {
       jobsDone: {}, jobToday: null, seen: [], seenDay: {}, seenJobScenes: {}, ended: null,
       stats: { earned: 0, gambled: 0, jobs: 0, wins: 0, streak: 0, bestStreak: 0, biggestWin: 0, beers: 0, brownies: 0, royalVisits: 0 },
       prev: StoryRules.prevEndings(storyRuns),
-      prices: Object.assign({}, story.prices || {}), enabled: {}, disabled: [...(story.disabled || [])], luckMod: 0, jobMod: {},
+      prices: Object.assign({}, story.prices || {}), enabled: {}, disabled: [...(story.disabled || [])], luckMod: 0, jobMod: {}, broken: {},
     };
   },
   recordSpin(stats, delta) {
@@ -5019,6 +5025,17 @@ const StoryRules = {
     st.vars.umsatz = (st.vars.umsatz || 0) + bet;
     st.vars.umsatzTotal = (st.vars.umsatzTotal || 0) + bet;
     for (const [name, games] of Object.entries(story.turnoverGroups || {})) if (games.includes(game)) st.vars[name] = (st.vars[name] || 0) + bet;
+  },
+  /* Kaputte Tür bezahlen: Preis aus broken[door], Zähler repariert_<door> für Trophäen */
+  repair(s, door) {
+    const st = s.story;
+    const price = (st.broken || {})[door];
+    if (price == null) return { ok: false, reason: 'intact', price: 0 };
+    if (s.balance < price) return { ok: false, reason: 'funds', price };
+    s.balance -= price;
+    delete st.broken[door];
+    st.vars[`repariert_${door}`] = (st.vars[`repariert_${door}`] || 0) + 1;
+    return { ok: true, price };
   },
   fmtMoney(n) { return `${Math.round(n).toLocaleString('de-DE')} €`; },
 };
@@ -5554,6 +5571,7 @@ const Story = {
   isLocked(screen) {
     if (State.mode !== 'story' || !this.story) return false;
     if (screen === this.allowOnce) { this.allowOnce = null; return false; }
+    if (this.s.broken && this.s.broken[screen] != null) return true;
     if (['jobs', 'vito', 'skills'].includes(screen)) return false;
     if (['job-spueler', 'job-taxi'].includes(screen)) return this.s.phase !== 'morning';
     if (StoryRules.gate(this.story, State.s, screen)) return true;
@@ -5565,6 +5583,7 @@ const Story = {
     return false;
   },
   lockReason(screen) {
+    if (this.s.broken && this.s.broken[screen] != null) return 'Zertrümmert';
     const g = StoryRules.gate(this.story, State.s, screen); if (g) return g;
     if (screen === 'postman') return 'Morgens, an der Pinnwand';
     return (this.story.lockReason || {})[screen] || 'Noch geschlossen';
@@ -5573,11 +5592,33 @@ const Story = {
   decorateHub(root) {
     qsa('.door', root).forEach((d) => {
       const id = d.dataset.screen;
+      const price = this.s.broken ? this.s.broken[id] : null;
+      if (price != null) {
+        d.classList.add('locked', 'broken');
+        qs('.chalk-tag', d).textContent = 'Zertrümmert';
+        const can = State.s.balance >= price;
+        const b = h('button', { class: 'btn sm repair' + (can ? '' : ' ghost'), disabled: can ? null : '', title: can ? 'Reparieren' : 'Zu wenig Geld' }, `🔧 ${UI.fmt(price)}`);
+        b.addEventListener('click', (e) => { e.stopPropagation(); SFX.play('click'); Story.repair(id); });
+        d.append(b);
+        return;
+      }
       if (!this.isLocked(id)) return;
       d.classList.add('locked');
       d.append(h('div', { class: 'boards' }, h('span'), h('span')));
       qs('.chalk-tag', d).textContent = this.lockReason(id);
     });
+  },
+  /* 🔧 in der Lobby: bezahlen, Eintrag löschen, Lobby neu zeichnen */
+  async repair(door) {
+    if (Cutscene.active || Game.inFlight > 0 || UI.busy) return;
+    const r = StoryRules.repair(State.s, door);
+    if (!r.ok) { UI.toast({ icon: '🔧', title: r.reason === 'funds' ? `Reparatur kostet ${UI.fmt(r.price)}` : 'Nichts kaputt', text: r.reason === 'funds' ? 'Zu wenig Geld.' : '', tone: 'loss' }); SFX.play('lose'); return; }
+    State.save();
+    UI.setBalance(State.s.balance); UI.renderWallet(); UI.renderSide();
+    SFX.play('stamp');
+    UI.toast({ icon: '🔧', title: 'Repariert', text: `−${UI.fmt(r.price)}. Läuft wieder.`, tone: 'info' });
+    await Bus.emit('story:repair', { door, price: r.price });
+    if (UI.current && UI.current.id === 'hub') await UI.show('hub');
   },
 
   /* ---- HUD ---- */
@@ -7537,6 +7578,26 @@ T.test('StoryRules.recordStake: Umsatz gesamt, Gruppen je Spiel, bet ≤ 0 zähl
   const plain = { vars: { umsatz: 7 } };
   StoryRules.recordStake(plain, 3, 'slots', {});
   T.eq(plain.vars, { umsatz: 10, umsatzTotal: 3 }, 'ohne turnoverGroups nur umsatz/umsatzTotal');
+});
+T.test('StoryRules: broken – Effekt break/repair, repair() zieht Geld ab, zählt, verweigert bei zu wenig Geld', () => {
+  const s = base({ balance: 5000, story: StoryRules.freshStoryPart(STORY_PROBE) });
+  T.eq(s.story.broken, {});
+  StoryRules.applyEffect(s, { break: 'slots', price: 4000 }, STORY_PROBE);
+  T.eq(s.story.broken, { slots: 4000 });
+  T.eq(StoryRules.repair(s, 'roulette'), { ok: false, reason: 'intact', price: 0 });
+  s.balance = 3999;
+  T.eq(StoryRules.repair(s, 'slots'), { ok: false, reason: 'funds', price: 4000 });
+  s.balance = 4000;
+  T.eq(StoryRules.repair(s, 'slots'), { ok: true, price: 4000 });
+  T.eq([s.balance, s.story.broken, s.story.vars.repariert_slots], [0, {}, 1]);
+  StoryRules.applyEffect(s, { break: 'horses', price: 3000 }, STORY_PROBE);
+  StoryRules.applyEffect(s, { repair: 'horses' }, STORY_PROBE);
+  T.eq(s.story.broken, {}, 'repair-Effekt ohne Geld (Dev/Story)');
+  T.eq(s.story.vars.repariert_horses, undefined, 'Effekt zählt nicht als bezahlte Reparatur');
+});
+T.test('StoryRules.validate: break braucht price', () => {
+  const st = Object.assign({}, STORY_PROBE, { events: [{ id: 'x', at: 'night', effects: [{ break: 'slots' }] }] });
+  T.ok(StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']).some((e) => e.includes('break')));
 });
 
 /* ---- State: Modi ---- */
