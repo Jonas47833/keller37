@@ -1727,7 +1727,7 @@ const UI = {
       h('p', { class: 'side-hint gear-line', id: 'gearLine' }, Stadt.line(s)),
       ...acts('stadt')));
     if (room('royal') && typeof Royal !== 'undefined') secs.push(sec('Casino Royal',
-      btn('🎩 Casino Royal', s.flags.royalGuest ? 'Gast' : (s.car ? this.fmt(RoyalRules.ENTRY_FEE) : '🚗 nötig'), 'royal', !s.car),
+      btn('🎩 Casino Royal', !s.car ? '🚗 nötig' : s.flags.royalGuest ? 'Gast' : RoyalRules.entryFee(s) === 0 ? 'heute frei' : this.fmt(RoyalRules.entryFee(s)), 'royal', !s.car),
       ...acts('royal')));
     side.append(...secs);
     const tabs = h('div', { class: 'side-tabs' });
@@ -2165,7 +2165,9 @@ Actions.brownie = async () => {
   if (State.mode === 'story' && State.s.story) State.s.story.stats.brownies++;
   State.save();
   UI.renderWallet(); UI.renderSide();
-  if (!s.flags.brownie) {
+  /* Die Wirt-Szene („der nächste kostet zehntausend") gilt nur für die freie Preisleiter – setzt die Story den Brownie-Preis, nur der Toast */
+  const storyPrice = s.story && s.story.prices && s.story.prices.brownie != null;
+  if (!s.flags.brownie && !storyPrice) {
     s.flags.brownie = true; State.save();
     await Cutscene.play('brownie.first', { price: UI.fmt(price) });
   } else {
@@ -2416,10 +2418,13 @@ const Life = {
   async therapy() {
     const s = State.s;
     if (!Rules.canTherapy(s, StoryRules.price(s, 'therapy')).ok) return;
+    /* Liebeskummer-Therapie (freies Spiel): Anwalt-Szene über therapy.done. Hat die Story die Therapie freigegeben,
+       spielt ihr buy:therapy-Hook die eigene Szene – Dr. Schmalz hat dort nichts verloren. */
+    const heartbreak = s.isHeartbroken && StoryRules.purchaseAllowed(s, 'therapy') !== true;
     Game.applyDelta(-StoryRules.price(s, 'therapy'), { from: qs('#lifeLove') });
     s.isHeartbroken = false; State.save();
     this.render(); UI.renderWallet();
-    await Bus.emit('therapy.done', {});
+    if (heartbreak) await Bus.emit('therapy.done', {});
     if (typeof Story !== 'undefined') await Story.hook('buy:therapy');
     this.render();
   },
@@ -4188,8 +4193,10 @@ const StoryRules = {
     for (const ch of story.chapters) if (StoryRules.check(ch.when, s)) found = ch;
     return found;
   },
+  /* once: nie wieder (seen); daily: heute nicht mehr (seenDay[id] === day – Reload am Morgen wiederholt das Event sonst) */
   dueEvents(story, s, at) {
-    return story.events.filter((e) => e.at === at && !(e.once && s.story.seen.includes(e.id)) && StoryRules.check(e.when, s));
+    const seenDay = s.story.seenDay || {};
+    return story.events.filter((e) => e.at === at && !(e.once && s.story.seen.includes(e.id)) && !(e.daily && seenDay[e.id] === s.story.day) && StoryRules.check(e.when, s));
   },
   ending(story, s, { immediateOnly = false } = {}) {
     const cands = story.endings.filter((e) => !e.fallback && (!immediateOnly || e.immediate));
@@ -4264,7 +4271,7 @@ const StoryRules = {
       id: story.id, day: 1, phase: 'morning',
       vars: Object.assign({}, story.start.vars), flags: {},
       unlocked: { jobs: [...story.start.unlocked.jobs], doors: [...story.start.unlocked.doors], rooms: [...story.start.unlocked.rooms] },
-      jobsDone: {}, jobToday: null, seen: [], seenJobScenes: {}, ended: null,
+      jobsDone: {}, jobToday: null, seen: [], seenDay: {}, seenJobScenes: {}, ended: null,
       stats: { earned: 0, gambled: 0, jobs: 0, wins: 0, streak: 0, bestStreak: 0, biggestWin: 0, beers: 0, brownies: 0, royalVisits: 0 },
       prev: StoryRules.prevEndings(storyRuns),
       prices: Object.assign({}, story.prices || {}), enabled: {}, disabled: [...(story.disabled || [])], luckMod: 0, jobMod: {},
@@ -4461,7 +4468,7 @@ const Title = {
     await Modes.enter(choice);
   },
 };
-/* Modus betreten – Story-Teil kommt in Task 3 (Story.enter); hier nur das freie Spiel */
+/* Modus betreten: freies Spiel direkt, Story über Story.enter */
 const Modes = {
   async enter(choice) {
     if (choice === 'free') {
@@ -4642,6 +4649,7 @@ const Story = {
          Hat ein Effekt die Story beendet (und ggf. die nächste gestartet), gehört nichts mehr in `seen`. */
       if (this.stale(st)) return;
       if (e.once) { st.seen.push(e.id); State.save(); }
+      if (e.daily) { (st.seenDay || (st.seenDay = {}))[e.id] = st.day; State.save(); } // alte Spielstände haben kein seenDay
     }
   },
   /* Sofortiges Ende prüfen (nach Effekten/Käufen) – spielt es sofort, unabhängig von Nacht/Fallback */
@@ -4665,8 +4673,10 @@ const Story = {
   /* Story-Aktion aus der Seitenleiste: spielt ihre Szene, wendet Choice-Effekte an, prüft sofortige Enden */
   async action(id) {
     const a = (this.story.actions || []).find((x) => x.id === id);
-    if (!a || !StoryRules.check(a.when, State.s) || Cutscene.active || Game.inFlight > 0) return;
+    if (!a || !StoryRules.check(a.when, State.s) || Cutscene.active || Game.inFlight > 0 || this.sleeping || UI.busy) return;
+    const st = this.s;
     await this.playScene(a.scene);
+    if (this.stale(st)) return; // Choice-Effekt hat die Story beendet (finish lief schon in applyEffects) – nichts mehr auf der toten Story rendern
     await this.checkImmediate();
     UI.renderSide(); this.renderDaybar();
   },
@@ -5574,19 +5584,18 @@ const STORY_KATER = {
   varMax: { pegel: 3, leber: 100 },
   prices: { brownie: 1000, therapy: 5000 },
   disabled: ['tinder', 'house', 'dealer'],
-  /* Zahlen der Schleife – an einer Stelle */
-  N: { kaufpreis: 40000, buecherRabatt: 5000, freibier: 50, bedarf: 3, leberBier: 1, leberBrownie: 4, leberEntzug: 2, leberEntzugSucht: 4, leberNiere: 20, leberWarnung: 30, brownieSucht: 300, therapieSucht: 8000, chantalGeld: 15000, leberDoc: 70, luckZitter: -15, jobZitter: { spuelerZone: 0.7, taxiBrakeDelay: 150, postTime: 0.75, shiftPay: 0.5 } },
+  /* Kaufpreis – die Schleifen-Zahlen stehen an den Events */
+  N: { kaufpreis: 40000, buecherRabatt: 5000 },
   hud: [
     { var: 'leber', label: '🫀 Leber', max: 100, tone: 'danger' },
     { var: 'pegel', label: (s) => (s.story.flags.sucht ? '💊 Pegel' : '🍺 Pegel'), max: 3 },
     { var: 'deckel', label: '🧾 Deckel', fmt: 'money' },
   ],
-  goal: (s) => (s.story.flags.gekauft ? 'Der Keller gehört dir.' : s.story.flags.abgestuerzt ? `Ziel: Keller ${UI.fmt(STORY_KATER.N.kaufpreis + (s.story.vars.deckel || 0))} bis Tag 30` : 'Flitterwochen. Genieß es.'),
+  goal: (s) => (s.story.flags.gekauft ? 'Der Keller gehört dir.' : s.story.flags.abgestuerzt ? `Ziel: Keller ${UI.fmt(STORY_KATER.N.kaufpreis + (s.story.vars.deckel || 0) - (s.story.flags.buecher ? STORY_KATER.N.buecherRabatt : 0))} bis Tag 30` : 'Flitterwochen. Genieß es.'),
   lockReason: { royal: 'Parkservice only' },
   gates: { royal: [{ when: { flag: 'zitter' }, text: 'Sie zittern. Wir haben eine Hausordnung.', scene: 'kater.royal.zitter' }] },
   intro: 'kater.intro',
   scenes: {
-    /* ---- Platzhalter (Task 4–8 ersetzen jede Szene) ---- */
     'kater.intro': (ctx) => {
       const prev = (ctx.prev || {}).schuld || 'ehrlich';
       const start = {
@@ -5616,14 +5625,14 @@ const STORY_KATER = {
     'kater.absturz': [
       { bg: 'villa', who: 'du', mood: 'shock', text: 'Der Wecker ist weg. Das Bett ist weg. Der Zettel auf dem Boden: „Danke für alles. Wirklich alles. – C.-M."' },
       { bg: 'bank', who: 'krause', mood: 'calm', text: 'Ihre Frau hat die Vollmacht genutzt. Konto, Wagen, Villa – alles rechtens. Und die Filiale… Sie verstehen, das Vertrauen.' },
-      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Setz dich. Das erste geht aufs Haus. Das zweite auch, ich schreib\'s an. Du siehst aus, als bräuchtest du drei.' },
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Setz dich. Das erste schreib ich an. Das zweite zahlst du. Du siehst aus, als bräuchtest du drei.' },
     ],
     'kater.k2': [
       { bg: 'strasse', who: 'du', mood: 'shock', text: 'Tag vier. Null auf dem Konto, kein Auto, kein Schlüssel. Der Wirt hat einen Deckel für mich angelegt. Ich hab ihn nicht drum gebeten.' },
       { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Pinnwand ist da hinten. Spülen, Post, Taxi. Und drei Bier am Tag – nicht meine Regel, deine Hände haben das entschieden.' },
     ],
     'kater.entzug': [
-      { bg: 'keller', who: 'wirt', mood: 'calm', text: 'Du hast gestern nur zwei gehabt. Ich seh das. Deine Hände sehen das auch.' },
+      { bg: 'keller', who: 'wirt', mood: 'calm', text: 'Du hast heute keine drei gehabt. Ich seh das. Deine Hände sehen das auch.' },
       { bg: 'keller', who: 'du', mood: 'shock', text: 'Das Glas klirrt, bevor ich es anfasse. Heute wird kein guter Tag. Bis zum ersten Bier.' },
     ],
     'kater.leber': [
@@ -5659,7 +5668,7 @@ const STORY_KATER = {
     'kater.fil.lob': [{ bg: 'bank', who: 'krause', mood: 'happy', text: 'Eine bemerkenswerte Frau. Sie fragt nach Dingen, die sonst niemand fragt. Sie können stolz sein.' }],
     /* Türsteher (Kapitel 3) */
     'kater.tuer.chantal': [
-      { bg: 'keller', who: 'chantal', mood: 'calm', text: 'Sie steht in der Schlange. Mit einem anderen. Er trägt meinen Mantel. Sie tut, als würde sie mich nicht kennen. Sie kann das gut.',
+      { bg: 'keller', who: 'du', mood: 'calm', text: 'Sie steht in der Schlange. Mit einem anderen. Er trägt meinen Mantel. Sie tut, als würde sie mich nicht kennen. Sie kann das gut.',
         choices: [{ label: 'Reinlassen', value: 'rein', cls: 'ghost' }, { label: 'Nicht heute', value: 'raus', cls: 'red', effects: [{ flag: 'chantalAbgewiesen' }] }] },
     ],
     'kater.tuer.sylvie': [
@@ -5667,7 +5676,7 @@ const STORY_KATER = {
       { bg: 'keller', who: 'sylvie', mood: 'calm', text: '„Sie wollen auch? Dann beeilen Sie sich. Ich habe Zeit, Sie haben eine Leber."' },
     ],
     'kater.tuer.kevin': [
-      { bg: 'keller', who: 'kevin', mood: 'happy', text: 'Kevin drückt mir fünfzig in die Hand. „Für nichts. Du hast mich nicht gesehen." Ich hab ihn nicht gesehen.' },
+      { bg: 'keller', who: 'du', mood: 'happy', text: 'Kevin drückt mir fünfzig in die Hand. „Für nichts. Du hast mich nicht gesehen." Ich hab ihn nicht gesehen.' },
     ],
     /* Croupier (Kapitel 3, 3 Türsteher-Nächte) */
     'kater.croup.buecher': [
@@ -5677,7 +5686,7 @@ const STORY_KATER = {
       { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Du gibst gut Karten. Ruhige Hände heute. Wie viele waren\'s? Drei? Merkt man. Merken die Gäste auch.' },
     ],
     'kater.croup.hand': [
-      { bg: 'keller', who: 'igor', mood: 'calm', text: 'Igor legt einen Chip auf den Tisch. „Für dich. Nicht setzen. Halten." Ich halte ihn. Er ist warm.' },
+      { bg: 'keller', who: 'du', mood: 'calm', text: 'Igor legt einen Chip auf den Tisch. „Für dich. Nicht setzen. Halten." Ich halte ihn. Er ist warm.' },
     ],
     /* Eintreiber (Kapitel 4, nur wenn Vito noch da ist) */
     'kater.vito.zurueck': [
@@ -5690,7 +5699,7 @@ const STORY_KATER = {
       { bg: 'gasse', who: 'du', mood: 'calm', text: 'Der Kioskbesitzer zahlt, bevor ich die Hand hebe. Hundert extra „für den Weg". Ich nehme sie. Meine Hände zittern nicht, wenn sie Geld halten.' },
     ],
     'kater.igor.partner': [
-      { bg: 'bar', who: 'igor', mood: 'calm', text: 'Igor sitzt neben mir. „Der Wirt verkauft. Ich bleibe an der Tür, wer auch kauft. Kauf du. Ich mag deine Hände, wenn sie ruhig sind."' },
+      { bg: 'bar', who: 'du', mood: 'calm', text: 'Igor sitzt neben mir. „Der Wirt verkauft. Ich bleibe an der Tür, wer auch kauft. Kauf du. Ich mag deine Hände, wenn sie ruhig sind."' },
     ],
     /* Casino Royal */
     'kater.sylvie': [
@@ -5713,7 +5722,7 @@ const STORY_KATER = {
       ];
     },
     'kater.chantal': [
-      { bg: 'strasse', who: 'chantal', mood: 'calm', text: 'Sie steht vor dem Keller. Ohne Mantel, ohne den anderen. „Ich hab gehört, du hast wieder Geld. Ich hab gehört, du kaufst was."' },
+      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Sie steht vor dem Keller. Ohne Mantel, ohne den anderen. „Ich hab gehört, du hast wieder Geld. Ich hab gehört, du kaufst was."' },
       { bg: 'strasse', who: 'chantal', mood: 'happy', text: '„Lass mich rein. Ich kann Kasse. Ich kann alles, was mit Kasse zu tun hat, das weißt du."',
         choices: [{ label: 'Reinlassen', value: 'rein', cls: 'pink', effects: [{ flag: 'chantalZurueck' }] }, { label: 'Rauswerfen', value: 'raus', cls: 'red', effects: [{ flag: 'chantalWeg' }] }] },
     ],
@@ -5721,19 +5730,19 @@ const STORY_KATER = {
       { bg: 'strasse', who: 'du', mood: 'calm', text: 'Sie hat mich an der Bar gesehen. Mit dem Doc. Sie hat nichts gesagt. Sie ist weitergegangen. Das war das Netteste, was sie je getan hat.' },
     ],
     'kater.royal.zitter': [
-      { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Der Türsteher hebt die Hand. Sie zittern. Wir haben eine Hausordnung – kommen Sie wieder, wenn die Hände still sind.' },
+      { bg: 'royal', who: 'du', mood: 'calm', text: 'Der Türsteher hebt die Hand. Sie zittern. Wir haben eine Hausordnung – kommen Sie wieder, wenn die Hände still sind.' },
     ],
     'kater.ende.bett': [
       { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'blackout', text: 'Zähl rückwärts von zehn. Du kommst nicht bis sieben. Das ist in Ordnung. Die Niere war ein Vorschuss – das hier ist die Rate.' },
-      { bg: 'klinik', who: 'wirt', mood: 'calm', text: 'Der Wirt bringt Blumen. Er stellt sie neben das Bett, in dem niemand mehr liegt. Der Deckel? „Ich hab ihn zerrissen. Er hätte eh nicht gezahlt."' },
+      { bg: 'klinik', who: 'du', mood: 'calm', text: 'Der Wirt bringt Blumen. Er stellt sie neben das Bett, in dem niemand mehr liegt. Der Deckel? „Ich hab ihn zerrissen. Er hätte eh nicht gezahlt."' },
     ],
     'kater.ende.wirt': (ctx) => {
       const panels = [
         { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Der Schlüssel. Unter dem Tresen, wo er immer lag. Ich bleib Gast – der Hocker am Ende ist meiner, das steht im Vertrag, den du nicht gelesen hast.' },
-        { bg: 'keller', who: 'igor', mood: 'calm', text: 'Igor nickt. Einmal. Das ist bei Igor ein Handschlag.' },
+        { bg: 'keller', who: 'du', mood: 'calm', text: 'Igor nickt. Einmal. Das ist bei Igor ein Handschlag.' },
       ];
       if (ctx.raw.flags.chantalZurueck) panels.push({ bg: 'bar', who: 'chantal', mood: 'happy', text: 'Sie steht hinter dem Tresen. Sie hat die Kasse schon geöffnet. „Nur gucken, Schatz. Vorerst."' });
-      panels.push({ bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Blumen von Madame Sylvie. Karte: „Herzlichen Glückwunsch. Ich habe Zeit." Dieselbe Handschrift wie auf einem anderen Zettel.' });
+      panels.push({ bg: 'royal', who: 'du', mood: 'calm', text: 'Blumen von Madame Sylvie. Karte: „Herzlichen Glückwunsch. Ich habe Zeit." Dieselbe Handschrift wie auf einem anderen Zettel.' });
       panels.push({ bg: 'bar', who: 'du', mood: 'happy', text: 'Der Ort, an dem ich alles verloren habe. Er gehört mir. Der Kessel läuft, wie er läuft. Erstes Bier geht aufs Haus. Mein Haus.' });
       return panels;
     },
@@ -5766,7 +5775,7 @@ const STORY_KATER = {
     { id: 'absturz', when: { day: { eq: 3 } }, once: true, at: 'night', scene: 'kater.absturz',
       effects: [{ balancePct: -100, min: 0 }, { set: { car: null, hasHouse: false } }, { lock: { jobs: ['filialleiter'], rooms: ['royal'] } }, { flag: 'abgestuerzt' }, { price: { beer: 0 } }] },
     /* ---- Tagesbeginn: erstes Bier umsonst ---- */
-    { id: 'freibier', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }] }, at: 'morning', effects: [{ price: { beer: 0 } }, { var: 'bierHeute', set: 0 }, { var: 'brownieHeute', set: 0 }] },
+    { id: 'freibier', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }] }, at: 'morning', daily: true, effects: [{ price: { beer: 0 } }, { var: 'bierHeute', set: 0 }, { var: 'brownieHeute', set: 0 }] },
     /* ---- Bierkauf ---- */
     { id: 'deckel', when: { all: [{ flag: 'abgestuerzt' }, { var: 'bierHeute', eq: 0 }] }, at: 'buy:beer', effects: [{ var: 'deckel', add: 50 }, { price: { beer: 50 } }] },
     { id: 'bier', when: { flag: 'abgestuerzt' }, at: 'buy:beer', effects: [{ var: 'bierHeute', add: 1 }, { var: 'pegel', add: 1 }, { var: 'leber', add: -1 }] },
@@ -6817,6 +6826,7 @@ const runHook = (s, at) => {
     ids.push(e.id);
     for (const eff of e.effects || []) StoryRules.applyEffect(s, eff, STORY_KATER);
     if (e.once) s.story.seen.push(e.id);
+    if (e.daily) (s.story.seenDay || (s.story.seenDay = {}))[e.id] = s.story.day;
   }
   return ids;
 };
@@ -6884,6 +6894,28 @@ T.test('STORY_KATER: Freibier morgens, Deckel beim ersten Bier, danach 50 €', 
   runHook(s, 'buy:beer'); runHook(s, 'buy:beer'); runHook(s, 'buy:beer');
   T.eq([s.story.vars.deckel, s.story.vars.bierHeute, s.story.vars.pegel, s.story.vars.leber], [50, 4, 3, 96], 'Bier 4: Pegel bleibt 3, Leber zahlt');
 });
+T.test('StoryRules.dueEvents: daily-Event einmal pro Tag, nach advanceDay wieder fällig', () => {
+  const st = Object.assign({}, STORY_PROBE, { events: [{ id: 'taeglich', at: 'morning', daily: true, effects: [{ var: 'mut', add: 1 }] }, { id: 'immer', at: 'morning', effects: [] }] });
+  const s = Object.assign(base(), { story: StoryRules.freshStoryPart(st) });
+  T.eq(s.story.seenDay, {}, 'frischer Story-Teil hat seenDay');
+  const run = () => StoryRules.dueEvents(st, s, 'morning').map((e) => { if (e.daily) s.story.seenDay[e.id] = s.story.day; return e.id; });
+  T.eq(run(), ['taeglich', 'immer']);
+  T.eq(run(), ['immer'], 'am selben Tag (Reload) nicht noch einmal');
+  StoryRules.advanceDay(s);
+  T.eq(run(), ['taeglich', 'immer'], 'nächster Tag: wieder fällig');
+  delete s.story.seenDay;
+  T.eq(StoryRules.dueEvents(st, s, 'morning').map((e) => e.id), ['taeglich', 'immer'], 'alter Spielstand ohne seenDay läuft weiter');
+});
+T.test('STORY_KATER: Freibier ist daily – ein Reload am Morgen macht das bezahlte Bier nicht wieder umsonst', () => {
+  const s = katerDay(5);
+  T.eq(runHook(s, 'morning'), ['freibier']);
+  runHook(s, 'buy:beer');
+  T.eq([StoryRules.price(s, 'beer'), s.story.vars.bierHeute], [50, 1]);
+  T.eq(runHook(s, 'morning'), [], 'Morgen-Events erneut (Reload): Freibier bleibt aus');
+  T.eq([StoryRules.price(s, 'beer'), s.story.vars.bierHeute], [50, 1], 'Preis und Zähler unverändert');
+  s.story.day = 6; T.eq(runHook(s, 'morning'), ['freibier'], 'am nächsten Tag wieder');
+  T.eq(StoryRules.price(s, 'beer'), 0);
+});
 T.test('STORY_KATER: Entzugsnacht → Zitter-Tag → erstes Bier hebt ihn auf', () => {
   const s = katerDay(5);
   runHook(s, 'morning'); runHook(s, 'buy:beer'); runHook(s, 'buy:beer');
@@ -6945,6 +6977,16 @@ T.test('STORY_KATER: Sucht – Brownie 300 €, Therapie 8.000 €, Brownie deck
   const ids = runHook(s, 'sleep');
   T.ok(ids.includes('entzugSucht') && !ids.includes('entzug'), ids.join());
   T.eq(s.story.vars.leber, 92, '96 − 4');
+});
+T.test('STORY_KATER: ohne Sucht deckt ein Brownie den Pegel nicht – Entzug kommt trotzdem', () => {
+  const s = katerDay(7); s.balance = 5000;
+  runHook(s, 'morning');
+  const ids = runHook(s, 'buy:brownie');
+  T.ok(ids.includes('brownie') && !ids.includes('brownieDeckt'), ids.join());
+  T.eq([s.story.vars.brownieHeute, s.story.vars.pegel, s.story.vars.leber], [1, 0, 96], 'Pegel bleibt 0');
+  const nacht = runHook(s, 'sleep');
+  T.ok(nacht.includes('entzug') && nacht.includes('entzugSzene') && !nacht.includes('entzugSucht'), nacht.join());
+  T.eq(s.story.flags.zitter, true); T.eq(s.story.vars.leber, 94, '96 − 2 Entzug');
 });
 T.test('STORY_KATER: Therapie – ab Kapitel 3 erlaubt, danach kein Bier, kein Entzug, Leber stabil', () => {
   const s = katerDay(11);
@@ -7246,6 +7288,43 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       State.mode = keep.mode; State.s = keep.s; State.save = keep.save; State.saveMeta = keep.saveMeta;
       Story.story = keep.story; Story.finish = keep.finish; Story.fade = keep.fade;
       Story.sleeping = false; Story.finishing = false; Story.lostDay = false;
+      UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide(); Story.renderDaybar();
+    }
+  });
+  T.test('STORY_KATER.goal: Tagesziel rechnet Deckel dazu und den Bücher-Rabatt ab', () => {
+    const s = State.freshStory(STORY_KATER);
+    T.eq(STORY_KATER.goal(s), 'Flitterwochen. Genieß es.');
+    s.story.flags.abgestuerzt = true; s.story.vars.deckel = 1250;
+    T.eq(STORY_KATER.goal(s), 'Ziel: Keller 41.250 € bis Tag 30');
+    s.story.flags.buecher = true;
+    T.eq(STORY_KATER.goal(s), 'Ziel: Keller 36.250 € bis Tag 30', 'wie das Kaufgespräch');
+    s.story.flags.gekauft = true;
+    T.eq(STORY_KATER.goal(s), 'Der Keller gehört dir.');
+  });
+  /* Therapie im Story-Modus (Der Kater, Kapitel 3): der Doc spielt seine Szene über buy:therapy – die Anwalt-Szene
+     therapy.done (Dr. Schmalz, „viertausendneunhundert an mich") gehört nur zur Liebeskummer-Therapie des freien Spiels. */
+  T.test('Life.therapy: Story-Therapie spielt kater.therapie, nicht therapy.done; Liebeskummer weiterhin therapy.done', async () => {
+    const keep = { mode: State.mode, s: State.s, save: State.save, saveMeta: State.saveMeta, story: Story.story, play: Cutscene.play };
+    const played = [];
+    try {
+      State.save = () => {}; State.saveMeta = () => {};
+      Cutscene.play = async (id) => { played.push(id); return undefined; };
+      const k = State.freshStory(STORY_KATER);
+      k.story.day = 12; k.story.flags.abgestuerzt = true; k.balance = 6000;
+      StoryRules.applyEffect(k, { enable: ['therapy'] }, STORY_KATER);
+      State.mode = 'story'; State.s = k; Story.story = STORY_KATER;
+      await Life.therapy();
+      T.eq(played, ['kater.therapie'], 'nur die Doc-Szene');
+      T.eq([k.balance, k.story.flags.nuechtern, StoryRules.purchaseAllowed(k, 'beer')], [1000, true, false]);
+      played.length = 0;
+      const f = State.fresh(); f.isHeartbroken = true; f.balance = 6000;
+      State.mode = 'free'; State.s = f; Story.story = null;
+      await Life.therapy();
+      T.eq(played, ['therapy.done'], 'freies Spiel: Anwalt-Szene');
+      T.eq([f.balance, f.isHeartbroken], [1000, false]);
+    } finally {
+      State.mode = keep.mode; State.s = keep.s; State.save = keep.save; State.saveMeta = keep.saveMeta;
+      Story.story = keep.story; Cutscene.play = keep.play;
       UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide(); Story.renderDaybar();
     }
   });
