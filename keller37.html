@@ -1296,7 +1296,7 @@ const State = {
     const s = this.fresh();
     s.balance = story.start.balance;
     s.flags.intro = true;
-    s.story = StoryRules.freshStoryPart(story);
+    s.story = StoryRules.freshStoryPart(story, this.meta.storyRuns);
     return s;
   },
   startStory(story) {
@@ -3617,12 +3617,33 @@ const StoryRules = {
     if ('scene' in eff) out.scene = eff.scene;
     return out;
   },
+  requirementMet(story, storyRuns) {
+    if (!story.requires) return true;
+    const run = storyRuns[story.requires];
+    return !!(run && run.endings && run.endings.length);
+  },
   pickStory(stories, storyRuns, rng) {
-    const cands = stories.filter((st) => !st.dev);
+    const cands = stories.filter((st) => !st.dev && StoryRules.requirementMet(st, storyRuns));
+    if (!cands.length) throw new Error('Keine wählbare Story');
     const last = (st) => (storyRuns[st.id] && storyRuns[st.id].lastPlayed) || 0;
     const min = Math.min(...cands.map(last));
     const oldest = cands.filter((st) => last(st) === min);
     return oldest[Math.floor(rng() * oldest.length)].id;
+  },
+  /* „Nächste Story“ nach einem Ende: die nächste in Definitionsreihenfolge mit erfüllter Voraussetzung, sonst pickStory */
+  nextStory(stories, storyRuns, currentId) {
+    const list = stories.filter((st) => !st.dev);
+    const idx = list.findIndex((st) => st.id === currentId);
+    for (let i = idx + 1; i < list.length; i++) if (StoryRules.requirementMet(list[i], storyRuns)) return list[i].id;
+    return StoryRules.pickStory(list, storyRuns, Math.random);
+  },
+  prevEndings(storyRuns) {
+    const out = {};
+    for (const [id, run] of Object.entries(storyRuns || {})) {
+      const last = run.last || (run.endings && run.endings[run.endings.length - 1]);
+      if (last) out[id] = last;
+    }
+    return out;
   },
   chapterFor(story, s) {
     let found = null;
@@ -3650,7 +3671,7 @@ const StoryRules = {
   spuelerPay(hits, breaks) { return hits * 5 - breaks * 10; },
   taxiPay(passengers, tickets, tip = 0) { return passengers * (15 + tip) - tickets * 50; },
   tuerBonus(strength) { return Math.min(50, 10 * (strength || 0)); },
-  validate(story, sceneIds, jobIds) {
+  validate(story, sceneIds, jobIds, storyIds = null) {
     const errs = [];
     const scene = (id, where) => { if (id && !sceneIds.includes(id)) errs.push(`${story.id}: Szene "${id}" fehlt (${where})`); };
     const jobs = (list, where) => (list || []).forEach((j) => { if (!jobIds.includes(j)) errs.push(`${story.id}: Job "${j}" unbekannt (${where})`); });
@@ -3663,15 +3684,17 @@ const StoryRules = {
     for (const [job, list] of Object.entries(story.jobScenes || {})) { jobs([job], 'jobScenes'); list.forEach((id) => scene(id, `jobScenes.${job}`)); }
     for (const e of story.endings || []) scene(e.scene, e.id);
     if ((story.endings || []).filter((e) => e.fallback).length !== 1) errs.push(`${story.id}: genau ein Fallback-Ende nötig`);
+    if (story.requires && storyIds && !storyIds.includes(story.requires)) errs.push(`${story.id}: requires "${story.requires}" unbekannt`);
     return errs;
   },
-  freshStoryPart(story) {
+  freshStoryPart(story, storyRuns = {}) {
     return {
       id: story.id, day: 1, phase: 'morning',
       vars: Object.assign({}, story.start.vars), flags: {},
       unlocked: { jobs: [...story.start.unlocked.jobs], doors: [...story.start.unlocked.doors], rooms: [...story.start.unlocked.rooms] },
       jobsDone: {}, jobToday: null, seen: [], seenJobScenes: {}, ended: null,
       stats: { earned: 0, gambled: 0, jobs: 0 },
+      prev: StoryRules.prevEndings(storyRuns),
     };
   },
 };
@@ -3766,7 +3789,8 @@ const Stories = {
     const sceneIds = Object.keys(Cutscene.SCENES);
     const jobIds = typeof Jobs !== 'undefined' ? Object.keys(Jobs.POOL) : null;
     const errs = [];
-    for (const st of Object.values(this.all)) errs.push(...StoryRules.validate(st, sceneIds, jobIds || (st.start.unlocked.jobs)));
+    const storyIds = Object.keys(this.all);
+    for (const st of Object.values(this.all)) errs.push(...StoryRules.validate(st, sceneIds, jobIds || (st.start.unlocked.jobs), storyIds));
     if (errs.length) { errs.forEach((e) => console.error('[story]', e)); UI.toast({ icon: '🐛', title: 'Story-Daten fehlerhaft', text: errs[0], tone: 'loss', ms: 8000 }); }
     return errs;
   },
@@ -4739,6 +4763,7 @@ const SelfTest = {
     if (ja !== jb) throw new Error(`${msg} erwartet ${jb}, bekommen ${ja}`);
   },
   ok(v, msg = 'erwartet wahr') { if (!v) throw new Error(msg); },
+  throws(fn, msg = '') { let threw = false; try { fn(); } catch (e) { threw = true; } if (!threw) throw new Error(`${msg} – kein Fehler geworfen`); },
   run() {
     let passed = 0, failed = 0; const failures = [];
     for (const c of this.cases) {
@@ -5162,6 +5187,41 @@ T.test('StoryRules.pickStory: am längsten nicht gespielt, dev nie', () => {
   T.eq(StoryRules.pickStory(stories, {}, seq(0)), 'a');
   T.eq(StoryRules.pickStory(stories, {}, seq(0.99)), 'b', 'Gleichstand → rng');
   T.eq(StoryRules.pickStory([{ id: 'a' }], {}, seq(0.99)), 'a');
+});
+T.test('StoryRules.requirementMet / pickStory: requires filtert', () => {
+  const a = { id: 'a' }, b = { id: 'b', requires: 'a' };
+  T.eq(StoryRules.requirementMet(a, {}), true);
+  T.eq(StoryRules.requirementMet(b, {}), false);
+  T.eq(StoryRules.requirementMet(b, { a: { lastPlayed: 1, endings: [] } }), false, 'gespielt ohne Ende reicht nicht');
+  T.eq(StoryRules.requirementMet(b, { a: { lastPlayed: 1, endings: ['x'] } }), true);
+  T.eq(StoryRules.pickStory([a, b], {}, seq(0.99)), 'a', 'b ist gesperrt');
+  T.eq(StoryRules.pickStory([a, b], { a: { lastPlayed: 5, endings: ['x'] } }, seq(0)), 'b', 'b nie gespielt = ältestes');
+  T.throws(() => StoryRules.pickStory([b], {}, seq(0)), 'keine wählbare Story wirft');
+});
+T.test('StoryRules.nextStory: Reihenfolge, Voraussetzung, sonst pickStory', () => {
+  const a = { id: 'a' }, b = { id: 'b', requires: 'a' }, c = { id: 'c' };
+  const runs = { a: { lastPlayed: 9, endings: ['x'] } };
+  T.eq(StoryRules.nextStory([a, b, c], runs, 'a'), 'b');
+  T.eq(StoryRules.nextStory([a, b, c], { a: { lastPlayed: 9, endings: [] } }, 'a'), 'c', 'b gesperrt → nächste in Reihenfolge');
+  T.eq(StoryRules.nextStory([a, b, c], Object.assign({ c: { lastPlayed: 1, endings: ['y'] } }, runs), 'c'), 'b', 'nach der letzten: pickStory (b nie gespielt)');
+  T.eq(StoryRules.nextStory([a], { a: { lastPlayed: 1, endings: ['x'] } }, 'a'), 'a', 'einzige Story wiederholt sich');
+});
+T.test('StoryRules.prevEndings: letztes Ende je Story', () => {
+  T.eq(StoryRules.prevEndings({}), {});
+  T.eq(StoryRules.prevEndings({ a: { lastPlayed: 1, endings: ['x', 'y'] } }), { a: 'y' });
+  T.eq(StoryRules.prevEndings({ a: { lastPlayed: 1, endings: ['x', 'y'], last: 'x' } }), { a: 'x' }, 'last hat Vorrang');
+  T.eq(StoryRules.prevEndings({ a: { lastPlayed: 1, endings: [] } }), {});
+});
+T.test('StoryRules.freshStoryPart: prev aus storyRuns', () => {
+  const p = StoryRules.freshStoryPart(probeStory(), { schuld: { lastPlayed: 1, endings: ['doc'] } });
+  T.eq(p.prev, { schuld: 'doc' });
+  T.eq(StoryRules.freshStoryPart(probeStory()).prev, {});
+});
+T.test('StoryRules.validate: requires muss bekannte Story sein', () => {
+  const st = Object.assign({}, STORY_PROBE, { id: 'x', requires: 'gibtsnicht' });
+  const errs = StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post'], ['probe']);
+  T.eq(errs, ['x: requires "gibtsnicht" unbekannt']);
+  T.eq(StoryRules.validate(Object.assign({}, st, { requires: 'probe' }), Object.keys(STORY_PROBE.scenes), ['spueler', 'post'], ['probe']), []);
 });
 const probeStory = () => ({
   id: 'p', title: 'P', days: 3,
