@@ -95,4 +95,6 @@ tests/screenshot.sh out.png "?screen=roulette"
 python3 tests/playtest-story.py     # CDP-Playtest Story-Modus (Chrome, Port 9335)
 ```
 
+`K37_PORT`, `K37_PROFILE`, `K37_SHOTS` überschreiben Port, Chrome-Profilordner und Screenshot-Ordner des Playtests (Default wie oben) – nützlich, um mehrere Läufe parallel zu isolieren.
+
 `Gamble Game.html` ist das Original, aus dem die Mechanik 1:1 übernommen wurde. Spec, Plan, Abnahme-Checkliste und Screenshots liegen unter `docs/superpowers/`.
