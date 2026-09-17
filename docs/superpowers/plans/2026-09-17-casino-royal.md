@@ -300,9 +300,10 @@ T.test('crapsLuckOverride: verlierender Wurf wird verschoben, Gewinner nie', () 
   const o = RoyalRules.crapsLuckOverride([3, 4], 8, true, 100, seq(0));
   T.ok(o[0] + o[1] !== 7, 'Sieben in der Punktphase wird vermieden');
   T.ok(Math.abs(o[0] - 3) + Math.abs(o[1] - 4) === 1, 'genau ein Würfel um 1');
-  const c = RoyalRules.crapsLuckOverride([1, 1], null, true, 100, seq(0));
-  T.ok(![2, 3, 12].includes(c[0] + c[1]), 'Craps im Come-out wird vermieden');
-  T.eq(RoyalRules.crapsLuckOverride([1, 1], null, false, 100, seq(0)), [1, 1], 'ohne Pass-Einsatz gibt es nichts zu retten');
+  const c = RoyalRules.crapsLuckOverride([1, 2], null, true, 100, seq(0));
+  T.eq(c, [2, 2], 'Craps 3 im Come-out → erster Würfel +1 → 4');
+  T.eq(RoyalRules.crapsLuckOverride([1, 1], null, true, 100, seq(0)), [1, 1], 'Craps 2: kein ±1-Schritt entkommt (3 bleibt Craps) → unverändert');
+  T.eq(RoyalRules.crapsLuckOverride([1, 2], null, false, 100, seq(0)), [1, 2], 'ohne Pass-Einsatz gibt es nichts zu retten');
   T.eq(RoyalRules.crapsLuckOverride([4, 4], 8, true, 100, seq(0)), [4, 4], 'Gewinner bleibt');
   T.eq(RoyalRules.crapsLuckOverride([6, 6], 6, true, 100, seq(0)), [6, 6], 'neutraler Wurf (12 in Punktphase) bleibt');
 });
@@ -419,11 +420,9 @@ T.test('wheelLuckOverride: Bankrott rückt auf das nächste Nicht-Bankrott-Segme
   const o = RoyalRules.wheelLuckOverride(i0, 100, seq(0));
   T.ok(S[o] !== 0 && (o === (i0 + 1) % 24 || o === (i0 + 2) % 24), 'nächstes Nicht-Bankrott, 1–2 Schritte weiter');
   T.eq(RoyalRules.wheelLuckOverride(S.indexOf(10), 100, seq(0)), S.indexOf(10), 'Gewinn bleibt');
-  T.eq(RoyalRules.wheelLuckOverride(i0, 100, seq(0.999)), i0, 'Glück greift nicht (rng ≥ luck/100)');
+  T.eq(RoyalRules.wheelLuckOverride(i0, 50, seq(0.999)), i0, 'Glück greift nicht (rng ≥ luck/100)');
 });
 ```
-
-Hinweis: `seq(0.999)` mit `luck 100`: `0.999 * 100 = 99.9 < 100` wäre **wahr** – den letzten Test mit `luck 50` schreiben: `T.eq(RoyalRules.wheelLuckOverride(i0, 50, seq(0.999)), i0, …)`.
 
 - [ ] **Step 2: Fehlschlag sehen**
 
