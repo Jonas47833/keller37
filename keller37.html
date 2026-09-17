@@ -1272,6 +1272,118 @@ Object.assign(Rules, {
 });
 </script>
 
+<script id="perk-rules">
+/* ================= PERKS – XP, Skills (Licht/Schatten), Insider-Upgrades (rein, kein DOM, kein State) ================= */
+Object.assign(Rules, {
+  XP_LEVELS: [0, 25, 60, 110, 180, 270],
+  XP_GAIN: { spin: 1, win: 2, job: 5, day: 5, achievement: 10 },
+  MAX_SKILLS: 3,
+  RESPEC_PRICE: 2000,
+  INSIDER_CAP: 250,
+  NEUTRAL_MODS: {
+    beerLuckMult: 1, brownieLuckMult: 1, maxBeers: 3, brownieSpins: 1,
+    bjNatural: 1, bjPushBonus: 0, bjHotDeck: 1,
+    rouletteNumberPayout: 35, rouletteExclude: 0,
+    slotPairMult: 1.2, slotHoldEvery: 0,
+    horsePayout: 3, horseLoserMarked: false,
+    bankRateAdd: 0, bankLimitAdd: 0, mafiaSpins: 5, mafiaMult: 3, investRateMult: 1,
+    mugChanceMult: 1, fightAdd: 0, walletMult: 1,
+    postTimeAdd: 0, postPayAdd: 0, postLetters: 15,
+  },
+  /* Wie ein Schlüssel gestapelt wird: add = Summe, mult = Produkt, max = Maximum, set = letzter Wert */
+  MOD_STACK: {
+    beerLuckMult: 'mult', brownieLuckMult: 'mult', maxBeers: 'max', brownieSpins: 'max',
+    bjNatural: 'max', bjPushBonus: 'max', bjHotDeck: 'max',
+    rouletteNumberPayout: 'max', rouletteExclude: 'max',
+    slotPairMult: 'set', slotHoldEvery: 'max',
+    horsePayout: 'max', horseLoserMarked: 'set',
+    bankRateAdd: 'add', bankLimitAdd: 'add', mafiaSpins: 'max', mafiaMult: 'set', investRateMult: 'mult',
+    mugChanceMult: 'mult', fightAdd: 'add', walletMult: 'mult',
+    postTimeAdd: 'add', postPayAdd: 'add', postLetters: 'max',
+  },
+  SKILLS: [
+    { id: 'pokerface', name: 'Pokerface', icon: '🃏', light: 'Blackjack: natürlicher Blackjack zahlt 3:2, Push bringt +10 %', shadow: 'Bier gibt kein Glück', mods: { bjNatural: 1.5, bjPushBonus: 0.1, beerLuckMult: 0 } },
+    { id: 'kalterkopf', name: 'Kalter Kopf', icon: '🧊', light: 'Roulette-Zahlen zahlen 36:1', shadow: 'Brownie wirkt nur halb', mods: { rouletteNumberPayout: 36, brownieLuckMult: 0.5 } },
+    { id: 'zockerhaende', name: 'Zockerhände', icon: '🎰', light: 'Slots: Paar zahlt 1,5×', shadow: 'Bank-Zinsen +2 %', mods: { slotPairMult: 1.5, bankRateAdd: 0.02 }, excludes: ['brieftraeger'] },
+    { id: 'pferdefluesterer', name: 'Pferdeflüsterer', icon: '🐎', light: 'Pferde zahlen 3,3:1', shadow: 'Überfälle 50 % häufiger', mods: { horsePayout: 3.3, mugChanceMult: 1.5 } },
+    { id: 'eisenmagen', name: 'Eisenmagen', icon: '🍺', light: '4 Bier möglich (+25 %), Brownie hält 2 Spins', shadow: 'Postbote: −1 s pro Brief', mods: { maxBeers: 4, brownieSpins: 2, postTimeAdd: -1 } },
+    { id: 'verhandler', name: 'Verhandler', icon: '🤝', light: 'Bank-Zinsen −2 %, Vito-Frist 7 Spins', shadow: 'Anlagen zahlen 10 % weniger', mods: { bankRateAdd: -0.02, mafiaSpins: 7, investRateMult: 0.9 } },
+    { id: 'strassenkoeter', name: 'Straßenköter', icon: '🐕', light: 'Kampfchance +15 %, Brieftasche ×2', shadow: 'Bank-Limit −1.000 €', mods: { fightAdd: 0.15, walletMult: 2, bankLimitAdd: -1000 } },
+    { id: 'brieftraeger', name: 'Briefträgerherz', icon: '📬', light: 'Postbote +1 s und +5 € pro Brief', shadow: 'Slots: Paare zahlen nichts', mods: { postTimeAdd: 1, postPayAdd: 5, slotPairMult: 0 }, excludes: ['zockerhaende'] },
+  ],
+  INSIDER: [
+    { id: 'stallbursche', name: 'Stallbursche', icon: '🐴', text: 'Vor jedem Rennen ist ein Pferd markiert, das sicher nicht gewinnt.', capped: true, mods: { horseLoserMarked: true } },
+    { id: 'croupierauge', name: 'Croupier-Auge', icon: '👁️', text: '12 Roulette-Zahlen sind ausgegraut und fallen nicht.', capped: true, mods: { rouletteExclude: 12 } },
+    { id: 'kartenzaehler', name: 'Kartenzähler', icon: '🧮', text: 'Blackjack zeigt, ob das Deck heiß ist – dann zahlt ein Sieg 1,2:1.', capped: true, mods: { bjHotDeck: 1.2 } },
+    { id: 'mechaniker', name: 'Mechaniker', icon: '🔧', text: 'Slots: nach einer Niete darfst du jede 5. Runde eine Walze festhalten und neu drehen.', capped: true, mods: { slotHoldEvery: 5 } },
+    { id: 'bankinsider', name: 'Bankinsider', icon: '🏦', text: 'Zinsen −3 %, Limit +2.000 €.', capped: false, mods: { bankRateAdd: -0.03, bankLimitAdd: 2000 } },
+    { id: 'vitosneffe', name: 'Vitos Neffe', icon: '🕶️', text: 'Vito-Frist 8 Spins, Rechnung ×2 statt ×3, Überfälle halb so oft.', capped: false, mods: { mafiaSpins: 8, mafiaMult: 2, mugChanceMult: 0.5 } },
+    { id: 'postmeister', name: 'Postmeister', icon: '📮', text: 'Postbote: 20 Briefe pro Schicht, +5 € pro Brief.', capped: false, mods: { postLetters: 20, postPayAdd: 5 } },
+  ],
+  xpLevel(xp) {
+    let level = 1;
+    for (let i = 1; i < Rules.XP_LEVELS.length; i++) if (xp >= Rules.XP_LEVELS[i]) level = i + 1;
+    const next = level < Rules.XP_LEVELS.length ? Rules.XP_LEVELS[level] : null;
+    return { level, next, points: Math.min(Rules.MAX_SKILLS, Math.floor(level / 2)) };
+  },
+  skillPointsFree(s) { return Math.max(0, Rules.xpLevel(s.xp || 0).points - (s.skills || []).length); },
+  canPickSkill(s, id) {
+    const def = Rules.SKILLS.find((k) => k.id === id);
+    if (!def) return { ok: false, reason: 'unknown' };
+    const skills = s.skills || [];
+    if (skills.includes(id)) return { ok: false, reason: 'active' };
+    if (skills.length >= Rules.MAX_SKILLS) return { ok: false, reason: 'full' };
+    if (Rules.skillPointsFree(s) <= 0) return { ok: false, reason: 'points' };
+    const conflict = skills.some((k) => { const d = Rules.SKILLS.find((x) => x.id === k); return (d && d.excludes || []).includes(id) || (def.excludes || []).includes(k); });
+    if (conflict) return { ok: false, reason: 'conflict' };
+    return { ok: true };
+  },
+  /* Alle aktiven Modifikatoren: Skills aus dem Spielstand, Insider aus dem Meta-Speicher; unbekannte IDs ignoriert */
+  mods(s, meta) {
+    const out = Object.assign({}, Rules.NEUTRAL_MODS);
+    const apply = (m) => {
+      for (const [k, v] of Object.entries(m)) {
+        const how = Rules.MOD_STACK[k];
+        if (how === 'add') out[k] += v;
+        else if (how === 'mult') out[k] *= v;
+        else if (how === 'max') out[k] = Math.max(out[k], v);
+        else out[k] = v;
+      }
+    };
+    for (const id of (s && s.skills) || []) { const d = Rules.SKILLS.find((k) => k.id === id); if (d) apply(d.mods); }
+    for (const id of (meta && meta.insider) || []) { const d = Rules.INSIDER.find((k) => k.id === id); if (d) apply(d.mods); }
+    return out;
+  },
+  insiderDraw(meta, rng = Math.random) {
+    const pool = Rules.INSIDER.map((i) => i.id).filter((id) => !((meta && meta.insider) || []).includes(id));
+    const out = [];
+    while (pool.length && out.length < 3) out.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
+    return out;
+  },
+  /* Insider-Wissen wirkt voll bis INSIDER_CAP; Zahlen verlieren darüber anteilig ihren Bonus, Schalter gelten nur darunter */
+  effectiveInsider(value, bet) {
+    if (typeof value === 'boolean') return value && bet <= Rules.INSIDER_CAP;
+    if (!bet || bet <= Rules.INSIDER_CAP) return value;
+    return 1 + (value - 1) * Rules.INSIDER_CAP / bet;
+  },
+  deckHot(deck) {
+    if (!deck.length) return false;
+    const strong = deck.filter((c) => ['10', 'J', 'Q', 'K', 'A'].includes(c.val)).length;
+    return strong / deck.length > 0.4;
+  },
+  pickExcluded(rng = Math.random) {
+    const nums = Array.from({ length: 36 }, (_, i) => i + 1);
+    const out = [];
+    while (out.length < 12) out.push(nums.splice(Math.floor(rng() * nums.length), 1)[0]);
+    return out.sort((a, b) => a - b);
+  },
+  pickLoser(selectedId, rng = Math.random) {
+    const others = Rules.HORSES.map((h) => h.id).filter((id) => id !== selectedId);
+    return others[Math.floor(rng() * others.length)];
+  },
+});
+</script>
+
 <script id="util">
 /* ================= UTIL ================= */
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -1320,12 +1432,13 @@ const State = {
       investments: [],
       hasHouse: false, isMarried: false, marriageSpins: 0, isHeartbroken: false, hasDealer: false,
       car: null, shoes: null, strength: 0, mugCooldown: 0,
+      xp: 0, skills: [], skillRespecs: 0, insiderExcluded: [], mechRespins: 0,
       flags: { intro: false, mafiaLoan: false, bankLoan: false, bankLimit: false, brownie: false, igor: false },
       stats: { spins: 0, maxBalance: 50, biggestWin: 0, kidneys: 0, postStreakBest: 0, muggings: 0, fightsWon: 0 },
       selectedHorse: 1,
     };
   },
-  freshMeta() { return { v: 1, achievements: [], muted: false, gameOvers: 0, storyRuns: {} }; },
+  freshMeta() { return { v: 1, achievements: [], muted: false, gameOvers: 0, storyRuns: {}, insider: [], insiderClaimed: {} }; },
   /* discarded: es gab einen Wert, aber er war unlesbar oder hatte die falsche Version */
   _read(key, freshFn) {
     let raw = null;
@@ -1339,6 +1452,7 @@ const State = {
       if (f.flags) merged.flags = Object.assign(freshFn().flags, p.flags || {});
       if (f.stats) merged.stats = Object.assign(freshFn().stats, p.stats || {});
       if (f.storyRuns) merged.storyRuns = Object.assign({}, p.storyRuns || {});
+      if (f.insiderClaimed) merged.insiderClaimed = Object.assign({}, p.insiderClaimed || {});
       return { value: merged, loaded: true, discarded: false };
     } catch (e) {
       return { value: freshFn(), loaded: false, discarded: !!raw };
@@ -5200,7 +5314,7 @@ T.test('State.init: leer → frisch, loaded=false', () => {
   T.eq(State.s.balance, 50);
   T.eq(State.s.v, 1);
   T.eq(State.s.flags, { intro: false, mafiaLoan: false, bankLoan: false, bankLimit: false, brownie: false, igor: false });
-  T.eq(State.meta, { v: 1, achievements: [], muted: false, gameOvers: 0, storyRuns: {} });
+  T.eq(State.meta, { v: 1, achievements: [], muted: false, gameOvers: 0, storyRuns: {}, insider: [], insiderClaimed: {} });
 });
 T.test('State.save/init: Spielstand überlebt', () => {
   const st = memStorage();
@@ -5747,6 +5861,80 @@ T.test('effectiveLuck: voll bis 100 €, darüber proportional weniger', () => {
   T.eq(Rules.effectiveLuck(60, 400), 15);
   T.eq(Rules.effectiveLuck(0, 10), 0);
   T.eq(Rules.effectiveLuck(20, 0), 20);
+});
+
+/* ---- Perks: XP, Skills, Insider ---- */
+T.test('xpLevel: Schwellen und Punkte', () => {
+  T.eq(Rules.XP_LEVELS, [0, 25, 60, 110, 180, 270]);
+  T.eq(Rules.xpLevel(0), { level: 1, next: 25, points: 0 });
+  T.eq(Rules.xpLevel(24), { level: 1, next: 25, points: 0 });
+  T.eq(Rules.xpLevel(25), { level: 2, next: 60, points: 1 });
+  T.eq(Rules.xpLevel(110), { level: 4, next: 180, points: 2 });
+  T.eq(Rules.xpLevel(270), { level: 6, next: null, points: 3 });
+  T.eq(Rules.xpLevel(9999), { level: 6, next: null, points: 3 });
+});
+T.test('Kataloge: Skills mit Licht/Schatten, mods-Schlüssel bekannt', () => {
+  T.eq(Rules.SKILLS.length, 8); T.eq(Rules.INSIDER.length, 7);
+  for (const sk of Rules.SKILLS) { T.ok(sk.light && sk.shadow, sk.id); for (const k of Object.keys(sk.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${sk.id}.${k}`); }
+  for (const ins of Rules.INSIDER) { T.ok(ins.text && typeof ins.capped === 'boolean', ins.id); for (const k of Object.keys(ins.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${ins.id}.${k}`); }
+  T.eq(Rules.INSIDER_CAP, 250); T.eq(Rules.MAX_SKILLS, 3); T.eq(Rules.RESPEC_PRICE, 2000);
+  T.eq(Rules.XP_GAIN, { spin: 1, win: 2, job: 5, day: 5, achievement: 10 });
+});
+T.test('mods: neutral ohne Skills/Insider', () => {
+  T.eq(Rules.mods(base(), { insider: [] }), Rules.NEUTRAL_MODS);
+  T.eq(Rules.mods(base()), Rules.NEUTRAL_MODS, 'ohne meta');
+});
+T.test('mods: Skills und Insider stapeln', () => {
+  const m = Rules.mods(base({ skills: ['pokerface', 'zockerhaende', 'verhandler'] }), { insider: ['bankinsider', 'vitosneffe'] });
+  T.eq(m.bjNatural, 1.5); T.eq(m.bjPushBonus, 0.1); T.eq(m.beerLuckMult, 0);
+  T.eq(m.slotPairMult, 1.5);
+  near(m.bankRateAdd, 0.02 - 0.02 - 0.03, 'Zinsen addieren');
+  T.eq(m.mafiaSpins, 8, 'Maximum von 7 und 8'); T.eq(m.mafiaMult, 2);
+  T.eq(m.bankLimitAdd, 2000); near(m.investRateMult, 0.9); near(m.mugChanceMult, 0.5);
+  T.eq(m.postLetters, 15); T.eq(m.horsePayout, 3);
+  const k = Rules.mods(base({ skills: ['pferdefluesterer', 'strassenkoeter', 'eisenmagen'] }), { insider: ['postmeister', 'vitosneffe'] });
+  T.eq(k.horsePayout, 3.3); near(k.mugChanceMult, 1.5 * 0.5); T.eq(k.fightAdd, 0.15); T.eq(k.walletMult, 2); T.eq(k.bankLimitAdd, -1000);
+  T.eq(k.maxBeers, 4); T.eq(k.brownieSpins, 2); T.eq(k.postTimeAdd, -1); T.eq(k.postPayAdd, 5); T.eq(k.postLetters, 20);
+  T.eq(Rules.mods(base({ skills: ['unbekannt'] })), Rules.NEUTRAL_MODS, 'unbekannte IDs ignoriert');
+});
+T.test('canPickSkill / skillPointsFree', () => {
+  T.eq(Rules.skillPointsFree(base({ xp: 0, skills: [] })), 0);
+  T.eq(Rules.skillPointsFree(base({ xp: 60, skills: [] })), 1);
+  T.eq(Rules.skillPointsFree(base({ xp: 110, skills: ['pokerface'] })), 1);
+  T.eq(Rules.canPickSkill(base({ xp: 0, skills: [] }), 'pokerface').reason, 'points');
+  T.eq(Rules.canPickSkill(base({ xp: 25, skills: [] }), 'pokerface'), { ok: true });
+  T.eq(Rules.canPickSkill(base({ xp: 25, skills: [] }), 'gibtsnicht').reason, 'unknown');
+  T.eq(Rules.canPickSkill(base({ xp: 110, skills: ['pokerface'] }), 'pokerface').reason, 'active');
+  T.eq(Rules.canPickSkill(base({ xp: 110, skills: ['zockerhaende'] }), 'brieftraeger').reason, 'conflict');
+  T.eq(Rules.canPickSkill(base({ xp: 999, skills: ['pokerface', 'kalterkopf', 'verhandler'] }), 'eisenmagen').reason, 'full');
+});
+T.test('insiderDraw: 3 ungezogene, weniger wenn Pool kleiner', () => {
+  const all = Rules.INSIDER.map((i) => i.id);
+  const d = Rules.insiderDraw({ insider: [] }, seq(0, 0, 0));
+  T.eq(d.length, 3); T.ok(new Set(d).size === 3, 'verschieden'); d.forEach((id) => T.ok(all.includes(id)));
+  const d2 = Rules.insiderDraw({ insider: all.slice(0, 5) }, seq(0, 0));
+  T.eq(d2.length, 2); d2.forEach((id) => T.ok(!all.slice(0, 5).includes(id), 'nie gewählte'));
+  T.eq(Rules.insiderDraw({ insider: all }, seq(0)), []);
+});
+T.test('effectiveInsider: Deckel 250', () => {
+  T.eq(Rules.effectiveInsider(1.2, 250), 1.2);
+  near(Rules.effectiveInsider(1.2, 500), 1.1, 'Bonusanteil halbiert');
+  T.eq(Rules.effectiveInsider(true, 250), true); T.eq(Rules.effectiveInsider(true, 251), false);
+  T.eq(Rules.effectiveInsider(false, 10), false);
+});
+T.test('deckHot / pickExcluded / pickLoser', () => {
+  const hot = [...Array(20)].map(() => ({ val: '10' })).concat([{ val: '3' }]);
+  T.eq(Rules.deckHot(hot), true);
+  const cold = [...Array(20)].map(() => ({ val: '3' })).concat([{ val: 'A' }]);
+  T.eq(Rules.deckHot(cold), false);
+  const ex = Rules.pickExcluded(Math.random);
+  T.eq(ex.length, 12); T.eq(new Set(ex).size, 12); ex.forEach((n) => T.ok(n >= 1 && n <= 36));
+  for (let i = 0; i < 50; i++) T.ok(Rules.pickLoser(2, Math.random) !== 2);
+  T.ok([1, 3, 4].includes(Rules.pickLoser(2, seq(0))));
+});
+T.test('State.fresh/freshMeta: Perk-Felder', () => {
+  const f = State.fresh(); T.eq([f.xp, f.skills, f.skillRespecs, f.insiderExcluded, f.mechRespins], [0, [], 0, [], 0]);
+  const m = State.freshMeta(); T.eq([m.insider, m.insiderClaimed], [[], {}]);
 });
 
 /* --- SELFTEST CASES END --- */
