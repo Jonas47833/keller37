@@ -558,7 +558,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .skill-card { background: var(--panel-2); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
 .skill-card.active { border-color: var(--gold); box-shadow: 0 0 14px rgba(201,162,39,.25); }
 .skill-card h4 { font-family: var(--font-display); letter-spacing: .08em; }
-.skill-card .light { color: var(--neon-green); font-family: var(--font-mono); font-size: .8rem; }
+.skill-card .skill-light { color: var(--neon-green); font-family: var(--font-mono); font-size: .8rem; }
 .skill-card .shadow { color: #ff8a80; font-family: var(--font-mono); font-size: .8rem; }
 .skill-card .reason { color: var(--dim); font-family: var(--font-mono); font-size: .75rem; margin-top: auto; }
 .skill-card .btn { margin-top: auto; align-self: flex-start; font-size: .85rem; padding: 6px 14px; }
@@ -4114,7 +4114,7 @@ const Perks = {
       const chk = Rules.canPickSkill(s, def.id);
       const card = h('div', { class: 'skill-card' + (chk.reason === 'active' ? ' active' : '') },
         h('h4', {}, `${def.icon} ${def.name}`),
-        h('div', { class: 'light' }, `＋ ${def.light}`),
+        h('div', { class: 'skill-light' }, `＋ ${def.light}`),
         h('div', { class: 'shadow' }, `－ ${def.shadow}`));
       if (chk.ok) card.append(h('button', { class: 'btn', onclick: () => this.pick(def.id) }, 'Wählen'));
       else card.append(h('div', { class: 'reason' }, this.REASON[chk.reason] || ''));
