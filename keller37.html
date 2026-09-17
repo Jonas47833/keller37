@@ -4274,6 +4274,7 @@ const StoryRules = {
     if (delta > 0) { stats.wins++; stats.streak++; stats.bestStreak = Math.max(stats.bestStreak, stats.streak); stats.biggestWin = Math.max(stats.biggestWin, delta); }
     else if (delta < 0) stats.streak = 0;
   },
+  fmtMoney(n) { return `${Math.round(n).toLocaleString('de-DE')} €`; },
 };
 </script>
 
@@ -5695,7 +5696,30 @@ const STORY_KATER = {
     'kater.sylvie': [
       { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Gast des Hauses. Ich weiß, was Sie vorhaben. Vierzigtausend für einen Keller – ich zahle mehr, wenn Sie es nicht schaffen.' },
     ],
-    'kater.k4': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.k4': [
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Letzte Runde. Zehn Tage. Sylvie hat ein Angebot gemacht, ich hab noch nicht Ja gesagt. Ich hab auch noch nicht Nein gesagt.' },
+    ],
+    'kater.kauf': (ctx) => {
+      const fmt = typeof UI !== 'undefined' ? UI.fmt : StoryRules.fmtMoney;
+      const deckel = ctx.raw.vars.deckel || 0;
+      const rabatt = ctx.raw.flags.buecher ? STORY_KATER.N.buecherRabatt : 0;
+      const preis = STORY_KATER.N.kaufpreis + deckel - rabatt;
+      const kann = ctx.raw.balance >= preis;
+      const choices = [{ label: 'Noch nicht', value: 'nein', cls: 'ghost' }];
+      if (kann) choices.unshift({ label: `Kaufen · ${fmt(preis)}`, value: 'ja', cls: 'red', effects: [{ balance: -preis }, { flag: 'gekauft' }] });
+      return [
+        { bg: 'bar', who: 'wirt', mood: 'calm', text: `Vierzigtausend. Plus dein Deckel: ${fmt(deckel)}.${rabatt ? ' Du hast die Bücher gesehen, ich seh\'s dir an – fünftausend weniger, dafür hältst du den Mund.' : ''} Macht ${fmt(preis)}.` },
+        { bg: 'bar', who: 'wirt', mood: kann ? 'happy' : 'calm', text: kann ? 'Du hast es. Ich seh\'s. Schlüssel liegt unter dem Tresen, wo er immer lag.' : `Du hast ${fmt(ctx.raw.balance)}. Der Kessel läuft noch, die Tische auch. Beeil dich.`, choices },
+      ];
+    },
+    'kater.chantal': [
+      { bg: 'strasse', who: 'chantal', mood: 'calm', text: 'Sie steht vor dem Keller. Ohne Mantel, ohne den anderen. „Ich hab gehört, du hast wieder Geld. Ich hab gehört, du kaufst was."' },
+      { bg: 'strasse', who: 'chantal', mood: 'happy', text: '„Lass mich rein. Ich kann Kasse. Ich kann alles, was mit Kasse zu tun hat, das weißt du."',
+        choices: [{ label: 'Reinlassen', value: 'rein', cls: 'pink', effects: [{ flag: 'chantalZurueck' }] }, { label: 'Rauswerfen', value: 'raus', cls: 'red', effects: [{ flag: 'chantalWeg' }] }] },
+    ],
+    'kater.chantal.sucht': [
+      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Sie hat mich an der Bar gesehen. Mit dem Doc. Sie hat nichts gesagt. Sie ist weitergegangen. Das war das Netteste, was sie je getan hat.' },
+    ],
     'kater.royal.zitter': [
       { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Der Türsteher hebt die Hand. Sie zittern. Wir haben eine Hausordnung – kommen Sie wieder, wenn die Hände still sind.' },
     ],
@@ -5748,8 +5772,13 @@ const STORY_KATER = {
     { id: 'igorPartner', when: { all: [{ day: { gte: 21 } }, { flag: 'abgestuerzt' }, { prevEnding: { story: 'schuld', id: 'sturz' } }] }, once: true, at: 'morning', scene: 'kater.igor.partner' },
     /* ---- Casino Royal ---- */
     { id: 'sylvieGast', when: { flag: 'abgestuerzt' }, once: true, at: 'royal:guest', scene: 'kater.sylvie' },
+    /* ---- Kapitel 4: Chantal ---- */
+    { id: 'chantal', when: { all: [{ day: { gte: 21 } }, { balance: { gte: 15000 } }, { notFlag: 'sucht' }, { notFlag: 'chantalZurueck' }, { notFlag: 'chantalWeg' }] }, once: true, at: 'night', scene: 'kater.chantal' },
+    { id: 'chantalSucht', when: { all: [{ day: { gte: 21 } }, { balance: { gte: 15000 } }, { flag: 'sucht' }] }, once: true, at: 'night', scene: 'kater.chantal.sucht' },
   ],
-  actions: [ /* Task 7 */ ],
+  actions: [
+    { id: 'kauf', room: 'bar', label: '🔑 Über den Keller reden', when: { all: [{ day: { gte: 20 } }, { flag: 'abgestuerzt' }, { notFlag: 'gekauft' }] }, scene: 'kater.kauf' },
+  ],
   jobScenes: {
     filialleiter: ['kater.fil.anruf', 'kater.fil.vollmacht', 'kater.fil.lob'],
     tuersteher: ['kater.tuer.chantal', 'kater.tuer.sylvie', 'kater.tuer.kevin'],
@@ -6928,6 +6957,35 @@ T.test('STORY_KATER: Sylvie nach dem ersten großen Gewinn', () => {
   const s = katerDay(15);
   T.eq(runHook(s, 'royal:guest'), ['sylvieGast']);
   T.eq(runHook(s, 'royal:guest'), [], 'einmalig');
+});
+const UI_FMT = (n) => typeof UI !== 'undefined' ? UI.fmt(n) : `${n} €`;
+T.test('STORY_KATER: Kaufgespräch ab Tag 20, Preis = 40.000 + Deckel, Bücher −5.000', () => {
+  const s = katerDay(19); s.story.vars.deckel = 1250;
+  T.eq(StoryRules.actionsFor(STORY_KATER, s, 'bar'), []);
+  s.story.day = 20;
+  T.eq(StoryRules.actionsFor(STORY_KATER, s, 'bar').map((a) => a.id), ['kauf']);
+  const ctx = (bal) => ({ raw: { balance: bal, day: 20, vars: s.story.vars, flags: s.story.flags }, balance: UI_FMT(bal) });
+  const panels = STORY_KATER.scenes['kater.kauf'](ctx(41000));
+  const last = panels[panels.length - 1];
+  T.eq(last.choices.map((c) => c.value), ['nein'], 'zu wenig Geld: nur Absage');
+  const p2 = STORY_KATER.scenes['kater.kauf'](ctx(41250));
+  const ja = p2[p2.length - 1].choices.find((c) => c.value === 'ja');
+  T.eq(ja.effects, [{ balance: -41250 }, { flag: 'gekauft' }]);
+  s.story.flags.buecher = true;
+  const p3 = STORY_KATER.scenes['kater.kauf'](ctx(36250));
+  const ja3 = p3[p3.length - 1].choices.find((c) => c.value === 'ja');
+  T.eq(ja3.effects, [{ balance: -36250 }, { flag: 'gekauft' }]);
+  s.story.flags.gekauft = true;
+  T.eq(StoryRules.actionsFor(STORY_KATER, s, 'bar'), [], 'nach dem Kauf keine Aktion mehr');
+});
+T.test('STORY_KATER: Chantal kommt ab Tag 21 mit 15.000 zurück, nicht mit Sucht', () => {
+  const s = katerDay(21); s.balance = 15000;
+  T.ok(runHook(s, 'night').includes('chantal'));
+  const t = katerDay(21, { sucht: true }); t.balance = 15000;
+  const ids = runHook(t, 'night');
+  T.ok(!ids.includes('chantal') && ids.includes('chantalSucht'));
+  const u = katerDay(21); u.balance = 14999;
+  T.ok(!runHook(u, 'night').includes('chantal'));
 });
 
 /* ---- Gear: Katalog, Boni, Kauf ---- */
