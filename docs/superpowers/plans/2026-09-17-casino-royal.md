@@ -333,10 +333,11 @@ Run: `node tests/run-selftest.mjs` → FAIL `crapsRoll is not a function`.
   crapsSettle(bets, point, dice) {
     const sum = dice[0] + dice[1];
     let delta = 0, pass = null, field = null, newPoint = point;
-    if (bets.pass > 0) {
+    /* Ein laufender Punkt wird von jedem Wurf aufgelöst – auch ohne Pass-Einsatz; ohne Einsatz entsteht aber keiner */
+    if (bets.pass > 0 || point != null) {
       const p = RoyalRules.crapsPass(point, sum);
-      pass = p.result; newPoint = p.point;
-      if (p.result === 'win') delta += bets.pass; else if (p.result === 'lose') delta -= bets.pass;
+      newPoint = p.point;
+      if (bets.pass > 0) { pass = p.result; if (p.result === 'win') delta += bets.pass; else if (p.result === 'lose') delta -= bets.pass; }
     }
     if (bets.field > 0) {
       const m = RoyalRules.crapsField(sum);
