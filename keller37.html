@@ -922,7 +922,8 @@ const Rules = {
     if (s.beerTimer > 0) l += Rules.BEER_LUCK[Math.min(s.beers, 3)];
     if (s.brownieTimer > 0) l += Rules.BROWNIE_LUCK;
     l += Rules.gear(s).luck;
-    return l;
+    if (s.story && s.story.luckMod) l += s.story.luckMod; // Story-Modifikator (z. B. Zitter-Tag), kürzt höchstens auf 0
+    return Math.max(0, l);
   },
   bankInterest(debt, s) {
     const rate = s ? Rules.gear(s).bankRate : Rules.BANK_RATE;
@@ -1080,7 +1081,7 @@ const Rules = {
     return { ok: true };
   },
   canTherapy(s) {
-    if (!s.isHeartbroken) return { ok: false, reason: 'notNeeded' };
+    if (!s.isHeartbroken && !(s.story && s.story.enabled && s.story.enabled.therapy)) return { ok: false, reason: 'notNeeded' };
     if (s.balance < Rules.PRICES.therapy) return { ok: false, reason: 'funds' };
     return { ok: true };
   },
@@ -1299,6 +1300,7 @@ const State = {
     s.balance = story.start.balance;
     s.flags.intro = true;
     s.story = StoryRules.freshStoryPart(story, this.meta.storyRuns);
+    if (s.story.prices.brownie != null) s.brownieCost = s.story.prices.brownie;
     return s;
   },
   startStory(story) {
@@ -1557,8 +1559,8 @@ const UI = {
     const room = (r) => !inStory || Story.roomUnlocked(r);
     const secs = [];
     if (room('bar')) secs.push(sec('Die Bar',
-      btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/3)` : ''}`, '50 €', 'beer', !Rules.canBeer(s).ok),
-      btn('🍪 Brownie', s.brownieCost >= 10000 ? '10.000 €' : '1.000 €', 'brownie', !Rules.canBrownie(s).ok),
+      btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/3)` : ''}`, this.fmt(StoryRules.price(s, 'beer')), 'beer', !Rules.canBeer(s).ok || StoryRules.purchaseAllowed(s, 'beer') === false),
+      btn('🍪 Brownie', this.fmt(s.brownieCost), 'brownie', !Rules.canBrownie(s).ok || StoryRules.purchaseAllowed(s, 'brownie') === false),
       h('p', { class: 'side-hint' }, 'Bier hält 2 Spins, Brownie 1 Spin.')));
     const hz = [];
     if (room('doc') || !inStory) hz.push(btn(s.kidneySold ? '🫁 Niere verkauft' : '🫁 Niere verkaufen', s.kidneySold ? '' : '+2.000 €', 'kidney', s.kidneySold));
@@ -1964,12 +1966,16 @@ setInterval(() => {
 /* ---- Die Bar (Seitenleiste) ---- */
 Actions.beer = async () => {
   const s = State.s;
-  const c = Rules.canBeer(s);
-  if (!c.ok) {
-    UI.toast({ icon: '🍺', title: c.reason === 'max' ? 'Maximal 3 Bier' : 'Bier kostet 50 €', text: c.reason === 'max' ? 'Der Wirt schüttelt den Kopf.' : 'Zu wenig Geld.', tone: 'loss' });
+  if (StoryRules.purchaseAllowed(s, 'beer') === false) {
+    UI.toast({ icon: '🍺', title: 'Kein Bier mehr', text: 'Der Wirt schenkt dir nichts mehr ein.', tone: 'loss' });
     return;
   }
-  Game.applyDelta(-Rules.PRICES.beer, { quiet: true });
+  const c = Rules.canBeer(s);
+  if (!c.ok) {
+    UI.toast({ icon: '🍺', title: c.reason === 'max' ? 'Maximal 3 Bier' : `Bier kostet ${UI.fmt(StoryRules.price(s, 'beer'))}`, text: c.reason === 'max' ? 'Der Wirt schüttelt den Kopf.' : 'Zu wenig Geld.', tone: 'loss' });
+    return;
+  }
+  Game.applyDelta(-StoryRules.price(s, 'beer'), { quiet: true });
   s.beers++;
   s.beerTimer = Rules.BEER_SPINS;
   if (State.mode === 'story' && State.s.story) State.s.story.stats.beers++;
@@ -1983,6 +1989,10 @@ Actions.beer = async () => {
 
 Actions.brownie = async () => {
   const s = State.s;
+  if (StoryRules.purchaseAllowed(s, 'brownie') === false) {
+    UI.toast({ icon: '🍪', title: 'Kein Brownie mehr', text: 'Nichts mehr da.', tone: 'loss' });
+    return;
+  }
   const c = Rules.canBrownie(s);
   if (!c.ok) {
     UI.toast({ icon: '🍪', title: c.reason === 'active' ? 'Brownie wirkt bereits' : `Kostet ${UI.fmt(s.brownieCost)}`, text: c.reason === 'active' ? 'Einer reicht. Wirklich.' : 'Zu wenig Geld.', tone: 'loss' });
@@ -1991,7 +2001,7 @@ Actions.brownie = async () => {
   const price = s.brownieCost;
   Game.applyDelta(-price, { quiet: true });
   s.brownieTimer = Rules.BROWNIE_SPINS;
-  s.brownieCost = Rules.PRICES.brownieNext;
+  s.brownieCost = s.story && s.story.prices && s.story.prices.brownie != null ? s.story.prices.brownie : Rules.PRICES.brownieNext;
   if (State.mode === 'story' && State.s.story) State.s.story.stats.brownies++;
   State.save();
   UI.renderWallet(); UI.renderSide();
@@ -2203,21 +2213,27 @@ const Life = {
     if (check.ok) el.append(h('button', { class: `btn ${cls || ''}`, onclick: action }, label));
     else el.append(h('span', { class: 'reason' + (check.reason === 'funds' ? '' : ' warn') }, this.REASON[check.reason] || check.reason));
   },
+  notToday() { return { pic: '🚫', empty: true, title: 'Nicht heute', text: 'Gibt es in dieser Geschichte nicht.' }; },
   render() {
     if (!this.root) return;
     const s = State.s;
-    this.card(qs('#lifeHouse', this.root), s.hasHouse
-      ? { pic: '🏰', title: 'Penthouse-Villa', text: 'Blick auf den Hafen. +30 €/min von Untermietern, nach denen du nicht fragst.' }
-      : { pic: '🏚️', empty: true, title: 'Kein Haus', text: 'Penthouse für 2.500 €. Nur ohne Schulden, nüchtern im Herzen und ledig.', action: () => Life.buyHouse(), label: 'Kaufen · 2.500 €', check: Rules.canBuyHouse(s) });
+    this.card(qs('#lifeHouse', this.root), StoryRules.purchaseAllowed(s, 'house') === false ? this.notToday()
+      : s.hasHouse
+        ? { pic: '🏰', title: 'Penthouse-Villa', text: 'Blick auf den Hafen. +30 €/min von Untermietern, nach denen du nicht fragst.' }
+        : { pic: '🏚️', empty: true, title: 'Kein Haus', text: 'Penthouse für 2.500 €. Nur ohne Schulden, nüchtern im Herzen und ledig.', action: () => Life.buyHouse(), label: 'Kaufen · 2.500 €', check: Rules.canBuyHouse(s) });
     const love = s.isHeartbroken
-      ? { pic: '💔', title: 'Liebeskummer', text: 'Chantal ist weg, das Haus auch. Ohne 2 Bier pro Spin klappst du zusammen (−250 €).', action: () => Life.therapy(), label: 'Therapie & Anwalt · 5.000 €', cls: 'pink', check: Rules.canTherapy(s) }
+      ? { pic: '💔', title: 'Liebeskummer', text: 'Chantal ist weg, das Haus auch. Ohne 2 Bier pro Spin klappst du zusammen (−250 €).', action: () => Life.therapy(), label: `Therapie & Anwalt · ${UI.fmt(StoryRules.price(s, 'therapy'))}`, cls: 'pink', check: Rules.canTherapy(s) }
       : s.isMarried
         ? { pic: '💍', title: 'Verheiratet', text: `Mit Chantal-Monique. Noch ${Rules.MARRIAGE_SPINS - s.marriageSpins} Spin${Rules.MARRIAGE_SPINS - s.marriageSpins === 1 ? '' : 's'} bis… irgendwas.` }
-        : { pic: '🔥', empty: !s.hasHouse, title: 'Tinder Gold', text: 'Chantal-Monique steht auf Penthouses. 50 €, und ihr heiratet sofort.', action: () => Life.tinder(), label: 'Matchen · 50 €', cls: 'pink', check: Rules.canTinder(s) };
+        : StoryRules.purchaseAllowed(s, 'therapy') === true
+          ? { pic: '🩺', title: 'Therapie', text: (Story.story && Story.story.copy && Story.story.copy.therapy) || 'Der Doc hat ein Programm. Kein Bier mehr – und kein Glück daraus.', action: () => Life.therapy(), label: `Therapie · ${UI.fmt(StoryRules.price(s, 'therapy'))}`, cls: 'pink', check: Rules.canTherapy(s) }
+          : StoryRules.purchaseAllowed(s, 'tinder') === false ? this.notToday()
+            : { pic: '🔥', empty: !s.hasHouse, title: 'Tinder Gold', text: 'Chantal-Monique steht auf Penthouses. 50 €, und ihr heiratet sofort.', action: () => Life.tinder(), label: 'Matchen · 50 €', cls: 'pink', check: Rules.canTinder(s) };
     this.card(qs('#lifeLove', this.root), love);
-    this.card(qs('#lifeDealer', this.root), s.hasDealer
-      ? { pic: '🧢', title: 'Kevin arbeitet', text: '+50 €/min. Pünktlich wie die Bahn. Also pünktlicher.' }
-      : { pic: '🧢', empty: true, title: 'Drogendealer', text: 'Kevin will 5.000 € Startkapital. Dafür +50 €/min, dauerhaft.', action: () => Life.dealer(), label: 'Anheuern · 5.000 €', cls: 'blue', check: Rules.canDealer(s) });
+    this.card(qs('#lifeDealer', this.root), StoryRules.purchaseAllowed(s, 'dealer') === false ? this.notToday()
+      : s.hasDealer
+        ? { pic: '🧢', title: 'Kevin arbeitet', text: '+50 €/min. Pünktlich wie die Bahn. Also pünktlicher.' }
+        : { pic: '🧢', empty: true, title: 'Drogendealer', text: 'Kevin will 5.000 € Startkapital. Dafür +50 €/min, dauerhaft.', action: () => Life.dealer(), label: 'Anheuern · 5.000 €', cls: 'blue', check: Rules.canDealer(s) });
   },
   async buyHouse() {
     const s = State.s;
@@ -2240,7 +2256,7 @@ const Life = {
   async therapy() {
     const s = State.s;
     if (!Rules.canTherapy(s).ok) return;
-    Game.applyDelta(-Rules.PRICES.therapy, { from: qs('#lifeLove') });
+    Game.applyDelta(-StoryRules.price(s, 'therapy'), { from: qs('#lifeLove') });
     s.isHeartbroken = false; State.save();
     this.render(); UI.renderWallet();
     await Bus.emit('therapy.done', {});
@@ -3620,6 +3636,11 @@ const StoryRules = {
       for (const k of ['jobs', 'doors', 'rooms']) for (const id of eff.unlock[k] || []) if (!st.unlocked[k].includes(id)) st.unlocked[k].push(id);
       return {};
     }
+    if ('luckMod' in eff) { st.luckMod = eff.luckMod || 0; return {}; }
+    if ('jobMod' in eff) { st.jobMod = eff.jobMod ? Object.assign({}, eff.jobMod) : {}; return {}; }
+    if ('price' in eff) { st.prices = Object.assign(st.prices || {}, eff.price); return {}; }
+    if ('enable' in eff) { st.enabled = st.enabled || {}; st.disabled = (st.disabled || []).filter((k) => !eff.enable.includes(k)); for (const k of eff.enable) st.enabled[k] = true; return {}; }
+    if ('disable' in eff) { st.disabled = Array.from(new Set([...(st.disabled || []), ...eff.disable])); st.enabled = st.enabled || {}; for (const k of eff.disable) delete st.enabled[k]; return {}; }
     const out = {};
     if ('force' in eff) out.force = eff.force;
     if ('loseDay' in eff) out.loseDay = true;
@@ -3681,6 +3702,17 @@ const StoryRules = {
   spuelerPay(hits, breaks) { return hits * 5 - breaks * 10; },
   taxiPay(passengers, tickets, tip = 0) { return passengers * (15 + tip) - tickets * 50; },
   tuerBonus(strength) { return Math.min(50, 10 * (strength || 0)); },
+  price(s, key) {
+    const p = s.story && s.story.prices && s.story.prices[key];
+    return p != null ? p : Rules.PRICES[key];
+  },
+  purchaseAllowed(s, key) {
+    if (!s.story) return null;
+    if ((s.story.disabled || []).includes(key)) return false;
+    if (s.story.enabled && s.story.enabled[key]) return true;
+    return null;
+  },
+  jobMod(s) { return (s.story && s.story.jobMod) || {}; },
   validate(story, sceneIds, jobIds, storyIds = null) {
     const errs = [];
     const scene = (id, where) => { if (id && !sceneIds.includes(id)) errs.push(`${story.id}: Szene "${id}" fehlt (${where})`); };
@@ -3698,6 +3730,7 @@ const StoryRules = {
     for (const e of story.endings || []) scene(e.scene, e.id);
     if ((story.endings || []).filter((e) => e.fallback).length !== 1) errs.push(`${story.id}: genau ein Fallback-Ende nötig`);
     if (story.requires && storyIds && !storyIds.includes(story.requires)) errs.push(`${story.id}: requires "${story.requires}" unbekannt`);
+    for (const k of Object.keys(story.prices || {})) if (!(k in Rules.PRICES)) errs.push(`${story.id}: Preis "${k}" unbekannt`);
     return errs;
   },
   freshStoryPart(story, storyRuns = {}) {
@@ -3708,6 +3741,7 @@ const StoryRules = {
       jobsDone: {}, jobToday: null, seen: [], seenJobScenes: {}, ended: null,
       stats: { earned: 0, gambled: 0, jobs: 0, wins: 0, streak: 0, bestStreak: 0, biggestWin: 0, beers: 0, brownies: 0, royalVisits: 0 },
       prev: StoryRules.prevEndings(storyRuns),
+      prices: Object.assign({}, story.prices || {}), enabled: {}, disabled: [...(story.disabled || [])], luckMod: 0, jobMod: {},
     };
   },
   recordSpin(stats, delta) {
@@ -4059,7 +4093,8 @@ const Story = {
     return (this.story.hud || []).map((hd) => {
       const v = this.s.vars[hd.var] || 0;
       const txt = hd.fmt === 'money' ? UI.fmt(v) : (hd.max ? `${v}/${hd.max}` : String(v));
-      return h('span', { class: `note ${hd.tone || 'gold'}` }, `${hd.label} ${txt}`);
+      const label = typeof hd.label === 'function' ? hd.label(State.s) : hd.label;
+      return h('span', { class: `note ${hd.tone || 'gold'}` }, `${label} ${txt}`);
     });
   },
   renderDaybar() {
@@ -4834,6 +4869,12 @@ T.test('luck: Brownie +40, mit 3 Bier 60', () => {
   T.eq(Rules.luck(base({ brownieTimer: 1 })), 40);
   T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, brownieTimer: 1 })), 60);
 });
+T.test('Rules.luck: Story-Modifikator, nie unter 0', () => {
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, story: { luckMod: -15 } })), 5);
+  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2, story: { luckMod: -15 } })), 0);
+  T.eq(Rules.luck(base({ story: { luckMod: 10 } })), 10);
+  T.eq(Rules.luck(base({ story: {} })), 0);
+});
 T.test('bankInterest: 30% gerundet', () => {
   T.eq(Rules.bankInterest(0), 0);
   T.eq(Rules.bankInterest(200), 60);
@@ -5061,6 +5102,11 @@ T.test('canTherapy / canDealer', () => {
   T.eq(Rules.canDealer(base({ balance: 5000, hasDealer: true })), { ok: false, reason: 'owned' });
   T.eq(Rules.canDealer(base({ balance: 4999 })), { ok: false, reason: 'funds' });
 });
+T.test('Rules.canTherapy: Story kann Therapie freigeben', () => {
+  T.eq(Rules.canTherapy(base({ balance: 5000, story: { enabled: { therapy: true } } })), { ok: true });
+  T.eq(Rules.canTherapy(base({ balance: 4999, story: { enabled: { therapy: true } } })), { ok: false, reason: 'funds' });
+  T.eq(Rules.canTherapy(base({ balance: 5000, story: { enabled: {} } })), { ok: false, reason: 'notNeeded' });
+});
 T.test('canBeer / canBrownie', () => {
   T.eq(Rules.canBeer(base()), { ok: true });
   T.eq(Rules.canBeer(base({ beers: 3 })), { ok: false, reason: 'max' });
@@ -5220,6 +5266,22 @@ T.test('StoryRules.applyEffect: nicht-pure Effekte werden gemeldet', () => {
   T.eq(StoryRules.applyEffect(s, { loseDay: true }, {}), { loseDay: true });
   T.eq(StoryRules.applyEffect(s, { scene: 'x.y' }, {}), { scene: 'x.y' });
 });
+T.test('StoryRules: Effekte luckMod/jobMod/price/enable/disable', () => {
+  const story = Object.assign({}, STORY_PROBE, { prices: { brownie: 300 }, disabled: ['tinder'] });
+  const s = Object.assign(base(), { story: StoryRules.freshStoryPart(story) });
+  T.eq(s.story.prices, { brownie: 300 }); T.eq(s.story.disabled, ['tinder']); T.eq(s.story.enabled, {}); T.eq(s.story.luckMod, 0); T.eq(s.story.jobMod, {});
+  StoryRules.applyEffect(s, { luckMod: -15 }, story); T.eq(s.story.luckMod, -15);
+  StoryRules.applyEffect(s, { luckMod: 0 }, story); T.eq(s.story.luckMod, 0);
+  StoryRules.applyEffect(s, { jobMod: { shiftPay: 0.5 } }, story); T.eq(StoryRules.jobMod(s), { shiftPay: 0.5 });
+  StoryRules.applyEffect(s, { jobMod: null }, story); T.eq(StoryRules.jobMod(s), {});
+  T.eq(StoryRules.jobMod(base()), {}, 'ohne Story leer');
+  StoryRules.applyEffect(s, { price: { therapy: 8000 } }, story); T.eq(s.story.prices, { brownie: 300, therapy: 8000 });
+  T.eq(StoryRules.price(s, 'therapy'), 8000); T.eq(StoryRules.price(s, 'beer'), Rules.PRICES.beer); T.eq(StoryRules.price(base(), 'brownie'), Rules.PRICES.brownie);
+  StoryRules.applyEffect(s, { enable: ['therapy'] }, story); T.eq(s.story.enabled, { therapy: true });
+  T.eq(StoryRules.purchaseAllowed(s, 'therapy'), true); T.eq(StoryRules.purchaseAllowed(s, 'tinder'), false); T.eq(StoryRules.purchaseAllowed(s, 'house'), null); T.eq(StoryRules.purchaseAllowed(base(), 'tinder'), null);
+  StoryRules.applyEffect(s, { disable: ['beer'] }, story); T.eq(StoryRules.purchaseAllowed(s, 'beer'), false);
+  StoryRules.applyEffect(s, { enable: ['beer'] }, story); T.eq(StoryRules.purchaseAllowed(s, 'beer'), true, 'enable hebt disable auf');
+});
 T.test('StoryRules.pickStory: am längsten nicht gespielt, dev nie', () => {
   const stories = [{ id: 'a' }, { id: 'b' }, { id: 'c', dev: true }];
   T.eq(StoryRules.pickStory(stories, { a: { lastPlayed: 5 }, b: { lastPlayed: 3 } }, seq(0)), 'b');
@@ -5277,6 +5339,10 @@ T.test('StoryRules.validate: unbekannter Hook', () => {
     const ok = Object.assign({}, STORY_PROBE, { id: 'y', events: [{ id: 'e', at, scene: 'probe.n1' }] });
     T.eq(StoryRules.validate(ok, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), [], at);
   }
+});
+T.test('StoryRules.validate: prices nur bekannte Schlüssel', () => {
+  const st = Object.assign({}, STORY_PROBE, { id: 'x', prices: { kaviar: 1 } });
+  T.eq(StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), ['x: Preis "kaviar" unbekannt']);
 });
 T.test('StoryRules.dueEvents: sleep-Hook', () => {
   const st = Object.assign({}, STORY_PROBE, { events: [{ id: 'z', at: 'sleep', when: { var: 'mut', lte: 0 }, scene: 'probe.n1' }] });
