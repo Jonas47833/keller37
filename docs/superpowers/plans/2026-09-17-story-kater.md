@@ -133,6 +133,7 @@ Reihenfolge der Fehlermeldungen wie im Test: Szene vor Raum (beide in der `actio
 `Story` (Block `story-engine`):
 - `ctx(extra)`: vor `return Object.assign(c, extra);` → `c.raw = { balance: s.balance, day: this.s.day, vars: Object.assign({}, this.s.vars), flags: Object.assign({}, this.s.flags) }; c.prev = this.s.prev || {};`
 - `applyEffects`: nach `const out = …` → `if (out.achievement && typeof Achievements !== 'undefined') Achievements.unlock(out.achievement);`
+- `Story.enter`, Fortsetzungspfad (der Zweig nach `State.setMode('story')` mit `if (st.phase === 'morning') await this.morning(); else await this.evening();`): vor dem abschließenden `UI.toast({ icon: '📖', … Tag ${this.s.day} … })` und vor dem `?job=`-Zweig `if (this.stale(st)) return;` einfügen – ein sofortiges Ende in einem Morgen-Event darf den Toast/`Jobs.take` nicht mehr auf `undefined` laufen lassen (Residuum der Plan-1-Review). Ebenso in `forceDuel` nach dem Duell-Await: `const st = this.s;` vorher merken und `if (this.stale(st)) return victim;` vor dem Flag-Schreiben.
 - Neu:
 
 ```js
@@ -577,6 +578,7 @@ T.test('STORY_KATER: Therapie – ab Kapitel 3 erlaubt, danach kein Bier, kein E
   runHook(s, 'buy:therapy');
   T.eq(s.story.flags.nuechtern, true);
   T.eq(StoryRules.purchaseAllowed(s, 'beer'), false); T.eq(StoryRules.purchaseAllowed(s, 'brownie'), false);
+  T.eq(StoryRules.purchaseAllowed(s, 'therapy'), false, 'Therapie ist einmalig – sperrt sich selbst');
   T.eq(runHook(s, 'sleep').filter((id) => id.startsWith('entzug')), []);
   s.story.day = 12; T.eq(runHook(s, 'morning').includes('freibier'), false);
 });
@@ -603,7 +605,7 @@ T.test('STORY_KATER: Kapitel-3-Morgen gibt Therapie frei', () => {
     { id: 'zitterEndeBrownie', when: { flag: 'zitter' }, at: 'buy:brownie', effects: [{ unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }] },
     /* ---- Therapie ---- */
     { id: 'therapieFrei', when: { all: [{ day: { gte: 11 } }, { flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }] }, once: true, at: 'morning', effects: [{ enable: ['therapy'] }] },
-    { id: 'therapie', when: { flag: 'abgestuerzt' }, at: 'buy:therapy', scene: 'kater.therapie', effects: [{ flag: 'nuechtern' }, { disable: ['beer', 'brownie'] }, { unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }, { price: { beer: 50 } }] },
+    { id: 'therapie', when: { flag: 'abgestuerzt' }, at: 'buy:therapy', scene: 'kater.therapie', effects: [{ flag: 'nuechtern' }, { disable: ['beer', 'brownie', 'therapy'] }, { unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }, { price: { beer: 50 } }] },
 ```
 
 Die Sucht-Variante von `entzug`/`entzugSucht` und `freibier` (Bedingung `notFlag: 'nuechtern'`) ist in Task 4 bereits berücksichtigt.
@@ -1012,8 +1014,29 @@ async def scenario_kater(cdp):
     zitter = await cdp.eval("State.s.story.flags.zitter", await_promise=False)
     record("kater: Zitter-Tag nach Entzugsnacht", zitter is True, "zitter=%s" % zitter)
     await cdp.screenshot("kater-zitter.png")
+    # Sofortiges Ende aus dem sleep-Hook heraus (Plan-1-Review, Critical #1): Leber 1 → Entzugsnacht −2 → „Bett" mitten in Story.night();
+    # danach „Nächste Story" → Die Schuld muss unberührt an Tag 1/morning starten (kein Tag-2-Sprung, keine fremden seen-IDs).
+    await cdp.eval("State.s.story.vars.leber = 1; State.s.story.vars.pegel = 0; State.s.story.phase = 'evening'; State.save();")
+    await cdp.eval("Story.night()", await_promise=False)
+    ended = None
+    for _ in range(80):
+        if await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+            await cdp.advance_cutscene(max_steps=3, label_hint="Nächste Story")
+        ended = await cdp.eval("(State.meta.storyRuns.kater || {}).last", await_promise=False)
+        nxt = await cdp.eval("State.s.story && State.s.story.id", await_promise=False)
+        if ended == "bett" and nxt == "schuld" and not await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+            break
+        await asyncio.sleep(0.15)
+    record("kater: Ende Bett aus der Entzugsnacht", ended == "bett", "last=%s" % ended)
+    nxt_state = await cdp.eval("State.s.story ? [State.s.story.id, State.s.story.day, State.s.story.phase, State.s.story.seen.length, Story.finishing, Story.sleeping] : null", await_promise=False)
+    record("kater: Folgestory startet sauber an Tag 1", nxt_state == ["schuld", 1, "morning", 0, False, False], "state=%s" % nxt_state)
+    # zurueck in eine frische Kater-Story fuer den Kauf-Test
+    await cdp.navigate(URL_BASE + "?fresh&story=kater&prev=doc&day=22")
+    await asyncio.sleep(0.7)
+    await cdp.inject_helpers()
+    await cdp.advance_cutscene(max_steps=10)
     # Kauf-Ende
-    await cdp.eval("State.s.story.day = 22; State.s.story.phase = 'evening'; State.s.balance = 60000; State.save(); UI.renderSide();")
+    await cdp.eval("State.s.story.phase = 'evening'; State.s.balance = 60000; State.save(); UI.renderSide();")
     await asyncio.sleep(0.3)
     has_action = await cdp.eval("!!document.querySelector('[data-story-action=\"kauf\"]')", await_promise=False)
     record("kater: Kauf-Aktion in der Seitenleiste", has_action is True, "")
