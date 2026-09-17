@@ -1029,6 +1029,12 @@ async def scenario_kater(cdp):
             break
         await asyncio.sleep(0.15)
     record("kater: Ende Wirt sofort nach Kauf", ended == "wirt", "ended=%s" % ended)
+    # Reentrancy-/Guard-Abdeckung fuer Story.checkImmediate (Plan 1, Task 6): das Ende kam aus einer
+    # Szenen-Wahl (Story.action -> playScene -> applyEffects -> checkImmediate), nicht aus Story.night().
+    finishing = await cdp.eval("Story.finishing", await_promise=False)
+    record("kater: finishing-Flag nach dem Ende zurueckgesetzt", finishing is False, "finishing=%s" % finishing)
+    phase = await cdp.eval("State.s.story && State.s.story.phase", await_promise=False)
+    record("kater: keine Phasenaenderung nach sofortigem Ende", phase == "evening", "phase=%s" % phase)
     await cdp.screenshot("kater-ende-wirt.png")
 ```
 
