@@ -4148,6 +4148,7 @@ const StoryRules = {
     if ('set' in eff) { for (const [k, v] of Object.entries(eff.set)) { if (!StoryRules.SET_KEYS.includes(k)) throw new Error(`set-Key "${k}" nicht erlaubt`); s[k] = v; } return {}; }
     if ('lock' in eff) { for (const k of ['jobs', 'doors', 'rooms']) if (eff.lock[k]) st.unlocked[k] = st.unlocked[k].filter((x) => !eff.lock[k].includes(x)); return {}; }
     if ('achievement' in eff) return { achievement: eff.achievement };
+    if ('toast' in eff) return { toast: eff.toast };
     const out = {};
     if ('force' in eff) out.force = eff.force;
     if ('loseDay' in eff) out.loseDay = true;
@@ -4197,7 +4198,7 @@ const StoryRules = {
     if (!immediateOnly && s.story.day > story.days) return story.endings.find((e) => e.fallback) || null;
     return null;
   },
-  advanceDay(s) { s.story.day++; s.story.phase = 'morning'; s.story.jobToday = null; if ((s.mugCooldown || 0) > 0) s.mugCooldown--; },
+  advanceDay(s) { s.story.day++; s.story.phase = 'morning'; s.story.jobToday = null; s.beers = 0; s.beerTimer = 0; s.brownieTimer = 0; if ((s.mugCooldown || 0) > 0) s.mugCooldown--; },
   jobAvailable(job, s) {
     const st = s.story;
     if (!st.unlocked.jobs.includes(job.id)) return { ok: false, reason: 'locked' };
@@ -4619,6 +4620,7 @@ const Story = {
     for (const eff of list || []) {
       const out = StoryRules.applyEffect(State.s, eff, this.story);
       if (out.achievement && typeof Achievements !== 'undefined') Achievements.unlock(out.achievement);
+      if (out.toast) UI.toast(out.toast);
       if (out.scene) { await this.playScene(out.scene); if (this.stale(st)) return; }
       if (out.force === 'duel') { await this.forceDuel(); if (this.stale(st)) return; }
       if (out.loseDay) this.lostDay = true;
@@ -5601,13 +5603,13 @@ const STORY_KATER = {
         ],
         doc: [
           { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Wach? Eine Niere weniger, ein Zettel weniger. Vito ist zufrieden. Die Naht hält, meistens.' },
-          { bg: 'klinik', who: 'chantal', mood: 'calm', text: 'Sie ist die ganze Nacht geblieben. Das hat noch keine. Krause war auch da – er hat einen Job für dich.' },
+          { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Sie ist die ganze Nacht geblieben. Das hat noch keine. Krause war auch da – er hat einen Job für dich.' },
         ],
       }[prev];
       return start.concat([
         { bg: 'standesamt', who: 'chantal', mood: 'happy', text: 'Ja. Natürlich ja. Ich hab die Vollmacht schon vorbereitet – für die Flitterwochen, Schatz. Man muss ja an alles denken.' },
-        { bg: 'villa', who: 'du', mood: 'happy', text: 'Villa mit Hafenblick, Mercedes vor der Tür, Filialleiter bei Krause. Dreißig Tage. Was soll schon passieren.' },
         { bg: 'standesamt', who: 'schmalz', mood: 'calm', text: 'Kraft des mir verliehenen Amtes. Gütertrennung? Nein? Wie Sie meinen. Unterschreiben Sie da, da und da.' },
+        { bg: 'villa', who: 'du', mood: 'happy', text: 'Villa mit Hafenblick, Mercedes vor der Tür, Filialleiter bei Krause. Dreißig Tage. Was soll schon passieren.' },
       ]);
     },
     'kater.absturz': [
@@ -5633,15 +5635,15 @@ const STORY_KATER = {
     'kater.doc.angebot': [
       { bg: 'bar', who: 'doc', mood: 'calm', text: 'Drei Bier für zwanzig Prozent Glück. Ein Brownie für vierzig. Rechne selbst, du warst Filialleiter.' },
       { bg: 'bar', who: 'doc', mood: 'calm', text: 'Dreihundert das Stück, für dich. Deine Leber bezahlt den Rest.',
-        choices: [{ label: 'Nein, danke', value: 'nein', cls: 'ghost', effects: [{ var: 'docNein', add: 1 }] }, { label: 'Was kostet das?', value: 'ja', cls: 'red', effects: [{ flag: 'sucht' }, { price: { brownie: 300, therapy: 8000 } }] }] },
+        choices: [{ label: 'Nein, danke', value: 'nein', cls: 'ghost', effects: [{ var: 'docNein', add: 1 }, { flag: 'docAbgelehnt' }] }, { label: 'Was kostet das?', value: 'ja', cls: 'red', effects: [{ flag: 'sucht' }, { price: { brownie: 300, therapy: 8000 } }] }] },
     ],
     'kater.doc.angebot2': [
       { bg: 'bar', who: 'doc', mood: 'calm', text: 'Deine Leber weiß, was du gestern gemacht hast. Ich auch. Der Brownie wäre schneller gewesen.',
-        choices: [{ label: 'Nein', value: 'nein', cls: 'ghost', effects: [{ var: 'docNein', add: 1 }] }, { label: 'Gib her', value: 'ja', cls: 'red', effects: [{ flag: 'sucht' }, { price: { brownie: 300, therapy: 8000 } }] }] },
+        choices: [{ label: 'Nein', value: 'nein', cls: 'ghost', effects: [{ var: 'docNein', add: 1 }, { flag: 'docAbgelehnt' }] }, { label: 'Gib her', value: 'ja', cls: 'red', effects: [{ flag: 'sucht' }, { price: { brownie: 300, therapy: 8000 } }] }] },
     ],
     'kater.doc.angebot3': [
       { bg: 'gasse', who: 'doc', mood: 'angry', text: 'Letztes Angebot. Danach frag ich nicht mehr, ich warte nur noch.',
-        choices: [{ label: 'Nein.', value: 'nein', cls: 'ghost', effects: [{ var: 'docNein', add: 1 }] }, { label: 'Okay.', value: 'ja', cls: 'red', effects: [{ flag: 'sucht' }, { price: { brownie: 300, therapy: 8000 } }] }] },
+        choices: [{ label: 'Nein.', value: 'nein', cls: 'ghost', effects: [{ var: 'docNein', add: 1 }, { flag: 'docAbgelehnt' }, { achievement: 'standhaft' }] }, { label: 'Okay.', value: 'ja', cls: 'red', effects: [{ flag: 'sucht' }, { price: { brownie: 300, therapy: 8000 } }] }] },
     ],
     'kater.therapie': (ctx) => ctx.raw.flags.sucht ? [
       { bg: 'klinik', who: 'doc', mood: 'angry', text: 'Achttausend. Du kaufst dich bei mir raus. Ich muss dich gehen lassen – das Programm ist echt, leider.' },
@@ -5677,21 +5679,23 @@ const STORY_KATER = {
     /* ---- Bierkauf ---- */
     { id: 'deckel', when: { all: [{ flag: 'abgestuerzt' }, { var: 'bierHeute', eq: 0 }] }, at: 'buy:beer', effects: [{ var: 'deckel', add: 50 }, { price: { beer: 50 } }] },
     { id: 'bier', when: { flag: 'abgestuerzt' }, at: 'buy:beer', effects: [{ var: 'bierHeute', add: 1 }, { var: 'pegel', add: 1 }, { var: 'leber', add: -1 }] },
+    { id: 'leberToastBier', when: { all: [{ flag: 'abgestuerzt' }, { var: 'leber', lte: 30 }, { var: 'leber', gt: 0 }] }, at: 'buy:beer', effects: [{ toast: { icon: '🫀', title: 'Die Leber meldet sich', text: 'Der Doc hat ein Bett frei.', tone: 'loss' } }] },
     { id: 'zitterEnde', when: { flag: 'zitter' }, at: 'buy:beer', effects: [{ unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }] },
     /* ---- Niere ---- */
     { id: 'niere', when: { flag: 'abgestuerzt' }, at: 'buy:kidney', effects: [{ var: 'leber', add: -20 }] },
     /* ---- Nacht: Entzug, Pegel-Reset, Warnung ---- */
     { id: 'entzugSzene', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }, { notFlag: 'entzugGesehen' }, { var: 'pegel', lt: 3 }, { not: { all: [{ flag: 'sucht' }, { var: 'brownieHeute', gte: 1 }] } }] }, once: true, at: 'sleep', scene: 'kater.entzug', effects: [{ flag: 'entzugGesehen' }] },
-    { id: 'entzug', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }, { notFlag: 'sucht' }, { var: 'pegel', lt: 3 }] }, at: 'sleep', effects: [{ var: 'leber', add: -2 }, { flag: 'zitter' }, { luckMod: -15 }, { jobMod: { spuelerZone: 0.7, taxiBrakeDelay: 150, postTime: 0.75, shiftPay: 0.5 } }] },
-    { id: 'entzugSucht', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }, { flag: 'sucht' }, { var: 'pegel', lt: 3 }, { var: 'brownieHeute', lt: 1 }] }, at: 'sleep', effects: [{ var: 'leber', add: -4 }, { flag: 'zitter' }, { luckMod: -15 }, { jobMod: { spuelerZone: 0.7, taxiBrakeDelay: 150, postTime: 0.75, shiftPay: 0.5 } }] },
+    { id: 'entzug', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }, { notFlag: 'sucht' }, { var: 'pegel', lt: 3 }] }, at: 'sleep', effects: [{ var: 'leber', add: -2 }, { flag: 'zitter' }, { luckMod: -15 }, { jobMod: { spuelerZone: 0.7, taxiBrakeDelay: 150, postTime: 0.75, shiftPay: 0.5 } }, { toast: { icon: '🍺', title: 'Entzugsnacht', text: 'Die Hände zittern. Bis zum ersten Bier.', tone: 'loss' } }] },
+    { id: 'entzugSucht', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }, { flag: 'sucht' }, { var: 'pegel', lt: 3 }, { var: 'brownieHeute', lt: 1 }] }, at: 'sleep', effects: [{ var: 'leber', add: -4 }, { flag: 'zitter' }, { luckMod: -15 }, { jobMod: { spuelerZone: 0.7, taxiBrakeDelay: 150, postTime: 0.75, shiftPay: 0.5 } }, { toast: { icon: '🍺', title: 'Entzugsnacht', text: 'Die Hände zittern. Bis zum ersten Bier.', tone: 'loss' } }] },
     { id: 'pegelReset', when: { flag: 'abgestuerzt' }, at: 'sleep', effects: [{ var: 'pegel', set: 0 }, { var: 'bierHeute', set: 0 }] },
     { id: 'leberWarnung', when: { all: [{ flag: 'abgestuerzt' }, { var: 'leber', lte: 30 }, { var: 'leber', gt: 0 }] }, once: true, at: 'night', scene: 'kater.leber' },
     /* ---- Drogen ---- */
     { id: 'docAngebot', when: { all: [{ day: { eq: 6 } }, { notFlag: 'sucht' }] }, once: true, at: 'night', scene: 'kater.doc.angebot' },
     { id: 'docAngebot2', when: { all: [{ day: { eq: 12 } }, { notFlag: 'sucht' }, { notFlag: 'nuechtern' }] }, once: true, at: 'night', scene: 'kater.doc.angebot2' },
     { id: 'docAngebot3', when: { all: [{ day: { eq: 18 } }, { notFlag: 'sucht' }, { notFlag: 'nuechtern' }] }, once: true, at: 'night', scene: 'kater.doc.angebot3' },
-    { id: 'standhaft', when: { all: [{ var: 'docNein', gte: 3 }, { notFlag: 'sucht' }] }, once: true, at: 'night', effects: [{ flag: 'docAbgelehnt' }, { achievement: 'standhaft' }] },
     { id: 'brownie', when: { all: [{ flag: 'abgestuerzt' }] }, at: 'buy:brownie', effects: [{ var: 'brownieHeute', add: 1 }, { var: 'leber', add: -4 }] },
+    { id: 'brownieDeckt', when: { all: [{ flag: 'abgestuerzt' }, { flag: 'sucht' }] }, at: 'buy:brownie', effects: [{ var: 'pegel', set: 3 }] },
+    { id: 'leberToastBrownie', when: { all: [{ flag: 'abgestuerzt' }, { var: 'leber', lte: 30 }, { var: 'leber', gt: 0 }] }, at: 'buy:brownie', effects: [{ toast: { icon: '🫀', title: 'Die Leber meldet sich', text: 'Der Doc hat ein Bett frei.', tone: 'loss' } }] },
     { id: 'zitterEndeBrownie', when: { flag: 'zitter' }, at: 'buy:brownie', effects: [{ unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }] },
     /* ---- Therapie ---- */
     { id: 'therapieFrei', when: { all: [{ day: { gte: 11 } }, { flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }] }, once: true, at: 'morning', effects: [{ enable: ['therapy'] }] },
@@ -6363,6 +6367,7 @@ T.test('StoryRules.applyEffect: set (Whitelist), lock, achievement', () => {
   StoryRules.applyEffect(s, { lock: { jobs: ['post'], rooms: ['royal'] } }, STORY_PROBE);
   T.eq(s.story.unlocked, { jobs: ['spueler'], doors: ['slots'], rooms: ['bar'] });
   T.eq(StoryRules.applyEffect(s, { achievement: 'x' }, STORY_PROBE), { achievement: 'x' }, 'wird an die Engine gemeldet');
+  T.eq(StoryRules.applyEffect(s, { toast: { title: 'x' } }, STORY_PROBE), { toast: { title: 'x' } });
 });
 T.test('StoryRules.actionsFor: Aktionen je Raum mit Bedingung', () => {
   const st = Object.assign({}, STORY_PROBE, { actions: [
@@ -6514,6 +6519,11 @@ T.test('StoryRules.advanceDay', () => {
   const s = storyBase({ day: 3, phase: 'evening', jobToday: 'spueler' });
   StoryRules.advanceDay(s);
   T.eq([s.story.day, s.story.phase, s.story.jobToday], [4, 'morning', null]);
+});
+T.test('StoryRules.advanceDay: ausgenüchtert', () => {
+  const s = Object.assign(base({ beers: 3, beerTimer: 2, brownieTimer: 1 }), { story: StoryRules.freshStoryPart(probeStory()) });
+  StoryRules.advanceDay(s);
+  T.eq([s.beers, s.beerTimer, s.brownieTimer, s.story.day], [0, 0, 0, 2]);
 });
 T.test('StoryRules.jobAvailable', () => {
   const s = storyBase({ jobToday: null });
@@ -6750,7 +6760,7 @@ T.test('STORY_KATER: Intro-Szene je vorigem Ende', () => {
     const s = katerState({}, { schuld: prev });
     const panels = STORY_KATER.scenes['kater.intro']({ raw: { flags: {}, vars: {} }, prev: s.story.prev });
     T.ok(panels.length >= 4, `${prev}: Variante + Hochzeit`);
-    T.eq(panels[panels.length - 1].bg, 'standesamt', `${prev}: endet im Standesamt`);
+    T.eq(panels[panels.length - 1].bg, 'villa', `${prev}: endet in der Villa`);
   }
 });
 const katerDay = (day, extra = {}) => { const s = katerState({ balance: 200, car: null, hasHouse: false }); s.story.day = day; s.story.flags.abgestuerzt = true; s.story.seen.push('einrichten', 'absturz'); s.story.unlocked.rooms = ['bar', 'doc', 'bank', 'invest', 'life', 'stadt']; Object.assign(s.story.flags, extra); return s; };
@@ -6796,13 +6806,18 @@ T.test('STORY_KATER: Ende „Bett" ist sofort, wenn Leber 0', () => {
 });
 T.test('STORY_KATER: Doc-Angebot Tag 6/12/18, dreimal Nein → Standhaft', () => {
   const s = katerDay(6);
+  const nein = (id) => { const panels = STORY_KATER.scenes[id]; return panels[panels.length - 1].choices.find((c) => c.value === 'nein'); };
   T.eq(runHook(s, 'night'), ['docAngebot']);
-  StoryRules.applyEffect(s, { var: 'docNein', add: 1 }, STORY_KATER); s.story.seen.push('docAngebot');
-  s.story.day = 12; T.eq(runHook(s, 'night'), ['docAngebot2']); StoryRules.applyEffect(s, { var: 'docNein', add: 1 }, STORY_KATER);
+  for (const eff of nein('kater.doc.angebot').effects) StoryRules.applyEffect(s, eff, STORY_KATER);
+  s.story.seen.push('docAngebot');
+  s.story.day = 12; T.eq(runHook(s, 'night'), ['docAngebot2']);
+  for (const eff of nein('kater.doc.angebot2').effects) StoryRules.applyEffect(s, eff, STORY_KATER);
   s.story.day = 18; T.eq(runHook(s, 'night'), ['docAngebot3']);
-  StoryRules.applyEffect(s, { var: 'docNein', add: 1 }, STORY_KATER);
-  T.eq(runHook(s, 'night'), ['standhaft'], 'dritter Nein-Abend: Trophäe');
+  let last;
+  for (const eff of nein('kater.doc.angebot3').effects) last = StoryRules.applyEffect(s, eff, STORY_KATER);
+  T.eq(s.story.vars.docNein, 3);
   T.eq(s.story.flags.docAbgelehnt, true);
+  T.eq(last, { achievement: 'standhaft' }, 'dritter Nein-Abend: Trophäe');
 });
 T.test('STORY_KATER: Sucht – Brownie 300 €, Therapie 8.000 €, Brownie deckt den Pegel, Entzug −4', () => {
   const s = katerDay(6);
@@ -6814,6 +6829,7 @@ T.test('STORY_KATER: Sucht – Brownie 300 €, Therapie 8.000 €, Brownie deck
   s.story.day = 7; runHook(s, 'morning');
   runHook(s, 'buy:brownie');
   T.eq([s.story.vars.brownieHeute, s.story.vars.leber], [1, 96]);
+  T.eq(s.story.vars.pegel, 3, 'Brownie deckt den Pegel');
   T.ok(!runHook(s, 'sleep').includes('entzugSucht'), 'Brownie deckt den Bedarf');
   s.story.day = 8; runHook(s, 'morning');
   const ids = runHook(s, 'sleep');
