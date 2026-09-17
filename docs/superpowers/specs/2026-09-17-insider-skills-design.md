@@ -54,14 +54,16 @@ Jeder Eintrag: `{ id, name, icon, light, shadow, mods }`. `mods` sind Schlüssel
 |---|---|---|---|---|
 | `pokerface` | Pokerface | Blackjack: natürlicher Blackjack zahlt 3:2, Push bringt +10 % | Bier gibt kein Glück | `bjNatural: 1.5, bjPushBonus: 0.1, beerLuckMult: 0` |
 | `kalterkopf` | Kalter Kopf | Roulette-Zahlen zahlen 36:1 | Brownie wirkt nur halb | `rouletteNumberPayout: 36, brownieLuckMult: 0.5` |
-| `zockerhaende` | Zockerhände | Slots: Paar zahlt 1,5× | Bank-Zinsen +2 % | `slotPairMult: 1.5, bankRateAdd: 0.02` |
-| `pferdefluesterer` | Pferdeflüsterer | Pferde zahlen 3,3:1 | Überfälle 50 % häufiger | `horsePayout: 3.3, mugChanceMult: 1.5` |
+| `zockerhaende` | Zockerhände | Slots: Paar zahlt 1,3× | Bank-Zinsen +2 % | `slotPairMult: 1.3, bankRateAdd: 0.02` |
+| `pferdefluesterer` | Pferdeflüsterer | Pferde zahlen 3,3:1 (bis 250 €) | Überfälle 50 % häufiger | `horsePayout: 3.3, mugChanceMult: 1.5` |
 | `eisenmagen` | Eisenmagen | 4 Bier möglich (+25 %), Brownie hält 2 Spins | Postbote: −1 s pro Brief | `maxBeers: 4, brownieSpins: 2, postTimeAdd: -1` |
 | `verhandler` | Verhandler | Bank-Zinsen −2 %, Vito-Frist 7 Spins | Anlagen zahlen 10 % weniger | `bankRateAdd: -0.02, mafiaSpins: 7, investRateMult: 0.9` |
 | `strassenkoeter` | Straßenköter | Kampfchance +15 %, Brieftasche ×2 | Bank-Limit −1.000 € | `fightAdd: 0.15, walletMult: 2, bankLimitAdd: -1000` |
 | `brieftraeger` | Briefträgerherz | Postbote +1 s und +5 € pro Brief | Slots: Paare zahlen nichts | `postTimeAdd: 1, postPayAdd: 5, slotPairMult: 0` |
 
 Konflikte: `zockerhaende` und `brieftraeger` schließen sich aus (`excludes`), `Rules.canPickSkill` meldet `reason: 'conflict'`. Mehrere `bankRateAdd`/`postTimeAdd` addieren sich; Multiplikatoren multiplizieren sich.
+
+Balance: `slotPairMult: 1.3` bleibt bei jedem Einsatz unter 1,0 Erwartungswert (Kombinatorik über alle 216 Walzen-Ausgänge: `(95 + 90 × 1,3) / 216 ≈ 0,98`); mit dem alten Wert 1,5 wäre Slots bei jedem Einsatz +EV gewesen. Der Pferdeflüsterer-Bonus (`horsePayout: 3.3`) ist wie ein Insider-Deckel gebaut (`Rules.effectiveBonus(value, neutral, bet)`, analog zu `effectiveInsider`, aber mit Neutralwert ≠ 1): er wirkt voll bis `INSIDER_CAP` = 250 € Einsatz, darüber verliert nur der Bonus-Anteil über dem Neutralwert `horsePayout: 3` anteilig (Bonus wirkt voll bis 250 € Einsatz) – ohne Deckel wäre 3,3:1 bei jedem Einsatz +EV gewesen.
 
 ### 2.5 Insider-Katalog `Rules.INSIDER`
 

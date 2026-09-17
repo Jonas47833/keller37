@@ -426,7 +426,7 @@ body.cs-open .toast { max-width: 300px; }
 }
 /* -- Reduced Motion -- */
 @media (prefers-reduced-motion: reduce) {
-  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running, .plate.hit, .plate.broken, .taxi-road.running, .brake-flash.on, .ticket-pop { animation: none !important; }
+  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running, .plate.hit, .plate.broken, .taxi-road.running, .brake-flash.on, .ticket-pop, .lv-badge.point { animation: none !important; }
   .strip.spinning { animation: none !important; filter: none; }
   .stage, .stage.leaving, .stage.entering { transition: none; animation: none; }
   #wheelCanvas { transition-duration: .3s; }
@@ -763,7 +763,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
         <div class="hand-label">Dealer <span class="hand-val" id="bjDealerVal">–</span> <span class="insider-hint hidden" id="bjDeckHeat"></span></div>
         <div class="cards" id="dealerCards"></div>
       </div>
-      <div class="bj-arc">Black Jack zahlt 1:1 · Dealer zieht bis 17</div>
+      <div class="bj-arc" id="bjArc">Blackjack zahlt 1:1 · Dealer zieht bis 17</div>
       <div class="bj-hand player">
         <div class="cards" id="playerCards"></div>
         <div class="hand-label">Du <span class="hand-val" id="bjPlayerVal">–</span></div>
@@ -999,7 +999,7 @@ const Rules = {
 
   luck(s, mods = Rules.NEUTRAL_MODS) {
     let l = 0;
-    if (s.beerTimer > 0) l += Rules.BEER_LUCK[Math.min(s.beers, 4)] * mods.beerLuckMult;
+    if (s.beerTimer > 0) l += Rules.BEER_LUCK[Math.min(s.beers, Rules.BEER_LUCK.length - 1)] * mods.beerLuckMult;
     if (s.brownieTimer > 0) l += Rules.BROWNIE_LUCK * mods.brownieLuckMult;
     l += Rules.gear(s).luck;
     return l;
@@ -1130,6 +1130,12 @@ const Rules = {
     return step * 1.5 * handicap;
   },
   horseDelta(won, bet, mods = Rules.NEUTRAL_MODS) { return won ? Math.round(bet * mods.horsePayout) : -bet; },
+  /* Zieleinlauf: unter allen Pferden, die das Ziel erreicht haben, gewinnt das mit der größten Position (nicht der niedrigste Index) */
+  raceWinner(pos, goal) {
+    let winner = -1;
+    for (let i = 0; i < pos.length; i++) if (pos[i] >= goal && (winner === -1 || pos[i] > pos[winner])) winner = i;
+    return winner;
+  },
 
   /* ---- Russisches Roulette ---- */
   rrCylinder(rng) {
@@ -1352,12 +1358,12 @@ Object.assign(Rules, {
   INSIDER_CAP: 250,
   HORSE_LAME_STEP: 0.85,
   NEUTRAL_MODS: {
-    beerLuckMult: 1, brownieLuckMult: 1, maxBeers: 3, brownieSpins: 1,
+    beerLuckMult: 1, brownieLuckMult: 1, maxBeers: Rules.MAX_BEERS, brownieSpins: Rules.BROWNIE_SPINS,
     bjNatural: 1, bjPushBonus: 0, bjHotDeck: 1,
     rouletteNumberPayout: 35, rouletteExclude: 0,
     slotPairMult: 1.2, slotHoldEvery: 0,
     horsePayout: 3, horseLoserMarked: false,
-    bankRateAdd: 0, bankLimitAdd: 0, mafiaSpins: 5, mafiaMult: 3, investRateMult: 1,
+    bankRateAdd: 0, bankLimitAdd: 0, mafiaSpins: Rules.MAFIA_SPINS, mafiaMult: 3, investRateMult: 1,
     mugChanceMult: 1, fightAdd: 0, walletMult: 1,
     postTimeAdd: 0, postPayAdd: 0, postLetters: 15,
   },
@@ -1375,8 +1381,8 @@ Object.assign(Rules, {
   SKILLS: [
     { id: 'pokerface', name: 'Pokerface', icon: '🃏', light: 'Blackjack: natürlicher Blackjack zahlt 3:2, Push bringt +10 %', shadow: 'Bier gibt kein Glück', mods: { bjNatural: 1.5, bjPushBonus: 0.1, beerLuckMult: 0 } },
     { id: 'kalterkopf', name: 'Kalter Kopf', icon: '🧊', light: 'Roulette-Zahlen zahlen 36:1', shadow: 'Brownie wirkt nur halb', mods: { rouletteNumberPayout: 36, brownieLuckMult: 0.5 } },
-    { id: 'zockerhaende', name: 'Zockerhände', icon: '🎰', light: 'Slots: Paar zahlt 1,5×', shadow: 'Bank-Zinsen +2 %', mods: { slotPairMult: 1.5, bankRateAdd: 0.02 }, excludes: ['brieftraeger'] },
-    { id: 'pferdefluesterer', name: 'Pferdeflüsterer', icon: '🐎', light: 'Pferde zahlen 3,3:1', shadow: 'Überfälle 50 % häufiger', mods: { horsePayout: 3.3, mugChanceMult: 1.5 } },
+    { id: 'zockerhaende', name: 'Zockerhände', icon: '🎰', light: 'Slots: Paar zahlt 1,3×', shadow: 'Bank-Zinsen +2 %', mods: { slotPairMult: 1.3, bankRateAdd: 0.02 }, excludes: ['brieftraeger'] },
+    { id: 'pferdefluesterer', name: 'Pferdeflüsterer', icon: '🐎', light: 'Pferde zahlen 3,3:1 (bis 250 €)', shadow: 'Überfälle 50 % häufiger', mods: { horsePayout: 3.3, mugChanceMult: 1.5 } },
     { id: 'eisenmagen', name: 'Eisenmagen', icon: '🍺', light: '4 Bier möglich (+25 %), Brownie hält 2 Spins', shadow: 'Postbote: −1 s pro Brief', mods: { maxBeers: 4, brownieSpins: 2, postTimeAdd: -1 } },
     { id: 'verhandler', name: 'Verhandler', icon: '🤝', light: 'Bank-Zinsen −2 %, Vito-Frist 7 Spins', shadow: 'Anlagen zahlen 10 % weniger', mods: { bankRateAdd: -0.02, mafiaSpins: 7, investRateMult: 0.9 } },
     { id: 'strassenkoeter', name: 'Straßenköter', icon: '🐕', light: 'Kampfchance +15 %, Brieftasche ×2', shadow: 'Bank-Limit −1.000 €', mods: { fightAdd: 0.15, walletMult: 2, bankLimitAdd: -1000 } },
@@ -1436,6 +1442,11 @@ Object.assign(Rules, {
     if (typeof value === 'boolean') return value && bet <= Rules.INSIDER_CAP;
     if (!bet || bet <= Rules.INSIDER_CAP) return value;
     return 1 + (value - 1) * Rules.INSIDER_CAP / bet;
+  },
+  /* Wie effectiveInsider, aber für Boni, deren Neutralwert nicht 1 ist (z. B. horsePayout, Neutral 3):
+     wirkt voll bis INSIDER_CAP, darüber verliert nur der Bonus-Anteil über dem Neutralwert anteilig. */
+  effectiveBonus(value, neutral, bet) {
+    return neutral + (value - neutral) * Math.min(1, Rules.INSIDER_CAP / Math.max(bet, 1));
   },
   deckHot(deck) {
     if (!deck.length) return false;
@@ -1821,7 +1832,7 @@ const UI = {
     if (room('bar')) secs.push(sec('Die Bar',
       btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/${mods.maxBeers})` : ''}`, '50 €', 'beer', !Rules.canBeer(s, mods).ok),
       btn('🍪 Brownie', s.brownieCost >= 10000 ? '10.000 €' : '1.000 €', 'brownie', !Rules.canBrownie(s).ok),
-      h('p', { class: 'side-hint' }, 'Bier hält 2 Spins, Brownie 1 Spin. Glück wirkt voll bis 100 € Einsatz, nie auf Zahlen.')));
+      h('p', { class: 'side-hint' }, `Bier hält 2 Spins, Brownie ${mods.brownieSpins} Spin${mods.brownieSpins === 1 ? '' : 's'}. Glück wirkt voll bis 100 € Einsatz, nie auf Zahlen.`)));
     const hz = [];
     if (room('doc') || !inStory) hz.push(btn(s.kidneySold ? '🫁 Niere verkauft' : '🫁 Niere verkaufen', s.kidneySold ? '' : '+2.000 €', 'kidney', s.kidneySold));
     if (room('bank') || room('mafia')) hz.push(btn('🏦 Kredite', s.bankDebt + s.mafiaDebt > 0 ? `−${this.fmt(s.bankDebt + s.mafiaDebt)}` : '', 'finance'));
@@ -1886,6 +1897,11 @@ const UI = {
 UI.register('hub', {
   template: 'tpl-hub',
   mount(root) {
+    const mods = Perks.mods();
+    const rTag = qs('[data-screen="roulette"] .chalk-tag', root);
+    if (rTag) rTag.textContent = `Plein ${mods.rouletteNumberPayout}:1`;
+    const hTag = qs('[data-screen="horses"] .chalk-tag', root);
+    if (hTag) hTag.textContent = `Quote ${(1 + mods.horsePayout).toFixed(1)}`;
     qsa('.door', root).forEach((d) => {
       d.addEventListener('click', () => { SFX.play('click'); UI.show(d.dataset.screen); });
       d.addEventListener('mouseenter', () => SFX.play('neonBuzz'));
@@ -2252,9 +2268,10 @@ Actions.brownie = async () => {
     UI.toast({ icon: '🍪', title: c.reason === 'active' ? 'Brownie wirkt bereits' : `Kostet ${UI.fmt(s.brownieCost)}`, text: c.reason === 'active' ? 'Einer reicht. Wirklich.' : 'Zu wenig Geld.', tone: 'loss' });
     return;
   }
+  const mods = Perks.mods();
   const price = s.brownieCost;
   Game.applyDelta(-price, { quiet: true });
-  s.brownieTimer = Perks.mods().brownieSpins;
+  s.brownieTimer = mods.brownieSpins;
   s.brownieCost = Rules.PRICES.brownieNext;
   State.save();
   UI.renderWallet(); UI.renderSide();
@@ -2262,7 +2279,8 @@ Actions.brownie = async () => {
     s.flags.brownie = true; State.save();
     await Cutscene.play('brownie.first', { price: UI.fmt(price) });
   } else {
-    UI.toast({ icon: '🍪', title: 'Brownie', text: '+40 % Glück für 1 Spin. Frag nicht.', tone: 'gold' });
+    const pct = Rules.BROWNIE_LUCK * mods.brownieLuckMult;
+    UI.toast({ icon: '🍪', title: 'Brownie', text: `+${pct} % Glück für ${mods.brownieSpins} Spin${mods.brownieSpins === 1 ? '' : 's'}. Frag nicht.`, tone: 'gold' });
   }
   await Bus.emit('brownie', {});
 };
@@ -2353,13 +2371,14 @@ const Finance = {
   async loanMafia(amt) {
     const s = State.s;
     if (s.mafiaDebt > 0) { UI.toast({ icon: '🕶️', title: 'Erst zahlen', text: 'Vito gibt keinen zweiten Kredit.', tone: 'loss' }); return; }
+    const mods = Perks.mods();
     s.mafiaDebt = amt;
-    s.mafiaSpins = Rules.mafiaSpins(Perks.mods());
+    s.mafiaSpins = Rules.mafiaSpins(mods);
     Game.applyDelta(amt, { quiet: true });
     SFX.play('cash');
     this.render();
     if (!s.flags.mafiaLoan) { s.flags.mafiaLoan = true; State.save(); await Cutscene.play('mafia.loan', {}); }
-    else UI.toast({ icon: '🕶️', title: `+${UI.fmt(amt)} von Vito`, text: 'Fünf Spins. Er zählt mit.', tone: 'loss' });
+    else UI.toast({ icon: '🕶️', title: `+${UI.fmt(amt)} von Vito`, text: `${mods.mafiaSpins} Spin${mods.mafiaSpins === 1 ? '' : 's'}. Er zählt mit.`, tone: 'loss' });
     this.render();
   },
   async repayMafia() {
@@ -2756,7 +2775,6 @@ const Slots = {
   gen: 0,
   lastRes: null,
   lastBet: 0,
-  holdIndex: -1,
   alive(gen) { return !!this.root && this.gen === gen; },
   updateInsiderHint(bet) {
     if (!this.root) return;
@@ -2796,7 +2814,6 @@ const Slots = {
     const gen = this.gen;
     this.spinning = true;
     this.lastRes = null;
-    this.holdIndex = -1;
     try {
       qs('#btnSpin', this.root).disabled = true;
       qsa('.hold-btn', this.root).forEach((b) => b.classList.add('hidden'));
@@ -2897,7 +2914,6 @@ UI.register('slots', {
     Slots.gen++;
     Slots.root = root;
     Slots.lastRes = null;
-    Slots.holdIndex = -1;
     Slots.buildStrips();
     ['🍒', '7️⃣', '💎'].forEach((s, i) => Slots.setReel(i + 1, s, false));
     const mods = Perks.mods();
@@ -2907,13 +2923,12 @@ UI.register('slots', {
     qs('#lever', root).addEventListener('click', () => Slots.spin());
     qsa('.hold-btn', root).forEach((b) => b.addEventListener('click', () => {
       const k = parseInt(b.dataset.reel, 10);
-      Slots.holdIndex = k;
       Slots.respin(k);
     }));
     Slots.updateInsiderHint(Game.readBet('slotBet'));
     document.addEventListener('keydown', Slots.onKey);
   },
-  unmount() { Slots.gen++; document.removeEventListener('keydown', Slots.onKey); SFX.stop('reelSpin'); Slots.root = null; Slots.spinning = false; Slots.lastRes = null; Slots.holdIndex = -1; },
+  unmount() { Slots.gen++; document.removeEventListener('keydown', Slots.onKey); SFX.stop('reelSpin'); Slots.root = null; Slots.spinning = false; Slots.lastRes = null; },
 });
 </script>
 
@@ -3063,6 +3078,8 @@ UI.register('blackjack', {
   mount(root) {
     Blackjack.gen++;
     Blackjack.root = root;
+    const mods = Perks.mods();
+    qs('#bjArc', root).textContent = `${mods.bjNatural === 1.5 ? 'Blackjack zahlt 3:2' : 'Blackjack zahlt 1:1'} · Dealer zieht bis 17`;
     Game.bindBet(root, 'bjBet');
     qs('#btnDeal', root).addEventListener('click', () => Blackjack.start());
     qs('#btnHit', root).addEventListener('click', () => Blackjack.hit());
@@ -3309,6 +3326,7 @@ UI.register('roulette', {
   mount(root) {
     Roulette.gen++;
     Roulette.root = root;
+    Perks.refreshExcluded(); // Selbstheilung: ?screen=roulette oder „weiterspielen" landen sonst ohne die 12 Zahlen
     Roulette.buildTable();
     Roulette.drawWheel();
     qs('#wheelCanvas', root).style.transform = `rotate(${Roulette.wheelDeg}deg)`;
@@ -3409,22 +3427,23 @@ const Horses = {
         this.resolveRace = resolve;
         this.loop = setInterval(() => {
           if (!this.alive(gen)) { clearInterval(this.loop); this.resolveRace = null; resolve(null); return; }
-          let win = null;
           Rules.HORSES.forEach((hrs, i) => {
             pos[i] += Rules.horseStep(hrs.id === selected, luck, Math.random, hrs.id === marked ? Rules.HORSE_LAME_STEP : 1);
             runners[i].style.transform = `translateX(${pos[i]}px)`;
             if (tick % 4 === i) this.dust(runners[i], pos[i]);
-            if (pos[i] >= goal && !win) win = hrs;
           });
           tick++;
-          if (win) { clearInterval(this.loop); this.resolveRace = null; resolve(win); }
+          const winIdx = Rules.raceWinner(pos, goal);
+          if (winIdx >= 0) { clearInterval(this.loop); this.resolveRace = null; resolve(Rules.HORSES[winIdx]); }
         }, 30);
       });
       clearInterval(this.commentTimer);
       SFX.stop('gallop');
       if (!winner) { Game.forfeit(); return; } // Rennen abgebrochen (Screen verlassen) – Einsatz verfällt
       const won = winner.id === selected;
-      const delta = Rules.horseDelta(won, bet, mods);
+      /* Der 3,3:1-Bonus ist wie ein Insider-Deckel: er wirkt voll bis INSIDER_CAP, darüber anteilig weniger */
+      const payoutMods = Object.assign({}, mods, { horsePayout: Rules.effectiveBonus(mods.horsePayout, Rules.NEUTRAL_MODS.horsePayout, bet) });
+      const delta = Rules.horseDelta(won, bet, payoutMods);
       if (this.alive(gen)) {
         const flash = qs('#photoFlash', this.root);
         flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on');
@@ -4588,10 +4607,14 @@ const Story = {
     const panels = (typeof endDef === 'function' ? endDef(this.ctx({ stats })) : (endDef || [])).map((p) => Object.assign({}, p));
     const last = panels[panels.length - 1];
     last.fx = 'stats';
-    last.choices = [{ label: 'Nächste Story', value: 'next', cls: 'red' }, { label: 'Zum Titel', value: 'title', cls: 'ghost' }];
     Cutscene.define('story.ending.tmp', panels);
-    const choice = await Cutscene.play('story.ending.tmp', this.ctx({ stats }));
+    await Cutscene.play('story.ending.tmp', this.ctx({ stats }));
     if (typeof Perks !== 'undefined') await Perks.offerInsider(this.story.id);
+    Cutscene.define('story.ending.choice', [
+      { bg: last.bg || 'hafen', who: 'du', text: 'Und jetzt?',
+        choices: [{ label: 'Nächste Story', value: 'next', cls: 'red' }, { label: 'Zum Titel', value: 'title', cls: 'ghost' }] },
+    ]);
+    const choice = await Cutscene.play('story.ending.choice', this.ctx({ stats }));
     await Bus.emit('story:ended', { id: this.story.id, ending: end.id });
     if (choice === 'next') return this.enter('newstory');
     const c = await Title.show();
@@ -5551,6 +5574,11 @@ T.test('horseStep: (rng*3+1)*1.5, Glück nur für gewähltes Pferd', () => {
   T.eq(Rules.horseStep(false, 0, seq(1)), 6);
 });
 T.test('horseDelta', () => { T.eq(Rules.horseDelta(true, 10), 30); T.eq(Rules.horseDelta(false, 10), -10); });
+T.test('raceWinner: größte Position gewinnt, nicht der niedrigste Index', () => {
+  T.eq(Rules.raceWinner([10, 12, 11, 9], 10), 1);
+  T.eq(Rules.raceWinner([5, 5, 5, 5], 10), -1);
+  T.eq(Rules.raceWinner([10, 10, 10, 10], 10), 0);
+});
 
 /* ---- Rules: Russisches Roulette ---- */
 T.test('rrCylinder: 6 Kammern, eine Kugel', () => {
@@ -6242,7 +6270,7 @@ T.test('mods: neutral ohne Skills/Insider', () => {
 T.test('mods: Skills und Insider stapeln', () => {
   const m = Rules.mods(base({ skills: ['pokerface', 'zockerhaende', 'verhandler'] }), { insider: ['bankinsider', 'vitosneffe'] });
   T.eq(m.bjNatural, 1.5); T.eq(m.bjPushBonus, 0.1); T.eq(m.beerLuckMult, 0);
-  T.eq(m.slotPairMult, 1.5);
+  T.eq(m.slotPairMult, 1.3);
   near(m.bankRateAdd, 0.02 - 0.02 - 0.03, 'Zinsen addieren');
   T.eq(m.mafiaSpins, 8, 'Maximum von 7 und 8'); T.eq(m.mafiaMult, 2);
   T.eq(m.bankLimitAdd, 2000); near(m.investRateMult, 0.9); near(m.mugChanceMult, 0.5);
@@ -6276,6 +6304,11 @@ T.test('effectiveInsider: Deckel 250', () => {
   near(Rules.effectiveInsider(1.2, 500), 1.1, 'Bonusanteil halbiert');
   T.eq(Rules.effectiveInsider(true, 250), true); T.eq(Rules.effectiveInsider(true, 251), false);
   T.eq(Rules.effectiveInsider(false, 10), false);
+});
+T.test('effectiveBonus: Deckel 250 wie effectiveInsider, aber mit Neutralwert', () => {
+  T.eq(Rules.effectiveBonus(3.3, 3, 250), 3.3);
+  near(Rules.effectiveBonus(3.3, 3, 500), 3.15);
+  T.eq(Rules.horseDelta(true, 500, M({ horsePayout: Rules.effectiveBonus(3.3, 3, 500) })), 1575, 'Pferdeflüsterer über 250 € gedeckelt');
 });
 T.test('deckHot / pickExcluded / pickLoser', () => {
   const hot = [...Array(20)].map(() => ({ val: '10' })).concat([{ val: '3' }]);
@@ -6328,6 +6361,18 @@ T.test('Slots/Pferde mit mods', () => {
   T.eq(Rules.slotMultiplier('🍒', '🍒', '🍒', M({ slotPairMult: 0 })), 5, 'Drilling unberührt');
   T.eq(Rules.horseDelta(true, 100), 300); T.eq(Rules.horseDelta(true, 100, M({ horsePayout: 3.3 })), 330); T.eq(Rules.horseDelta(false, 100, M({ horsePayout: 3.3 })), -100);
   near(Rules.horseStep(false, 0, seq(0), Rules.HORSE_LAME_STEP), 1.5 * Rules.HORSE_LAME_STEP, 'Handicap');
+});
+T.test('Slots: Erwartungswert bleibt unter 1 (Zockerhände 1,3×, neutral)', () => {
+  const evFor = (mods) => {
+    let sum = 0, n = 0;
+    for (const a of Rules.SYMBOLS) for (const b of Rules.SYMBOLS) for (const c of Rules.SYMBOLS) { sum += Rules.slotMultiplier(a, b, c, mods); n++; }
+    return { sum, n, avg: sum / n };
+  };
+  const zocker = evFor(M({ slotPairMult: 1.3 }));
+  T.eq(zocker.n, 216, 'alle Walzen-Kombinationen');
+  T.ok(zocker.avg < 1, `Zockerhände 1,3× bleibt -EV (avg=${zocker.avg})`);
+  const neutral = evFor(Rules.NEUTRAL_MODS);
+  T.ok(neutral.avg < 1, `neutral bleibt -EV (avg=${neutral.avg})`);
 });
 T.test('Blackjack mit mods: Natural 3:2, Push +10 %, heißes Deck 1,2:1', () => {
   T.eq(Rules.bjDelta('win', 100), 100);

@@ -52,15 +52,17 @@ acht möglichen. Jeder Skill hat eine Lichtseite und einen Haken an anderer Stel
 |---|---|---|
 | 🃏 Pokerface | Blackjack: natürlicher Blackjack zahlt 3:2, Push bringt +10 % | Bier gibt kein Glück |
 | 🧊 Kalter Kopf | Roulette-Zahlen zahlen 36:1 | Brownie wirkt nur halb |
-| 🎰 Zockerhände | Slots: Paar zahlt 1,5× | Bank-Zinsen +2 % |
-| 🐎 Pferdeflüsterer | Pferde zahlen 3,3:1 | Überfälle 50 % häufiger |
+| 🎰 Zockerhände | Slots: Paar zahlt 1,3× | Bank-Zinsen +2 % |
+| 🐎 Pferdeflüsterer | Pferde zahlen 3,3:1 (bis 250 €) | Überfälle 50 % häufiger |
 | 🍺 Eisenmagen | 4 Bier möglich (+25 %), Brownie hält 2 Spins | Postbote: −1 s pro Brief |
 | 🤝 Verhandler | Bank-Zinsen −2 %, Vito-Frist 7 Spins | Anlagen zahlen 10 % weniger |
 | 🐕 Straßenköter | Kampfchance +15 %, Brieftasche ×2 | Bank-Limit −1.000 € |
 | 📬 Briefträgerherz | Postbote +1 s und +5 € pro Brief | Slots: Paare zahlen nichts |
 
 Zockerhände und Briefträgerherz schließen sich aus. „Umskillen" im Skill-Screen (2.000 €) macht
-alle drei Wahlen rückgängig, die Punkte bleiben frei und lassen sich neu vergeben.
+alle drei Wahlen rückgängig, die Punkte bleiben frei und lassen sich neu vergeben. Der
+Pferdeflüsterer-Bonus ist wie beim Glück gedeckelt (Bonus wirkt voll bis 250 € Einsatz), darüber
+verliert nur der Anteil über 3:1 anteilig – nie eine Geldmaschine.
 
 Insider-Wissen kommt dauerhaft und Meta-weit hinzu – pro abgeschlossenem Story-Teil einmalig
 eine Wahl aus drei zufälligen Upgrades (Pferde-Tipp, Roulette-Ausschluss, Kartenzählen, Slots-

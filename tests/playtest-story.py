@@ -1083,6 +1083,10 @@ async def scenario_free_sandbox_unchanged(cdp):
     ref_dir = os.path.join(ROOT, "docs", "superpowers", "screenshots")
     if not HAVE_PIL:
         record("freie sandbox: Pillow verfuegbar", False, "import PIL schlug fehl -- Vergleich faellt auf Dateigroesse zurueck")
+    # Insider-Upgrades sind Meta-weit und ueberleben "?fresh" (das loescht nur den Spielstand) --
+    # scenario_endings() kann beim Durchklicken einer Story-Ende-Cutscene zufaellig eins mitnehmen.
+    # Fuer den reinen UI-Pixel-Vergleich hier zuruecksetzen, sonst ist der Vergleich nicht deterministisch.
+    await cdp.eval("localStorage.removeItem('keller37.meta'); 0", await_promise=False)
     for screen in ["slots", "roulette", "blackjack", "hub"]:
         await cdp.send("Emulation.clearDeviceMetricsOverride")
         await cdp.navigate(URL_BASE + "?fresh&screen=%s" % screen)
@@ -1223,28 +1227,26 @@ async def _scenario_perks_body(cdp):
     bal = await cdp.eval("State.s.balance", await_promise=False)
     skills = await cdp.eval("JSON.stringify(State.s.skills)", await_promise=False)
     record("perks: Umskillen kostet 2000 und leert die Skills", bal == 3000 and skills == "[]", "bal=%s skills=%s" % (bal, skills))
-    # Insider-Wahl am Story-Ende
+    # Insider-Wahl am Story-Ende: Statistik-Panel -> Insider-Angebot -> erst danach "Nächste Story / Zum Titel"
     await cdp.navigate(URL_BASE + "?fresh&story=schuld&ending=ehrlich")
     await asyncio.sleep(1.5)
     await cdp.inject_helpers()
     await cdp.eval("State.meta.insider = []; State.meta.insiderClaimed = {}; State.saveMeta(); 0", await_promise=False)
+    n_choices = 0
     for _ in range(40):
-        labels = await cdp.eval("[...document.querySelectorAll('.cs-choices button')].map(b=>b.textContent).join('|')", await_promise=False)
-        if labels and ("Nächste Story" in labels):
+        n_choices = await cdp.eval("document.querySelectorAll('.cs-choices button').length", await_promise=False)
+        if n_choices == 3:
             break
         await cdp.eval("__pt.advance(null)", await_promise=False)
         await asyncio.sleep(0.15)
-    await cdp.eval("__pt.advance('Nächste Story')", await_promise=False)
-    await asyncio.sleep(0.6)
-    await cdp.advance_cutscene(max_steps=3)
-    n_choices = await cdp.eval("document.querySelectorAll('.cs-choices button').length", await_promise=False)
-    record("insider: Story-Ende bietet 3 Upgrades", n_choices == 3, "choices=%s" % n_choices)
+    record("insider: Story-Ende bietet 3 Upgrades (vor der Nächste-Story-Wahl)", n_choices == 3, "choices=%s" % n_choices)
     await cdp.screenshot("insider-offer.png")
     await cdp.eval("__pt.advance(null)", await_promise=False)
     await asyncio.sleep(0.5)
     ins = await cdp.eval("JSON.stringify(State.meta.insider)", await_promise=False)
     claimed = await cdp.eval("JSON.stringify(State.meta.insiderClaimed)", await_promise=False)
     record("insider: Wahl in Meta gespeichert, Story-Teil abgehakt", ins is not None and ins != "[]" and claimed is not None and "schuld" in claimed, "insider=%s claimed=%s" % (ins, claimed))
+    await cdp.advance_cutscene(max_steps=3, label_hint="Zum Titel")
     # Croupier-Auge + Stallbursche im freien Spiel
     await cdp.navigate(URL_BASE + "?fresh&screen=roulette")
     await asyncio.sleep(1.0)
