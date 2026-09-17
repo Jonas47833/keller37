@@ -123,15 +123,15 @@ T.test('megaShift: Spalte rotieren', () => {
   T.eq(g[1], ['d', 'e', 'f'], 'Original unverändert');
 });
 T.test('megaLuckOverride: kein Glück / Pech-Wurf / bester Ein-Schritt-Gewinn / bestehender Gewinn', () => {
-  // keine Linie trifft: Mitte 🍒 BAR …, oben 🔔 🍒 …, unten 💎 💎 🔔, V 🔔 BAR …, ΛV 💎 BAR …
-  const g = G(['🔔 🍒 💎', '🍒 BAR 💎', '💎 🍒 🔔', '🔔 🍒 BAR', 'BAR 🍒 💎']);
+  // keine Linie trifft; Walze 1 um −1 → Mitte 7️⃣×5 (500) schlägt die beiden 💎×3-Alternativen (10)
+  const g = G(['🔔 7️⃣ 💎', '7️⃣ BAR 💎', '💎 7️⃣ 🔔', '🔔 7️⃣ BAR', 'BAR 7️⃣ 💎']);
   T.eq(RoyalRules.megaLineWins(g), [], 'Ausgangsgitter gewinnt nichts');
   T.eq(RoyalRules.megaLuckOverride(g, 0, seq(0.5)), g, 'ohne Glück unverändert');
   T.eq(RoyalRules.megaLuckOverride(g, 50, seq(0.6)), g, 'rng ≥ luck/100 → unverändert');
   const o = RoyalRules.megaLuckOverride(g, 100, seq(0));
-  T.eq(o[1], ['💎', '🍒', 'BAR'], 'Walze 1 um −1 rotiert');
-  T.eq(RoyalRules.megaLineWins(o).map((w) => [w.line, w.sym, w.count, w.mult]), [[0, '🍒', 5, 10]], 'Mittellinie 🍒×5');
-  T.eq(g[1], ['🍒', 'BAR', '💎'], 'Original unverändert');
+  T.eq(o[1], ['💎', '7️⃣', 'BAR'], 'Walze 1 um −1 rotiert');
+  T.eq(RoyalRules.megaLineWins(o).map((w) => [w.line, w.sym, w.count, w.mult]), [[0, '7️⃣', 5, 500]], 'Mittellinie 7️⃣×5');
+  T.eq(g[1], ['7️⃣', 'BAR', '💎'], 'Original unverändert');
   const win = G(['🍒 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒', '🔔 🔔 🔔', '🔔 🔔 🔔']);
   T.eq(RoyalRules.megaLuckOverride(win, 100, seq(0)), win, 'bestehender Gewinn bleibt');
 });
