@@ -430,6 +430,7 @@ div#title[hidden] { display: none; }
 .title-inner { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 24px 16px; width: 100%; max-width: 760px; }
 .title-neon { font-size: 4.5rem; line-height: 1; }
 .title-sub { color: var(--dim); font-family: var(--font-mono); font-size: .95rem; }
+.title-hint { color: var(--dim); font-size: .85rem; margin: 4px 0 0; }
 .title-doors { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; width: 100%; }
 .title-door { height: 240px; }
 .title-foot { display: flex; gap: 8px; align-items: center; }
@@ -814,6 +815,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
       <div class="door title-door" data-choice="free" style="--neon: var(--neon-green)"><div class="sign">Freies Spiel</div><div class="glyph">🎰</div><div class="chalk-tag" id="titleFreeTag">Der Keller wie er ist</div><div class="knob"></div></div>
     </div>
     <button class="btn ghost sm hidden" id="titleNewStory">Neue Story beginnen</button>
+    <p class="title-hint hidden" id="titleStoryLock"></p>
     <div class="title-foot">
       <button class="icon-btn" id="titleMute">🔊</button>
       <button class="btn ghost sm" id="titleTrophiesBtn" title="Trophäen">🏆 Trophäen</button>
@@ -3578,6 +3580,7 @@ const StoryRules = {
     if ('notFlag' in cond) return !st.flags[cond.notFlag];
     if ('unlocked' in cond) return ['jobs', 'doors', 'rooms'].some((k) => st.unlocked[k].includes(cond.unlocked));
     if ('strength' in cond) return StoryRules._ops(cond.strength, s.strength || 0);
+    if ('prevEnding' in cond) return (st.prev || {})[cond.prevEnding.story] === cond.prevEnding.id;
     throw new Error(`Ungültige Bedingung: ${JSON.stringify(cond)}`);
   },
   applyEffect(s, eff, story = {}, rng = Math.random) {
@@ -3719,8 +3722,12 @@ const Title = {
         tag.textContent = `Fortsetzen · ${info.title} · Tag ${info.day}/${info.days}`;
         qs('#titleNewStory', root).classList.remove('hidden');
       } else {
-        tag.textContent = 'Neue Story';
+        const nx = typeof Stories !== 'undefined' ? Stories.next() : null;
+        tag.textContent = nx ? `Neue Story · ${nx.title}` : 'Neue Story';
       }
+      const locked = typeof Stories !== 'undefined' ? Stories.locked() : [];
+      const lockEl = qs('#titleStoryLock', root);
+      if (locked.length) { lockEl.textContent = locked.map((l) => `🔒 ${l.title} – erst „${l.requires}“ beenden`).join(' · '); lockEl.classList.remove('hidden'); }
       qs('#titleMute', root).textContent = State.meta.muted ? '🔇' : '🔊';
       qs('#titleMute', root).addEventListener('click', (e) => { SFX.setMuted(!State.meta.muted); e.currentTarget.textContent = State.meta.muted ? '🔇' : '🔊'; });
       qs('#titleTrophiesBtn', root).addEventListener('click', () => {
@@ -3779,6 +3786,12 @@ const Stories = {
   },
   get(id) { return this.all[id]; },
   list() { return Object.values(this.all).filter((s) => !s.dev); },
+  next() {
+    try { const id = StoryRules.pickStory(this.list(), State.meta.storyRuns, Math.random); const st = this.get(id); return { id, title: st.title }; } catch (e) { return null; }
+  },
+  locked() {
+    return this.list().filter((st) => !StoryRules.requirementMet(st, State.meta.storyRuns)).map((st) => ({ id: st.id, title: st.title, requires: this.get(st.requires) ? this.get(st.requires).title : st.requires }));
+  },
   runInfo() {
     const p = State.peekStory();
     if (!p) return null;
@@ -3801,6 +3814,7 @@ const Story = {
   ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'] },
   story: null,
   allowOnce: null,
+  forcedNext: null,
   lostDay: false,
   sleeping: false,
   get s() { return State.s.story; },
@@ -3819,9 +3833,11 @@ const Story = {
     }
     if (choice === 'newstory' || !State.hasStoryRun()) {
       const forced = params.get('story');
-      const id = forced && Stories.get(forced) ? forced : StoryRules.pickStory(Stories.list(), State.meta.storyRuns, Math.random);
+      const forcedNext = this.forcedNext; this.forcedNext = null;
+      const id = forced && Stories.get(forced) ? forced : (forcedNext || StoryRules.pickStory(Stories.list(), State.meta.storyRuns, Math.random));
       const story = Stories.get(id);
       State.startStory(story);
+      if (params.has('prev') && params.has('fresh') && story.requires) State.s.story.prev[story.requires] = params.get('prev');
       if (params.has('day') && params.has('fresh')) State.s.story.day = Math.max(1, parseInt(params.get('day'), 10) || 1);
       this.story = story;
       this.setup();
@@ -3846,7 +3862,7 @@ const Story = {
      dieselbe Story mit ?fresh&day=… erzwingen. */
   consumeDevParams() {
     const params = new URLSearchParams(location.search);
-    const dev = ['story', 'day', 'job', 'ending', 'fresh'];
+    const dev = ['story', 'day', 'job', 'ending', 'fresh', 'prev'];
     if (!dev.some((k) => params.has(k))) return;
     dev.forEach((k) => params.delete(k));
     const q = params.toString();
@@ -3961,6 +3977,7 @@ const Story = {
     this.s.ended = end.id;
     const run = State.meta.storyRuns[this.story.id] || (State.meta.storyRuns[this.story.id] = { lastPlayed: 0, endings: [] });
     if (!run.endings.includes(end.id)) run.endings.push(end.id);
+    run.last = end.id;
     run.lastPlayed = Date.now();
     State.saveMeta(); State.save();
     const st = this.s.stats;
@@ -3973,7 +3990,7 @@ const Story = {
     Cutscene.define('story.ending.tmp', panels);
     const choice = await Cutscene.play('story.ending.tmp', this.ctx({ stats }));
     await Bus.emit('story:ended', { id: this.story.id, ending: end.id });
-    if (choice === 'next') return this.enter('newstory');
+    if (choice === 'next') { this.forcedNext = StoryRules.nextStory(Stories.list(), State.meta.storyRuns, this.story.id); return this.enter('newstory'); }
     const c = await Title.show();
     if (c) await Modes.enter(c);
   },
@@ -5216,6 +5233,13 @@ T.test('StoryRules.freshStoryPart: prev aus storyRuns', () => {
   const p = StoryRules.freshStoryPart(probeStory(), { schuld: { lastPlayed: 1, endings: ['doc'] } });
   T.eq(p.prev, { schuld: 'doc' });
   T.eq(StoryRules.freshStoryPart(probeStory()).prev, {});
+});
+T.test('StoryRules.check: prevEnding', () => {
+  const s = Object.assign(base(), { story: Object.assign(StoryRules.freshStoryPart(probeStory()), { prev: { schuld: 'doc' } }) });
+  T.eq(StoryRules.check({ prevEnding: { story: 'schuld', id: 'doc' } }, s), true);
+  T.eq(StoryRules.check({ prevEnding: { story: 'schuld', id: 'taxi' } }, s), false);
+  T.eq(StoryRules.check({ prevEnding: { story: 'nie', id: 'doc' } }, s), false);
+  T.eq(StoryRules.check({ not: { prevEnding: { story: 'schuld', id: 'sturz' } } }, s), true);
 });
 T.test('StoryRules.validate: requires muss bekannte Story sein', () => {
   const st = Object.assign({}, STORY_PROBE, { id: 'x', requires: 'gibtsnicht' });
