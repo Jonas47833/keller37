@@ -3696,9 +3696,13 @@ const StoryRules = {
       vars: Object.assign({}, story.start.vars), flags: {},
       unlocked: { jobs: [...story.start.unlocked.jobs], doors: [...story.start.unlocked.doors], rooms: [...story.start.unlocked.rooms] },
       jobsDone: {}, jobToday: null, seen: [], seenJobScenes: {}, ended: null,
-      stats: { earned: 0, gambled: 0, jobs: 0 },
+      stats: { earned: 0, gambled: 0, jobs: 0, wins: 0, streak: 0, bestStreak: 0, biggestWin: 0, beers: 0, brownies: 0, royalVisits: 0 },
       prev: StoryRules.prevEndings(storyRuns),
     };
+  },
+  recordSpin(stats, delta) {
+    if (delta > 0) { stats.wins++; stats.streak++; stats.bestStreak = Math.max(stats.bestStreak, stats.streak); stats.biggestWin = Math.max(stats.biggestWin, delta); }
+    else if (delta < 0) stats.streak = 0;
   },
 };
 </script>
@@ -3869,6 +3873,7 @@ const Story = {
     try { history.replaceState(null, '', location.pathname + (q ? `?${q}` : '') + location.hash); } catch (e) { /* file:// o. ä. – egal */ }
   },
   setup() {
+    if (this.s) this.s.stats = Object.assign({ wins: 0, streak: 0, bestStreak: 0, biggestWin: 0, beers: 0, brownies: 0, royalVisits: 0 }, this.s.stats);
     document.body.classList.remove('mode-free'); document.body.classList.add('mode-story');
     UI.mountShell();
     this.renderDaybar();
@@ -4088,7 +4093,8 @@ Cutscene.define('story.newConfirm', [
 ]);
 
 Bus.on('spin:after', () => { if (State.mode === 'story' && Story.story) return Story.runEvents('spin:after'); });
-Bus.on('loss', ({ amount }) => { if (State.mode === 'story' && Story.story) { Story.s.stats.gambled += amount; State.save(); } });
+Bus.on('win', ({ amount }) => { if (State.mode === 'story' && Story.story) { StoryRules.recordSpin(Story.s.stats, amount); State.save(); } });
+Bus.on('loss', ({ amount }) => { if (State.mode === 'story' && Story.story) { Story.s.stats.gambled += amount; StoryRules.recordSpin(Story.s.stats, -amount); State.save(); } });
 </script>
 
 <script id="jobs">
@@ -5315,7 +5321,19 @@ T.test('StoryRules.validate: Referenzen und Fallback', () => {
 T.test('StoryRules.freshStoryPart', () => {
   const p = StoryRules.freshStoryPart(probeStory());
   T.eq(p.day, 1); T.eq(p.phase, 'morning'); T.eq(p.vars, { x: 0 }); T.eq(p.unlocked, { jobs: [], doors: [], rooms: [] });
-  T.eq(p.stats, { earned: 0, gambled: 0, jobs: 0 });
+  T.eq(p.stats, { earned: 0, gambled: 0, jobs: 0, wins: 0, streak: 0, bestStreak: 0, biggestWin: 0, beers: 0, brownies: 0, royalVisits: 0 });
+});
+T.test('StoryRules.recordSpin: Serie, Siege, größter Gewinn', () => {
+  const st = StoryRules.freshStoryPart(probeStory()).stats;
+  T.eq([st.wins, st.streak, st.bestStreak, st.biggestWin, st.beers, st.brownies, st.royalVisits], [0, 0, 0, 0, 0, 0, 0]);
+  StoryRules.recordSpin(st, 100); StoryRules.recordSpin(st, 700);
+  T.eq([st.wins, st.streak, st.bestStreak, st.biggestWin], [2, 2, 2, 700]);
+  StoryRules.recordSpin(st, 0);
+  T.eq(st.streak, 2, 'Push ändert die Serie nicht');
+  StoryRules.recordSpin(st, -50);
+  T.eq([st.wins, st.streak, st.bestStreak], [2, 0, 2]);
+  StoryRules.recordSpin(st, 5);
+  T.eq([st.streak, st.bestStreak, st.biggestWin], [1, 2, 700]);
 });
 
 /* ---- State: Modi ---- */
