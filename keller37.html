@@ -936,7 +936,7 @@ const Rules = {
   BANK_LIMIT: 3000,
   BANK_RATE: 0.08,
   POST_PENALTY: 25,
-  BEER_LUCK: [0, 10, 15, 20],
+  BEER_LUCK: [0, 10, 15, 20, 25],
   BROWNIE_LUCK: 40,
   BEER_SPINS: 2,
   BROWNIE_SPINS: 1,
@@ -945,10 +945,10 @@ const Rules = {
   MAX_BEERS: 3,
   LUCK_CAP: 100,   // Glück wirkt voll bis zu diesem Einsatz, darüber proportional weniger
 
-  luck(s) {
+  luck(s, mods = Rules.NEUTRAL_MODS) {
     let l = 0;
-    if (s.beerTimer > 0) l += Rules.BEER_LUCK[Math.min(s.beers, 3)];
-    if (s.brownieTimer > 0) l += Rules.BROWNIE_LUCK;
+    if (s.beerTimer > 0) l += Rules.BEER_LUCK[Math.min(s.beers, 4)] * mods.beerLuckMult;
+    if (s.brownieTimer > 0) l += Rules.BROWNIE_LUCK * mods.brownieLuckMult;
     l += Rules.gear(s).luck;
     return l;
   },
@@ -958,35 +958,38 @@ const Rules = {
     if (!bet || bet <= Rules.LUCK_CAP) return luck;
     return luck * Rules.LUCK_CAP / bet;
   },
-  bankInterest(debt, s) {
-    const rate = s ? Rules.gear(s).bankRate : Rules.BANK_RATE;
+  bankRateFor(s, mods = Rules.NEUTRAL_MODS) { return Math.max(0.01, Rules.gear(s).bankRate + mods.bankRateAdd); },
+  bankLimitFor(s, mods = Rules.NEUTRAL_MODS) { return Math.max(500, Rules.gear(s).bankLimit + mods.bankLimitAdd); },
+  bankInterest(debt, s, mods = Rules.NEUTRAL_MODS) {
+    const rate = s ? Rules.bankRateFor(s, mods) : Rules.BANK_RATE;
     return debt > 0 ? Math.round(debt * rate) : 0;
   },
-  spinCosts(s) {
-    return { interest: Rules.bankInterest(s.bankDebt, s), meds: s.kidneySold ? Rules.MEDS_PER_SPIN : 0 };
+  spinCosts(s, mods = Rules.NEUTRAL_MODS) {
+    return { interest: Rules.bankInterest(s.bankDebt, s, mods), meds: s.kidneySold ? Rules.MEDS_PER_SPIN : 0 };
   },
-  maxBet(s) {
-    const c = Rules.spinCosts(s);
+  maxBet(s, mods = Rules.NEUTRAL_MODS) {
+    const c = Rules.spinCosts(s, mods);
     return Math.max(1, s.balance - c.interest - c.meds);
   },
-  checkSpin(s, bet) {
+  checkSpin(s, bet, mods = Rules.NEUTRAL_MODS) {
     if (!Number.isFinite(bet) || bet <= 0) return { ok: false, reason: 'invalid' };
-    const c = Rules.spinCosts(s);
+    const c = Rules.spinCosts(s, mods);
     const total = bet + c.interest + c.meds;
     if (s.balance < total) return { ok: false, reason: 'funds', total, interest: c.interest, meds: c.meds };
     return { ok: true, total, interest: c.interest, meds: c.meds };
   },
-  mafiaBill(debt) { return debt * 3; },
+  mafiaSpins(mods = Rules.NEUTRAL_MODS) { return mods.mafiaSpins; },
+  mafiaBill(debt, mods = Rules.NEUTRAL_MODS) { return debt * mods.mafiaMult; },
   /* null = erlaubt; 'open' = es läuft schon ein Kredit; 'limit' = Betrag übersteigt das Limit */
-  bankLoanReason(s, amt) {
+  bankLoanReason(s, amt, mods = Rules.NEUTRAL_MODS) {
     if (s.bankDebt > 0) return 'open';
-    if (amt > Rules.gear(s).bankLimit) return 'limit';
+    if (amt > Rules.bankLimitFor(s, mods)) return 'limit';
     return null;
   },
-  bankLoanAllowed(s, amt) { return Rules.bankLoanReason(s, amt) === null; },
+  bankLoanAllowed(s, amt, mods = Rules.NEUTRAL_MODS) { return Rules.bankLoanReason(s, amt, mods) === null; },
   /* Game Over: beide Kreditquellen zu (Bank-Kredit offen, Vito-Zettel offen) und nicht mal ein 1-€-Spin (inkl. Zinsen/Meds) bezahlbar */
-  isGameOver(s) {
-    const c = Rules.spinCosts(s);
+  isGameOver(s, mods = Rules.NEUTRAL_MODS) {
+    const c = Rules.spinCosts(s, mods);
     return s.bankDebt > 0 && s.mafiaDebt > 0 && s.balance < 1 + c.interest + c.meds;
   },
   passiveTick(s) { return (s.hasHouse ? 3 : 0) + (s.hasDealer ? 5 : 0); },
@@ -996,7 +999,12 @@ const Rules = {
   WHEEL: [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26],
   RED: [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36],
   isRed(n) { return Rules.RED.includes(n); },
-  rouletteRoll(rng) { return Math.floor(rng() * 37); },
+  /* würfelt so lange, bis eine nicht ausgeschlossene Zahl fällt (max. 37 Versuche, dann erste erlaubte) */
+  rouletteRoll(rng, excluded = []) {
+    for (let i = 0; i < 37; i++) { const n = Math.floor(rng() * 37); if (!excluded.includes(n)) return n; }
+    for (let n = 0; n < 37; n++) if (!excluded.includes(n)) return n;
+    return 0;
+  },
   /* Glück hilft bei Farben und Gerade/Ungerade – nie bei Zahlen (der Kessel kennt keine Freunde) */
   rouletteLuckOverride(type, chosen, rolled, luck, rng) {
     const r = rng() * 100;
@@ -1008,20 +1016,20 @@ const Rules = {
     }
     return rolled;
   },
-  roulettePayout(type, chosen, rolled, bet) {
+  roulettePayout(type, chosen, rolled, bet, mods = Rules.NEUTRAL_MODS) {
     const red = Rules.isRed(rolled);
     if (type === 'red' && red) return bet;
     if (type === 'black' && !red && rolled !== 0) return bet;
     if (type === 'even' && rolled !== 0 && rolled % 2 === 0) return bet;
     if (type === 'odd' && rolled % 2 !== 0) return bet;
-    if (type === 'number' && rolled === chosen) return bet * 35;
+    if (type === 'number' && rolled === chosen) return bet * mods.rouletteNumberPayout;
     return -bet;
   },
   rouletteTotal(bets) { return bets.reduce((sum, b) => sum + b.amount, 0); },
   /* Auszahlung aller Chips: pro Chip Einsatz + Gewinn bei Treffer, sonst 0 */
-  rouletteSettle(bets, rolled) {
+  rouletteSettle(bets, rolled, mods = Rules.NEUTRAL_MODS) {
     const hits = bets.map((bet) => {
-      const d = Rules.roulettePayout(bet.type, bet.n, rolled, bet.amount);
+      const d = Rules.roulettePayout(bet.type, bet.n, rolled, bet.amount, mods);
       const win = d > 0;
       return { bet, win, payout: win ? bet.amount + d : 0 };
     });
@@ -1046,9 +1054,9 @@ const Rules = {
     if (rng() * 100 < luck) return [a, a, c];
     return [a, b, c];
   },
-  slotMultiplier(a, b, c) {
+  slotMultiplier(a, b, c, mods = Rules.NEUTRAL_MODS) {
     if (a === b && b === c) return a === '7️⃣' ? 40 : a === '💎' ? 25 : a === '🔔' ? 15 : 5;
-    if (a === b || b === c || a === c) return 1.2;
+    if (a === b || b === c || a === c) return mods.slotPairMult;
     return 0;
   },
   slotDelta(bet, m) { return m > 0 ? Math.round(bet * m) - bet : -bet; },
@@ -1060,12 +1068,12 @@ const Rules = {
     { id: 3, name: 'Phantom', col: '#b066ff', dot: '🟣' },
     { id: 4, name: 'Lucky', col: '#ffd23f', dot: '🟡' },
   ],
-  horseStep(isSelected, luck, rng) {
+  horseStep(isSelected, luck, rng, handicap = 1) {
     let step = rng() * 3 + 1;
     if (isSelected && luck > 0) step += luck * 0.001; // pro Tick, summiert sich über das ganze Rennen
-    return step * 1.5;
+    return step * 1.5 * handicap;
   },
-  horseDelta(won, bet) { return won ? bet * 3 : -bet; },
+  horseDelta(won, bet, mods = Rules.NEUTRAL_MODS) { return won ? Math.round(bet * mods.horsePayout) : -bet; },
 
   /* ---- Russisches Roulette ---- */
   rrCylinder(rng) {
@@ -1101,16 +1109,22 @@ const Rules = {
     if (pSum === dSum) return 'push';
     return 'dealer';
   },
-  bjDelta(outcome, bet) { return outcome === 'win' ? bet : outcome === 'push' ? 0 : -bet; },
+  /* ctx.natural = Blackjack mit zwei Karten (nur bei Sieg), ctx.hot = heißes Deck (Kartenzähler) */
+  bjDelta(outcome, bet, mods = Rules.NEUTRAL_MODS, ctx = {}) {
+    if (outcome === 'win') return Math.round(bet * (ctx.natural ? mods.bjNatural : ctx.hot ? mods.bjHotDeck : 1));
+    if (outcome === 'push') return Math.round(bet * mods.bjPushBonus);
+    return -bet;
+  },
 
   /* ---- Post ---- */
   POST_HOUSES: [{ n: 12, c: '#ffb432' }, { n: 45, c: '#4cc9f0' }, { n: 88, c: '#3ddc84' }, { n: 99, c: '#ff3b3b' }],
-  postmanTier(streak, s) {
+  postmanTier(streak, s, mods = Rules.NEUTRAL_MODS) {
     const g = s ? Rules.gear(s) : { postTime: 0, postPay: 0 };
     const t = streak < 2 ? { t: 5, r: 5 } : streak < 6 ? { t: 3, r: 10 } : streak < 11 ? { t: 1.5, r: 25 } : { t: 0.5, r: 50 };
-    /* Schuhe geben Zeit – die schnellste Stufe wird aber nie langsamer als 1,5 s */
-    const time = t.t < 1.5 ? Math.min(t.t + g.postTime, 1.5) : t.t + g.postTime;
-    return { t: time, r: t.r + g.postPay };
+    /* Schuhe und Skills geben Zeit – die schnellste Stufe wird aber nie langsamer als 1,5 s; Untergrenze 0,5 s */
+    const raw = t.t + g.postTime + mods.postTimeAdd;
+    const time = t.t < 1.5 ? Math.min(raw, 1.5) : raw;
+    return { t: Math.max(0.5, time), r: t.r + g.postPay + mods.postPayAdd };
   },
 
   /* ---- Anlagen ---- */
@@ -1131,9 +1145,9 @@ const Rules = {
     if (s.balance < amount) return { ok: false, reason: 'funds' };
     return { ok: true };
   },
-  investmentResolve(inv, rng) {
+  investmentResolve(inv, rng, mods = Rules.NEUTRAL_MODS) {
     const won = rng() * 100 >= inv.risk;
-    return { won, payout: won ? Math.round(inv.amount * (1 + inv.rate)) : 0 };
+    return { won, payout: won ? Math.round(inv.amount * (1 + inv.rate * mods.investRateMult)) : 0 };
   },
 
   /* ---- Leben ---- */
@@ -1162,8 +1176,8 @@ const Rules = {
     if (s.balance < Rules.PRICES.dealer) return { ok: false, reason: 'funds' };
     return { ok: true };
   },
-  canBeer(s) {
-    if (s.beers >= Rules.MAX_BEERS) return { ok: false, reason: 'max' };
+  canBeer(s, mods = Rules.NEUTRAL_MODS) {
+    if (s.beers >= mods.maxBeers) return { ok: false, reason: 'max' };
     if (s.balance < Rules.PRICES.beer) return { ok: false, reason: 'funds' };
     return { ok: true };
   },
@@ -1248,7 +1262,7 @@ Object.assign(Rules, {
     return { ok: true };
   },
   /* where: 'door' (freies Spiel, Hub → Casino-Tür) oder 'evening' (Story, Morgen → Abend) */
-  mugChance(s, where) {
+  mugChance(s, where, mods = Rules.NEUTRAL_MODS) {
     const M = Rules.MUG;
     if (s.balance < M.MIN_CASH) return 0;
     if ((s.mugCooldown || 0) > 0) return 0;
@@ -1256,17 +1270,17 @@ Object.assign(Rules, {
     else if (((s.stats && s.stats.spins) || 0) < M.MIN_SPINS) return 0;
     let c = where === 'evening' ? M.BASE_EVENING : M.BASE_DOOR;
     if (s.balance >= M.RICH_CASH) c *= M.RICH_MULT;
-    return c * Rules.gear(s).mugMult;
+    return c * Rules.gear(s).mugMult * mods.mugChanceMult;
   },
   mugLoot(balance) {
     const M = Rules.MUG;
     return Math.min(balance, Math.max(M.LOOT_MIN, Math.min(M.LOOT_MAX, Math.round(balance * M.LOOT_PCT))));
   },
-  mugWallet(rng = Math.random) {
+  mugWallet(rng = Math.random, mods = Rules.NEUTRAL_MODS) {
     const M = Rules.MUG;
-    return M.WALLET_MIN + Math.floor(rng() * (M.WALLET_MAX - M.WALLET_MIN + 1));
+    return Math.round((M.WALLET_MIN + Math.floor(rng() * (M.WALLET_MAX - M.WALLET_MIN + 1))) * mods.walletMult);
   },
-  fightChance(strength) { const M = Rules.MUG; return Math.min(M.CHANCE_CAP, M.FIGHT_BASE + M.FIGHT_PER_STR * (strength || 0)); },
+  fightChance(strength, mods = Rules.NEUTRAL_MODS) { const M = Rules.MUG; return Math.min(M.CHANCE_CAP, M.FIGHT_BASE + M.FIGHT_PER_STR * (strength || 0) + mods.fightAdd); },
   fleeChance(gear) { const M = Rules.MUG; return Math.min(M.CHANCE_CAP, M.FLEE_BASE + (gear.flee || 0) / 100); },
   fleeFailExtra(balance) { return Math.round(balance * Rules.MUG.FLEE_FAIL_PCT); },
 });
@@ -5935,6 +5949,62 @@ T.test('deckHot / pickExcluded / pickLoser', () => {
 T.test('State.fresh/freshMeta: Perk-Felder', () => {
   const f = State.fresh(); T.eq([f.xp, f.skills, f.skillRespecs, f.insiderExcluded, f.mechRespins], [0, [], 0, [], 0]);
   const m = State.freshMeta(); T.eq([m.insider, m.insiderClaimed], [[], {}]);
+});
+
+/* ---- Regel-Hooks mit mods ---- */
+const M = (o) => Object.assign({}, Rules.NEUTRAL_MODS, o);
+T.test('luck mit mods: Bier/Brownie-Multiplikatoren, 4. Bier', () => {
+  T.eq(Rules.BEER_LUCK, [0, 10, 15, 20, 25]);
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 1 }), M({ beerLuckMult: 0 })), 0);
+  T.eq(Rules.luck(base({ beers: 4, beerTimer: 1 })), 25);
+  T.eq(Rules.luck(base({ brownieTimer: 1 }), M({ brownieLuckMult: 0.5 })), 20);
+  T.eq(Rules.canBeer(base({ beers: 3, balance: 100 })).reason, 'max');
+  T.eq(Rules.canBeer(base({ beers: 3, balance: 100 }), M({ maxBeers: 4})), { ok: true });
+});
+T.test('Bank/Vito mit mods', () => {
+  near(Rules.bankRateFor(base(), M({ bankRateAdd: -0.03 })), 0.05);
+  near(Rules.bankRateFor(base({ car: 'mercG' }), M({ bankRateAdd: -0.05 })), 0.01, 'Untergrenze 1 %');
+  T.eq(Rules.bankLimitFor(base(), M({ bankLimitAdd: 2000 })), 5000);
+  T.eq(Rules.bankLimitFor(base(), M({ bankLimitAdd: -9000 })), 500, 'Untergrenze 500');
+  T.eq(Rules.bankInterest(1000, base(), M({ bankRateAdd: -0.03 })), 50);
+  T.eq(Rules.bankLoanReason(base(), 4000, M({ bankLimitAdd: 2000 })), null);
+  T.eq(Rules.bankLoanReason(base(), 5001, M({ bankLimitAdd: 2000 })), 'limit');
+  T.eq(Rules.mafiaSpins(), 5); T.eq(Rules.mafiaSpins(M({ mafiaSpins: 8 })), 8);
+  T.eq(Rules.mafiaBill(300), 900); T.eq(Rules.mafiaBill(300, M({ mafiaMult: 2 })), 600);
+});
+T.test('Roulette mit mods: 36:1, Ausschlussliste', () => {
+  T.eq(Rules.roulettePayout('number', 17, 17, 10), 350);
+  T.eq(Rules.roulettePayout('number', 17, 17, 10, M({ rouletteNumberPayout: 36 })), 360);
+  T.eq(Rules.rouletteSettle([{ type: 'number', n: 17, amount: 10 }], 17, M({ rouletteNumberPayout: 36 })).payout, 370);
+  const ex = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  for (let i = 0; i < 1000; i++) T.ok(!ex.includes(Rules.rouletteRoll(Math.random, ex)), 'nie ausgeschlossen');
+  T.eq(Rules.rouletteRoll(seq(0.05, 0.99), ex), 36, 'zweiter Wurf nach Ausschluss');
+  T.eq(Rules.rouletteRoll(seq(0), []), 0);
+});
+T.test('Slots/Pferde mit mods', () => {
+  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍋', M({ slotPairMult: 1.5 })), 1.5);
+  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍋', M({ slotPairMult: 0 })), 0);
+  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍒', M({ slotPairMult: 0 })), 5, 'Drilling unberührt');
+  T.eq(Rules.horseDelta(true, 100), 300); T.eq(Rules.horseDelta(true, 100, M({ horsePayout: 3.3 })), 330); T.eq(Rules.horseDelta(false, 100, M({ horsePayout: 3.3 })), -100);
+  near(Rules.horseStep(false, 0, seq(0), 0.85), 1.5 * 0.85, 'Handicap');
+});
+T.test('Blackjack mit mods: Natural 3:2, Push +10 %, heißes Deck 1,2:1', () => {
+  T.eq(Rules.bjDelta('win', 100), 100);
+  T.eq(Rules.bjDelta('win', 100, M({ bjNatural: 1.5 }), { natural: true }), 150);
+  T.eq(Rules.bjDelta('push', 100, M({ bjPushBonus: 0.1 })), 10);
+  T.eq(Rules.bjDelta('win', 100, M({ bjHotDeck: 1.2 }), { hot: true }), 120);
+  T.eq(Rules.bjDelta('win', 100, M({ bjHotDeck: 1.2, bjNatural: 1.5 }), { hot: true, natural: true }), 150, 'Natural schlägt heiß');
+  T.eq(Rules.bjDelta('dealer', 100, M({ bjNatural: 1.5 }), { natural: true }), -100);
+});
+T.test('Anlagen/Post/Überfall mit mods', () => {
+  T.eq(Rules.investmentResolve({ amount: 100, rate: 0.5, risk: 0 }, seq(0.99)).payout, 150);
+  T.eq(Rules.investmentResolve({ amount: 100, rate: 0.5, risk: 0 }, seq(0.99), M({ investRateMult: 0.9 })).payout, 145);
+  T.eq(Rules.postmanTier(0, base(), M({ postTimeAdd: 1, postPayAdd: 5 })), { t: 6, r: 10 });
+  T.eq(Rules.postmanTier(11, base(), M({ postTimeAdd: -1 })), { t: 0.5, r: 50 }, 'Untergrenze 0,5 s');
+  T.eq(Rules.postmanTier(11, base({ shoes: 'carbon' }), M({ postTimeAdd: 1 })), { t: 1.5, r: 60 }, 'Schuh-Deckel bleibt');
+  near(Rules.mugChance(mugBase(), 'door', M({ mugChanceMult: 0.5 })), 0.03);
+  near(Rules.fightChance(0, M({ fightAdd: 0.15 })), 0.5); near(Rules.fightChance(50, M({ fightAdd: 0.15 })), 0.9);
+  T.eq(Rules.mugWallet(() => 0, M({ walletMult: 2 })), 100);
 });
 
 /* --- SELFTEST CASES END --- */
