@@ -3639,7 +3639,12 @@ const StoryRules = {
     }
     if ('luckMod' in eff) { st.luckMod = eff.luckMod || 0; return {}; }
     if ('jobMod' in eff) { st.jobMod = eff.jobMod ? Object.assign({}, eff.jobMod) : {}; return {}; }
-    if ('price' in eff) { st.prices = Object.assign(st.prices || {}, eff.price); return {}; }
+    if ('price' in eff) {
+      st.prices = Object.assign(st.prices || {}, eff.price);
+      /* Brownie-Preis lebt zusätzlich in s.brownieCost (Rules.canBrownie, Seitenleiste, Kauf) – sonst greift der Story-Preis erst nach dem nächsten Kauf */
+      if (eff.price.brownie != null) s.brownieCost = eff.price.brownie;
+      return {};
+    }
     if ('enable' in eff) { st.enabled = st.enabled || {}; st.disabled = (st.disabled || []).filter((k) => !eff.enable.includes(k)); for (const k of eff.enable) st.enabled[k] = true; return {}; }
     if ('disable' in eff) { st.disabled = Array.from(new Set([...(st.disabled || []), ...eff.disable])); st.enabled = st.enabled || {}; for (const k of eff.disable) delete st.enabled[k]; return {}; }
     const out = {};
@@ -3870,6 +3875,10 @@ const Story = {
   sleeping: false,
   finishing: false,
   get s() { return State.s.story; },
+  /* Nach jedem await, das die Story beenden kann: ist der beim Einstieg gefangene Story-Zustand noch aktuell?
+     finish() → „Nächste Story" tauscht State.s gegen die nächste Story aus (this.s zeigt dann auf die NEUE, ended null),
+     „Zum Titel" → freies Spiel lässt this.s undefined – Prüfungen über this.s nach dem await sind deshalb tot. */
+  stale(st) { return !st || !!st.ended || State.s.story !== st; },
 
   /* ---- Einstieg ---- */
   async enter(choice) {
@@ -3894,8 +3903,10 @@ const Story = {
       this.story = story;
       this.setup();
       State.save();
-      if (!params.has('day')) await this.playScene(story.intro);
+      const st = this.s;
+      if (!params.has('day')) { await this.playScene(story.intro); if (this.stale(st)) return; }
       await this.applyChapter();
+      if (this.stale(st)) return;
       if (params.has('ending')) { const end = story.endings.find((e) => e.id === params.get('ending')); if (end) return this.finish(end); }
       await this.morning();
       if (params.has('job') && this.s.phase === 'morning') await Jobs.take(params.get('job'));
@@ -3905,8 +3916,10 @@ const Story = {
     this.story = Stories.get(State.s.story.id);
     if (!this.story) { UI.toast({ icon: '🐛', title: 'Story unbekannt', text: State.s.story.id, tone: 'loss' }); return Modes.enter('free'); }
     this.setup();
+    const st = this.s;
     await this.applyChapter();
-    if (this.s.phase === 'morning') await this.morning(); else await this.evening();
+    if (this.stale(st)) return;
+    if (st.phase === 'morning') await this.morning(); else await this.evening();
     if (params.has('job') && this.s.phase === 'morning') await Jobs.take(params.get('job'));
     UI.toast({ icon: '📖', title: this.story.title, text: `Tag ${this.s.day} von ${this.story.days}.` });
   },
@@ -3940,18 +3953,22 @@ const Story = {
   },
   async playScene(id, extra = {}) {
     if (!id) return undefined;
+    const st = this.s;
     const result = await Cutscene.play(id, this.ctx(extra));
+    if (this.stale(st)) return result;
     const def = this.story.scenes[id]; const panels = typeof def === 'function' ? def(this.ctx(extra)) : (def || []);
     if (result !== undefined) {
-      for (const p of panels) for (const ch of p.choices || []) if (ch.value === result && ch.effects) await this.applyEffects(ch.effects);
+      for (const p of panels) for (const ch of p.choices || []) if (ch.value === result && ch.effects) { await this.applyEffects(ch.effects); if (this.stale(st)) return result; }
     }
     return result;
   },
   async applyEffects(list) {
+    const st = this.s;
+    if (this.stale(st)) return;
     for (const eff of list || []) {
       const out = StoryRules.applyEffect(State.s, eff, this.story);
-      if (out.scene) await this.playScene(out.scene);
-      if (out.force === 'duel') await this.forceDuel();
+      if (out.scene) { await this.playScene(out.scene); if (this.stale(st)) return; }
+      if (out.force === 'duel') { await this.forceDuel(); if (this.stale(st)) return; }
       if (out.loseDay) this.lostDay = true;
     }
     State.save();
@@ -3961,12 +3978,15 @@ const Story = {
     await this.checkImmediate();
   },
   async runEvents(at) {
+    const st = this.s;
+    if (this.stale(st)) return;
     for (const e of StoryRules.dueEvents(this.story, State.s, at)) {
-      if (e.scene) await this.playScene(e.scene);
+      if (e.scene) { await this.playScene(e.scene); if (this.stale(st)) return; }
       await this.applyEffects(e.effects || []);
-      /* erst nach Szene und Effekten als gesehen markieren – ein Reload mittendrin überspringt nichts */
-      if (e.once) { this.s.seen.push(e.id); State.save(); }
-      if (this.s.ended) return;
+      /* erst nach Szene und Effekten als gesehen markieren – ein Reload mittendrin überspringt nichts.
+         Hat ein Effekt die Story beendet (und ggf. die nächste gestartet), gehört nichts mehr in `seen`. */
+      if (this.stale(st)) return;
+      if (e.once) { st.seen.push(e.id); State.save(); }
     }
   },
   /* Sofortiges Ende prüfen (nach Effekten/Käufen) – spielt es sofort, unabhängig von Nacht/Fallback */
@@ -3980,23 +4000,28 @@ const Story = {
   },
   /* Generischer Einstiegspunkt für Käufe/Zimmer: Events des Hooks abarbeiten, dann sofortige Enden prüfen */
   async hook(at) {
-    if (State.mode !== 'story' || !this.story || !this.s || this.s.ended) return;
+    const st = this.s;
+    if (State.mode !== 'story' || !this.story || this.stale(st)) return;
     await this.runEvents(at);
-    if (this.checkImmediate) await this.checkImmediate();
+    /* Hat ein Event die Story schon beendet (runEvents → applyEffects → checkImmediate), nichts mehr prüfen */
+    if (this.stale(st)) return;
+    await this.checkImmediate();
   },
   async applyChapter() {
+    const st = this.s;
+    if (this.stale(st)) return;
     const ch = StoryRules.chapterFor(this.story, State.s);
-    if (!ch || ch.id === this.s.chapter) return;
-    this.s.chapter = ch.id;
-    const before = { jobs: [...this.s.unlocked.jobs], doors: [...this.s.unlocked.doors], rooms: [...this.s.unlocked.rooms] };
+    if (!ch || ch.id === st.chapter) return;
+    st.chapter = ch.id;
+    const before = { jobs: [...st.unlocked.jobs], doors: [...st.unlocked.doors], rooms: [...st.unlocked.rooms] };
     if (ch.unlock) StoryRules.applyEffect(State.s, { unlock: (ch.unlock || {}) }, this.story);
     State.save();
     UI.toast({ icon: '📖', title: `Kapitel: ${ch.title}`, tone: 'gold', ms: 4000 });
-    if (ch.intro) await this.playScene(ch.intro);
+    if (ch.intro) { await this.playScene(ch.intro); if (this.stale(st)) return; }
     const added = {
-      jobs: this.s.unlocked.jobs.filter((j) => !before.jobs.includes(j)),
-      doors: this.s.unlocked.doors.filter((d) => !before.doors.includes(d)),
-      rooms: this.s.unlocked.rooms.filter((r) => !before.rooms.includes(r)),
+      jobs: st.unlocked.jobs.filter((j) => !before.jobs.includes(j)),
+      doors: st.unlocked.doors.filter((d) => !before.doors.includes(d)),
+      rooms: st.unlocked.rooms.filter((r) => !before.rooms.includes(r)),
     };
     if (added.jobs.length || added.doors.length || added.rooms.length) {
       const names = [...added.jobs.map((j) => (typeof Jobs !== 'undefined' && Jobs.POOL[j] ? Jobs.POOL[j].name : j)), ...added.doors, ...added.rooms];
@@ -4008,9 +4033,11 @@ const Story = {
   /* ---- Tagesphasen ---- */
   async morning() {
     if (this.s.jobToday) return this.evening(); // Job heute schon erledigt (z. B. Reload vor „Feierabend")
-    this.s.phase = 'morning'; this.lostDay = false;
+    const st = this.s;
+    st.phase = 'morning'; this.lostDay = false;
     State.save(); this.renderDaybar();
     await this.runEvents('morning');
+    if (this.stale(st)) return;
     if (this.lostDay) return this.evening();
     await UI.show(UI.screens.has('jobs') ? 'jobs' : 'hub');
   },
@@ -4026,21 +4053,24 @@ const Story = {
     if (this.s.phase !== 'evening' || Cutscene.active || Game.inFlight > 0) { if (Game.inFlight > 0) UI.toast({ icon: '⏳', title: 'Erst die Runde beenden' }); return; }
     this.sleeping = true;
     this.renderDaybar();
+    const st = this.s;
     try {
-      await this.fade(`Nacht ${this.s.day}`);
+      await this.fade(`Nacht ${st.day}`);
       await this.runEvents('sleep');
-      if (this.s.ended) return;
+      if (this.stale(st)) return;
       await this.runEvents('night');
-      if (this.s.ended) return;
+      if (this.stale(st)) return;
       let end = StoryRules.ending(this.story, State.s);
       if (end) return this.finish(end);
       StoryRules.advanceDay(State.s);
       State.save();
-      await Bus.emit('story:day', { day: this.s.day });
+      await Bus.emit('story:day', { day: st.day });
+      if (this.stale(st)) return;
       end = StoryRules.ending(this.story, State.s);
       if (end) return this.finish(end);
-      await this.fade(`Tag ${this.s.day}`);
+      await this.fade(`Tag ${st.day}`);
       await this.applyChapter();
+      if (this.stale(st)) return;
       await this.morning();
     } finally {
       this.sleeping = false;
@@ -4063,6 +4093,9 @@ const Story = {
     Cutscene.define('story.ending.tmp', panels);
     const choice = await Cutscene.play('story.ending.tmp', this.ctx({ stats }));
     await Bus.emit('story:ended', { id: this.story.id, ending: end.id });
+    /* Ab hier beginnt die nächste Story bzw. der Titel – deren sofortige Enden dürfen nicht mehr unterdrückt werden
+       (checkImmediate hält `finishing` sonst, bis enter('newstory') samt Intro/Morgen der NÄCHSTEN Story zurückkehrt). */
+    this.finishing = false;
     if (choice === 'next') { this.forcedNext = StoryRules.nextStory(Stories.list(), State.meta.storyRuns, this.story.id); return this.enter('newstory'); }
     const c = await Title.show();
     if (c) await Modes.enter(c);
@@ -4161,7 +4194,11 @@ Cutscene.define('story.newConfirm', [
     choices: [{ label: 'Ja, neu anfangen', value: 'yes', cls: 'red' }, { label: 'Weiterspielen', value: 'no', cls: 'ghost' }] },
 ]);
 
-Bus.on('spin:after', () => { if (State.mode === 'story' && Story.story) return Story.runEvents('spin:after'); });
+Bus.on('spin:after', () => {
+  if (State.mode !== 'story' || !Story.story) return;
+  if (Story.s && Story.s.ended) return;
+  return Story.runEvents('spin:after');
+});
 Bus.on('win', ({ amount }) => { if (State.mode === 'story' && Story.story) { StoryRules.recordSpin(Story.s.stats, amount); State.save(); } });
 Bus.on('loss', ({ amount }) => { if (State.mode === 'story' && Story.story) { Story.s.stats.gambled += amount; StoryRules.recordSpin(Story.s.stats, -amount); State.save(); } });
 </script>
@@ -4868,10 +4905,11 @@ const SelfTest = {
   },
   ok(v, msg = 'erwartet wahr') { if (!v) throw new Error(msg); },
   throws(fn, msg = '') { let threw = false; try { fn(); } catch (e) { threw = true; } if (!threw) throw new Error(`${msg} – kein Fehler geworfen`); },
-  run() {
+  /* async: Tests dürfen ein Promise zurückgeben (Browser-Tests der Story-Engine); synchrone Tests laufen wie bisher */
+  async run() {
     let passed = 0, failed = 0; const failures = [];
     for (const c of this.cases) {
-      try { c.fn(); passed++; } catch (e) { failed++; failures.push(`${c.name}: ${e.message}`); }
+      try { await c.fn(); passed++; } catch (e) { failed++; failures.push(`${c.name}: ${e.message}`); }
     }
     return { passed, failed, failures };
   },
@@ -5313,6 +5351,7 @@ T.test('StoryRules: Effekte luckMod/jobMod/price/enable/disable', () => {
   StoryRules.applyEffect(s, { jobMod: null }, story); T.eq(StoryRules.jobMod(s), {});
   T.eq(StoryRules.jobMod(base()), {}, 'ohne Story leer');
   StoryRules.applyEffect(s, { price: { therapy: 8000 } }, story); T.eq(s.story.prices, { brownie: 300, therapy: 8000 });
+  StoryRules.applyEffect(s, { price: { brownie: 450 } }, story); T.eq(s.story.prices, { brownie: 450, therapy: 8000 }); T.eq(s.brownieCost, 450, 'price.brownie setzt s.brownieCost');
   T.eq(StoryRules.price(s, 'therapy'), 8000); T.eq(StoryRules.price(s, 'beer'), Rules.PRICES.beer); T.eq(StoryRules.price(base(), 'brownie'), Rules.PRICES.brownie);
   StoryRules.applyEffect(s, { enable: ['therapy'] }, story); T.eq(s.story.enabled, { therapy: true });
   T.eq(StoryRules.purchaseAllowed(s, 'therapy'), true); T.eq(StoryRules.purchaseAllowed(s, 'tinder'), false); T.eq(StoryRules.purchaseAllowed(s, 'house'), null); T.eq(StoryRules.purchaseAllowed(base(), 'tinder'), null);
@@ -5776,6 +5815,49 @@ T.test('Story Schuld: stadtOffen ab Tag 4, Eintreiber mit Türsteher freigeschal
   for (const id of ['schuld.stadt', 'schuld.eintreiber.kiosk', 'schuld.eintreiber.zahnarzt']) T.ok(Array.isArray(st.scenes[id]) && st.scenes[id].length >= 2, id);
 });
 
+/* ---- Story-Engine (nur im Browser – Block story-engine wird in Node nicht geladen) ---- */
+if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
+  /* Sofortiges Ende mitten in der Nacht: finish() → „Nächste Story" tauscht State.s aus. Der Rest von runEvents/night
+     darf dann weder alte Events auf der neuen Story ausführen noch deren Tag weiterzählen. Hier ist finish() ein Stub,
+     der genau diesen Tausch macht (kein Cutscene, kein Titel); Speichern ist abgeklemmt, alles wird danach zurückgesetzt. */
+  T.test('Story.night: sofortiges Ende im sleep-Event lässt die nächste Story unberührt', async () => {
+    const mk = (id) => ({ id, title: id, days: 3, start: { balance: 100, vars: {}, unlocked: { jobs: [], doors: [], rooms: [] } }, chapters: [], events: [], scenes: {},
+      endings: [{ id: 'aus', title: 'Aus', scene: 'x', priority: 0, fallback: true }] });
+    const a = mk('t.alt'), b = mk('t.neu');
+    a.events = [
+      { id: 'kipp', at: 'sleep', once: true, effects: [{ flag: 'tot' }] },
+      { id: 'danach', at: 'sleep', once: true, effects: [{ var: 'x', add: 1 }] },
+      { id: 'nachts', at: 'night', once: true, effects: [{ var: 'y', add: 1 }] },
+    ];
+    a.endings.push({ id: 'tot', title: 'Tot', scene: 'x', priority: 10, immediate: true, when: { flag: 'tot' } });
+    const sA = State.freshStory(a); sA.story.phase = 'evening';
+    const sB = State.freshStory(b);
+    const keep = { mode: State.mode, s: State.s, save: State.save, saveMeta: State.saveMeta, story: Story.story, finish: Story.finish, fade: Story.fade };
+    let finished = null;
+    try {
+      State.save = () => {}; State.saveMeta = () => {};
+      Story.fade = async () => {};
+      Story.finish = async function (end) { this.s.ended = end.id; finished = end.id; State.s = sB; this.story = b; }; // wie enter('newstory')
+      State.s = sA; Story.story = a;
+      await Story.night();
+      T.eq(finished, 'tot', 'sofortiges Ende gespielt');
+      T.eq(sA.story.ended, 'tot');
+      T.ok(State.s === sB, 'State.s ist die neue Story');
+      T.eq(sA.story.vars, {}, 'Folge-Event der alten Story lief nicht');
+      T.eq(sB.story.seen, [], 'alte Event-Ids nicht in der neuen Story');
+      T.eq(sB.story.vars, {}, 'alte Events nicht auf der neuen Story ausgeführt');
+      T.eq(sB.story.day, 1, 'neue Story nicht weitergezählt');
+      T.eq(sB.story.phase, 'morning'); T.eq(sB.story.ended, null);
+      T.ok(!Story.sleeping && !Story.finishing, 'Flags zurückgesetzt');
+    } finally {
+      State.mode = keep.mode; State.s = keep.s; State.save = keep.save; State.saveMeta = keep.saveMeta;
+      Story.story = keep.story; Story.finish = keep.finish; Story.fade = keep.fade;
+      Story.sleeping = false; Story.finishing = false; Story.lostDay = false;
+      UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide(); Story.renderDaybar();
+    }
+  });
+}
+
 /* --- SELFTEST CASES END --- */
 </script>
 
@@ -5794,7 +5876,7 @@ T.test('Story Schuld: stadtOffen ab Tag 4, Eintreiber mit Türsteher freigeschal
   UI.mountShell();
   if (discarded) UI.toast({ icon: '🗑️', title: 'Alter Spielstand verworfen', text: 'Unlesbar oder falsche Version – neues Spiel.', tone: 'loss', ms: 5000 });
   if (params.has('selftest')) {
-    const r = SelfTest.run();
+    const r = await SelfTest.run();
     document.documentElement.dataset.selftest = `passed=${r.passed} failed=${r.failed}`;
     console.log('[selftest]', r);
     r.failures.forEach((f) => console.error('[selftest] FAIL', f));

@@ -22,7 +22,7 @@ for (const id of ['rules', 'gear-rules', 'util', 'state', 'bus', 'story-rules', 
   if (!html.includes(`<script id="${id}">`)) continue; // state/bus kommen erst in Task 4
   vm.runInContext(block(id), ctx, { filename: `${id}.js` });
 }
-const r = vm.runInContext('SelfTest.run()', ctx);
+const r = await vm.runInContext('SelfTest.run()', ctx); // run() ist async (Browser-Tests dürfen awaiten)
 for (const f of r.failures) console.error('FAIL', f);
 console.log(`${r.passed} bestanden, ${r.failed} fehlgeschlagen`);
 process.exit(r.failed ? 1 : 0);
