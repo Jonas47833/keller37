@@ -90,3 +90,11 @@ INVEST: {
 ## 7. Ablauf
 
 Branch `feature/tisch-und-bank` von `main`, Plan per `writing-plans`, Umsetzung per Subagenten, Merge nach `main` und Push nur nach Rückfrage.
+
+## 8. Abweichungen in der Umsetzung
+
+Drei Punkte weichen vom Stand dieser Spec ab (Ruling nach dem Whole-Branch-Review, Fix-Pass):
+
+1. **Game-Over-Regel geändert.** §3 sagte „Game-Over-Regel unverändert" – tatsächlich musste `Rules.isGameOver` angepasst werden: `bankDebt > 0 && mafiaDebt > 0 &&` kein 1-€-Spin mehr bezahlbar (inkl. Zinsen/Meds), statt vorher `bankDebt >= limit`. Grund: Mit „nur ein Kredit auf einmal" (§3) lässt sich die Bank praktisch nie mehr bis ans Limit ausreizen, solange noch ein alter (kleinerer) Kredit offen ist – die alte Regel „Game Over ab `bankDebt >= limit`" wäre dadurch kaum noch erreichbar geworden. Die neue Regel bindet Game Over stattdessen daran, dass beide Kreditquellen (Bank offen, Vito offen) zu sind und selbst ein Mindesteinsatz nicht mehr drin ist. Siehe Node-Selftest `isGameOver: beide Quellen zu und kein Spin mehr bezahlbar` (`keller37.html`).
+2. **Vierter Kredit-Knopf „Limit".** §3/Technik (§5, `tpl-finance`) nannten nur 200/500/1.000 als Kredit-Beträge. Mit nur einem offenen Kredit und diesen drei Beträgen war das Bank-Limit (3.000 bzw. Mercedes 4.000–10.000) faktisch unerreichbar – die Szene `bank.limit` und der Mercedes-Limit-Perk wären damit toter Code. Ergänzt: ein vierter Button `data-loan="limit"` in `tpl-finance`, der auf `Rules.gear(s).bankLimit` leiht (Text „Limit · <Betrag>" über `UI.fmt`, gesperrt wie die anderen über `Rules.bankLoanAllowed`). Node-Selftest `bankLoanReason(base({ bankDebt: 0, car: 'mercS' }), 6000) === null` / `6001 === 'limit'`.
+3. **„Max"-Chip zieht bereits liegende Chips ab.** §2.2 nannte das schon als Sollverhalten („Max" = `Rules.maxBet(s)` minus bereits liegender Chips), das war in der ersten Umsetzung aber noch nicht verdrahtet – `Game.bindBet` hatte keinen Hebel dafür. Ergänzt: dritter, optionaler Parameter `maxFn` an `Game.bindBet(root, inputId, maxFn = () => Rules.maxBet(State.s))`; die Roulette-Mount ruft `Game.bindBet(root, 'rouletteBet', () => Math.max(1, Rules.maxBet(State.s) - Roulette.total()))`. Playtest-Check direkt nach den drei Chips (Summe 80, Kontostand 1.000): Klick auf `.chip[data-chip=max]` → `#rouletteBet` zeigt „920".

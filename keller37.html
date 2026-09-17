@@ -618,6 +618,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
         <button class="btn blue sm" data-loan="200">+200 €</button>
         <button class="btn blue sm" data-loan="500">+500 €</button>
         <button class="btn blue sm" data-loan="1000">+1.000 €</button>
+        <button class="btn blue sm" data-loan="limit">Limit</button>
         <button class="btn solid sm" id="repayBank">Tilgen</button>
       </div>
       <p class="dim hidden" id="bankHint"></p>
@@ -1888,7 +1889,7 @@ const Game = {
     UI.renderSide();
   },
   readBet(inputId) { return parseInt(qs('#' + inputId).value, 10); },
-  bindBet(root, inputId) {
+  bindBet(root, inputId, maxFn = () => Rules.maxBet(State.s)) {
     const input = qs('#' + inputId, root);
     const clamp = () => { const v = parseInt(input.value, 10); input.value = Number.isFinite(v) ? Math.max(1, v) : 1; };
     input.addEventListener('change', clamp);
@@ -1899,7 +1900,7 @@ const Game = {
     }));
     qsa('[data-chip]', root).forEach((c) => c.addEventListener('click', () => {
       const v = c.dataset.chip;
-      input.value = v === 'max' ? Rules.maxBet(State.s) : parseInt(v, 10);
+      input.value = v === 'max' ? maxFn() : parseInt(v, 10);
       SFX.play('chip');
     }));
   },
@@ -2096,27 +2097,30 @@ Cutscene.define('kidney.sold', [
 /* ---- Kredite ---- */
 const Finance = {
   root: null,
+  loanAmount(raw) { return raw === 'limit' ? Rules.gear(State.s).bankLimit : parseInt(raw, 10); },
   render() {
     if (!this.root) return;
     const s = State.s;
+    const g = Rules.gear(s);
     qs('#bankIou', this.root).innerHTML = s.bankDebt > 0
       ? `<h4>Schuldschein</h4><div class="amt">${UI.fmt(s.bankDebt)}</div><div>−${UI.fmt(Rules.bankInterest(s.bankDebt, s))} Zinsen pro Spin</div>`
       : `<h4>Schuldschein</h4><div class="amt">0 €</div><div>Sauberes Konto. Noch.</div>`;
     qs('#mafiaIou', this.root).innerHTML = s.mafiaDebt > 0
       ? `<h4>Vitos Zettel</h4><div class="amt">${UI.fmt(s.mafiaDebt)}</div><div class="deadline">Noch ${s.mafiaSpins} Spin${s.mafiaSpins === 1 ? '' : 's'}</div>`
       : `<h4>Vitos Zettel</h4><div class="amt">0 €</div><div>„Wir kennen uns nicht."</div>`;
-    qsa('[data-loan]', this.root).forEach((b) => { b.disabled = !Rules.bankLoanAllowed(s, parseInt(b.dataset.loan, 10)); });
+    qsa('[data-loan]', this.root).forEach((b) => { b.disabled = !Rules.bankLoanAllowed(s, this.loanAmount(b.dataset.loan)); });
+    qs('[data-loan="limit"]', this.root).textContent = `Limit · ${UI.fmt(g.bankLimit)}`;
     const hint = qs('#bankHint', this.root);
     hint.classList.toggle('hidden', s.bankDebt === 0);
     hint.textContent = s.bankDebt > 0 ? 'Erst den Schuldschein tilgen – Herr Krause gibt nur einen Kredit auf einmal.' : '';
     qsa('[data-mloan]', this.root).forEach((b) => { b.disabled = s.mafiaDebt > 0; });
     qs('#repayBank', this.root).disabled = s.bankDebt === 0;
     qs('#repayMafia', this.root).disabled = s.mafiaDebt === 0;
-    const g = Rules.gear(s);
     qs('#bankTerms', this.root).textContent = `Herr Krause · ${Math.round(g.bankRate * 100)} % Zinsen pro Spin · Limit ${UI.fmt(g.bankLimit)}`;
   },
   async loanBank(amt) {
     const s = State.s;
+    if (amt === 'limit') amt = Rules.gear(s).bankLimit;
     const why = Rules.bankLoanReason(s, amt);
     if (why === 'open') { UI.toast({ icon: '👔', title: 'Ein Kredit reicht', text: 'Erst den Schuldschein tilgen.', tone: 'loss' }); SFX.play('lose'); return; }
     if (why === 'limit') {
@@ -2179,7 +2183,7 @@ UI.register('finance', {
       vito.classList.toggle('hidden', !Story.roomUnlocked('mafia'));
       if (bank.classList.contains('hidden') || vito.classList.contains('hidden')) qs('.finance', root).style.gridTemplateColumns = '1fr';
     }
-    qsa('[data-loan]', root).forEach((b) => b.addEventListener('click', () => Finance.loanBank(parseInt(b.dataset.loan, 10))));
+    qsa('[data-loan]', root).forEach((b) => b.addEventListener('click', () => Finance.loanBank(Finance.loanAmount(b.dataset.loan))));
     qsa('[data-mloan]', root).forEach((b) => b.addEventListener('click', () => Finance.loanMafia(parseInt(b.dataset.mloan, 10))));
     qs('#repayBank', root).addEventListener('click', () => Finance.repayBank());
     qs('#repayMafia', root).addEventListener('click', () => Finance.repayMafia());
@@ -2918,7 +2922,13 @@ const Roulette = {
   },
   repeat() {
     if (this.spinning || !this.lastBets.length) return;
-    if (!Rules.checkSpin(State.s, Rules.rouletteTotal(this.lastBets)).ok) return;
+    const lastTotal = Rules.rouletteTotal(this.lastBets);
+    const chk = Rules.checkSpin(State.s, lastTotal);
+    if (!chk.ok) {
+      UI.toast({ icon: '🚫', title: 'Zu wenig Geld', tone: 'loss', ms: 4500, text: `Wie zuletzt wären ${UI.fmt(lastTotal)} (+ Zinsen ${UI.fmt(chk.interest)} + Meds ${UI.fmt(chk.meds)}).` });
+      SFX.play('lose');
+      return;
+    }
     qsa('.chip.placed', this.root).forEach((c) => c.remove());
     this.bets = this.lastBets.map((b) => Object.assign({}, b));
     for (const b of this.bets) { const cell = this.cellFor(b.type, b.n); if (cell) cell.append(h('div', { class: 'chip placed' }, String(b.amount))); }
@@ -2956,7 +2966,7 @@ const Roulette = {
       const result = Rules.rouletteSettle(bets, rolled);
       const delta = result.payout - total;
       this.lastBets = bets;
-      this.bets = [];
+      if (this.gen === gen) this.bets = [];
       if (this.alive(gen)) {
         this.drawWheel(targetIdx);
         const res = qs('#resultNum', this.root);
@@ -2970,7 +2980,7 @@ const Roulette = {
           : delta === 0 ? `<span>${colName} · ${parts.join(' · ')} → ±0</span>`
           : `<span class="loss">${colName} · ${parts.join(' · ')} → −${UI.fmt(-delta)}</span>`;
         this.bets = bets; this.renderTable(result); this.bets = [];   // Marker mit Gewinn/Verlust-Farbe stehen lassen
-        setTimeout(() => { if (this.alive(gen) && !this.spinning) this.renderTable(); }, 1400);
+        setTimeout(() => { if (this.alive(gen)) this.renderTable(); }, 1400);
       }
       await Bus.emit('roulette:result', { bets, rolled, payout: result.payout, hits: result.hits, total, win: delta > 0 });
       await Game.settle(delta, { from: this.alive(gen) ? qs('.wheel-box', this.root) : null, game: 'roulette', bet: total, run });
@@ -2992,7 +3002,7 @@ UI.register('roulette', {
     Roulette.buildTable();
     Roulette.drawWheel();
     qs('#wheelCanvas', root).style.transform = `rotate(${Roulette.wheelDeg}deg)`;
-    Game.bindBet(root, 'rouletteBet');
+    Game.bindBet(root, 'rouletteBet', () => Math.max(1, Rules.maxBet(State.s) - Roulette.total()));
     Roulette.bets = [];
     qs('#btnSpin', root).addEventListener('click', () => Roulette.spin());
     qs('#btnUndo', root).addEventListener('click', () => Roulette.undo());
@@ -3545,6 +3555,7 @@ async function restartGame({ playIntro }) {
   State.reset();
   State.s.flags.intro = true;
   State.save();
+  Roulette.lastBets = [];
   UI.setBalance(State.s.balance, { animate: false });
   UI.renderWallet();
   UI.renderSide();
@@ -5611,6 +5622,8 @@ T.test('bankLoanAllowed / isGameOver: Mercedes-Limit, beide Quellen zu', () => {
   T.eq(Rules.bankLoanReason(base({ bankDebt: 0, car: 'mercC' }), 4000), null);
   T.eq(Rules.bankLoanReason(base({ bankDebt: 0, car: 'mercC' }), 4001), 'limit');
   T.eq(Rules.bankLoanReason(base({ bankDebt: 0 }), 4000), 'limit');
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 0, car: 'mercS' }), 6000), null);
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 0, car: 'mercS' }), 6001), 'limit');
   T.eq(Rules.isGameOver(base({ bankDebt: 500, mafiaDebt: 300, balance: 0 })), true);
   T.eq(Rules.isGameOver(base({ bankDebt: 0, mafiaDebt: 300, balance: 0 })), false);
   T.eq(Rules.isGameOver(base({ bankDebt: 500, mafiaDebt: 0, balance: 0 })), false);

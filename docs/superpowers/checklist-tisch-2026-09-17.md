@@ -51,7 +51,7 @@ Eine Zeile je Anforderung aus `docs/superpowers/specs/2026-09-17-tisch-und-bank-
 | Ein offener Kredit: `Rules.bankLoanAllowed(s, amt)` verlangt `s.bankDebt === 0` | Node-Selftest `bankLoanAllowed: ein Kredit, Limit 3000` |
 | Finanz-Raum: Kredit-Knöpfe gesperrt bei offenem Kredit, Hinweis „Erst den Schuldschein tilgen." | Playtest `bank: bei offenem Kredit alle Kredit-Knoepfe gesperrt, Hinweis sichtbar` (`disabled=True`, `hint` enthält „tilgen"); Screenshot `finance.png` (Bank-Karte: `+200 €`/`+500 €`/`+1.000 €` gedimmt/deaktiviert, Hinweiszeile darunter, `TILGEN` aktiv; Vito-Karte unverändert klickbar, da eigene Schuldenquelle) |
 | Tilgen bleibt Gesamtsumme (unverändert) | Code `Finance.repayBank()` unverändert aus Vorgänger-Version, kein neuer Test nötig (out of scope dieser Spec) |
-| Vito unverändert (1 Zettel, 5 Spins, ×3); Game-Over-Regel unverändert | Node-Selftests `mafiaBill = 3x`, `isGameOver: beide Quellen zu und kein Spin mehr bezahlbar` (unverändert aus Task 1) |
+| Vito unverändert (1 Zettel, 5 Spins, ×3); Game-Over-Regel geändert (Ruling, siehe Spec §8): Game Over erst wenn `bankDebt > 0 && mafiaDebt > 0 &&` kein 1-€-Spin mehr bezahlbar ist (vorher `bankDebt >= limit`) — mit nur einem Kredit auf einmal wäre die alte Limit-Regel sonst kaum noch erreichbar | Node-Selftests `mafiaBill = 3x`, `isGameOver: beide Quellen zu und kein Spin mehr bezahlbar` |
 | Alle „30 %"-Texte dynamisch oder auf 8 % | Node-Selftest `bankInterest: 8 % gerundet`; Playtest `bank: Konditionen 8 %` (`terms` enthält „8 %"); Playtest `stadt: Bank zeigt Mercedes-Konditionen` (Mercedes-Konditionen jetzt „7 %" statt vormals „27 %" — Szenario-Check dieser Task entsprechend angepasst, siehe Report) |
 
 ## §4 Anlagen
