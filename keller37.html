@@ -3860,6 +3860,20 @@ const RoyalRules = {
     }
     return dice;
   },
+  /* ---- Glücksrad: 24 Segmente, Multiplikator auf den Einsatz (0 = Bankrott, 0,5 = Hälfte zurück) ---- */
+  WHEEL: {
+    SEGMENTS: [0, 0, 0.5, 0, 0, 1, 0, 1, 0, 2, 0, 0.5, 0, 1, 0, 5, 0, 0.5, 0, 10, 0, 0.5, 0, 0.5],
+    BETS: [100, 500, 1000, 5000],
+  },
+  wheelSpin(rng) { return Math.floor(rng() * RoyalRules.WHEEL.SEGMENTS.length); },
+  wheelPayout(index, bet) { return Math.round(bet * RoyalRules.WHEEL.SEGMENTS[index]); },
+  wheelDelta(index, bet) { return RoyalRules.wheelPayout(index, bet) - bet; },
+  wheelLuckOverride(index, luck, rng) {
+    const S = RoyalRules.WHEEL.SEGMENTS;
+    if (S[index] !== 0 || !(rng() * 100 < luck)) return index;
+    for (let k = 1; k <= 2; k++) { const j = (index + k) % S.length; if (S[j] !== 0) return j; }
+    return index;
+  },
 };
 </script>
 
@@ -5491,6 +5505,38 @@ T.test('crapsLuckOverride: verlierender Wurf wird verschoben, Gewinner nie', () 
   T.eq(RoyalRules.crapsLuckOverride([1, 2], null, false, 100, seq(0)), [1, 2], 'ohne Pass-Einsatz gibt es nichts zu retten');
   T.eq(RoyalRules.crapsLuckOverride([4, 4], 8, true, 100, seq(0)), [4, 4], 'Gewinner bleibt');
   T.eq(RoyalRules.crapsLuckOverride([6, 6], 6, true, 100, seq(0)), [6, 6], 'neutraler Wurf (12 in Punktphase) bleibt');
+});
+
+/* ---- RoyalRules: Glücksrad ---- */
+T.test('WHEEL: 24 Segmente, Verteilung, Erwartungswert 93,75 %', () => {
+  const S = RoyalRules.WHEEL.SEGMENTS;
+  T.eq(S.length, 24);
+  const count = (v) => S.filter((x) => x === v).length;
+  T.eq([count(0), count(0.5), count(1), count(2), count(5), count(10)], [13, 5, 3, 1, 1, 1]);
+  T.eq(S.reduce((a, b) => a + b, 0) / 24, 0.9375);
+  S.forEach((v, i) => { if (v === 0) T.ok(S[(i + 1) % 24] !== 0 || S[(i + 2) % 24] !== 0, `Bankrott ${i} hat binnen 2 Schritten ein Nicht-Bankrott-Segment`); });
+});
+T.test('wheelSpin / wheelPayout / wheelDelta', () => {
+  T.eq(RoyalRules.wheelSpin(seq(0)), 0);
+  T.eq(RoyalRules.wheelSpin(seq(0.999)), 23);
+  T.eq(RoyalRules.wheelSpin(seq(0.5)), 12);
+  const S = RoyalRules.WHEEL.SEGMENTS;
+  const i10 = S.indexOf(10), iH = S.indexOf(0.5), i0 = S.indexOf(0);
+  T.eq(RoyalRules.wheelPayout(i10, 500), 5000);
+  T.eq(RoyalRules.wheelPayout(iH, 500), 250);
+  T.eq(RoyalRules.wheelPayout(i0, 500), 0);
+  T.eq(RoyalRules.wheelDelta(i10, 500), 4500);
+  T.eq(RoyalRules.wheelDelta(iH, 500), -250);
+  T.eq(RoyalRules.wheelDelta(S.indexOf(1), 500), 0);
+});
+T.test('wheelLuckOverride: Bankrott rückt auf das nächste Nicht-Bankrott-Segment', () => {
+  const S = RoyalRules.WHEEL.SEGMENTS;
+  const i0 = S.indexOf(0);
+  T.eq(RoyalRules.wheelLuckOverride(i0, 0, seq(0)), i0, 'ohne Glück');
+  const o = RoyalRules.wheelLuckOverride(i0, 100, seq(0));
+  T.ok(S[o] !== 0 && (o === (i0 + 1) % 24 || o === (i0 + 2) % 24), 'nächstes Nicht-Bankrott, 1–2 Schritte weiter');
+  T.eq(RoyalRules.wheelLuckOverride(S.indexOf(10), 100, seq(0)), S.indexOf(10), 'Gewinn bleibt');
+  T.eq(RoyalRules.wheelLuckOverride(i0, 50, seq(0.999)), i0, 'Glück greift nicht (rng ≥ luck/100)');
 });
 
 /* ---- StoryRules ---- */
