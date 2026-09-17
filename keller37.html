@@ -217,6 +217,7 @@ body.cs-open .toast { max-width: 300px; }
 .invest-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .chalk.inv { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .chalk.inv .dim { font-size: .85rem; }
+.inv-running { font-family: var(--font-mono); font-size: .85rem; color: var(--gold-2); border: 1px dashed rgba(201,162,39,.5); border-radius: 6px; padding: 8px 10px; text-align: center; }
 .tickets { display: flex; flex-wrap: wrap; gap: 10px; min-height: 40px; }
 .ticket { background: #f6e6b3; color: var(--paper-ink); font-family: var(--font-mono); font-size: .85rem; padding: 8px 12px; border: 1px dashed #8a6d1a; transform: rotate(-1deg); animation: popIn .25s ease both; }
 .ticket b { font-family: var(--font-display); letter-spacing: .08em; }
@@ -604,7 +605,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
   <div class="finance">
     <section class="counter bank">
       <h2 class="neon" style="--neon: var(--neon-blue)">Bank</h2>
-      <p class="dim" id="bankTerms">Herr Krause · 30 % Zinsen pro Spin · Limit 3.000 €</p>
+      <p class="dim" id="bankTerms">Herr Krause · 8 % Zinsen pro Spin · Limit 3.000 €</p>
       <div class="paper iou" id="bankIou"></div>
       <div class="bet-bar">
         <button class="btn blue sm" data-loan="200">+200 €</button>
@@ -612,6 +613,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
         <button class="btn blue sm" data-loan="1000">+1.000 €</button>
         <button class="btn solid sm" id="repayBank">Tilgen</button>
       </div>
+      <p class="dim hidden" id="bankHint"></p>
     </section>
     <section class="counter vito">
       <h2 class="neon" style="--neon: var(--neon-red)">Don Vito</h2>
@@ -633,21 +635,31 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
     <div class="invest-grid">
       <div class="chalk inv" data-type="bank">
         <h4>🏦 Festgeld</h4>
-        <p class="dim">+8 % · 5 Spins · 10 % Risiko</p>
-        <div class="bet-field"><button data-step="-10">−</button><input type="number" id="invBank" value="50" min="10"><button data-step="10">+</button></div>
-        <button class="btn blue sm" data-invest="bank">Anlegen</button>
+        <p class="dim">+8 % · 6 Spins · 10 % Risiko</p>
+        <div class="inv-running hidden"></div>
+        <div class="inv-form">
+          <div class="bet-field"><button data-step="-10">−</button><input type="number" id="invBank" value="50" min="10"><button data-step="10">+</button></div>
+          <button class="btn blue sm" data-invest="bank">Anlegen</button>
+        </div>
       </div>
       <div class="chalk inv" data-type="stock">
         <h4>🚀 Aktien</h4>
         <p class="dim">+100 % · 2 Spins · <strong>85 % Risiko</strong></p>
-        <div class="bet-field"><button data-step="-10">−</button><input type="number" id="invStock" value="20" min="10"><button data-step="10">+</button></div>
-        <button class="btn red sm" data-invest="stock">Zocken</button>
+        <div class="inv-running hidden"></div>
+        <div class="inv-form">
+          <div class="bet-field"><button data-step="-10">−</button><input type="number" id="invStock" value="20" min="10"><button data-step="10">+</button></div>
+          <button class="btn red sm" data-invest="stock">Zocken</button>
+        </div>
       </div>
       <div class="chalk inv" data-type="scam">
         <h4>🕶️ Trickbetrug</h4>
-        <p class="dim">+30 % · 10 Spins · <strong>55 % Risiko</strong></p>
-        <div class="bet-field"><button data-step="-10">−</button><input type="number" id="invScam" value="50" min="10"><button data-step="10">+</button></div>
-        <button class="btn sm" style="--c: var(--neon-purple); color: #e0c8ff" data-invest="scam">Riskieren</button>
+        <p class="dim">+50 % · 10 Spins · <strong>55 % Risiko</strong></p>
+        <p class="dim">Vito legt es für dich an. Frag nicht, wo.</p>
+        <div class="inv-running hidden"></div>
+        <div class="inv-form">
+          <div class="bet-field"><button data-step="-10">−</button><input type="number" id="invScam" value="50" min="10"><button data-step="10">+</button></div>
+          <button class="btn sm" style="--c: var(--neon-purple); color: #e0c8ff" data-invest="scam">Riskieren</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2078,6 +2090,9 @@ const Finance = {
       ? `<h4>Vitos Zettel</h4><div class="amt">${UI.fmt(s.mafiaDebt)}</div><div class="deadline">Noch ${s.mafiaSpins} Spin${s.mafiaSpins === 1 ? '' : 's'}</div>`
       : `<h4>Vitos Zettel</h4><div class="amt">0 €</div><div>„Wir kennen uns nicht."</div>`;
     qsa('[data-loan]', this.root).forEach((b) => { b.disabled = !Rules.bankLoanAllowed(s, parseInt(b.dataset.loan, 10)); });
+    const hint = qs('#bankHint', this.root);
+    hint.classList.toggle('hidden', s.bankDebt === 0);
+    hint.textContent = s.bankDebt > 0 ? 'Erst den Schuldschein tilgen – Herr Krause gibt nur einen Kredit auf einmal.' : '';
     qsa('[data-mloan]', this.root).forEach((b) => { b.disabled = s.mafiaDebt > 0; });
     qs('#repayBank', this.root).disabled = s.bankDebt === 0;
     qs('#repayMafia', this.root).disabled = s.mafiaDebt === 0;
@@ -2086,7 +2101,9 @@ const Finance = {
   },
   async loanBank(amt) {
     const s = State.s;
-    if (!Rules.bankLoanAllowed(s, amt)) {
+    const why = Rules.bankLoanReason(s, amt);
+    if (why === 'open') { UI.toast({ icon: '👔', title: 'Ein Kredit reicht', text: 'Erst den Schuldschein tilgen.', tone: 'loss' }); SFX.play('lose'); return; }
+    if (why === 'limit') {
       if (!s.flags.bankLimit) { s.flags.bankLimit = true; State.save(); await Cutscene.play('bank.limit', { limit: UI.fmt(Rules.gear(s).bankLimit) }); }
       else UI.toast({ icon: '👔', title: 'Kreditlimit erreicht', text: `Herr Krause bedauert. ${UI.fmt(Rules.gear(s).bankLimit)} sind das Ende.`, tone: 'loss' });
       return;
@@ -2095,7 +2112,7 @@ const Finance = {
     Game.applyDelta(amt, { quiet: true });
     SFX.play('cash');
     this.render();
-    if (!s.flags.bankLoan) { s.flags.bankLoan = true; State.save(); await Cutscene.play('bank.loan', {}); }
+    if (!s.flags.bankLoan) { s.flags.bankLoan = true; State.save(); await Cutscene.play('bank.loan', { rate: Math.round(Rules.gear(s).bankRate * 100) }); }
     else UI.toast({ icon: '🏦', title: `+${UI.fmt(amt)} Kredit`, text: `Schulden jetzt ${UI.fmt(s.bankDebt)}.`, tone: 'info' });
     this.render();
   },
@@ -2158,7 +2175,7 @@ Bus.on('spin:after', () => Finance.render());
 
 Cutscene.define('bank.loan', [
   { bg: 'bank', who: 'krause', mood: 'calm', text: 'Willkommen bei der Sparkasse Keller 37. Ich sehe, Sie möchten liquide bleiben. Sehr vernünftig.' },
-  { bg: 'bank', who: 'krause', mood: 'happy', text: 'Dreißig Prozent Zinsen – pro Spin, versteht sich. Marktüblich. Hier unten. Unterschreiben Sie bitte da, da und da.' },
+  { bg: 'bank', who: 'krause', mood: 'happy', text: '{{rate}} Prozent Zinsen – pro Spin, versteht sich. Marktüblich. Hier unten. Unterschreiben Sie bitte da, da und da.' },
 ]);
 Cutscene.define('bank.limit', [
   { bg: 'bank', who: 'krause', mood: 'calm', text: '„{{limit}} Gesamtschuld." Da geht nichts mehr, tut mir leid. Ich kann Ihnen einen Kaffee anbieten. Der ist auch nicht umsonst.' },
@@ -2185,21 +2202,32 @@ const Invest = {
   INPUT: { bank: 'invBank', stock: 'invStock', scam: 'invScam' },
   render() {
     if (!this.root) return;
+    const s = State.s;
     const box = qs('#tickets', this.root);
     box.innerHTML = '';
-    if (State.s.investments.length === 0) { box.append(h('span', { class: 'empty' }, 'Keine laufenden Anlagen.')); return; }
-    for (const inv of State.s.investments) {
+    if (s.investments.length === 0) box.append(h('span', { class: 'empty' }, 'Keine laufenden Anlagen.'));
+    for (const inv of s.investments) {
       box.append(h('div', { class: 'ticket' }, h('b', {}, inv.name), ` · ${UI.fmt(inv.amount)} · noch ${inv.spins} Spin${inv.spins === 1 ? '' : 's'}`));
+    }
+    for (const card of qsa('.chalk.inv', this.root)) {
+      const run = Rules.investRunning(s, card.dataset.type);
+      qs('.inv-running', card).classList.toggle('hidden', !run);
+      qs('.inv-form', card).classList.toggle('hidden', !!run);
+      if (run) qs('.inv-running', card).textContent = `Läuft: ${UI.fmt(run.amount)} · noch ${run.spins} Spin${run.spins === 1 ? '' : 's'}`;
     }
   },
   invest(type) {
     const s = State.s;
     const def = Rules.INVEST[type];
     const amt = parseInt(qs('#' + this.INPUT[type], this.root).value, 10);
-    if (!Number.isFinite(amt) || amt < def.min) { UI.toast({ icon: '🚫', title: 'Mindestens 10 €', tone: 'loss' }); SFX.play('lose'); return; }
-    if (s.balance < amt) { UI.toast({ icon: '🚫', title: 'Zu wenig Geld', text: `Du hast ${UI.fmt(s.balance)}.`, tone: 'loss' }); SFX.play('lose'); return; }
+    const chk = Rules.canInvest(s, type, amt);
+    if (!chk.ok) {
+      const msg = chk.reason === 'running' ? { title: 'Läuft schon', text: `Erst auszahlen lassen, dann neu anlegen.` }
+        : chk.reason === 'min' ? { title: 'Mindestens 10 €' } : { title: 'Zu wenig Geld', text: `Du hast ${UI.fmt(s.balance)}.` };
+      UI.toast(Object.assign({ icon: '🚫', tone: 'loss' }, msg)); SFX.play('lose'); return;
+    }
     Game.applyDelta(-amt, { from: qs(`[data-type="${type}"]`, this.root) });
-    s.investments.push({ name: def.name, amount: amt, rate: def.rate, spins: def.spins, risk: def.risk });
+    s.investments.push({ type, name: def.name, amount: amt, rate: def.rate, spins: def.spins, risk: def.risk });
     State.save();
     SFX.play('chip');
     UI.toast({ icon: '📈', title: `${def.name} angelegt`, text: `${UI.fmt(amt)} für ${def.spins} Spins.`, tone: 'info' });
