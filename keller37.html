@@ -4462,8 +4462,9 @@ const Taxi = {
   lane(dir) { if (!this.running) return; this.laneIdx = Math.max(0, Math.min(2, this.laneIdx + dir)); this.placeCar(); SFX.play('click'); },
   brake() {
     if (!this.running || !this.root) return;
+    const gen = this.gen;
     const delay = StoryRules.jobMod(State.s).taxiBrakeDelay || 0;
-    const apply = () => { if (!this.running || !this.root) return; this.braking = true; this.brakeUntil = performance.now() + 600; qs('#taxiCar', this.root).classList.add('braking'); const f = qs('#brakeFlash', this.root); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); };
+    const apply = () => { if (!this.alive(gen) || !this.running) return; this.braking = true; this.brakeUntil = performance.now() + 600; qs('#taxiCar', this.root).classList.add('braking'); const f = qs('#brakeFlash', this.root); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); };
     if (delay > 0) setTimeout(apply, delay); else apply();
   },
   ticket() { if (!this.root) return; const p = h('div', { class: 'ticket-pop' }, 'STRAFZETTEL −50 €'); qs('#taxiRoad', this.root).append(p); UI.shake(qs('#taxiRoad', this.root)); setTimeout(() => p.remove(), 900); },
