@@ -18,7 +18,7 @@ const storage = {
 };
 const ctx = { console, localStorage: storage, setTimeout, clearTimeout };
 vm.createContext(ctx);
-for (const id of ['rules', 'gear-rules', 'util', 'state', 'bus', 'story-rules', 'royal-rules', 'story-probe', 'story-schuld', 'story-kater', 'selftest']) {
+for (const id of ['rules', 'gear-rules', 'perk-rules', 'util', 'state', 'bus', 'story-rules', 'royal-rules', 'story-probe', 'story-schuld', 'story-kater', 'selftest']) {
   if (!html.includes(`<script id="${id}">`)) continue; // state/bus kommen erst in Task 4
   vm.runInContext(block(id), ctx, { filename: `${id}.js` });
 }

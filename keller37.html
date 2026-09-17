@@ -217,6 +217,7 @@ body.cs-open .toast { max-width: 300px; }
 .invest-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .chalk.inv { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .chalk.inv .dim { font-size: .85rem; }
+.inv-running { font-family: var(--font-mono); font-size: .85rem; color: var(--gold-2); border: 1px dashed rgba(201,162,39,.5); border-radius: 6px; padding: 8px 10px; text-align: center; }
 .tickets { display: flex; flex-wrap: wrap; gap: 10px; min-height: 40px; }
 .ticket { background: #f6e6b3; color: var(--paper-ink); font-family: var(--font-mono); font-size: .85rem; padding: 8px 12px; border: 1px dashed #8a6d1a; transform: rotate(-1deg); animation: popIn .25s ease both; }
 .ticket b { font-family: var(--font-display); letter-spacing: .08em; }
@@ -304,6 +305,13 @@ body.cs-open .toast { max-width: 300px; }
 .chip.placed { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.68); pointer-events: none; animation: popIn .2s ease both; }
 .chip.placed.won { animation: chipWin .5s ease both; }
 .chip.placed.lost { animation: chipLost .5s ease both; }
+.table-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+.table-bar .btn.sm { font-size: .8rem; padding: 6px 12px; }
+.table-total { font-family: var(--font-mono); font-size: .85rem; color: var(--gold-2); margin-right: 6px; }
+.chip-stack { position: absolute; right: -4px; top: -6px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: #e8c65a; color: #111; border: 2px solid #fff; font-family: var(--font-mono); font-weight: 700; font-size: .68rem; line-height: 18px; text-align: center; pointer-events: none; box-shadow: 0 2px 4px rgba(0,0,0,.6); z-index: 2; animation: popIn .2s ease both; }
+.chip-stack.won { background: var(--neon-green); color: #062; animation: chipWin .5s ease both; }
+.chip-stack.lost { background: #555; color: #ccc; animation: chipLost .5s ease both; }
+.chip[data-v="500"] { --chip: #6a1b9a; }
 /* -- Pferderennen -- */
 .commentary { font-family: var(--font-display); letter-spacing: .1em; font-size: 1.3rem; color: var(--neon-green); text-shadow: 0 0 10px rgba(61,220,132,.5); min-height: 1.6em; text-align: center; }
 .track { position: relative; width: 100%; background: linear-gradient(180deg, #3d2a17, #2a1c0f); border-top: 6px solid #8a6d1a; border-bottom: 6px solid #8a6d1a; border-radius: 6px; padding: 6px 0; overflow: hidden; }
@@ -418,7 +426,7 @@ body.cs-open .toast { max-width: 300px; }
 }
 /* -- Reduced Motion -- */
 @media (prefers-reduced-motion: reduce) {
-  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running, .plate.hit, .plate.broken, .taxi-road.running, .brake-flash.on, .ticket-pop, .mega-grid .cell.spin, .die.rolling { animation: none !important; }
+  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running, .plate.hit, .plate.broken, .taxi-road.running, .brake-flash.on, .ticket-pop, .mega-grid .cell.spin, .die.rolling, .lv-badge.point { animation: none !important; }
   .strip.spinning { animation: none !important; filter: none; }
   .stage, .stage.leaving, .stage.entering { transition: none; animation: none; }
   #wheelCanvas { transition-duration: .3s; }
@@ -589,6 +597,37 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .wheel.hit { animation: hitGlow .6s ease 3; }
 @media (max-width: 760px) { .wheel-panel { grid-template-columns: 1fr; } .wheel-panel .paytable { justify-self: center; } .wheel .seg { font-size: .7rem; } }
 .cs-bg.gasse { background: linear-gradient(180deg, #05060a 0%, #14161e 55%, #2a2418 56%, #0d0b07 100%); }
+/* ==== Perks – Level-Badge, Skill-Screen ==== */
+.lv-badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: .8rem; color: var(--gold-2); border: 1px solid rgba(201,162,39,.35); border-radius: 6px; padding: 2px 8px; background: rgba(0,0,0,.3); cursor: pointer; }
+.lv-badge .bar { width: 44px; height: 6px; border-radius: 3px; background: #2a2e26; overflow: hidden; }
+.lv-badge .bar i { display: block; height: 100%; background: var(--neon-green); }
+.lv-badge.point { animation: pulse 1.2s ease-in-out infinite; border-color: var(--neon-green); }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 rgba(61,220,132,0); } 50% { box-shadow: 0 0 12px rgba(61,220,132,.8); } }
+.skills-head { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
+.xp-bar { flex: 1; min-width: 200px; height: 12px; border-radius: 6px; background: #2a2e26; overflow: hidden; }
+.xp-bar i { display: block; height: 100%; background: var(--neon-green); }
+.skill-slots { display: flex; gap: 10px; }
+.skill-slot { min-width: 110px; padding: 8px 12px; border: 1px dashed rgba(201,162,39,.4); border-radius: 8px; font-family: var(--font-mono); font-size: .8rem; text-align: center; color: var(--dim); }
+.skill-slot.filled { border-style: solid; color: var(--gold-2); }
+.skill-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.skill-card { background: var(--panel-2); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+.skill-card.active { border-color: var(--gold); box-shadow: 0 0 14px rgba(201,162,39,.25); }
+.skill-card h4 { font-family: var(--font-display); letter-spacing: .08em; }
+.skill-card .light { color: var(--neon-green); font-family: var(--font-mono); font-size: .8rem; }
+.skill-card .shadow { color: #ff8a80; font-family: var(--font-mono); font-size: .8rem; }
+.skill-card .reason { color: var(--dim); font-family: var(--font-mono); font-size: .75rem; margin-top: auto; }
+.skill-card .btn { margin-top: auto; align-self: flex-start; font-size: .85rem; padding: 6px 14px; }
+.insider-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.insider-chip { border: 1px solid rgba(76,201,240,.4); border-radius: 8px; padding: 8px 12px; background: rgba(0,0,0,.3); font-family: var(--font-mono); font-size: .8rem; max-width: 280px; }
+.insider-chip b { display: block; color: var(--neon-blue); }
+.rcell.excluded { opacity: .28; filter: grayscale(1); pointer-events: none; }
+.insider-hint { font-family: var(--font-mono); font-size: .75rem; color: var(--neon-blue); }
+.runner.lame .horse { filter: grayscale(.8); opacity: .7; }
+.runner .lame-tag { position: absolute; left: 6px; bottom: -8px; font-family: var(--font-mono); font-size: .7rem; color: #ff8a80; }
+.hand-label .insider-hint { margin-left: 8px; }
+.holds { display: flex; gap: 10px; padding: 0 12px; margin-bottom: 6px; }
+.hold-btn { flex: 1; }
+.slot-machine .insider-hint { display: block; padding: 0 12px; margin-bottom: 6px; }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
@@ -647,7 +686,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 <template id="tpl-hub">
   <div class="hub">
     <div class="door" data-screen="roulette" style="--neon: var(--neon-red)"><div class="sign">Roulette</div><div class="glyph">🎡</div><div class="chalk-tag">Plein 35:1</div><div class="knob"></div></div>
-    <div class="door" data-screen="slots" style="--neon: var(--neon-amber)"><div class="sign">Slots</div><div class="glyph">🎰</div><div class="chalk-tag">bis 50×</div><div class="knob"></div></div>
+    <div class="door" data-screen="slots" style="--neon: var(--neon-amber)"><div class="sign">Slots</div><div class="glyph">🎰</div><div class="chalk-tag">bis 40×</div><div class="knob"></div></div>
     <div class="door" data-screen="horses" style="--neon: var(--neon-green)"><div class="sign">Rennbahn</div><div class="glyph">🏇</div><div class="chalk-tag">Quote 4.0</div><div class="knob"></div></div>
     <div class="door" data-screen="russian" style="--neon: var(--neon-blue)"><div class="sign">Igor</div><div class="glyph">🔫</div><div class="chalk-tag">Duell · 1 Kugel</div><div class="knob"></div></div>
     <div class="door" data-screen="blackjack" style="--neon: var(--neon-green)"><div class="sign">Black Jack</div><div class="glyph">🃏</div><div class="chalk-tag">bis 21</div><div class="knob"></div></div>
@@ -659,14 +698,16 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
   <div class="finance">
     <section class="counter bank">
       <h2 class="neon" style="--neon: var(--neon-blue)">Bank</h2>
-      <p class="dim" id="bankTerms">Herr Krause · 30 % Zinsen pro Spin · Limit 3.000 €</p>
+      <p class="dim" id="bankTerms">Herr Krause · 8 % Zinsen pro Spin · Limit 3.000 €</p>
       <div class="paper iou" id="bankIou"></div>
       <div class="bet-bar">
         <button class="btn blue sm" data-loan="200">+200 €</button>
         <button class="btn blue sm" data-loan="500">+500 €</button>
         <button class="btn blue sm" data-loan="1000">+1.000 €</button>
+        <button class="btn blue sm" data-loan="limit">Limit</button>
         <button class="btn solid sm" id="repayBank">Tilgen</button>
       </div>
+      <p class="dim hidden" id="bankHint"></p>
     </section>
     <section class="counter vito">
       <h2 class="neon" style="--neon: var(--neon-red)">Don Vito</h2>
@@ -688,21 +729,31 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
     <div class="invest-grid">
       <div class="chalk inv" data-type="bank">
         <h4>🏦 Festgeld</h4>
-        <p class="dim">+8 % · 5 Spins · 10 % Risiko</p>
-        <div class="bet-field"><button data-step="-10">−</button><input type="number" id="invBank" value="50" min="10"><button data-step="10">+</button></div>
-        <button class="btn blue sm" data-invest="bank">Anlegen</button>
+        <p class="dim">+8 % · 6 Spins · 10 % Risiko</p>
+        <div class="inv-running hidden"></div>
+        <div class="inv-form">
+          <div class="bet-field"><button data-step="-10">−</button><input type="number" id="invBank" value="50" min="10"><button data-step="10">+</button></div>
+          <button class="btn blue sm" data-invest="bank">Anlegen</button>
+        </div>
       </div>
       <div class="chalk inv" data-type="stock">
         <h4>🚀 Aktien</h4>
         <p class="dim">+100 % · 2 Spins · <strong>85 % Risiko</strong></p>
-        <div class="bet-field"><button data-step="-10">−</button><input type="number" id="invStock" value="20" min="10"><button data-step="10">+</button></div>
-        <button class="btn red sm" data-invest="stock">Zocken</button>
+        <div class="inv-running hidden"></div>
+        <div class="inv-form">
+          <div class="bet-field"><button data-step="-10">−</button><input type="number" id="invStock" value="20" min="10"><button data-step="10">+</button></div>
+          <button class="btn red sm" data-invest="stock">Zocken</button>
+        </div>
       </div>
       <div class="chalk inv" data-type="scam">
         <h4>🕶️ Trickbetrug</h4>
-        <p class="dim">+30 % · 10 Spins · <strong>55 % Risiko</strong></p>
-        <div class="bet-field"><button data-step="-10">−</button><input type="number" id="invScam" value="50" min="10"><button data-step="10">+</button></div>
-        <button class="btn sm" style="--c: var(--neon-purple); color: #e0c8ff" data-invest="scam">Riskieren</button>
+        <p class="dim">+50 % · 10 Spins · <strong>55 % Risiko</strong></p>
+        <p class="dim">Vito legt es für dich an. Frag nicht, wo.</p>
+        <div class="inv-running hidden"></div>
+        <div class="inv-form">
+          <div class="bet-field"><button data-step="-10">−</button><input type="number" id="invScam" value="50" min="10"><button data-step="10">+</button></div>
+          <button class="btn sm" style="--c: var(--neon-purple); color: #e0c8ff" data-invest="scam">Riskieren</button>
+        </div>
       </div>
     </div>
   </div>
@@ -723,6 +774,12 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
     <div class="slots-top">
       <div class="slot-machine">
         <div class="slot-head neon" style="--neon: var(--neon-amber)">Lucky Seven</div>
+        <div class="holds" id="holds">
+          <button class="btn ghost sm hold-btn hidden" data-reel="0">Festhalten</button>
+          <button class="btn ghost sm hold-btn hidden" data-reel="1">Festhalten</button>
+          <button class="btn ghost sm hold-btn hidden" data-reel="2">Festhalten</button>
+        </div>
+        <div class="insider-hint hidden" id="slotInsider"></div>
         <div class="reels">
           <div class="reel-win" id="reel1"><div class="strip"></div></div>
           <div class="reel-win" id="reel2"><div class="strip"></div></div>
@@ -734,11 +791,11 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
       <div class="chalk paytable">
         <h4>Auszahlung</h4>
         <table>
-          <tr><td>7️⃣ 7️⃣ 7️⃣</td><td>50×</td></tr>
+          <tr><td>7️⃣ 7️⃣ 7️⃣</td><td>40×</td></tr>
           <tr><td>💎 💎 💎</td><td>25×</td></tr>
           <tr><td>🔔 🔔 🔔</td><td>15×</td></tr>
           <tr><td>Drilling</td><td>5×</td></tr>
-          <tr><td>Paar</td><td>1,5×</td></tr>
+          <tr><td>Paar</td><td id="payPair">1,2×</td></tr>
         </table>
       </div>
     </div>
@@ -758,10 +815,10 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
     <div class="bj-table">
       <div class="shoe" id="shoe"></div>
       <div class="bj-hand dealer">
-        <div class="hand-label">Dealer <span class="hand-val" id="bjDealerVal">–</span></div>
+        <div class="hand-label">Dealer <span class="hand-val" id="bjDealerVal">–</span> <span class="insider-hint hidden" id="bjDeckHeat"></span></div>
         <div class="cards" id="dealerCards"></div>
       </div>
-      <div class="bj-arc">Black Jack zahlt 1:1 · Dealer zieht bis 17</div>
+      <div class="bj-arc" id="bjArc">Blackjack zahlt 1:1 · Dealer zieht bis 17</div>
       <div class="bj-hand player">
         <div class="cards" id="playerCards"></div>
         <div class="hand-label">Du <span class="hand-val" id="bjPlayerVal">–</span></div>
@@ -793,14 +850,24 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
       </div>
       <div class="table-box">
         <div class="rtable" id="rtable"></div>
+        <div class="table-bar">
+          <span class="table-total" id="tableTotal">Auf dem Tisch: 0 € · 0 Chips</span>
+          <button class="btn sm" id="btnSpin" disabled>Drehen</button>
+          <button class="btn ghost sm" id="btnUndo" disabled>↶ Chip zurück</button>
+          <button class="btn ghost sm" id="btnClear" disabled>Tisch leeren</button>
+          <button class="btn ghost sm" id="btnRepeat" disabled>Wie zuletzt</button>
+        </div>
+        <div class="insider-hint hidden" id="rouletteInsider"></div>
         <div class="bet-bar">
+          <span class="dim">Chip:</span>
           <div class="bet-field"><button data-step="-5">−</button><input type="number" id="rouletteBet" value="10" min="1"><button data-step="5">+</button></div>
           <button class="chip" data-chip="10" data-v="10">10</button>
-          <button class="chip" data-chip="25" data-v="25">25</button>
           <button class="chip" data-chip="50" data-v="50">50</button>
+          <button class="chip" data-chip="100" data-v="100">100</button>
+          <button class="chip" data-chip="500" data-v="500">500</button>
           <button class="chip" data-chip="max" data-v="max">MAX</button>
         </div>
-        <div class="status" id="rouletteStatus">Chip auf ein Feld legen</div>
+        <div class="status" id="rouletteStatus">Chip auf ein Feld legen, dann drehen</div>
       </div>
     </div>
   </div>
@@ -809,6 +876,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
   <div class="panel horses-panel">
     <div class="commentary" id="commentary">Wähle dein Pferd und setz.</div>
     <div class="track" id="track"><div class="finish"></div><div class="photo-flash" id="photoFlash"></div></div>
+    <div class="insider-hint hidden" id="horseInsider"></div>
     <div class="horse-picks" id="horsePicks"></div>
     <div class="status" id="horseStatus"></div>
     <div class="bet-bar">
@@ -1046,6 +1114,19 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
     </div>
   </div>
 </template>
+<template id="tpl-skills">
+  <div class="panel stretch">
+    <h2>🧠 Kopf</h2>
+    <div class="skills-head">
+      <div class="xp-bar"><i id="xpBar"></i></div>
+      <span class="side-hint" id="xpText"></span>
+      <div class="skill-slots" id="skillSlots"></div>
+      <button class="btn ghost sm" id="btnRespec">Umskillen · 2.000 €</button>
+    </div>
+    <div class="skill-cards" id="skillCards"></div>
+    <div class="chalk"><h4>🕵️ Insider</h4><div class="insider-list" id="insiderList"></div></div>
+  </div>
+</template>
 <!-- /TEMPLATES -->
 
 <script id="rules">
@@ -1056,48 +1137,64 @@ const Rules = {
   HOSPITAL_RR: 100,
   HEARTBREAK_BILL: 250,
   BANK_LIMIT: 3000,
-  BANK_RATE: 0.3,
+  BANK_RATE: 0.08,
   POST_PENALTY: 25,
-  BEER_LUCK: [0, 10, 15, 20],
+  BEER_LUCK: [0, 10, 15, 20, 25],
   BROWNIE_LUCK: 40,
   BEER_SPINS: 2,
   BROWNIE_SPINS: 1,
   MARRIAGE_SPINS: 2,
   MAFIA_SPINS: 5,
   MAX_BEERS: 3,
+  LUCK_CAP: 100,   // Glück wirkt voll bis zu diesem Einsatz, darüber proportional weniger
 
-  luck(s) {
+  luck(s, mods = Rules.NEUTRAL_MODS) {
     let l = 0;
-    if (s.beerTimer > 0) l += Rules.BEER_LUCK[Math.min(s.beers, 3)];
-    if (s.brownieTimer > 0) l += Rules.BROWNIE_LUCK;
+    if (s.beerTimer > 0) l += Rules.BEER_LUCK[Math.min(s.beers, Rules.BEER_LUCK.length - 1)] * mods.beerLuckMult;
+    if (s.brownieTimer > 0) l += Rules.BROWNIE_LUCK * mods.brownieLuckMult;
     l += Rules.gear(s).luck;
     if (s.story && s.story.luckMod) l += s.story.luckMod; // Story-Modifikator (z. B. Zitter-Tag), kürzt höchstens auf 0
     return Math.max(0, l);
   },
-  bankInterest(debt, s) {
-    const rate = s ? Rules.gear(s).bankRate : Rules.BANK_RATE;
+  /* Glück ist ein Trinkgeld, keine Geldmaschine: voll bis LUCK_CAP, darüber im Verhältnis kleiner */
+  effectiveLuck(luck, bet) {
+    if (!luck) return 0;
+    if (!bet || bet <= Rules.LUCK_CAP) return luck;
+    return luck * Rules.LUCK_CAP / bet;
+  },
+  bankRateFor(s, mods = Rules.NEUTRAL_MODS) { return Math.max(0.01, Rules.gear(s).bankRate + mods.bankRateAdd); },
+  bankLimitFor(s, mods = Rules.NEUTRAL_MODS) { return Math.max(500, Rules.gear(s).bankLimit + mods.bankLimitAdd); },
+  bankInterest(debt, s, mods = Rules.NEUTRAL_MODS) {
+    const rate = s ? Rules.bankRateFor(s, mods) : Rules.BANK_RATE;
     return debt > 0 ? Math.round(debt * rate) : 0;
   },
-  spinCosts(s) {
-    return { interest: Rules.bankInterest(s.bankDebt, s), meds: s.kidneySold ? Rules.MEDS_PER_SPIN : 0 };
+  spinCosts(s, mods = Rules.NEUTRAL_MODS) {
+    return { interest: Rules.bankInterest(s.bankDebt, s, mods), meds: s.kidneySold ? Rules.MEDS_PER_SPIN : 0 };
   },
-  maxBet(s) {
-    const c = Rules.spinCosts(s);
+  maxBet(s, mods = Rules.NEUTRAL_MODS) {
+    const c = Rules.spinCosts(s, mods);
     return Math.max(1, s.balance - c.interest - c.meds);
   },
-  checkSpin(s, bet) {
+  checkSpin(s, bet, mods = Rules.NEUTRAL_MODS) {
     if (!Number.isFinite(bet) || bet <= 0) return { ok: false, reason: 'invalid' };
-    const c = Rules.spinCosts(s);
+    const c = Rules.spinCosts(s, mods);
     const total = bet + c.interest + c.meds;
     if (s.balance < total) return { ok: false, reason: 'funds', total, interest: c.interest, meds: c.meds };
     return { ok: true, total, interest: c.interest, meds: c.meds };
   },
-  mafiaBill(debt) { return debt * 3; },
-  bankLoanAllowed(s, amt) { return s.bankDebt + amt <= Rules.gear(s).bankLimit; },
-  /* Game Over: beide Kreditquellen zu und nicht mal ein 1-€-Spin (inkl. Zinsen/Meds) mehr bezahlbar */
-  isGameOver(s) {
-    const c = Rules.spinCosts(s);
-    return s.bankDebt >= Rules.gear(s).bankLimit && s.mafiaDebt > 0 && s.balance < 1 + c.interest + c.meds;
+  mafiaSpins(mods = Rules.NEUTRAL_MODS) { return mods.mafiaSpins; },
+  mafiaBill(debt, mods = Rules.NEUTRAL_MODS) { return debt * mods.mafiaMult; },
+  /* null = erlaubt; 'open' = es läuft schon ein Kredit; 'limit' = Betrag übersteigt das Limit */
+  bankLoanReason(s, amt, mods = Rules.NEUTRAL_MODS) {
+    if (s.bankDebt > 0) return 'open';
+    if (amt > Rules.bankLimitFor(s, mods)) return 'limit';
+    return null;
+  },
+  bankLoanAllowed(s, amt, mods = Rules.NEUTRAL_MODS) { return Rules.bankLoanReason(s, amt, mods) === null; },
+  /* Game Over: beide Kreditquellen zu (Bank-Kredit offen, Vito-Zettel offen) und nicht mal ein 1-€-Spin (inkl. Zinsen/Meds) bezahlbar */
+  isGameOver(s, mods = Rules.NEUTRAL_MODS) {
+    const c = Rules.spinCosts(s, mods);
+    return s.bankDebt > 0 && s.mafiaDebt > 0 && s.balance < 1 + c.interest + c.meds;
   },
   passiveTick(s) { return (s.hasHouse ? 3 : 0) + (s.hasDealer ? 5 : 0); },
   passivePerMin(s) { return (s.hasHouse ? 30 : 0) + (s.hasDealer ? 50 : 0); },
@@ -1106,40 +1203,68 @@ const Rules = {
   WHEEL: [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26],
   RED: [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36],
   isRed(n) { return Rules.RED.includes(n); },
-  rouletteRoll(rng) { return Math.floor(rng() * 37); },
-  rouletteLuckOverride(type, chosen, rolled, luck, rng) {
+  /* würfelt so lange, bis eine nicht ausgeschlossene Zahl fällt (max. 37 Versuche, dann erste erlaubte) */
+  rouletteRoll(rng, excluded = []) {
+    for (let i = 0; i < 37; i++) { const n = Math.floor(rng() * 37); if (!excluded.includes(n)) return n; }
+    for (let n = 0; n < 37; n++) if (!excluded.includes(n)) return n;
+    return 0;
+  },
+  /* Glück hilft bei Farben und Gerade/Ungerade – nie bei Zahlen (der Kessel kennt keine Freunde).
+     Croupier-Auge kann die übliche Glückszahl ausschließen; dann die erste freie Zahl der Art. */
+  rouletteLuckOverride(type, chosen, rolled, luck, rng, excluded = []) {
     const r = rng() * 100;
     if (r < luck && rolled !== 0) {
-      if (type === 'red') return 7;
-      if (type === 'black') return 8;
-      if (type === 'number') return chosen;
+      const firstFree = (fallback, list) => (!excluded.includes(fallback) ? fallback : list.find((n) => !excluded.includes(n)));
+      let n;
+      if (type === 'red') n = firstFree(7, Rules.RED);
+      else if (type === 'black') n = firstFree(8, Array.from({ length: 36 }, (_, i) => i + 1).filter((x) => !Rules.isRed(x)));
+      else if (type === 'even') n = firstFree(8, Array.from({ length: 18 }, (_, i) => (i + 1) * 2));
+      else if (type === 'odd') n = firstFree(7, Array.from({ length: 18 }, (_, i) => i * 2 + 1));
+      if (n !== undefined) return n;
     }
     return rolled;
   },
-  roulettePayout(type, chosen, rolled, bet) {
+  roulettePayout(type, chosen, rolled, bet, mods = Rules.NEUTRAL_MODS) {
     const red = Rules.isRed(rolled);
     if (type === 'red' && red) return bet;
     if (type === 'black' && !red && rolled !== 0) return bet;
     if (type === 'even' && rolled !== 0 && rolled % 2 === 0) return bet;
     if (type === 'odd' && rolled % 2 !== 0) return bet;
-    if (type === 'number' && rolled === chosen) return bet * 35;
+    if (type === 'number' && rolled === chosen) return bet * mods.rouletteNumberPayout;
     return -bet;
+  },
+  rouletteTotal(bets) { return bets.reduce((sum, b) => sum + b.amount, 0); },
+  /* Auszahlung aller Chips: pro Chip Einsatz + Gewinn bei Treffer, sonst 0 */
+  rouletteSettle(bets, rolled, mods = Rules.NEUTRAL_MODS) {
+    const hits = bets.map((bet) => {
+      const d = Rules.roulettePayout(bet.type, bet.n, rolled, bet.amount, mods);
+      const win = d > 0;
+      return { bet, win, payout: win ? bet.amount + d : 0 };
+    });
+    return { payout: hits.reduce((sum, x) => sum + x.payout, 0), hits };
+  },
+  /* Der Chip, auf den das Glück wirkt: höchster Außenfeld-Chip (Zahlen nie); bei Gleichstand der zuerst gelegte */
+  rouletteLuckTarget(bets) {
+    let best = -1;
+    bets.forEach((b, i) => {
+      if (b.type === 'number') return;
+      if (best < 0 || b.amount > bets[best].amount) best = i;
+    });
+    return best;
   },
 
   /* ---- Slots ---- */
   SYMBOLS: ['🍒', '🍋', '🍇', '🔔', '💎', '7️⃣'],
   slotRoll(rng) { return [0, 1, 2].map(() => Rules.SYMBOLS[Math.floor(rng() * Rules.SYMBOLS.length)]); },
+  /* Glück erzwingt höchstens ein Paar – Jackpots bleiben Glückssache */
   slotLuckOverride(res, luck, rng) {
     const [a, b, c] = res;
-    if (rng() * 100 < luck) {
-      if (rng() < 0.3) { const j = rng() < 0.5 ? '7️⃣' : '💎'; return [j, j, j]; }
-      return [a, a, c];
-    }
+    if (rng() * 100 < luck) return [a, a, c];
     return [a, b, c];
   },
-  slotMultiplier(a, b, c) {
-    if (a === b && b === c) return a === '7️⃣' ? 50 : a === '💎' ? 25 : a === '🔔' ? 15 : 5;
-    if (a === b || b === c || a === c) return 1.5;
+  slotMultiplier(a, b, c, mods = Rules.NEUTRAL_MODS) {
+    if (a === b && b === c) return a === '7️⃣' ? 40 : a === '💎' ? 25 : a === '🔔' ? 15 : 5;
+    if (a === b || b === c || a === c) return mods.slotPairMult;
     return 0;
   },
   slotDelta(bet, m) { return m > 0 ? Math.round(bet * m) - bet : -bet; },
@@ -1151,12 +1276,18 @@ const Rules = {
     { id: 3, name: 'Phantom', col: '#b066ff', dot: '🟣' },
     { id: 4, name: 'Lucky', col: '#ffd23f', dot: '🟡' },
   ],
-  horseStep(isSelected, luck, rng) {
+  horseStep(isSelected, luck, rng, handicap = 1) {
     let step = rng() * 3 + 1;
-    if (isSelected && luck > 0) step += luck * 0.02;
-    return step * 1.5;
+    if (isSelected && luck > 0) step += luck * 0.001; // pro Tick, summiert sich über das ganze Rennen
+    return step * 1.5 * handicap;
   },
-  horseDelta(won, bet) { return won ? bet * 3 : -bet; },
+  horseDelta(won, bet, mods = Rules.NEUTRAL_MODS) { return won ? Math.round(bet * mods.horsePayout) : -bet; },
+  /* Zieleinlauf: unter allen Pferden, die das Ziel erreicht haben, gewinnt das mit der größten Position (nicht der niedrigste Index) */
+  raceWinner(pos, goal) {
+    let winner = -1;
+    for (let i = 0; i < pos.length; i++) if (pos[i] >= goal && (winner === -1 || pos[i] > pos[winner])) winner = i;
+    return winner;
+  },
 
   /* ---- Russisches Roulette ---- */
   rrCylinder(rng) {
@@ -1192,26 +1323,46 @@ const Rules = {
     if (pSum === dSum) return 'push';
     return 'dealer';
   },
-  bjDelta(outcome, bet) { return outcome === 'win' ? bet : outcome === 'push' ? 0 : -bet; },
+  /* ctx.natural = Blackjack mit zwei Karten (nur bei Sieg), ctx.hot = heißes Deck (Kartenzähler) */
+  bjDelta(outcome, bet, mods = Rules.NEUTRAL_MODS, ctx = {}) {
+    if (outcome === 'win') return Math.round(bet * (ctx.natural ? mods.bjNatural : ctx.hot ? mods.bjHotDeck : 1));
+    if (outcome === 'push') return Math.round(bet * mods.bjPushBonus);
+    return -bet;
+  },
 
   /* ---- Post ---- */
   POST_HOUSES: [{ n: 12, c: '#ffb432' }, { n: 45, c: '#4cc9f0' }, { n: 88, c: '#3ddc84' }, { n: 99, c: '#ff3b3b' }],
-  postmanTier(streak, s) {
+  postmanTier(streak, s, mods = Rules.NEUTRAL_MODS) {
     const g = s ? Rules.gear(s) : { postTime: 0, postPay: 0 };
     const jm = s && s.story && s.story.jobMod ? s.story.jobMod : {};
     const t = streak < 2 ? { t: 5, r: 5 } : streak < 6 ? { t: 3, r: 10 } : streak < 11 ? { t: 1.5, r: 25 } : { t: 0.5, r: 50 };
-    return { t: (t.t + g.postTime) * (jm.postTime != null ? jm.postTime : 1), r: t.r + g.postPay };
+    /* Schuhe und Skills geben Zeit – die schnellste Stufe wird aber nie langsamer als 1,5 s; danach der Story-Faktor (jobMod.postTime); Untergrenze 0,5 s */
+    const raw = t.t + g.postTime + mods.postTimeAdd;
+    const time = (t.t < 1.5 ? Math.min(raw, 1.5) : raw) * (jm.postTime != null ? jm.postTime : 1);
+    return { t: Math.max(0.5, time), r: t.r + g.postPay + mods.postPayAdd };
   },
 
   /* ---- Anlagen ---- */
   INVEST: {
-    bank: { name: 'Festgeld', rate: 0.08, spins: 5, risk: 10, min: 10 },
+    bank: { name: 'Festgeld', rate: 0.08, spins: 6, risk: 10, min: 10 },
     stock: { name: 'Aktien', rate: 1.0, spins: 2, risk: 85, min: 10 },
-    scam: { name: 'Trickbetrug', rate: 0.3, spins: 10, risk: 55, min: 10 },
+    scam: { name: 'Trickbetrug', rate: 0.5, spins: 10, risk: 55, min: 10 },
   },
-  investmentResolve(inv, rng) {
+  investRunning(s, kind) {
+    const def = Rules.INVEST[kind];
+    return (s.investments || []).find((inv) => inv.type === kind || (!inv.type && inv.name === def.name)) || null;
+  },
+  canInvest(s, kind, amount) {
+    const def = Rules.INVEST[kind];
+    if (!def) return { ok: false, reason: 'unknown' };
+    if (Rules.investRunning(s, kind)) return { ok: false, reason: 'running' };
+    if (!Number.isFinite(amount) || amount < def.min) return { ok: false, reason: 'min' };
+    if (s.balance < amount) return { ok: false, reason: 'funds' };
+    return { ok: true };
+  },
+  investmentResolve(inv, rng, mods = Rules.NEUTRAL_MODS) {
     const won = rng() * 100 >= inv.risk;
-    return { won, payout: won ? Math.round(inv.amount * (1 + inv.rate)) : 0 };
+    return { won, payout: won ? Math.round(inv.amount * (1 + inv.rate * mods.investRateMult)) : 0 };
   },
 
   /* ---- Leben ---- */
@@ -1240,8 +1391,8 @@ const Rules = {
     if (s.balance < Rules.PRICES.dealer) return { ok: false, reason: 'funds' };
     return { ok: true };
   },
-  canBeer(s, price = Rules.PRICES.beer) {
-    if (s.beers >= Rules.MAX_BEERS) return { ok: false, reason: 'max' };
+  canBeer(s, price = Rules.PRICES.beer, mods = Rules.NEUTRAL_MODS) {
+    if (s.beers >= mods.maxBeers) return { ok: false, reason: 'max' };
     if (s.balance < price) return { ok: false, reason: 'funds' };
     return { ok: true };
   },
@@ -1261,9 +1412,9 @@ Object.assign(Rules, {
       audiA3:  { brand: 'audi', tier: 1, name: 'Audi A3 (gebraucht)', icon: '🚗', price: 1500,  mugMult: 0.7,  flee: 10, luck: 0 },
       audiRS4: { brand: 'audi', tier: 2, name: 'Audi RS 4 quattro',   icon: '🏎️', price: 8000,  mugMult: 0.45, flee: 20, luck: 2 },
       audiR8:  { brand: 'audi', tier: 3, name: 'Audi R8',             icon: '🏎️', price: 30000, mugMult: 0.2,  flee: 35, luck: 4 },
-      mercC:   { brand: 'merc', tier: 1, name: 'Mercedes C-Klasse',   icon: '🚙', price: 2000,  bankLimit: 4000,  bankRate: 0.27, luck: 0 },
-      mercS:   { brand: 'merc', tier: 2, name: 'Mercedes S-Klasse',   icon: '🚘', price: 10000, bankLimit: 6000,  bankRate: 0.24, luck: 2 },
-      mercG:   { brand: 'merc', tier: 3, name: 'Mercedes AMG G 63',   icon: '🚐', price: 40000, bankLimit: 10000, bankRate: 0.20, luck: 4 },
+      mercC:   { brand: 'merc', tier: 1, name: 'Mercedes C-Klasse',   icon: '🚙', price: 2000,  bankLimit: 4000,  bankRate: 0.07, luck: 0 },
+      mercS:   { brand: 'merc', tier: 2, name: 'Mercedes S-Klasse',   icon: '🚘', price: 10000, bankLimit: 6000,  bankRate: 0.06, luck: 2 },
+      mercG:   { brand: 'merc', tier: 3, name: 'Mercedes AMG G 63',   icon: '🚐', price: 40000, bankLimit: 10000, bankRate: 0.05, luck: 4 },
     },
     shoes: {
       basic:  { tier: 1, name: 'Laufschuh Basic',  icon: '👟', price: 300,  flee: 15, postTime: 1, postPay: 0,  spuelerBand: 0,   taxiTip: 0 },
@@ -1326,7 +1477,7 @@ Object.assign(Rules, {
     return { ok: true };
   },
   /* where: 'door' (freies Spiel, Hub → Casino-Tür) oder 'evening' (Story, Morgen → Abend) */
-  mugChance(s, where) {
+  mugChance(s, where, mods = Rules.NEUTRAL_MODS) {
     const M = Rules.MUG;
     if (s.balance < M.MIN_CASH) return 0;
     if ((s.mugCooldown || 0) > 0) return 0;
@@ -1334,19 +1485,137 @@ Object.assign(Rules, {
     else if (((s.stats && s.stats.spins) || 0) < M.MIN_SPINS) return 0;
     let c = where === 'evening' ? M.BASE_EVENING : M.BASE_DOOR;
     if (s.balance >= M.RICH_CASH) c *= M.RICH_MULT;
-    return c * Rules.gear(s).mugMult;
+    return c * Rules.gear(s).mugMult * mods.mugChanceMult;
   },
   mugLoot(balance) {
     const M = Rules.MUG;
     return Math.min(balance, Math.max(M.LOOT_MIN, Math.min(M.LOOT_MAX, Math.round(balance * M.LOOT_PCT))));
   },
-  mugWallet(rng = Math.random) {
+  mugWallet(rng = Math.random, mods = Rules.NEUTRAL_MODS) {
     const M = Rules.MUG;
-    return M.WALLET_MIN + Math.floor(rng() * (M.WALLET_MAX - M.WALLET_MIN + 1));
+    return Math.round((M.WALLET_MIN + Math.floor(rng() * (M.WALLET_MAX - M.WALLET_MIN + 1))) * mods.walletMult);
   },
-  fightChance(strength) { const M = Rules.MUG; return Math.min(M.CHANCE_CAP, M.FIGHT_BASE + M.FIGHT_PER_STR * (strength || 0)); },
+  fightChance(strength, mods = Rules.NEUTRAL_MODS) { const M = Rules.MUG; return Math.min(M.CHANCE_CAP, M.FIGHT_BASE + M.FIGHT_PER_STR * (strength || 0) + mods.fightAdd); },
   fleeChance(gear) { const M = Rules.MUG; return Math.min(M.CHANCE_CAP, M.FLEE_BASE + (gear.flee || 0) / 100); },
   fleeFailExtra(balance) { return Math.round(balance * Rules.MUG.FLEE_FAIL_PCT); },
+});
+</script>
+
+<script id="perk-rules">
+/* ================= PERKS – XP, Skills (Licht/Schatten), Insider-Upgrades (rein, kein DOM, kein State) ================= */
+Object.assign(Rules, {
+  XP_LEVELS: [0, 25, 60, 110, 180, 270],
+  XP_GAIN: { spin: 1, win: 2, job: 5, day: 5, achievement: 10 },
+  MAX_SKILLS: 3,
+  RESPEC_PRICE: 2000,
+  INSIDER_CAP: 250,
+  HORSE_LAME_STEP: 0.85,
+  NEUTRAL_MODS: {
+    beerLuckMult: 1, brownieLuckMult: 1, maxBeers: Rules.MAX_BEERS, brownieSpins: Rules.BROWNIE_SPINS,
+    bjNatural: 1, bjPushBonus: 0, bjHotDeck: 1,
+    rouletteNumberPayout: 35, rouletteExclude: 0,
+    slotPairMult: 1.2, slotHoldEvery: 0,
+    horsePayout: 3, horseLoserMarked: false,
+    bankRateAdd: 0, bankLimitAdd: 0, mafiaSpins: Rules.MAFIA_SPINS, mafiaMult: 3, investRateMult: 1,
+    mugChanceMult: 1, fightAdd: 0, walletMult: 1,
+    postTimeAdd: 0, postPayAdd: 0, postLetters: 15,
+  },
+  /* Wie ein Schlüssel gestapelt wird: add = Summe, mult = Produkt, max = Maximum, set = letzter Wert */
+  MOD_STACK: {
+    beerLuckMult: 'mult', brownieLuckMult: 'mult', maxBeers: 'max', brownieSpins: 'max',
+    bjNatural: 'max', bjPushBonus: 'max', bjHotDeck: 'max',
+    rouletteNumberPayout: 'max', rouletteExclude: 'max',
+    slotPairMult: 'set', slotHoldEvery: 'max',
+    horsePayout: 'max', horseLoserMarked: 'set',
+    bankRateAdd: 'add', bankLimitAdd: 'add', mafiaSpins: 'max', mafiaMult: 'set', investRateMult: 'mult',
+    mugChanceMult: 'mult', fightAdd: 'add', walletMult: 'mult',
+    postTimeAdd: 'add', postPayAdd: 'add', postLetters: 'max',
+  },
+  SKILLS: [
+    { id: 'pokerface', name: 'Pokerface', icon: '🃏', light: 'Blackjack: natürlicher Blackjack zahlt 3:2, Push bringt +10 %', shadow: 'Bier gibt kein Glück', mods: { bjNatural: 1.5, bjPushBonus: 0.1, beerLuckMult: 0 } },
+    { id: 'kalterkopf', name: 'Kalter Kopf', icon: '🧊', light: 'Roulette-Zahlen zahlen 36:1', shadow: 'Brownie wirkt nur halb', mods: { rouletteNumberPayout: 36, brownieLuckMult: 0.5 } },
+    { id: 'zockerhaende', name: 'Zockerhände', icon: '🎰', light: 'Slots: Paar zahlt 1,3×', shadow: 'Bank-Zinsen +2 %', mods: { slotPairMult: 1.3, bankRateAdd: 0.02 }, excludes: ['brieftraeger'] },
+    { id: 'pferdefluesterer', name: 'Pferdeflüsterer', icon: '🐎', light: 'Pferde zahlen 3,3:1 (bis 250 €)', shadow: 'Überfälle 50 % häufiger', mods: { horsePayout: 3.3, mugChanceMult: 1.5 } },
+    { id: 'eisenmagen', name: 'Eisenmagen', icon: '🍺', light: '4 Bier möglich (+25 %), Brownie hält 2 Spins', shadow: 'Postbote: −1 s pro Brief', mods: { maxBeers: 4, brownieSpins: 2, postTimeAdd: -1 } },
+    { id: 'verhandler', name: 'Verhandler', icon: '🤝', light: 'Bank-Zinsen −2 %, Vito-Frist 7 Spins', shadow: 'Anlagen zahlen 10 % weniger', mods: { bankRateAdd: -0.02, mafiaSpins: 7, investRateMult: 0.9 } },
+    { id: 'strassenkoeter', name: 'Straßenköter', icon: '🐕', light: 'Kampfchance +15 %, Brieftasche ×2', shadow: 'Bank-Limit −1.000 €', mods: { fightAdd: 0.15, walletMult: 2, bankLimitAdd: -1000 } },
+    { id: 'brieftraeger', name: 'Briefträgerherz', icon: '📬', light: 'Postbote +1 s und +5 € pro Brief', shadow: 'Slots: Paare zahlen nichts', mods: { postTimeAdd: 1, postPayAdd: 5, slotPairMult: 0 }, excludes: ['zockerhaende'] },
+  ],
+  INSIDER: [
+    { id: 'stallbursche', name: 'Stallbursche', icon: '🐴', text: 'Vor jedem Rennen ist ein Pferd markiert, das sicher nicht gewinnt.', capped: true, mods: { horseLoserMarked: true } },
+    { id: 'croupierauge', name: 'Croupier-Auge', icon: '👁️', text: '12 Roulette-Zahlen sind ausgegraut und fallen nicht.', capped: true, mods: { rouletteExclude: 12 } },
+    { id: 'kartenzaehler', name: 'Kartenzähler', icon: '🧮', text: 'Blackjack zeigt, ob das Deck heiß ist – dann zahlt ein Sieg 1,2:1.', capped: true, mods: { bjHotDeck: 1.2 } },
+    { id: 'mechaniker', name: 'Mechaniker', icon: '🔧', text: 'Slots: nach einer Niete darfst du jede 5. Runde eine Walze festhalten und neu drehen.', capped: true, mods: { slotHoldEvery: 5 } },
+    { id: 'bankinsider', name: 'Bankinsider', icon: '🏦', text: 'Zinsen −3 %, Limit +2.000 €.', capped: false, mods: { bankRateAdd: -0.03, bankLimitAdd: 2000 } },
+    { id: 'vitosneffe', name: 'Vitos Neffe', icon: '🕶️', text: 'Vito-Frist 8 Spins, Rechnung ×2 statt ×3, Überfälle halb so oft.', capped: false, mods: { mafiaSpins: 8, mafiaMult: 2, mugChanceMult: 0.5 } },
+    { id: 'postmeister', name: 'Postmeister', icon: '📮', text: 'Postbote: 20 Briefe pro Schicht, +5 € pro Brief.', capped: false, mods: { postLetters: 20, postPayAdd: 5 } },
+  ],
+  xpLevel(xp) {
+    let level = 1;
+    for (let i = 1; i < Rules.XP_LEVELS.length; i++) if (xp >= Rules.XP_LEVELS[i]) level = i + 1;
+    const next = level < Rules.XP_LEVELS.length ? Rules.XP_LEVELS[level] : null;
+    return { level, next, points: Math.min(Rules.MAX_SKILLS, Math.floor(level / 2)) };
+  },
+  skillPointsFree(s) { return Math.max(0, Rules.xpLevel(s.xp || 0).points - (s.skills || []).length); },
+  canPickSkill(s, id) {
+    const def = Rules.SKILLS.find((k) => k.id === id);
+    if (!def) return { ok: false, reason: 'unknown' };
+    const skills = s.skills || [];
+    if (skills.includes(id)) return { ok: false, reason: 'active' };
+    if (skills.length >= Rules.MAX_SKILLS) return { ok: false, reason: 'full' };
+    if (Rules.skillPointsFree(s) <= 0) return { ok: false, reason: 'points' };
+    const conflict = skills.some((k) => { const d = Rules.SKILLS.find((x) => x.id === k); return (d && d.excludes || []).includes(id) || (def.excludes || []).includes(k); });
+    if (conflict) return { ok: false, reason: 'conflict' };
+    return { ok: true };
+  },
+  /* Alle aktiven Modifikatoren: Skills aus dem Spielstand, Insider aus dem Meta-Speicher; unbekannte IDs ignoriert */
+  mods(s, meta) {
+    const out = Object.assign({}, Rules.NEUTRAL_MODS);
+    const apply = (m) => {
+      for (const [k, v] of Object.entries(m)) {
+        const how = Rules.MOD_STACK[k];
+        if (how === 'add') out[k] += v;
+        else if (how === 'mult') out[k] *= v;
+        else if (how === 'max') out[k] = Math.max(out[k], v);
+        else out[k] = v;
+      }
+    };
+    for (const id of (s && s.skills) || []) { const d = Rules.SKILLS.find((k) => k.id === id); if (d) apply(d.mods); }
+    for (const id of (meta && meta.insider) || []) { const d = Rules.INSIDER.find((k) => k.id === id); if (d) apply(d.mods); }
+    return out;
+  },
+  insiderDraw(meta, rng = Math.random) {
+    const pool = Rules.INSIDER.map((i) => i.id).filter((id) => !((meta && meta.insider) || []).includes(id));
+    const out = [];
+    while (pool.length && out.length < 3) out.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
+    return out;
+  },
+  /* Insider-Wissen wirkt voll bis INSIDER_CAP; Zahlen verlieren darüber anteilig ihren Bonus, Schalter gelten nur darunter */
+  effectiveInsider(value, bet) {
+    if (typeof value === 'boolean') return value && bet <= Rules.INSIDER_CAP;
+    if (!bet || bet <= Rules.INSIDER_CAP) return value;
+    return 1 + (value - 1) * Rules.INSIDER_CAP / bet;
+  },
+  /* Wie effectiveInsider, aber für Boni, deren Neutralwert nicht 1 ist (z. B. horsePayout, Neutral 3):
+     wirkt voll bis INSIDER_CAP, darüber verliert nur der Bonus-Anteil über dem Neutralwert anteilig. */
+  effectiveBonus(value, neutral, bet) {
+    return neutral + (value - neutral) * Math.min(1, Rules.INSIDER_CAP / Math.max(bet, 1));
+  },
+  deckHot(deck) {
+    if (!deck.length) return false;
+    const strong = deck.filter((c) => ['10', 'J', 'Q', 'K', 'A'].includes(c.val)).length;
+    return strong / deck.length > 0.4;
+  },
+  pickExcluded(rng = Math.random) {
+    const nums = Array.from({ length: 36 }, (_, i) => i + 1);
+    const out = [];
+    while (out.length < 12) out.push(nums.splice(Math.floor(rng() * nums.length), 1)[0]);
+    return out.sort((a, b) => a - b);
+  },
+  pickLoser(selectedId, rng = Math.random) {
+    const others = Rules.HORSES.map((h) => h.id).filter((id) => id !== selectedId);
+    return others[Math.floor(rng() * others.length)];
+  },
 });
 </script>
 
@@ -1398,12 +1667,13 @@ const State = {
       investments: [],
       hasHouse: false, isMarried: false, marriageSpins: 0, isHeartbroken: false, hasDealer: false,
       car: null, shoes: null, strength: 0, mugCooldown: 0,
+      xp: 0, skills: [], skillRespecs: 0, insiderExcluded: [], mechRespins: 0,
       flags: { intro: false, mafiaLoan: false, bankLoan: false, bankLimit: false, brownie: false, igor: false },
       stats: { spins: 0, maxBalance: 50, biggestWin: 0, kidneys: 0, postStreakBest: 0, muggings: 0, fightsWon: 0 },
       selectedHorse: 1,
     };
   },
-  freshMeta() { return { v: 1, achievements: [], muted: false, gameOvers: 0, storyRuns: {} }; },
+  freshMeta() { return { v: 1, achievements: [], muted: false, gameOvers: 0, storyRuns: {}, insider: [], insiderClaimed: {} }; },
   /* discarded: es gab einen Wert, aber er war unlesbar oder hatte die falsche Version */
   _read(key, freshFn) {
     let raw = null;
@@ -1417,6 +1687,7 @@ const State = {
       if (f.flags) merged.flags = Object.assign(freshFn().flags, p.flags || {});
       if (f.stats) merged.stats = Object.assign(freshFn().stats, p.stats || {});
       if (f.storyRuns) merged.storyRuns = Object.assign({}, p.storyRuns || {});
+      if (f.insiderClaimed) merged.insiderClaimed = Object.assign({}, p.insiderClaimed || {});
       return { value: merged, loaded: true, discarded: false };
     } catch (e) {
       return { value: freshFn(), loaded: false, discarded: !!raw };
@@ -1597,6 +1868,7 @@ const Actions = {
   life: () => UI.show('life'),
   vito: () => UI.show('vito'),
   stadt: () => UI.show('stadt'),
+  skills: () => UI.show('skills'),
 };
 
 const UI = {
@@ -1680,7 +1952,8 @@ const UI = {
   },
   renderWallet() {
     const s = State.s;
-    const luck = Rules.luck(s);
+    const mods = Perks.mods();
+    const luck = Rules.luck(s, mods);
     const segs = luck >= 60 ? 5 : luck >= 40 ? 4 : luck >= 20 ? 3 : luck >= 15 ? 2 : luck >= 10 ? 1 : 0;
     const luckEl = qs('#luck');
     luckEl.title = `Glück +${luck} %`;
@@ -1690,15 +1963,17 @@ const UI = {
     notes.innerHTML = '';
     if (s.isHeartbroken) notes.append(h('span', { class: 'note pink' }, `💔 Liebeskummer · ${s.beers}/2 🍺`));
     else if (s.isMarried) notes.append(h('span', { class: 'note pink' }, `💍 Chantal · noch ${Rules.MARRIAGE_SPINS - s.marriageSpins} Spins`));
-    if (s.bankDebt > 0) notes.append(h('span', { class: 'note danger' }, `🏦 ${this.fmt(s.bankDebt)} · −${this.fmt(Rules.bankInterest(s.bankDebt, s))}/Spin`));
+    if (s.bankDebt > 0) notes.append(h('span', { class: 'note danger' }, `🏦 ${this.fmt(s.bankDebt)} · −${this.fmt(Rules.bankInterest(s.bankDebt, s, mods))}/Spin`));
     if (s.mafiaDebt > 0) notes.append(h('span', { class: 'note danger' }, `🕶️ ${this.fmt(s.mafiaDebt)} · ${s.mafiaSpins} Spins`));
     if (s.kidneySold) notes.append(h('span', { class: 'note danger' }, '💊 −20 €/Spin'));
     if (s.hasHouse || s.hasDealer) notes.append(h('span', { class: 'note gold' }, `💸 +${Rules.passivePerMin(s)} €/min`));
     if (State.mode === 'story' && typeof Story !== 'undefined' && Story.story) notes.append(...Story.hudNotes());
     qs('#mute').textContent = State.meta.muted ? '🔇' : '🔊';
+    if (typeof Perks !== 'undefined') Perks.renderBadge();
   },
   renderSide() {
     const s = State.s;
+    const mods = Perks.mods();
     const side = qs('#side');
     const openIdx = qsa('.side-sec', side).findIndex((sec) => sec.classList.contains('active'));
     side.innerHTML = '';
@@ -1710,10 +1985,10 @@ const UI = {
     const acts = (r) => inStory ? StoryRules.actionsFor(Story.story, s, r).map((a) => h('button', { class: 'side-btn story-action', 'data-story-action': a.id }, h('span', {}, a.label))) : [];
     const secs = [];
     if (room('bar')) secs.push(sec('Die Bar',
-      btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/3)` : ''}`, this.fmt(StoryRules.price(s, 'beer')), 'beer', !Rules.canBeer(s, StoryRules.price(s, 'beer')).ok || StoryRules.purchaseAllowed(s, 'beer') === false),
+      btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/${mods.maxBeers})` : ''}`, this.fmt(StoryRules.price(s, 'beer')), 'beer', !Rules.canBeer(s, StoryRules.price(s, 'beer'), mods).ok || StoryRules.purchaseAllowed(s, 'beer') === false),
       btn('🍪 Brownie', this.fmt(s.brownieCost), 'brownie', !Rules.canBrownie(s).ok || StoryRules.purchaseAllowed(s, 'brownie') === false),
       ...acts('bar'),
-      h('p', { class: 'side-hint' }, 'Bier hält 2 Spins, Brownie 1 Spin.')));
+      h('p', { class: 'side-hint' }, `Bier hält 2 Spins, Brownie ${mods.brownieSpins} Spin${mods.brownieSpins === 1 ? '' : 's'}. Glück wirkt voll bis 100 € Einsatz, nie auf Zahlen.`)));
     const hz = [];
     if (room('doc') || !inStory) hz.push(btn(s.kidneySold ? '🫁 Niere verkauft' : '🫁 Niere verkaufen', s.kidneySold ? '' : '+2.000 €', 'kidney', s.kidneySold));
     if (room('bank') || room('mafia')) hz.push(btn('🏦 Kredite', s.bankDebt + s.mafiaDebt > 0 ? `−${this.fmt(s.bankDebt + s.mafiaDebt)}` : '', 'finance'));
@@ -1722,6 +1997,7 @@ const UI = {
     hz.push(...acts('doc'), ...acts('bank'));
     if (hz.length) secs.push(sec('Hinterzimmer', ...hz));
     if (room('life')) secs.push(sec('Zuhause', btn('🏡 Leben', s.hasHouse ? '🏰' : '', 'life'), ...acts('life')));
+    secs.push(sec('Kopf', btn('🧠 Skills', Rules.skillPointsFree(s) > 0 ? `${Rules.skillPointsFree(s)} Punkt frei` : `Lv ${Rules.xpLevel(s.xp || 0).level}`, 'skills')));
     if (room('stadt')) secs.push(sec('Stadt',
       btn('🏙️ Autohaus · INTERSPORT', s.car || s.shoes ? '✓' : '', 'stadt'),
       h('p', { class: 'side-hint gear-line', id: 'gearLine' }, Stadt.line(s)),
@@ -1758,7 +2034,7 @@ const UI = {
     w.innerHTML = '';
     w.append(
       h('button', { class: 'brand neon', id: 'brand', style: '--neon: var(--neon-amber)', title: 'Zurück in den Gang', onclick: () => { if (State.mode === 'story' && Story.s && Story.s.phase === 'morning') UI.show(UI.screens.has('jobs') ? 'jobs' : 'hub'); else UI.show('hub'); } }, 'Keller 37'),
-      h('div', { class: 'wallet-mid' }, h('div', { class: 'luck', id: 'luck' }), h('div', { class: 'notes', id: 'notes' })),
+      h('div', { class: 'wallet-mid' }, h('div', { class: 'luck', id: 'luck' }), h('button', { class: 'lv-badge', id: 'lvBadge', title: 'Skills', onclick: () => UI.show('skills') }), h('div', { class: 'notes', id: 'notes' })),
       h('div', { class: 'wallet-right' },
         h('button', { class: 'icon-btn', id: 'mute', title: 'Ton an/aus', onclick: () => { SFX.setMuted(!State.meta.muted); UI.renderWallet(); } }, '🔊'),
         h('button', { class: 'icon-btn', id: 'newgame', title: 'Neues Spiel', onclick: () => Bus.emit('newgame.request', {}) }, '↺'),
@@ -1784,6 +2060,11 @@ const UI = {
 UI.register('hub', {
   template: 'tpl-hub',
   mount(root) {
+    const mods = Perks.mods();
+    const rTag = qs('[data-screen="roulette"] .chalk-tag', root);
+    if (rTag) rTag.textContent = `Plein ${mods.rouletteNumberPayout}:1`;
+    const hTag = qs('[data-screen="horses"] .chalk-tag', root);
+    if (hTag) hTag.textContent = `Quote ${(1 + mods.horsePayout).toFixed(1)}`;
     qsa('.door', root).forEach((d) => {
       d.addEventListener('click', () => { SFX.play('click'); UI.show(d.dataset.screen); });
       d.addEventListener('mouseenter', () => SFX.play('neonBuzz'));
@@ -1813,6 +2094,7 @@ const Cutscene = {
     du: { name: 'Du', emoji: '🤠', color: '#ffffff' },
     raeuber: { name: 'Der Räuber', emoji: '🥷', color: 'var(--neon-red)' },
     sylvie: { name: 'Madame Sylvie', emoji: '🎩', color: '#e8d5a3' },
+    insider: { name: 'Der Insider', emoji: '🕵️', color: 'var(--neon-blue)' },
   },
   PROPS: {
     bar: ['🍾', '🪑'], hinterzimmer: ['🕯️', '🚬'], standesamt: ['💐', '🔔'], villa: ['🏙️', '🌙'], hafen: ['🏗️', '🌙'],
@@ -1986,7 +2268,7 @@ const Game = {
     UI.renderSide();
   },
   readBet(inputId) { return parseInt(qs('#' + inputId).value, 10); },
-  bindBet(root, inputId) {
+  bindBet(root, inputId, maxFn = () => Rules.maxBet(State.s, Perks.mods())) {
     const input = qs('#' + inputId, root);
     const clamp = () => { const v = parseInt(input.value, 10); input.value = Number.isFinite(v) ? Math.max(1, v) : 1; };
     input.addEventListener('change', clamp);
@@ -1997,13 +2279,13 @@ const Game = {
     }));
     qsa('[data-chip]', root).forEach((c) => c.addEventListener('click', () => {
       const v = c.dataset.chip;
-      input.value = v === 'max' ? Rules.maxBet(State.s) : parseInt(v, 10);
+      input.value = v === 'max' ? maxFn() : parseInt(v, 10);
       SFX.play('chip');
     }));
   },
   beginSpin(bet) {
     if (this.settling) return false;
-    const chk = Rules.checkSpin(State.s, bet);
+    const chk = Rules.checkSpin(State.s, bet, Perks.mods());
     if (!chk.ok) {
       if (chk.reason === 'invalid') UI.toast({ icon: '🚫', title: 'Ungültiger Einsatz', text: 'Mindestens 1 €.', tone: 'loss' });
       else UI.toast({ icon: '🚫', title: 'Zu wenig Geld', tone: 'loss', ms: 4500,
@@ -2073,7 +2355,7 @@ const Game = {
     if (s.mafiaDebt > 0) {
       s.mafiaSpins--;
       if (s.mafiaSpins <= 0) {
-        const bill = Rules.mafiaBill(s.mafiaDebt);
+        const bill = Rules.mafiaBill(s.mafiaDebt, Perks.mods());
         s.balance -= bill; s.mafiaDebt = 0; s.mafiaSpins = 0;
         State.save();
         await Bus.emit('mafia.legbreak', { bill: UI.fmt(bill) });
@@ -2085,7 +2367,7 @@ const Game = {
       const inv = s.investments[i];
       inv.spins--;
       if (inv.spins <= 0) {
-        const r = Rules.investmentResolve(inv, Math.random);
+        const r = Rules.investmentResolve(inv, Math.random, Perks.mods());
         s.investments.splice(i, 1);
         if (r.won) {
           this.applyDelta(r.payout, { quiet: true });
@@ -2102,7 +2384,7 @@ const Game = {
     UI.renderWallet();
     UI.renderSide();
     await Bus.emit('spin:after', {});
-    if (Rules.isGameOver(s)) await Bus.emit('gameover', {});
+    if (Rules.isGameOver(s, Perks.mods())) await Bus.emit('gameover', {});
   },
 };
 
@@ -2130,9 +2412,10 @@ Actions.beer = async () => {
     UI.toast({ icon: '🍺', title: 'Kein Bier mehr', text: 'Der Wirt schenkt dir nichts mehr ein.', tone: 'loss' });
     return;
   }
-  const c = Rules.canBeer(s, StoryRules.price(s, 'beer'));
+  const mods = Perks.mods();
+  const c = Rules.canBeer(s, StoryRules.price(s, 'beer'), mods);
   if (!c.ok) {
-    UI.toast({ icon: '🍺', title: c.reason === 'max' ? 'Maximal 3 Bier' : `Bier kostet ${UI.fmt(StoryRules.price(s, 'beer'))}`, text: c.reason === 'max' ? 'Der Wirt schüttelt den Kopf.' : 'Zu wenig Geld.', tone: 'loss' });
+    UI.toast({ icon: '🍺', title: c.reason === 'max' ? `Maximal ${mods.maxBeers} Bier` : `Bier kostet ${UI.fmt(StoryRules.price(s, 'beer'))}`, text: c.reason === 'max' ? 'Der Wirt schüttelt den Kopf.' : 'Zu wenig Geld.', tone: 'loss' });
     return;
   }
   Game.applyDelta(-StoryRules.price(s, 'beer'), { quiet: true });
@@ -2142,7 +2425,8 @@ Actions.beer = async () => {
   State.save();
   UI.renderWallet(); UI.renderSide();
   SFX.play('coin');
-  UI.toast({ icon: '🍺', title: `Prost! Bier #${s.beers}`, text: `+${Rules.BEER_LUCK[s.beers]} % Glück für 2 Spins.`, tone: 'gold' });
+  const luckGain = Rules.BEER_LUCK[s.beers] * mods.beerLuckMult;
+  UI.toast({ icon: '🍺', title: `Prost! Bier #${s.beers}`, text: luckGain > 0 ? `+${luckGain} % Glück für 2 Spins.` : 'Bier schmeckt, wirkt aber nicht – Pokerface.', tone: 'gold' });
   await Bus.emit('beer', { beers: s.beers });
   if (typeof Story !== 'undefined') await Story.hook('buy:beer');
 };
@@ -2158,9 +2442,10 @@ Actions.brownie = async () => {
     UI.toast({ icon: '🍪', title: c.reason === 'active' ? 'Brownie wirkt bereits' : `Kostet ${UI.fmt(s.brownieCost)}`, text: c.reason === 'active' ? 'Einer reicht. Wirklich.' : 'Zu wenig Geld.', tone: 'loss' });
     return;
   }
+  const mods = Perks.mods();
   const price = s.brownieCost;
   Game.applyDelta(-price, { quiet: true });
-  s.brownieTimer = Rules.BROWNIE_SPINS;
+  s.brownieTimer = mods.brownieSpins;
   s.brownieCost = s.story && s.story.prices && s.story.prices.brownie != null ? s.story.prices.brownie : Rules.PRICES.brownieNext;
   if (State.mode === 'story' && State.s.story) State.s.story.stats.brownies++;
   State.save();
@@ -2171,7 +2456,8 @@ Actions.brownie = async () => {
     s.flags.brownie = true; State.save();
     await Cutscene.play('brownie.first', { price: UI.fmt(price) });
   } else {
-    UI.toast({ icon: '🍪', title: 'Brownie', text: '+40 % Glück für 1 Spin. Frag nicht.', tone: 'gold' });
+    const pct = Rules.BROWNIE_LUCK * mods.brownieLuckMult;
+    UI.toast({ icon: '🍪', title: 'Brownie', text: `+${pct} % Glück für ${mods.brownieSpins} Spin${mods.brownieSpins === 1 ? '' : 's'}. Frag nicht.`, tone: 'gold' });
   }
   await Bus.emit('brownie', {});
   if (typeof Story !== 'undefined') await Story.hook('buy:brownie');
@@ -2209,34 +2495,44 @@ Cutscene.define('kidney.sold', [
 /* ---- Kredite ---- */
 const Finance = {
   root: null,
+  loanAmount(raw) { return raw === 'limit' ? Rules.bankLimitFor(State.s, Perks.mods()) : parseInt(raw, 10); },
   render() {
     if (!this.root) return;
     const s = State.s;
+    const mods = Perks.mods();
+    const rate = Rules.bankRateFor(s, mods), limit = Rules.bankLimitFor(s, mods);
     qs('#bankIou', this.root).innerHTML = s.bankDebt > 0
-      ? `<h4>Schuldschein</h4><div class="amt">${UI.fmt(s.bankDebt)}</div><div>−${UI.fmt(Rules.bankInterest(s.bankDebt, s))} Zinsen pro Spin</div>`
+      ? `<h4>Schuldschein</h4><div class="amt">${UI.fmt(s.bankDebt)}</div><div>−${UI.fmt(Rules.bankInterest(s.bankDebt, s, mods))} Zinsen pro Spin</div>`
       : `<h4>Schuldschein</h4><div class="amt">0 €</div><div>Sauberes Konto. Noch.</div>`;
     qs('#mafiaIou', this.root).innerHTML = s.mafiaDebt > 0
       ? `<h4>Vitos Zettel</h4><div class="amt">${UI.fmt(s.mafiaDebt)}</div><div class="deadline">Noch ${s.mafiaSpins} Spin${s.mafiaSpins === 1 ? '' : 's'}</div>`
       : `<h4>Vitos Zettel</h4><div class="amt">0 €</div><div>„Wir kennen uns nicht."</div>`;
-    qsa('[data-loan]', this.root).forEach((b) => { b.disabled = !Rules.bankLoanAllowed(s, parseInt(b.dataset.loan, 10)); });
+    qsa('[data-loan]', this.root).forEach((b) => { b.disabled = !Rules.bankLoanAllowed(s, this.loanAmount(b.dataset.loan), mods); });
+    qs('[data-loan="limit"]', this.root).textContent = `Limit · ${UI.fmt(limit)}`;
+    const hint = qs('#bankHint', this.root);
+    hint.classList.toggle('hidden', s.bankDebt === 0);
+    hint.textContent = s.bankDebt > 0 ? 'Erst den Schuldschein tilgen – Herr Krause gibt nur einen Kredit auf einmal.' : '';
     qsa('[data-mloan]', this.root).forEach((b) => { b.disabled = s.mafiaDebt > 0; });
     qs('#repayBank', this.root).disabled = s.bankDebt === 0;
     qs('#repayMafia', this.root).disabled = s.mafiaDebt === 0;
-    const g = Rules.gear(s);
-    qs('#bankTerms', this.root).textContent = `Herr Krause · ${Math.round(g.bankRate * 100)} % Zinsen pro Spin · Limit ${UI.fmt(g.bankLimit)}`;
+    qs('#bankTerms', this.root).textContent = `Herr Krause · ${Math.round(rate * 100)} % Zinsen pro Spin · Limit ${UI.fmt(limit)}`;
   },
   async loanBank(amt) {
     const s = State.s;
-    if (!Rules.bankLoanAllowed(s, amt)) {
-      if (!s.flags.bankLimit) { s.flags.bankLimit = true; State.save(); await Cutscene.play('bank.limit', { limit: UI.fmt(Rules.gear(s).bankLimit) }); }
-      else UI.toast({ icon: '👔', title: 'Kreditlimit erreicht', text: `Herr Krause bedauert. ${UI.fmt(Rules.gear(s).bankLimit)} sind das Ende.`, tone: 'loss' });
+    const mods = Perks.mods();
+    if (amt === 'limit') amt = Rules.bankLimitFor(s, mods);
+    const why = Rules.bankLoanReason(s, amt, mods);
+    if (why === 'open') { UI.toast({ icon: '👔', title: 'Ein Kredit reicht', text: 'Erst den Schuldschein tilgen.', tone: 'loss' }); SFX.play('lose'); return; }
+    if (why === 'limit') {
+      if (!s.flags.bankLimit) { s.flags.bankLimit = true; State.save(); await Cutscene.play('bank.limit', { limit: UI.fmt(Rules.bankLimitFor(s, mods)) }); }
+      else UI.toast({ icon: '👔', title: 'Kreditlimit erreicht', text: `Herr Krause bedauert. ${UI.fmt(Rules.bankLimitFor(s, mods))} sind das Ende.`, tone: 'loss' });
       return;
     }
     s.bankDebt += amt;
     Game.applyDelta(amt, { quiet: true });
     SFX.play('cash');
     this.render();
-    if (!s.flags.bankLoan) { s.flags.bankLoan = true; State.save(); await Cutscene.play('bank.loan', {}); }
+    if (!s.flags.bankLoan) { s.flags.bankLoan = true; State.save(); await Cutscene.play('bank.loan', { rate: Math.round(Rules.bankRateFor(s, mods) * 100) }); }
     else UI.toast({ icon: '🏦', title: `+${UI.fmt(amt)} Kredit`, text: `Schulden jetzt ${UI.fmt(s.bankDebt)}.`, tone: 'info' });
     this.render();
   },
@@ -2254,13 +2550,14 @@ const Finance = {
   async loanMafia(amt) {
     const s = State.s;
     if (s.mafiaDebt > 0) { UI.toast({ icon: '🕶️', title: 'Erst zahlen', text: 'Vito gibt keinen zweiten Kredit.', tone: 'loss' }); return; }
+    const mods = Perks.mods();
     s.mafiaDebt = amt;
-    s.mafiaSpins = Rules.MAFIA_SPINS;
+    s.mafiaSpins = Rules.mafiaSpins(mods);
     Game.applyDelta(amt, { quiet: true });
     SFX.play('cash');
     this.render();
     if (!s.flags.mafiaLoan) { s.flags.mafiaLoan = true; State.save(); await Cutscene.play('mafia.loan', {}); }
-    else UI.toast({ icon: '🕶️', title: `+${UI.fmt(amt)} von Vito`, text: 'Fünf Spins. Er zählt mit.', tone: 'loss' });
+    else UI.toast({ icon: '🕶️', title: `+${UI.fmt(amt)} von Vito`, text: `${mods.mafiaSpins} Spin${mods.mafiaSpins === 1 ? '' : 's'}. Er zählt mit.`, tone: 'loss' });
     this.render();
   },
   async repayMafia() {
@@ -2287,7 +2584,7 @@ UI.register('finance', {
       vito.classList.toggle('hidden', !Story.roomUnlocked('mafia'));
       if (bank.classList.contains('hidden') || vito.classList.contains('hidden')) qs('.finance', root).style.gridTemplateColumns = '1fr';
     }
-    qsa('[data-loan]', root).forEach((b) => b.addEventListener('click', () => Finance.loanBank(parseInt(b.dataset.loan, 10))));
+    qsa('[data-loan]', root).forEach((b) => b.addEventListener('click', () => Finance.loanBank(Finance.loanAmount(b.dataset.loan))));
     qsa('[data-mloan]', root).forEach((b) => b.addEventListener('click', () => Finance.loanMafia(parseInt(b.dataset.mloan, 10))));
     qs('#repayBank', root).addEventListener('click', () => Finance.repayBank());
     qs('#repayMafia', root).addEventListener('click', () => Finance.repayMafia());
@@ -2299,7 +2596,7 @@ Bus.on('spin:after', () => Finance.render());
 
 Cutscene.define('bank.loan', [
   { bg: 'bank', who: 'krause', mood: 'calm', text: 'Willkommen bei der Sparkasse Keller 37. Ich sehe, Sie möchten liquide bleiben. Sehr vernünftig.' },
-  { bg: 'bank', who: 'krause', mood: 'happy', text: 'Dreißig Prozent Zinsen – pro Spin, versteht sich. Marktüblich. Hier unten. Unterschreiben Sie bitte da, da und da.' },
+  { bg: 'bank', who: 'krause', mood: 'happy', text: '{{rate}} Prozent Zinsen – pro Spin, versteht sich. Marktüblich. Hier unten. Unterschreiben Sie bitte da, da und da.' },
 ]);
 Cutscene.define('bank.limit', [
   { bg: 'bank', who: 'krause', mood: 'calm', text: '„{{limit}} Gesamtschuld." Da geht nichts mehr, tut mir leid. Ich kann Ihnen einen Kaffee anbieten. Der ist auch nicht umsonst.' },
@@ -2326,21 +2623,32 @@ const Invest = {
   INPUT: { bank: 'invBank', stock: 'invStock', scam: 'invScam' },
   render() {
     if (!this.root) return;
+    const s = State.s;
     const box = qs('#tickets', this.root);
     box.innerHTML = '';
-    if (State.s.investments.length === 0) { box.append(h('span', { class: 'empty' }, 'Keine laufenden Anlagen.')); return; }
-    for (const inv of State.s.investments) {
+    if (s.investments.length === 0) box.append(h('span', { class: 'empty' }, 'Keine laufenden Anlagen.'));
+    for (const inv of s.investments) {
       box.append(h('div', { class: 'ticket' }, h('b', {}, inv.name), ` · ${UI.fmt(inv.amount)} · noch ${inv.spins} Spin${inv.spins === 1 ? '' : 's'}`));
+    }
+    for (const card of qsa('.chalk.inv', this.root)) {
+      const run = Rules.investRunning(s, card.dataset.type);
+      qs('.inv-running', card).classList.toggle('hidden', !run);
+      qs('.inv-form', card).classList.toggle('hidden', !!run);
+      if (run) qs('.inv-running', card).textContent = `Läuft: ${UI.fmt(run.amount)} · noch ${run.spins} Spin${run.spins === 1 ? '' : 's'}`;
     }
   },
   invest(type) {
     const s = State.s;
     const def = Rules.INVEST[type];
     const amt = parseInt(qs('#' + this.INPUT[type], this.root).value, 10);
-    if (!Number.isFinite(amt) || amt < def.min) { UI.toast({ icon: '🚫', title: 'Mindestens 10 €', tone: 'loss' }); SFX.play('lose'); return; }
-    if (s.balance < amt) { UI.toast({ icon: '🚫', title: 'Zu wenig Geld', text: `Du hast ${UI.fmt(s.balance)}.`, tone: 'loss' }); SFX.play('lose'); return; }
+    const chk = Rules.canInvest(s, type, amt);
+    if (!chk.ok) {
+      const msg = chk.reason === 'running' ? { title: 'Läuft schon', text: `Erst auszahlen lassen, dann neu anlegen.` }
+        : chk.reason === 'min' ? { title: 'Mindestens 10 €' } : { title: 'Zu wenig Geld', text: `Du hast ${UI.fmt(s.balance)}.` };
+      UI.toast(Object.assign({ icon: '🚫', tone: 'loss' }, msg)); SFX.play('lose'); return;
+    }
     Game.applyDelta(-amt, { from: qs(`[data-type="${type}"]`, this.root) });
-    s.investments.push({ name: def.name, amount: amt, rate: def.rate, spins: def.spins, risk: def.risk });
+    s.investments.push({ type, name: def.name, amount: amt, rate: def.rate, spins: def.spins, risk: def.risk });
     State.save();
     SFX.play('chip');
     UI.toast({ icon: '📈', title: `${def.name} angelegt`, text: `${UI.fmt(amt)} für ${def.spins} Spins.`, tone: 'info' });
@@ -2769,7 +3077,8 @@ const MegaSlots = {
       qs('#megaStatus', this.root).textContent = free ? 'Freispiel läuft…' : 'Walzen laufen…';
       qs('#megaLines', this.root).textContent = '';
       let grid = RoyalRules.megaRoll(Math.random);
-      grid = RoyalRules.megaLuckOverride(grid, Rules.luck(State.s), Math.random);
+      const mods = Perks.mods();
+      grid = RoyalRules.megaLuckOverride(grid, Rules.effectiveLuck(Rules.luck(State.s, mods), bet), Math.random);
       const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
       const shown = RoyalRules.megaRoll(Math.random);
       this.render(shown, { spin: [0, 1, 2, 3, 4] });
@@ -2862,7 +3171,8 @@ const Craps = {
       qs('#crapsStatus', this.root).textContent = 'Die Würfel rollen…';
       SFX.loop('reelSpin', 100);
       let dice = RoyalRules.crapsRoll(Math.random);
-      dice = RoyalRules.crapsLuckOverride(dice, point, bets.pass > 0, Rules.luck(State.s), Math.random);
+      const mods = Perks.mods();
+      dice = RoyalRules.crapsLuckOverride(dice, point, bets.pass > 0, Rules.effectiveLuck(Rules.luck(State.s, mods), risk), Math.random);
       await wait(matchMedia('(prefers-reduced-motion: reduce)').matches ? 150 : 900);
       SFX.stop('reelSpin');
       const r = RoyalRules.crapsSettle(bets, point, dice);
@@ -2936,7 +3246,8 @@ const Wheel = {
       qs('#btnWheel', this.root).disabled = true;
       qs('#wheelStatus', this.root).textContent = 'Das Rad dreht…';
       let index = RoyalRules.wheelSpin(Math.random);
-      index = RoyalRules.wheelLuckOverride(index, Rules.luck(State.s), Math.random);
+      const mods = Perks.mods();
+      index = RoyalRules.wheelLuckOverride(index, Rules.effectiveLuck(Rules.luck(State.s, mods), bet), Math.random);
       const el = qs('#wheel', this.root);
       const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
       this.turns += reduced ? 1 : 5;
@@ -2983,7 +3294,24 @@ const Slots = {
   root: null,
   spinning: false,
   gen: 0,
+  lastRes: null,
+  lastBet: 0,
   alive(gen) { return !!this.root && this.gen === gen; },
+  updateInsiderHint(bet) {
+    if (!this.root) return;
+    const hint = qs('#slotInsider', this.root);
+    if (!hint) return;
+    const mods = Perks.mods();
+    if (mods.slotHoldEvery <= 0) { hint.classList.add('hidden'); hint.textContent = ''; return; }
+    hint.classList.remove('hidden');
+    if (!Rules.effectiveInsider(true, bet)) {
+      hint.textContent = `🔧 Mechaniker: wirkt bis ${UI.fmt(Rules.INSIDER_CAP)}`;
+    } else if (State.s.mechRespins >= mods.slotHoldEvery) {
+      hint.textContent = '🔧 Mechaniker: bereit';
+    } else {
+      hint.textContent = `🔧 Mechaniker: nächster Gratisdreh in ${mods.slotHoldEvery - State.s.mechRespins} Runden`;
+    }
+  },
   cell() { const c = qs('.cell', this.root); return c ? c.offsetHeight : 90; },
   buildStrips() {
     qsa('.strip', this.root).forEach((strip) => {
@@ -3006,15 +3334,18 @@ const Slots = {
     const run = Game.run;
     const gen = this.gen;
     this.spinning = true;
+    this.lastRes = null;
     try {
       qs('#btnSpin', this.root).disabled = true;
+      qsa('.hold-btn', this.root).forEach((b) => b.classList.add('hidden'));
       const lever = qs('#lever', this.root);
       lever.classList.add('pulled');
       setTimeout(() => lever.classList.remove('pulled'), 500);
       qs('#slotStatus', this.root).textContent = 'Walzen laufen…';
       qsa('.reel-win', this.root).forEach((r) => r.classList.remove('locked', 'hit'));
+      const mods = Perks.mods();
       let res = Rules.slotRoll(Math.random);
-      res = Rules.slotLuckOverride(res, Rules.luck(State.s), Math.random);
+      res = Rules.slotLuckOverride(res, Rules.effectiveLuck(Rules.luck(State.s, mods), bet), Math.random);
       qsa('.strip', this.root).forEach((s, k) => { s.style.transition = 'none'; s.style.transform = 'translateY(0)'; s.style.animationDelay = `${-k * 0.13}s`; void s.offsetHeight; s.classList.add('spinning'); });
       SFX.loop('reelSpin', 120);
       [800, 1400, 2000].forEach((ms, i) => setTimeout(() => {
@@ -3026,8 +3357,11 @@ const Slots = {
       }, ms));
       await wait(2450);
       SFX.stop('reelSpin');
-      const m = Rules.slotMultiplier(...res);
+      const m = Rules.slotMultiplier(...res, mods);
       const delta = Rules.slotDelta(bet, m);
+      if (mods.slotHoldEvery > 0) { State.s.mechRespins++; State.save(); }
+      const canHold = m === 0 && mods.slotHoldEvery > 0 && State.s.mechRespins >= mods.slotHoldEvery && Rules.effectiveInsider(true, bet);
+      if (canHold) { this.lastRes = res; this.lastBet = bet; }
       if (this.alive(gen)) {
         const stat = qs('#slotStatus', this.root);
         if (m > 0) {
@@ -3037,6 +3371,7 @@ const Slots = {
         } else {
           stat.innerHTML = `<span class="loss">Niete · −${UI.fmt(bet)}</span>`;
         }
+        this.updateInsiderHint(bet);
       }
       await Bus.emit('slots:result', { res, m, bet });
       await Game.settle(delta, { from: this.alive(gen) ? qs('.slot-machine', this.root) : null, game: 'slots', bet, run });
@@ -3045,6 +3380,8 @@ const Slots = {
       if (this.gen === gen) {
         this.spinning = false;
         qs('#btnSpin', this.root).disabled = false;
+        /* Erst nach der Abrechnung sichtbar, sonst kassiert ein Klick waehrend der Post-Spin-Cutscene ins Leere */
+        if (this.lastRes) qsa('.hold-btn', this.root).forEach((b) => b.classList.remove('hidden'));
       }
     }
   },
@@ -3061,6 +3398,35 @@ const Slots = {
     }
   },
   onKey(e) { if (e.code === 'Space' && qs('#cutscene').hidden && !e.repeat) { e.preventDefault(); Slots.spin(); } },
+  /* Gratisdreh des Mechanikers: keine neue Runde – kein beginSpin/settle, keine Zinsen/Meds. Nur ein Gewinn gibt XP (win). */
+  async respin(k) {
+    if (this.spinning || !this.root || !this.lastRes) return;
+    const bet = this.lastBet, gen = this.gen, held = this.lastRes[k];
+    const run = State.s; // wie Game.settle: erkennt "Neues Spiel" waehrend der 1,9s
+    this.lastRes = null; State.s.mechRespins = 0; State.save();
+    this.spinning = true;
+    Game.inFlight++; // Gratisdreh zaehlt wie eine laufende Runde fuer Story.night()/Mugging.blocked()
+    try {
+      qsa('.hold-btn', this.root).forEach((b) => b.classList.add('hidden'));
+      qs('#slotStatus', this.root).textContent = `Walze ${k + 1} festgehalten – Gratisdreh…`;
+      const fresh = Rules.slotRoll(Math.random);
+      const res = fresh.map((sym, i) => (i === k ? held : sym));
+      [0, 1, 2].filter((i) => i !== k).forEach((i, j) => { const s = qs(`#reel${i + 1} .strip`, this.root); s.style.transition = 'none'; s.style.transform = 'translateY(0)'; void s.offsetHeight; s.classList.add('spinning'); setTimeout(() => { if (this.alive(gen)) { this.setReel(i + 1, res[i], true); qs(`#reel${i + 1}`, this.root).classList.add('locked'); SFX.play('reelStop'); } }, 800 + j * 600); });
+      SFX.loop('reelSpin', 120);
+      await wait(1900);
+      SFX.stop('reelSpin');
+      const m = Rules.slotMultiplier(...res, Perks.mods());
+      const payout = m > 0 ? Math.round(bet * m) : 0;
+      if (this.alive(gen)) qs('#slotStatus', this.root).innerHTML = payout > 0 ? `<span class="win">Gratisdreh: ${String(m).replace('.', ',')}× · +${UI.fmt(payout)}</span>` : `<span class="loss">Gratisdreh: Niete. Der Mechaniker zuckt mit den Schultern.</span>`;
+      if (payout > 0 && run === State.s) { Game.applyDelta(payout, { from: this.alive(gen) ? qs('.slot-machine', this.root) : null }); SFX.play('cash'); await Bus.emit('win', { amount: payout, game: 'slots' }); }
+      if (this.alive(gen)) this.updateInsiderHint(bet);
+      State.save();
+    } finally {
+      SFX.stop('reelSpin');
+      Game.inFlight = Math.max(0, Game.inFlight - 1);
+      if (this.gen === gen) this.spinning = false;
+    }
+  },
 };
 
 UI.register('slots', {
@@ -3068,14 +3434,22 @@ UI.register('slots', {
   mount(root) {
     Slots.gen++;
     Slots.root = root;
+    Slots.lastRes = null;
     Slots.buildStrips();
     ['🍒', '7️⃣', '💎'].forEach((s, i) => Slots.setReel(i + 1, s, false));
+    const mods = Perks.mods();
+    qs('#payPair', root).textContent = `${String(mods.slotPairMult).replace('.', ',')}×`;
     Game.bindBet(root, 'slotBet');
     qs('#btnSpin', root).addEventListener('click', () => Slots.spin());
     qs('#lever', root).addEventListener('click', () => Slots.spin());
+    qsa('.hold-btn', root).forEach((b) => b.addEventListener('click', () => {
+      const k = parseInt(b.dataset.reel, 10);
+      Slots.respin(k);
+    }));
+    Slots.updateInsiderHint(Game.readBet('slotBet'));
     document.addEventListener('keydown', Slots.onKey);
   },
-  unmount() { Slots.gen++; document.removeEventListener('keydown', Slots.onKey); SFX.stop('reelSpin'); Slots.root = null; Slots.spinning = false; },
+  unmount() { Slots.gen++; document.removeEventListener('keydown', Slots.onKey); SFX.stop('reelSpin'); Slots.root = null; Slots.spinning = false; Slots.lastRes = null; },
 });
 </script>
 
@@ -3121,12 +3495,24 @@ const Blackjack = {
       qsa('.hand-val', this.root).forEach((v) => v.classList.remove('push'));
       qs('#bjBetControls', this.root).classList.add('hidden');
       qs('#bjActionControls', this.root).classList.remove('hidden');
+      qs('#bjDeckHeat', this.root).classList.add('hidden');
       qs('#bjStatus', this.root).textContent = 'Hit oder Stand?';
       round.pHand.push(round.deck.pop()); await this.dealTo('playerCards', round.pHand[0]);
       round.dHand.push(round.deck.pop()); await this.dealTo('dealerCards', round.dHand[0], true);
       round.pHand.push(round.deck.pop()); await this.dealTo('playerCards', round.pHand[1]);
       round.dHand.push(round.deck.pop()); await this.dealTo('dealerCards', round.dHand[1]);
       this.updateVals(false);
+      round.natural = round.pHand.length === 2 && Rules.handSum(round.pHand) === 21;
+      const mods = Perks.mods();
+      round.hot = Rules.effectiveInsider(mods.bjHotDeck, bet) > 1 && Rules.deckHot(round.deck);
+      if (this.alive(gen)) {
+        const heat = qs('#bjDeckHeat', this.root);
+        if (mods.bjHotDeck > 1) {
+          heat.classList.remove('hidden');
+          heat.textContent = (Rules.deckHot(round.deck) ? '🔥 Deck heiß' : '❄️ Deck kalt') + (bet > Rules.INSIDER_CAP ? ` (wirkt bis ${UI.fmt(Rules.INSIDER_CAP)})` : '');
+        }
+        if (round.natural) qs('#bjStatus', this.root).textContent = 'Blackjack! Stand, um zu kassieren.';
+      }
     } finally {
       if (this.gen === gen) this.dealing = false;
       else this.drop(round); // Screen während des Austeilens verlassen
@@ -3177,20 +3563,28 @@ const Blackjack = {
   async finish(outcome, round) {
     if (round.done) return;
     round.done = true;
-    const delta = Rules.bjDelta(outcome, round.bet);
+    /* bjHotDeck ist ein Insider-Bonus (im Gegensatz zu bjNatural, einem Skill) und muss daher wie
+       Rules.deckHot's Anzeige über INSIDER_CAP anteilig schwächer werden, statt voll zu zahlen. */
+    const mods = Object.assign({}, Perks.mods());
+    mods.bjHotDeck = Rules.effectiveInsider(mods.bjHotDeck, round.bet);
+    const ctx = { natural: round.natural && round.pHand.length === 2 && outcome === 'win', hot: !!round.hot };
+    const delta = Rules.bjDelta(outcome, round.bet, mods, ctx);
     try {
       if (this.alive(round.gen)) {
+        const winSuffix = ctx.natural ? ' (Blackjack 3:2)' : ctx.hot ? ' (heißes Deck 1,2:1)' : '';
+        const pushTip = delta > 0 ? ` · +${UI.fmt(delta)} Trinkgeld` : '';
         const msgs = {
-          win: `<span class="win">Gewonnen · +${UI.fmt(round.bet)}</span>`,
+          win: `<span class="win">Gewonnen · +${UI.fmt(delta)}${winSuffix}</span>`,
           bust: `<span class="loss">Bust · über 21 · −${UI.fmt(round.bet)}</span>`,
           dealer: `<span class="loss">Dealer gewinnt · −${UI.fmt(round.bet)}</span>`,
-          push: 'Push · Unentschieden',
+          push: `Push · Unentschieden${pushTip}`,
         };
         qs('#bjStatus', this.root).innerHTML = msgs[outcome];
         if (outcome === 'bust') qsa('#playerCards .pcard', this.root).forEach((c) => c.classList.add('bust'));
         if (outcome === 'push') qsa('.hand-val', this.root).forEach((v) => v.classList.add('push'));
         qs('#bjActionControls', this.root).classList.add('hidden');
         qs('#bjBetControls', this.root).classList.remove('hidden');
+        qs('#bjDeckHeat', this.root).classList.add('hidden'); // Lesung ist mit der Runde Geschichte
       }
     } finally {
       if (this.gen === round.gen) { this.inRound = false; this.dealing = false; }
@@ -3205,6 +3599,8 @@ UI.register('blackjack', {
   mount(root) {
     Blackjack.gen++;
     Blackjack.root = root;
+    const mods = Perks.mods();
+    qs('#bjArc', root).textContent = `${mods.bjNatural === 1.5 ? 'Blackjack zahlt 3:2' : 'Blackjack zahlt 1:1'} · Dealer zieht bis 17`;
     Game.bindBet(root, 'bjBet');
     qs('#btnDeal', root).addEventListener('click', () => Blackjack.start());
     qs('#btnHit', root).addEventListener('click', () => Blackjack.hit());
@@ -3225,13 +3621,13 @@ UI.register('blackjack', {
 <script id="game-roulette">
 /* ================= ROULETTE ================= */
 const Roulette = {
-  root: null, wheelDeg: 0, spinning: false, ballRaf: null, gen: 0,
+  root: null, wheelDeg: 0, spinning: false, ballRaf: null, gen: 0, bets: [], lastBets: [],
   alive(gen) { return !!this.root && this.gen === gen; },
   buildTable() {
     const t = qs('#rtable', this.root);
     t.innerHTML = '';
     const cell = (label, cls, type, chosen, style) =>
-      h('button', { class: `rcell ${cls}`, style, onclick: (e) => this.play(type, chosen, e.currentTarget) }, label);
+      h('button', { class: `rcell ${cls}`, style, 'data-key': type === 'number' ? `n${chosen}` : type, onclick: (e) => this.place(type, chosen, e.currentTarget) }, label);
     t.append(cell('0', 'zero', 'number', 0));
     for (let row = 0; row < 3; row++) for (let col = 0; col < 12; col++) {
       const n = col * 3 + (3 - row);
@@ -3239,8 +3635,17 @@ const Roulette = {
     }
     t.append(cell('Rot', 'out red', 'red', null, 'grid-column: 2 / span 3'), cell('Schwarz', 'out black', 'black', null),
       cell('Gerade', 'out', 'even', null), cell('Ungerade', 'out', 'odd', null));
+    this.applyExcluded();
   },
-  drawWheel(highlight = -1) {
+  excluded() { return Perks.mods().rouletteExclude > 0 ? (State.s.insiderExcluded || []) : []; },
+  applyExcluded() {
+    const ex = this.excluded();
+    qsa('.rcell', this.root).forEach((c) => { const n = c.dataset.key.startsWith('n') ? parseInt(c.dataset.key.slice(1), 10) : null; c.classList.toggle('excluded', n !== null && ex.includes(n)); });
+    const hint = qs('#rouletteInsider', this.root);
+    hint.classList.toggle('hidden', !ex.length);
+    hint.textContent = ex.length ? `👁️ Croupier-Auge: ${ex.length} Zahlen fallen nicht (wirkt bis ${UI.fmt(Rules.INSIDER_CAP)} Gesamteinsatz)` : '';
+  },
+  drawWheel(highlight = -1, excluded = this.excluded()) {
     const c = qs('#wheelCanvas', this.root);
     if (!c) return;
     const ctx = c.getContext('2d');
@@ -3254,7 +3659,7 @@ const Roulette = {
       const center = -Math.PI / 2 + i * slice;
       const num = Rules.WHEEL[i];
       ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, center - slice / 2, center + slice / 2); ctx.closePath();
-      ctx.fillStyle = i === highlight ? '#e8c65a' : num === 0 ? '#1f7a4d' : Rules.isRed(num) ? '#b3261e' : '#1c1c1c';
+      ctx.fillStyle = i === highlight ? '#e8c65a' : excluded.includes(num) ? '#3a3a3a' : num === 0 ? '#1f7a4d' : Rules.isRed(num) ? '#b3261e' : '#1c1c1c';
       ctx.fill();
       ctx.strokeStyle = 'rgba(201,162,39,.5)'; ctx.lineWidth = 1; ctx.stroke();
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(center); ctx.translate(r - 16, 0); ctx.rotate(Math.PI / 2);
@@ -3273,7 +3678,7 @@ const Roulette = {
     document.body.append(c);
     void c.offsetWidth;
     c.style.transform = `translate(${to.left + to.width / 2 - from.left - 23}px, ${to.top + to.height / 2 - from.top - 23}px)`;
-    setTimeout(() => { c.remove(); if (this.alive(gen)) cell.append(h('div', { class: 'chip placed' }, label)); }, 420);
+    setTimeout(() => { c.remove(); if (this.alive(gen) && cell.querySelector('.chip-stack')) cell.append(h('div', { class: 'chip placed' }, label)); }, 420);
   },
   animateBall(dur, gen) {
     const ball = qs('#ball', this.root);
@@ -3296,22 +3701,105 @@ const Roulette = {
     };
     this.ballRaf = requestAnimationFrame(frame);
   },
-  async play(type, chosen, cell) {
+  key(type, n) { return type === 'number' ? `n${n}` : type; },
+  cellFor(type, n) { return qs(`.rcell[data-key="${this.key(type, n)}"]`, this.root); },
+  total() { return Rules.rouletteTotal(this.bets); },
+  renderTable(result = null) {
+    if (!this.root) return;
+    qsa('.chip-stack', this.root).forEach((el) => el.remove());
+    const sums = new Map();
+    for (const b of this.bets) { const k = this.key(b.type, b.n); sums.set(k, (sums.get(k) || 0) + b.amount); }
+    for (const [k, sum] of sums) {
+      const cell = qs(`.rcell[data-key="${k}"]`, this.root);
+      if (!cell) continue;
+      const won = result ? result.hits.some((x) => this.key(x.bet.type, x.bet.n) === k && x.win) : null;
+      cell.append(h('div', { class: 'chip-stack' + (won === true ? ' won' : won === false ? ' lost' : ''), 'data-key': k }, String(sum)));
+    }
+    this.renderBar();
+  },
+  renderBar() {
+    if (!this.root) return;
+    qs('#tableTotal', this.root).textContent = `Auf dem Tisch: ${UI.fmt(this.total())} · ${this.bets.length} Chip${this.bets.length === 1 ? '' : 's'}`;
+    const idle = !this.spinning;
+    qs('#btnSpin', this.root).disabled = !idle || this.bets.length === 0;
+    qs('#btnUndo', this.root).disabled = !idle || this.bets.length === 0;
+    qs('#btnClear', this.root).disabled = !idle || this.bets.length === 0;
+    qs('#btnRepeat', this.root).disabled = !idle || this.lastBets.length === 0 || !Rules.checkSpin(State.s, Rules.rouletteTotal(this.lastBets), Perks.mods()).ok;
+  },
+  place(type, n, cell) {
     if (this.spinning || !this.root) return;
-    const bet = Game.readBet('rouletteBet');
-    if (!Game.beginSpin(bet)) return;
+    if (type === 'number' && this.excluded().includes(n)) return;
+    const amount = Game.readBet('rouletteBet');
+    const chk = Rules.checkSpin(State.s, this.total() + amount, Perks.mods());
+    if (!chk.ok) {
+      if (chk.reason === 'invalid') UI.toast({ icon: '🚫', title: 'Ungültiger Chip', text: 'Mindestens 1 €.', tone: 'loss' });
+      else UI.toast({ icon: '🚫', title: 'Zu wenig Geld', tone: 'loss', ms: 4500, text: `Auf dem Tisch wären ${UI.fmt(this.total() + amount)} (+ Zinsen ${UI.fmt(chk.interest)} + Meds ${UI.fmt(chk.meds)}).` });
+      SFX.play('lose');
+      return;
+    }
+    this.bets.push({ type, n, amount });
+    SFX.play('chip');
+    this.flyChip(cell, String(amount), this.gen);
+    this.renderTable();
+    qs('#rouletteStatus', this.root).textContent = 'Chip liegt. Weitere legen oder drehen.';
+  },
+  undo() {
+    if (this.spinning || !this.bets.length) return;
+    const popped = this.bets.pop();
+    const cell = this.cellFor(popped.type, popped.n);
+    if (cell) { const tokens = qsa('.chip.placed', cell); if (tokens.length) tokens[tokens.length - 1].remove(); }
+    SFX.play('click');
+    this.renderTable();
+  },
+  clear() {
+    if (this.spinning || !this.bets.length) return;
+    this.bets = [];
+    qsa('.chip.placed', this.root).forEach((c) => c.remove());
+    SFX.play('click');
+    this.renderTable();
+  },
+  repeat() {
+    if (this.spinning || !this.lastBets.length) return;
+    const ex = this.excluded();
+    const bets = this.lastBets.filter((b) => !(b.type === 'number' && ex.includes(b.n)));
+    if (!bets.length) {
+      UI.toast({ icon: '🚫', title: 'Gesperrte Zahlen', tone: 'loss', text: 'Die alten Chips lägen auf gesperrten Zahlen.' });
+      SFX.play('lose');
+      return;
+    }
+    const lastTotal = Rules.rouletteTotal(bets);
+    const chk = Rules.checkSpin(State.s, lastTotal, Perks.mods());
+    if (!chk.ok) {
+      UI.toast({ icon: '🚫', title: 'Zu wenig Geld', tone: 'loss', ms: 4500, text: `Wie zuletzt wären ${UI.fmt(lastTotal)} (+ Zinsen ${UI.fmt(chk.interest)} + Meds ${UI.fmt(chk.meds)}).` });
+      SFX.play('lose');
+      return;
+    }
+    qsa('.chip.placed', this.root).forEach((c) => c.remove());
+    this.bets = bets.map((b) => Object.assign({}, b));
+    for (const b of this.bets) { const cell = this.cellFor(b.type, b.n); if (cell) cell.append(h('div', { class: 'chip placed' }, String(b.amount))); }
+    SFX.play('chip');
+    this.renderTable();
+  },
+  async spin() {
+    if (this.spinning || !this.root || !this.bets.length) return;
+    const bets = this.bets.map((b) => Object.assign({}, b));
+    const total = Rules.rouletteTotal(bets);
+    if (!Game.beginSpin(total)) return;
     const run = Game.run;
     const gen = this.gen;
     this.spinning = true;
+    this.renderTable();
     try {
       qs('#rtable', this.root).classList.add('locked');
       qsa('.chip.placed', this.root).forEach((c) => c.remove());
-      this.flyChip(cell, String(bet), gen);
-      SFX.play('chip');
-      qs('#rouletteStatus', this.root).textContent = 'Kugel rollt…';
+      const mods = Perks.mods();
+      const ex = Rules.effectiveInsider(this.excluded().length > 0, total) ? this.excluded() : [];
+      qs('#rouletteStatus', this.root).textContent = (this.excluded().length && !ex.length)
+        ? `Über ${UI.fmt(Rules.INSIDER_CAP)} schaut der Croupier genauer hin – keine Hilfe.` : 'Kugel rollt…';
       qs('#resultNum', this.root).className = 'result-num';
-      let rolled = Rules.rouletteRoll(Math.random);
-      rolled = Rules.rouletteLuckOverride(type, chosen, rolled, Rules.luck(State.s), Math.random);
+      let rolled = Rules.rouletteRoll(Math.random, ex);
+      const ti = Rules.rouletteLuckTarget(bets);
+      if (ti >= 0) rolled = Rules.rouletteLuckOverride(bets[ti].type, bets[ti].n, rolled, Rules.effectiveLuck(Rules.luck(State.s, mods), bets[ti].amount), Math.random, ex);
       const targetIdx = Rules.WHEEL.indexOf(rolled);
       const sliceDeg = 360 / 37;
       const targetDeg = (360 - targetIdx * sliceDeg) % 360;
@@ -3323,24 +3811,32 @@ const Roulette = {
       qs('#wheelCanvas', this.root).style.transform = `rotate(${this.wheelDeg}deg)`;
       this.animateBall(4000, gen);
       await wait(4100);
-      const delta = Rules.roulettePayout(type, chosen, rolled, bet);
+      const result = Rules.rouletteSettle(bets, rolled, mods);
+      const delta = result.payout - total;
+      this.lastBets = bets;
+      if (this.gen === gen) this.bets = [];
       if (this.alive(gen)) {
         this.drawWheel(targetIdx);
         const res = qs('#resultNum', this.root);
         res.textContent = rolled;
         res.className = `result-num show ${rolled === 0 ? 'green' : Rules.isRed(rolled) ? 'red' : 'black'}`;
         const colName = rolled === 0 ? '🟢 0' : Rules.isRed(rolled) ? `🔴 ${rolled}` : `⚫ ${rolled}`;
+        const label = (b) => b.type === 'number' ? String(b.n) : { red: 'Rot', black: 'Schwarz', even: 'Gerade', odd: 'Ungerade' }[b.type];
+        const parts = result.hits.map((x) => x.win ? `${label(x.bet)} ✓ +${UI.fmt(x.payout - x.bet.amount)}` : `${label(x.bet)} ✗`);
         qs('#rouletteStatus', this.root).innerHTML = delta > 0
-          ? `<span class="win">${colName} · +${UI.fmt(delta)}</span>`
-          : `<span class="loss">${colName} · Niete · −${UI.fmt(bet)}</span>`;
-        qsa('.chip.placed', this.root).forEach((c) => c.classList.add(delta > 0 ? 'won' : 'lost'));
+          ? `<span class="win">${colName} · ${parts.join(' · ')} → +${UI.fmt(delta)}</span>`
+          : delta === 0 ? `<span>${colName} · ${parts.join(' · ')} → ±0</span>`
+          : `<span class="loss">${colName} · ${parts.join(' · ')} → −${UI.fmt(-delta)}</span>`;
+        this.bets = bets; this.renderTable(result); this.bets = [];   // Marker mit Gewinn/Verlust-Farbe stehen lassen
+        setTimeout(() => { if (this.alive(gen)) this.renderTable(); }, 1400);
       }
-      await Bus.emit('roulette:result', { type, chosen, rolled, win: delta > 0, bet });
-      await Game.settle(delta, { from: this.alive(gen) ? qs('.wheel-box', this.root) : null, game: 'roulette', bet, run });
+      await Bus.emit('roulette:result', { bets, rolled, payout: result.payout, hits: result.hits, total, win: delta > 0 });
+      await Game.settle(delta, { from: this.alive(gen) ? qs('.wheel-box', this.root) : null, game: 'roulette', bet: total, run });
     } finally {
       if (this.gen === gen) {
         this.spinning = false;
         qs('#rtable', this.root).classList.remove('locked');
+        this.renderBar();
       }
     }
   },
@@ -3351,10 +3847,17 @@ UI.register('roulette', {
   mount(root) {
     Roulette.gen++;
     Roulette.root = root;
+    Perks.refreshExcluded(); // Selbstheilung: ?screen=roulette oder „weiterspielen" landen sonst ohne die 12 Zahlen
     Roulette.buildTable();
     Roulette.drawWheel();
     qs('#wheelCanvas', root).style.transform = `rotate(${Roulette.wheelDeg}deg)`;
-    Game.bindBet(root, 'rouletteBet');
+    Game.bindBet(root, 'rouletteBet', () => Math.max(1, Rules.maxBet(State.s, Perks.mods()) - Roulette.total()));
+    Roulette.bets = [];
+    qs('#btnSpin', root).addEventListener('click', () => Roulette.spin());
+    qs('#btnUndo', root).addEventListener('click', () => Roulette.undo());
+    qs('#btnClear', root).addEventListener('click', () => Roulette.clear());
+    qs('#btnRepeat', root).addEventListener('click', () => Roulette.repeat());
+    Roulette.renderTable();
   },
   unmount() {
     Roulette.gen++;
@@ -3362,6 +3865,7 @@ UI.register('roulette', {
     Roulette.ballRaf = null;
     Roulette.root = null;
     Roulette.spinning = false;
+    Roulette.bets = [];
   },
 });
 </script>
@@ -3369,7 +3873,7 @@ UI.register('roulette', {
 <script id="game-horses">
 /* ================= PFERDERENNEN ================= */
 const Horses = {
-  root: null, racing: false, loop: null, commentTimer: null, resolveRace: null, gen: 0,
+  root: null, racing: false, loop: null, commentTimer: null, resolveRace: null, gen: 0, loser: null,
   alive(gen) { return !!this.root && this.gen === gen; },
   build() {
     const track = qs('#track', this.root);
@@ -3388,7 +3892,14 @@ const Horses = {
     State.s.selectedHorse = id;
     State.save();
     qsa('.pick', this.root).forEach((p) => p.classList.toggle('on', p.id === `pick-${id}`));
+    this.pickLoser();
     SFX.play('click');
+  },
+  pickLoser() {
+    this.loser = Perks.mods().horseLoserMarked ? Rules.pickLoser(State.s.selectedHorse, Math.random) : null;
+    qsa('.runner', this.root).forEach((r) => { const id = parseInt(r.id.slice(2), 10); const lame = id === this.loser; r.classList.toggle('lame', lame); qsa('.lame-tag', r).forEach((t) => t.remove()); if (lame) r.append(h('span', { class: 'lame-tag' }, '🚫 lahmt')); });
+    const hint = qs('#horseInsider', this.root);
+    if (hint) { hint.classList.toggle('hidden', this.loser === null); hint.textContent = this.loser !== null ? `🐴 Stallbursche: ${Rules.HORSES.find((x) => x.id === this.loser).name} gewinnt heute nicht (wirkt bis ${UI.fmt(Rules.INSIDER_CAP)} Einsatz)` : ''; }
   },
   comment(pos) {
     if (!this.root) return;
@@ -3413,16 +3924,19 @@ const Horses = {
     if (this.racing || !this.root) return;
     const bet = Game.readBet('horseBet');
     if (!Game.beginSpin(bet)) return;
+    const mods = Perks.mods();
+    const marked = Rules.effectiveInsider(mods.horseLoserMarked, bet) ? this.loser : null;
     const run = Game.run;
     const gen = this.gen;
     this.racing = true;
     try {
       qs('#btnRace', this.root).disabled = true;
-      qs('#horseStatus', this.root).textContent = '';
+      qs('#horseStatus', this.root).textContent = (this.loser !== null && marked === null)
+        ? `Über ${UI.fmt(Rules.INSIDER_CAP)} hält der Stallbursche den Mund.` : '';
       const track = qs('#track', this.root);
       const goal = track.clientWidth - 65;
       const pos = [0, 0, 0, 0];
-      const luck = Rules.luck(State.s);
+      const luck = Rules.effectiveLuck(Rules.luck(State.s, mods), bet);
       const selected = State.s.selectedHorse;
       const runners = Rules.HORSES.map((hrs) => qs(`#h-${hrs.id}`, this.root));
       runners.forEach((r) => { r.style.transform = 'translateX(0)'; r.classList.add('running'); });
@@ -3434,22 +3948,23 @@ const Horses = {
         this.resolveRace = resolve;
         this.loop = setInterval(() => {
           if (!this.alive(gen)) { clearInterval(this.loop); this.resolveRace = null; resolve(null); return; }
-          let win = null;
           Rules.HORSES.forEach((hrs, i) => {
-            pos[i] += Rules.horseStep(hrs.id === selected, luck, Math.random);
+            pos[i] += Rules.horseStep(hrs.id === selected, luck, Math.random, hrs.id === marked ? Rules.HORSE_LAME_STEP : 1);
             runners[i].style.transform = `translateX(${pos[i]}px)`;
             if (tick % 4 === i) this.dust(runners[i], pos[i]);
-            if (pos[i] >= goal && !win) win = hrs;
           });
           tick++;
-          if (win) { clearInterval(this.loop); this.resolveRace = null; resolve(win); }
+          const winIdx = Rules.raceWinner(pos, goal);
+          if (winIdx >= 0) { clearInterval(this.loop); this.resolveRace = null; resolve(Rules.HORSES[winIdx]); }
         }, 30);
       });
       clearInterval(this.commentTimer);
       SFX.stop('gallop');
       if (!winner) { Game.forfeit(); return; } // Rennen abgebrochen (Screen verlassen) – Einsatz verfällt
       const won = winner.id === selected;
-      const delta = Rules.horseDelta(won, bet);
+      /* Der 3,3:1-Bonus ist wie ein Insider-Deckel: er wirkt voll bis INSIDER_CAP, darüber anteilig weniger */
+      const payoutMods = Object.assign({}, mods, { horsePayout: Rules.effectiveBonus(mods.horsePayout, Rules.NEUTRAL_MODS.horsePayout, bet) });
+      const delta = Rules.horseDelta(won, bet, payoutMods);
       if (this.alive(gen)) {
         const flash = qs('#photoFlash', this.root);
         flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on');
@@ -3461,12 +3976,13 @@ const Horses = {
         setTimeout(() => { if (wr.isConnected) { wr.style.transition = ''; wr.classList.remove('running'); } }, 800);
         qs('#commentary', this.root).textContent = `${winner.name} gewinnt!`;
         qs('#horseStatus', this.root).innerHTML = won
-          ? `<span class="win">${winner.name} siegt · +${UI.fmt(bet * 3)}</span>`
+          ? `<span class="win">${winner.name} siegt · +${UI.fmt(delta)}</span>`
           : `<span class="loss">${winner.name} siegt · −${UI.fmt(bet)}</span>`;
         qs('#btnRace', this.root).disabled = false;
       }
       await Bus.emit('horses:result', { winner: winner.id, selected, bet });
       await Game.settle(delta, { from: this.alive(gen) ? qs('#track', this.root) : null, game: 'horses', bet, run });
+      if (this.alive(gen)) this.pickLoser();
     } finally {
       if (this.gen === gen) this.racing = false;
     }
@@ -3479,6 +3995,7 @@ UI.register('horses', {
     Horses.gen++;
     Horses.root = root;
     Horses.build();
+    Horses.pickLoser();
     Game.bindBet(root, 'horseBet');
     qs('#btnRace', root).addEventListener('click', () => Horses.start());
   },
@@ -3708,9 +4225,10 @@ const Postman = {
   nextStep(gen) {
     clearInterval(this.timer);
     if (!this.alive(gen)) return;
-    if (State.mode === 'story' && this.streak >= 15) { this.endShift('Feierabend! 15 Briefe ausgetragen.'); return; }
+    const mods = Perks.mods();
+    if (this.streak >= mods.postLetters) { this.endShift(`Feierabend! ${mods.postLetters} Briefe ausgetragen.`); return; }
     const prevTier = this.tier;
-    this.tier = Rules.postmanTier(this.streak, State.s);
+    this.tier = Rules.postmanTier(this.streak, State.s, mods);
     if (prevTier && prevTier.t !== this.tier.t) this.stamp();
     this.timeLeft = this.tier.t;
     this.target = pick(Rules.POST_HOUSES);
@@ -3780,7 +4298,7 @@ const Postman = {
     qs('#btnShift', this.root).classList.remove('hidden');
     this.tier = null;
     if (State.mode === 'story') Jobs.finishGame('post');
-    if (Rules.isGameOver(State.s)) Bus.emit('gameover', {});
+    if (Rules.isGameOver(State.s, Perks.mods())) Bus.emit('gameover', {});
   },
   endShift(msg) {
     clearInterval(this.timer);
@@ -3875,7 +4393,7 @@ const Achievements = {
 Bus.on('win', () => Achievements.unlock('firstWin'));
 Bus.on('spin:before', ({ bet }) => { if (bet >= 500) Achievements.unlock('highRoller'); });
 Bus.on('slots:result', ({ res }) => { if (res.every((s) => s === '7️⃣')) Achievements.unlock('jackpot'); });
-Bus.on('roulette:result', ({ type, win }) => { if (type === 'number' && win) Achievements.unlock('plein'); });
+Bus.on('roulette:result', ({ hits }) => { if ((hits || []).some((x) => x.win && x.bet.type === 'number')) Achievements.unlock('plein'); });
 Bus.on('rr:result', ({ victim }) => { if (victim === 'igor') Achievements.unlock('igor'); });
 Bus.on('beer', ({ beers }) => { if (beers >= 3) Achievements.unlock('regular'); });
 Bus.on('kidney.sold', () => Achievements.unlock('donor'));
@@ -3910,6 +4428,8 @@ async function restartGame({ playIntro }) {
   State.reset();
   State.s.flags.intro = true;
   State.save();
+  if (typeof Perks !== 'undefined') Perks.refreshExcluded(true);
+  Roulette.lastBets = [];
   UI.setBalance(State.s.balance, { animate: false });
   UI.renderWallet();
   UI.renderSide();
@@ -3999,7 +4519,7 @@ const Mugging = {
     if (this.blocked()) return false;
     const s = State.s;
     const forced = this.force;
-    const chance = forced ? 1 : Rules.mugChance(s, where);
+    const chance = forced ? 1 : Rules.mugChance(s, where, Perks.mods());
     if (Math.random() >= chance) return false;
     this.force = null;
     this.running = true;
@@ -4011,17 +4531,18 @@ const Mugging = {
   },
   async run(typeId) {
     const s = State.s;
+    const mods = Perks.mods();
     const T = this.TYPES[typeId];
     const loot = Rules.mugLoot(s.balance);
     const gear = Rules.gear(s);
-    const ctx = { loot: UI.fmt(loot), type: T, fight: Math.round(Rules.fightChance(s.strength) * 100), flee: Math.round(Rules.fleeChance(gear) * 100) };
+    const ctx = { loot: UI.fmt(loot), type: T, fight: Math.round(Rules.fightChance(s.strength, mods) * 100), flee: Math.round(Rules.fleeChance(gear) * 100) };
     const choice = await Cutscene.play('mug.intro', ctx);
     let outcome, delta = 0, wallet = 0;
     if (choice === 'fight') {
-      const won = Math.random() < Rules.fightChance(s.strength);
+      const won = Math.random() < Rules.fightChance(s.strength, mods);
       if (won) {
         outcome = 'fightWon';
-        if (s.strength >= Rules.MUG.STR_WALLET) wallet = Rules.mugWallet();
+        if (s.strength >= Rules.MUG.STR_WALLET) wallet = Rules.mugWallet(Math.random, mods);
         delta = wallet;
         s.stats.fightsWon++;
       } else { outcome = 'fightLost'; delta = -loot; }
@@ -4071,6 +4592,141 @@ Cutscene.define('mug.paid', (ctx) => [
   { bg: 'gasse', who: 'du', mood: 'calm', text: 'Kein Kratzer. Kein Stolz. Weiter.' },
 ]);
 Bus.on('mug:done', () => { if (State.s.stats.fightsWon >= 5) Achievements.unlock('strassenkaempfer'); });
+</script>
+
+<script id="perks">
+/* ================= PERKS – XP, Skills, Insider-Anzeige ================= */
+const Perks = {
+  root: null,
+  mods() { return Rules.mods(State.s, State.meta); },
+  addXp(n, why) {
+    const s = State.s;
+    const before = Rules.xpLevel(s.xp || 0);
+    s.xp = (s.xp || 0) + n;
+    const after = Rules.xpLevel(s.xp);
+    State.save();
+    this.renderBadge();
+    if (after.level > before.level) {
+      const free = Rules.skillPointsFree(s);
+      UI.toast({ icon: '🧠', title: `Level ${after.level}`, text: free > 0 ? 'Ein Skill-Punkt wartet – klick auf das Level.' : (after.level >= 6 ? 'Mehr geht nicht. Respekt.' : 'Weiter so.'), tone: 'gold', ms: 4000 });
+      SFX.play('unlock');
+      Bus.emit('perks:levelup', { level: after.level });
+    }
+    if (this.root) this.render();
+  },
+  renderBadge() {
+    const el = qs('#lvBadge');
+    if (!el) return;
+    const s = State.s;
+    const lv = Rules.xpLevel(s.xp || 0);
+    const pct = lv.next ? Math.round(((s.xp - Rules.XP_LEVELS[lv.level - 1]) / (lv.next - Rules.XP_LEVELS[lv.level - 1])) * 100) : 100;
+    el.innerHTML = '';
+    el.append(`Lv ${lv.level}`, h('span', { class: 'bar' }, h('i', { style: `width:${pct}%` })));
+    el.classList.toggle('point', Rules.skillPointsFree(s) > 0);
+    el.title = lv.next ? `${s.xp} / ${lv.next} XP` : `${s.xp} XP · max`;
+  },
+  REASON: { points: 'Kein Punkt frei', full: 'Alle Slots belegt', conflict: 'Passt nicht zu einem aktiven Skill', active: 'Aktiv', unknown: '' },
+  render() {
+    if (!this.root) return;
+    const s = State.s;
+    const lv = Rules.xpLevel(s.xp || 0);
+    const from = Rules.XP_LEVELS[lv.level - 1];
+    qs('#xpBar', this.root).style.width = lv.next ? `${Math.round(((s.xp - from) / (lv.next - from)) * 100)}%` : '100%';
+    qs('#xpText', this.root).textContent = lv.next ? `Lv ${lv.level} · ${s.xp} / ${lv.next} XP` : `Lv ${lv.level} · ${s.xp} XP · max`;
+    const slots = qs('#skillSlots', this.root); slots.innerHTML = '';
+    for (let i = 0; i < Rules.MAX_SKILLS; i++) {
+      const id = s.skills[i];
+      const def = id && Rules.SKILLS.find((k) => k.id === id);
+      const unlockLv = (i + 1) * 2;
+      slots.append(h('div', { class: 'skill-slot' + (def ? ' filled' : '') }, def ? `${def.icon} ${def.name}` : (lv.points > i ? 'frei' : `ab Lv ${unlockLv}`)));
+    }
+    const cards = qs('#skillCards', this.root); cards.innerHTML = '';
+    for (const def of Rules.SKILLS) {
+      const chk = Rules.canPickSkill(s, def.id);
+      const card = h('div', { class: 'skill-card' + (chk.reason === 'active' ? ' active' : '') },
+        h('h4', {}, `${def.icon} ${def.name}`),
+        h('div', { class: 'light' }, `＋ ${def.light}`),
+        h('div', { class: 'shadow' }, `－ ${def.shadow}`));
+      if (chk.ok) card.append(h('button', { class: 'btn', onclick: () => this.pick(def.id) }, 'Wählen'));
+      else card.append(h('div', { class: 'reason' }, this.REASON[chk.reason] || ''));
+      cards.append(card);
+    }
+    qs('#btnRespec', this.root).disabled = s.skills.length === 0;
+    const list = qs('#insiderList', this.root); list.innerHTML = '';
+    const ins = (State.meta.insider || []).map((id) => Rules.INSIDER.find((i) => i.id === id)).filter(Boolean);
+    if (!ins.length) list.append(h('span', { class: 'empty' }, 'Noch keins – schließe ein Story-Teil ab.'));
+    for (const i of ins) list.append(h('div', { class: 'insider-chip' }, h('b', {}, `${i.icon} ${i.name}`), i.text));
+  },
+  pick(id) {
+    const s = State.s;
+    const chk = Rules.canPickSkill(s, id);
+    if (!chk.ok) return;
+    s.skills.push(id);
+    State.save();
+    SFX.play('unlock');
+    const def = Rules.SKILLS.find((k) => k.id === id);
+    UI.toast({ icon: def.icon, title: def.name, text: def.light, tone: 'gold' });
+    this.render(); this.renderBadge(); UI.renderWallet(); UI.renderSide();
+  },
+  async respec() {
+    const s = State.s;
+    if (!s.skills.length) return;
+    if (s.balance < Rules.RESPEC_PRICE) { UI.toast({ icon: '🧠', title: 'Zu wenig Geld', text: `Umskillen kostet ${UI.fmt(Rules.RESPEC_PRICE)}.`, tone: 'loss' }); SFX.play('lose'); return; }
+    const choice = await Cutscene.play('perks.respec', { price: UI.fmt(Rules.RESPEC_PRICE) });
+    if (choice !== 'yes' || !s.skills.length || s.balance < Rules.RESPEC_PRICE) return;
+    Game.applyDelta(-Rules.RESPEC_PRICE, { from: this.root ? qs('#skillSlots', this.root) : null });
+    s.skills = []; s.skillRespecs++;
+    State.save();
+    UI.toast({ icon: '🧠', title: 'Kopf frei', text: 'Alle Skill-Punkte sind wieder verfügbar.', tone: 'info' });
+    this.render(); this.renderBadge(); UI.renderWallet(); UI.renderSide();
+  },
+  /* Ohne force nur neu ziehen, wenn die Liste nicht zu den Mods passt – sonst bleiben die Zahlen
+     innerhalb eines Spielstands stabil (kein erneutes Mischen bei jedem Moduswechsel). */
+  refreshExcluded(force = false) {
+    const s = State.s;
+    const wantExcl = this.mods().rouletteExclude > 0;
+    const mismatched = wantExcl ? s.insiderExcluded.length !== 12 : s.insiderExcluded.length > 0;
+    if (!force && !mismatched) return;
+    s.insiderExcluded = wantExcl ? Rules.pickExcluded(Math.random) : [];
+    State.save();
+  },
+  async offerInsider(storyId) {
+    const meta = State.meta;
+    if (meta.insiderClaimed[storyId]) return null;
+    const draw = Rules.insiderDraw(meta, Math.random);
+    if (!draw.length) { UI.toast({ icon: '🕵️', title: 'Der Insider', text: 'Er hat nichts Neues für dich.', tone: 'info' }); return null; }
+    const defs = draw.map((id) => Rules.INSIDER.find((i) => i.id === id));
+    const choice = await Cutscene.play('insider.offer', { choices: defs.map((d) => ({ label: `${d.icon} ${d.name}`, value: d.id, cls: 'blue' })), texts: defs.map((d) => `${d.name}: ${d.text}`).join(' · ') });
+    if (!choice || !draw.includes(choice)) return null;
+    meta.insider.push(choice); meta.insiderClaimed[storyId] = true;
+    State.saveMeta();
+    this.refreshExcluded();
+    const def = Rules.INSIDER.find((i) => i.id === choice);
+    UI.toast({ icon: def.icon, title: `Insider: ${def.name}`, text: def.text, tone: 'gold', ms: 4500 });
+    SFX.play('unlock');
+    await Bus.emit('insider:granted', { id: choice });
+    return choice;
+  },
+};
+UI.register('skills', {
+  template: 'tpl-skills',
+  mount(root) { Perks.root = root; qs('#btnRespec', root).addEventListener('click', () => Perks.respec()); Perks.render(); },
+  unmount() { Perks.root = null; },
+});
+Cutscene.define('perks.respec', (ctx) => [
+  { bg: 'bar', who: 'wirt', mood: 'calm', text: `Alles vergessen für ${ctx.price}? Der Doc hat da so ein Pulver. Danach bist du wieder ein unbeschriebenes Blatt.`,
+    choices: [{ label: 'Ja, alles vergessen', value: 'yes', cls: 'red' }, { label: 'Doch nicht', value: 'no', cls: 'ghost' }] },
+]);
+Cutscene.define('insider.offer', (ctx) => [
+  { bg: 'hinterzimmer', who: 'insider', mood: 'calm', text: 'Du hast ein Kapitel überlebt. Das sehen nicht viele. Ich habe da ein paar Dinge, die man nicht kaufen kann – nur wissen.' },
+  { bg: 'hinterzimmer', who: 'insider', mood: 'happy', text: `Such dir eins aus. ${ctx.texts}`, choices: ctx.choices },
+]);
+/* XP-Quellen */
+Bus.on('spin:after', () => Perks.addXp(Rules.XP_GAIN.spin, 'spin'));
+Bus.on('win', () => Perks.addXp(Rules.XP_GAIN.win, 'win'));
+Bus.on('job:done', () => Perks.addXp(Rules.XP_GAIN.job, 'job'));
+Bus.on('achievement:unlock', () => Perks.addXp(Rules.XP_GAIN.achievement, 'achievement'));
+Bus.on('story:day', () => Perks.addXp(Rules.XP_GAIN.day, 'day'));
 </script>
 
 <script id="story-rules">
@@ -4444,7 +5100,12 @@ const Title = {
       qs('#titleMute', root).textContent = State.meta.muted ? '🔇' : '🔊';
       qs('#titleMute', root).addEventListener('click', (e) => { SFX.setMuted(!State.meta.muted); e.currentTarget.textContent = State.meta.muted ? '🔇' : '🔊'; });
       qs('#titleTrophiesBtn', root).addEventListener('click', () => {
-        Achievements.renderWall(qs('#titleTrophyGrid', root));
+        const grid = qs('#titleTrophyGrid', root);
+        Achievements.renderWall(grid);
+        grid.append(h('div', { class: 'trophy-sep' }, 'Insider'));
+        const ins = (State.meta.insider || []).map((id) => Rules.INSIDER.find((i) => i.id === id)).filter(Boolean);
+        if (!ins.length) grid.append(h('div', { class: 'insider-chip' }, 'Noch keins'));
+        else for (const i of ins) grid.append(h('div', { class: 'insider-chip' }, h('b', {}, `${i.icon} ${i.name}`), i.text));
         qs('#titleTrophiesPanel', root).classList.remove('hidden');
       });
       qs('#titleTrophiesClose', root).addEventListener('click', () => qs('#titleTrophiesPanel', root).classList.add('hidden'));
@@ -4473,14 +5134,16 @@ const Modes = {
   async enter(choice) {
     if (choice === 'free') {
       State.setMode('free');
+      if (typeof Perks !== 'undefined') Perks.refreshExcluded();
+      if (typeof Roulette !== 'undefined') Roulette.lastBets = [];
       document.body.classList.remove('mode-story'); document.body.classList.add('mode-free');
       UI.mountShell();
       if (typeof Story !== 'undefined') Story.renderDaybar();
       const showLoaded = Modes.freeLoaded; Modes.freeLoaded = false;
       await UI.show('hub');
-      if (Rules.isGameOver(State.s)) await Bus.emit('gameover', {});
+      if (Rules.isGameOver(State.s, Perks.mods())) await Bus.emit('gameover', {});
       else if (!State.s.flags.intro) { await Cutscene.play('intro'); State.s.flags.intro = true; State.save(); }
-      if (showLoaded && !Rules.isGameOver(State.s)) UI.toast({ icon: '💾', title: 'Spielstand geladen', text: `Willkommen zurück. ${UI.fmt(State.s.balance)} in der Tasche.` });
+      if (showLoaded && !Rules.isGameOver(State.s, Perks.mods())) UI.toast({ icon: '💾', title: 'Spielstand geladen', text: `Willkommen zurück. ${UI.fmt(State.s.balance)} in der Tasche.` });
       return;
     }
     if (typeof Story !== 'undefined') await Story.enter(choice);
@@ -4556,6 +5219,8 @@ const Story = {
       const story = Stories.get(id);
       State.startStory(story);
       if (params.has('prev') && params.has('fresh') && story.requires) State.s.story.prev[story.requires] = params.get('prev');
+      if (typeof Perks !== 'undefined') Perks.refreshExcluded(true);
+      if (typeof Roulette !== 'undefined') Roulette.lastBets = [];
       if (params.has('day') && params.has('fresh')) State.s.story.day = Math.max(1, parseInt(params.get('day'), 10) || 1);
       this.story = story;
       this.setup();
@@ -4762,9 +5427,14 @@ const Story = {
     const panels = (typeof endDef === 'function' ? endDef(this.ctx({ stats })) : (endDef || [])).map((p) => Object.assign({}, p));
     const last = panels[panels.length - 1];
     last.fx = 'stats';
-    last.choices = [{ label: 'Nächste Story', value: 'next', cls: 'red' }, { label: 'Zum Titel', value: 'title', cls: 'ghost' }];
     Cutscene.define('story.ending.tmp', panels);
-    const choice = await Cutscene.play('story.ending.tmp', this.ctx({ stats }));
+    await Cutscene.play('story.ending.tmp', this.ctx({ stats }));
+    if (typeof Perks !== 'undefined') await Perks.offerInsider(this.story.id);
+    Cutscene.define('story.ending.choice', [
+      { bg: last.bg || 'hafen', who: 'du', text: 'Und jetzt?',
+        choices: [{ label: 'Nächste Story', value: 'next', cls: 'red' }, { label: 'Zum Titel', value: 'title', cls: 'ghost' }] },
+    ]);
+    const choice = await Cutscene.play('story.ending.choice', this.ctx({ stats }));
     await Bus.emit('story:ended', { id: this.story.id, ending: end.id });
     /* Ab hier beginnt die nächste Story bzw. der Titel – deren sofortige Enden dürfen nicht mehr unterdrückt werden
        (checkImmediate hält `finishing` sonst, bis enter('newstory') samt Intro/Morgen der NÄCHSTEN Story zurückkehrt). */
@@ -4787,7 +5457,7 @@ const Story = {
   isLocked(screen) {
     if (State.mode !== 'story' || !this.story) return false;
     if (screen === this.allowOnce) { this.allowOnce = null; return false; }
-    if (['jobs', 'vito'].includes(screen)) return false;
+    if (['jobs', 'vito', 'skills'].includes(screen)) return false;
     if (['job-spueler', 'job-taxi'].includes(screen)) return this.s.phase !== 'morning';
     if (StoryRules.gate(this.story, State.s, screen)) return true;
     if (this.DOORS.includes(screen)) {
@@ -4885,7 +5555,7 @@ Bus.on('loss', ({ amount }) => { if (State.mode === 'story' && Story.story) { St
 const Jobs = {
   POOL: {
     spueler: { id: 'spueler', name: 'Spüler', icon: '🍽️', kind: 'game', screen: 'job-spueler', desc: 'Teller im Takt vom Band. 5 € pro Teller, Bruch kostet 10 €.', pay: '0–50 €' },
-    post: { id: 'post', name: 'Postbote', icon: '📬', kind: 'game', screen: 'postman', desc: 'Briefe in den richtigen Kasten. Schicht endet nach 15 Briefen oder beim ersten Fehler.', pay: '5–50 € pro Brief' },
+    post: { id: 'post', name: 'Postbote', icon: '📬', kind: 'game', screen: 'postman', desc: 'Briefe in den richtigen Kasten. Schicht endet nach {{n}} Briefen oder beim ersten Fehler.', pay: '5–50 € pro Brief' },
     taxi: { id: 'taxi', name: 'Nachttaxi', icon: '🚕', kind: 'game', screen: 'job-taxi', desc: '60 Sekunden, drei Spuren. Fahrgäste einsammeln, bei Rot bremsen.', pay: 'bis 300 €', requires: { balance: { gte: 200 } }, requireText: 'Kaution 200 €' },
     tuersteher: { id: 'tuersteher', name: 'Türsteher', icon: '🚪', kind: 'shift', base: 100, desc: 'Wer kommt rein, wer nicht. Vito guckt zu.', pay: '100 € + Trinkgeld' },
     croupier: { id: 'croupier', name: 'Croupier', icon: '🃏', kind: 'shift', base: 150, requires: { jobDone: 'tuersteher', gte: 3 }, requireText: '3 Nächte als Türsteher', desc: 'Karten geben, Kessel drehen, Mund halten.', pay: '150 €' },
@@ -4899,11 +5569,13 @@ const Jobs = {
     const board = qs('#pinboard', root);
     board.innerHTML = '';
     const s = State.s;
+    const postLetters = Perks.mods().postLetters;
     for (const job of Object.values(this.POOL)) {
       if (!s.story.unlocked.jobs.includes(job.id)) continue;
       const av = StoryRules.jobAvailable(job, s);
+      const desc = job.id === 'post' ? job.desc.replace('{{n}}', postLetters) : job.desc;
       const note = h('div', { class: 'jobnote' + (av.ok ? '' : av.reason === 'done' ? ' done' : ' locked') },
-        h('h4', {}, job.icon, job.name), h('p', {}, job.desc), h('div', { class: 'pay' }, job.pay));
+        h('h4', {}, job.icon, job.name), h('p', {}, desc), h('div', { class: 'pay' }, job.pay));
       if (!av.ok && av.reason !== 'done') note.append(h('div', { class: 'why' }, av.reason === 'locked' ? 'Gesperrt' : av.reason));
       if (av.reason === 'done') note.append(h('div', { class: 'done-stamp' }, 'Heute erledigt'));
       if (av.ok) note.addEventListener('click', () => { SFX.play('stamp'); Jobs.take(job.id); });
@@ -5886,20 +6558,20 @@ T.test('Rules.luck: Story-Modifikator, nie unter 0', () => {
   T.eq(Rules.luck(base({ story: { luckMod: 10 } })), 10);
   T.eq(Rules.luck(base({ story: {} })), 0);
 });
-T.test('bankInterest: 30% gerundet', () => {
+T.test('bankInterest: 8 % gerundet', () => {
   T.eq(Rules.bankInterest(0), 0);
-  T.eq(Rules.bankInterest(200), 60);
-  T.eq(Rules.bankInterest(1000), 300);
-  T.eq(Rules.bankInterest(333), 100);
+  T.eq(Rules.bankInterest(200), 16);
+  T.eq(Rules.bankInterest(1000), 80);
+  T.eq(Rules.bankInterest(333), 27);
 });
 T.test('spinCosts: Zinsen + Meds', () => {
   T.eq(Rules.spinCosts(base()), { interest: 0, meds: 0 });
-  T.eq(Rules.spinCosts(base({ bankDebt: 200, kidneySold: true })), { interest: 60, meds: 20 });
+  T.eq(Rules.spinCosts(base({ bankDebt: 200, kidneySold: true })), { interest: 16, meds: 20 });
 });
 T.test('maxBet: Guthaben minus Kosten, mindestens 1', () => {
   T.eq(Rules.maxBet(base()), 50);
-  T.eq(Rules.maxBet(base({ bankDebt: 200, kidneySold: true })), 1);
-  T.eq(Rules.maxBet(base({ balance: 500, bankDebt: 200 })), 440);
+  T.eq(Rules.maxBet(base({ bankDebt: 400, kidneySold: true })), 1);
+  T.eq(Rules.maxBet(base({ balance: 500, bankDebt: 200 })), 484);
 });
 T.test('checkSpin: ungültiger Einsatz', () => {
   T.eq(Rules.checkSpin(base(), 0).ok, false);
@@ -5908,27 +6580,29 @@ T.test('checkSpin: ungültiger Einsatz', () => {
   T.eq(Rules.checkSpin(base(), -5).ok, false);
 });
 T.test('checkSpin: zu wenig Geld inkl. Kosten', () => {
-  const r = Rules.checkSpin(base({ balance: 80, bankDebt: 200, kidneySold: true }), 10);
-  T.eq(r, { ok: false, reason: 'funds', total: 90, interest: 60, meds: 20 });
+  const r = Rules.checkSpin(base({ balance: 40, bankDebt: 200, kidneySold: true }), 10);
+  T.eq(r, { ok: false, reason: 'funds', total: 46, interest: 16, meds: 20 });
 });
 T.test('checkSpin: ok', () => {
-  T.eq(Rules.checkSpin(base({ balance: 100, bankDebt: 200, kidneySold: true }), 10), { ok: true, total: 90, interest: 60, meds: 20 });
+  T.eq(Rules.checkSpin(base({ balance: 100, bankDebt: 200, kidneySold: true }), 10), { ok: true, total: 46, interest: 16, meds: 20 });
   T.eq(Rules.checkSpin(base(), 50).ok, true);
   T.eq(Rules.checkSpin(base(), 51).ok, false);
 });
 T.test('mafiaBill = 3x', () => T.eq(Rules.mafiaBill(300), 900));
-T.test('bankLoanAllowed: Limit 3000', () => {
-  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 2000 }), 1000), true);
-  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 2500 }), 1000), false);
-  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 3000 }), 200), false);
+T.test('bankLoanAllowed: ein Kredit, Limit 3000', () => {
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 0 }), 3000), null);
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 0 }), 3001), 'limit');
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 500 }), 500), 'open');
+  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 0 }), 1000), true);
+  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 2000 }), 1000), false);
 });
 T.test('isGameOver: beide Quellen zu und kein Spin mehr bezahlbar', () => {
-  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 3000, mafiaDebt: 300 })), true);
-  T.eq(Rules.isGameOver(base({ balance: 901, bankDebt: 3000, mafiaDebt: 300 })), false); // 1 € + 900 € Zinsen reicht genau
-  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 2000, mafiaDebt: 300 })), false);
-  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 3000, mafiaDebt: 0 })), false);
-  T.eq(Rules.isGameOver(base({ balance: 500, bankDebt: 3000, mafiaDebt: 300 })), true); // positiv, aber unter 901 €
-  T.eq(Rules.isGameOver(base({ balance: 920, bankDebt: 3000, mafiaDebt: 300, kidneySold: true })), true); // Meds: 921 nötig
+  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 1000, mafiaDebt: 300 })), true);
+  T.eq(Rules.isGameOver(base({ balance: 81, bankDebt: 1000, mafiaDebt: 300 })), false); // 1 € + 80 € Zinsen reicht genau
+  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 0, mafiaDebt: 300 })), false);
+  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 1000, mafiaDebt: 0 })), false);
+  T.eq(Rules.isGameOver(base({ balance: 50, bankDebt: 1000, mafiaDebt: 300 })), true); // positiv, aber unter 81 €
+  T.eq(Rules.isGameOver(base({ balance: 100, bankDebt: 1000, mafiaDebt: 300, kidneySold: true })), true); // Meds: 101 nötig
 });
 T.test('passiveTick / passivePerMin', () => {
   T.eq(Rules.passiveTick(base()), 0);
@@ -5952,11 +6626,17 @@ T.test('rouletteRoll: floor(rng*37)', () => {
 T.test('rouletteLuckOverride: greift bei Glück, nicht bei 0', () => {
   T.eq(Rules.rouletteLuckOverride('red', null, 20, 40, seq(0.1)), 7);
   T.eq(Rules.rouletteLuckOverride('black', null, 20, 40, seq(0.1)), 8);
-  T.eq(Rules.rouletteLuckOverride('number', 17, 20, 40, seq(0.1)), 17);
-  T.eq(Rules.rouletteLuckOverride('even', null, 21, 40, seq(0.1)), 21, 'even unbeeinflusst');
+  T.eq(Rules.rouletteLuckOverride('number', 17, 20, 40, seq(0.1)), 20, 'Zahlen nie beeinflusst');
+  T.eq(Rules.rouletteLuckOverride('even', null, 21, 40, seq(0.1)), 8, 'Gerade wird 8');
+  T.eq(Rules.rouletteLuckOverride('odd', null, 20, 40, seq(0.1)), 7, 'Ungerade wird 7');
   T.eq(Rules.rouletteLuckOverride('red', null, 0, 40, seq(0.1)), 0, 'Null bleibt');
   T.eq(Rules.rouletteLuckOverride('red', null, 20, 40, seq(0.5)), 20, 'rng 50 >= luck 40');
   T.eq(Rules.rouletteLuckOverride('red', null, 20, 0, seq(0)), 20, 'kein Glück');
+});
+T.test('rouletteLuckOverride: meidet ausgeschlossene Zahlen (Croupier-Auge)', () => {
+  T.eq(Rules.rouletteLuckOverride('red', null, 20, 40, seq(0.1), [7, 1, 3]), 5, 'erste freie Rot-Zahl');
+  T.eq(Rules.rouletteLuckOverride('black', null, 20, 40, seq(0.1), [8, 2, 4, 6]), 10, 'erste freie Schwarz-Zahl');
+  T.eq(Rules.rouletteLuckOverride('red', null, 20, 40, seq(0.1), []), 7, 'ohne Ausschluss unverändert');
 });
 T.test('roulettePayout: Farben 1:1, Null verliert', () => {
   T.eq(Rules.roulettePayout('red', null, 7, 10), 10);
@@ -5980,11 +6660,8 @@ T.test('roulettePayout: Zahl 35:1', () => {
 /* ---- Rules: Slots ---- */
 T.test('SYMBOLS', () => T.eq(Rules.SYMBOLS, ['🍒', '🍋', '🍇', '🔔', '💎', '7️⃣']));
 T.test('slotRoll: drei Züge', () => T.eq(Rules.slotRoll(seq(0, 0.5, 0.99)), ['🍒', '🔔', '7️⃣']));
-T.test('slotLuckOverride: Jackpot-Zweig', () => {
-  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.2, 0.4)), ['7️⃣', '7️⃣', '7️⃣']);
-  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.2, 0.6)), ['💎', '💎', '💎']);
-});
-T.test('slotLuckOverride: Paar-Zweig', () => {
+T.test('slotLuckOverride: nur Paar, nie Jackpot', () => {
+  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.2, 0.4)), ['🍒', '🍒', '🍇']);
   T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.5)), ['🍒', '🍒', '🍇']);
 });
 T.test('slotLuckOverride: kein Glück', () => {
@@ -5992,19 +6669,19 @@ T.test('slotLuckOverride: kein Glück', () => {
   T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 0, seq(0)), ['🍒', '🍋', '🍇']);
 });
 T.test('slotMultiplier', () => {
-  T.eq(Rules.slotMultiplier('7️⃣', '7️⃣', '7️⃣'), 50);
+  T.eq(Rules.slotMultiplier('7️⃣', '7️⃣', '7️⃣'), 40);
   T.eq(Rules.slotMultiplier('💎', '💎', '💎'), 25);
   T.eq(Rules.slotMultiplier('🔔', '🔔', '🔔'), 15);
   T.eq(Rules.slotMultiplier('🍒', '🍒', '🍒'), 5);
-  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍋'), 1.5);
-  T.eq(Rules.slotMultiplier('🍒', '🍋', '🍒'), 1.5);
-  T.eq(Rules.slotMultiplier('🍋', '🍒', '🍒'), 1.5);
+  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍋'), 1.2);
+  T.eq(Rules.slotMultiplier('🍒', '🍋', '🍒'), 1.2);
+  T.eq(Rules.slotMultiplier('🍋', '🍒', '🍒'), 1.2);
   T.eq(Rules.slotMultiplier('🍒', '🍋', '🍇'), 0);
 });
 T.test('slotDelta', () => {
   T.eq(Rules.slotDelta(10, 50), 490);
-  T.eq(Rules.slotDelta(10, 1.5), 5);
-  T.eq(Rules.slotDelta(15, 1.5), 8, 'round(22.5)-15');
+  T.eq(Rules.slotDelta(10, 1.2), 2);
+  T.eq(Rules.slotDelta(15, 1.2), 3, 'round(18)-15');
   T.eq(Rules.slotDelta(10, 0), -10);
 });
 
@@ -6013,10 +6690,15 @@ T.test('HORSES', () => T.eq(Rules.HORSES.map((x) => x.name), ['Blitz', 'Donner',
 T.test('horseStep: (rng*3+1)*1.5, Glück nur für gewähltes Pferd', () => {
   T.eq(Rules.horseStep(false, 40, seq(0)), 1.5);
   T.eq(Rules.horseStep(true, 0, seq(0)), 1.5);
-  T.eq(Rules.horseStep(true, 40, seq(0)), 2.7);
+  T.eq(Rules.horseStep(true, 40, seq(0)), 1.56);
   T.eq(Rules.horseStep(false, 0, seq(1)), 6);
 });
 T.test('horseDelta', () => { T.eq(Rules.horseDelta(true, 10), 30); T.eq(Rules.horseDelta(false, 10), -10); });
+T.test('raceWinner: größte Position gewinnt, nicht der niedrigste Index', () => {
+  T.eq(Rules.raceWinner([10, 12, 11, 9], 10), 1);
+  T.eq(Rules.raceWinner([5, 5, 5, 5], 10), -1);
+  T.eq(Rules.raceWinner([10, 10, 10, 10], 10), 0);
+});
 
 /* ---- Rules: Russisches Roulette ---- */
 T.test('rrCylinder: 6 Kammern, eine Kugel', () => {
@@ -6077,9 +6759,9 @@ T.test('postmanTier: Grenzen', () => {
 
 /* ---- Rules: Anlagen ---- */
 T.test('INVEST', () => {
-  T.eq(Rules.INVEST.bank, { name: 'Festgeld', rate: 0.08, spins: 5, risk: 10, min: 10 });
+  T.eq(Rules.INVEST.bank, { name: 'Festgeld', rate: 0.08, spins: 6, risk: 10, min: 10 });
   T.eq(Rules.INVEST.stock, { name: 'Aktien', rate: 1.0, spins: 2, risk: 85, min: 10 });
-  T.eq(Rules.INVEST.scam, { name: 'Trickbetrug', rate: 0.3, spins: 10, risk: 55, min: 10 });
+  T.eq(Rules.INVEST.scam, { name: 'Trickbetrug', rate: 0.5, spins: 10, risk: 55, min: 10 });
 });
 T.test('investmentResolve: rng*100 >= risk gewinnt', () => {
   const inv = { amount: 100, rate: 0.08, risk: 10 };
@@ -6148,7 +6830,7 @@ T.test('State.init: leer → frisch, loaded=false', () => {
   T.eq(State.s.balance, 50);
   T.eq(State.s.v, 1);
   T.eq(State.s.flags, { intro: false, mafiaLoan: false, bankLoan: false, bankLimit: false, brownie: false, igor: false });
-  T.eq(State.meta, { v: 1, achievements: [], muted: false, gameOvers: 0, storyRuns: {} });
+  T.eq(State.meta, { v: 1, achievements: [], muted: false, gameOvers: 0, storyRuns: {}, insider: [], insiderClaimed: {} });
 });
 T.test('State.save/init: Spielstand überlebt', () => {
   const st = memStorage();
@@ -7091,15 +7773,15 @@ T.test('GEAR: Preise steigen je Linie, Glück ≤ 4, Zinsen sinken', () => {
   T.ok(cars.audiR8.flee + shoes[2].flee <= 80, 'Flucht-Summe ≤ 80');
 });
 T.test('gear: ohne Ausrüstung neutral', () => {
-  T.eq(Rules.gear(base()), { luck: 0, mugMult: 1, flee: 0, bankLimit: 3000, bankRate: 0.3, postTime: 0, postPay: 0, spuelerBand: 0, taxiTip: 0 });
+  T.eq(Rules.gear(base()), { luck: 0, mugMult: 1, flee: 0, bankLimit: 3000, bankRate: 0.08, postTime: 0, postPay: 0, spuelerBand: 0, taxiTip: 0 });
 });
 T.test('gear: Audi R8 + Carbon', () => {
   const g = Rules.gear(base({ car: 'audiR8', shoes: 'carbon' }));
-  T.eq([g.luck, g.mugMult, g.flee, g.bankLimit, g.bankRate, g.postTime, g.postPay, g.spuelerBand, g.taxiTip], [4, 0.2, 80, 3000, 0.3, 2, 10, 0.2, 5]);
+  T.eq([g.luck, g.mugMult, g.flee, g.bankLimit, g.bankRate, g.postTime, g.postPay, g.spuelerBand, g.taxiTip], [4, 0.2, 80, 3000, 0.08, 2, 10, 0.2, 5]);
 });
 T.test('gear: Mercedes G', () => {
   const g = Rules.gear(base({ car: 'mercG' }));
-  T.eq([g.luck, g.mugMult, g.flee, g.bankLimit, g.bankRate], [4, 1, 0, 10000, 0.2]);
+  T.eq([g.luck, g.mugMult, g.flee, g.bankLimit, g.bankRate], [4, 1, 0, 10000, 0.05]);
 });
 T.test('gear: Stärke 10 halbiert mugMult', () => {
   near(Rules.gear(base({ strength: 10 })).mugMult, 0.5);
@@ -7164,23 +7846,28 @@ T.test('luck: Auto-Glück addiert sich', () => {
   T.eq(Rules.luck(base({ car: 'mercG', beers: 3, beerTimer: 1, brownieTimer: 1 })), 64);
 });
 T.test('bankInterest: Mercedes-Zinssatz', () => {
-  T.eq(Rules.bankInterest(1000), 300);
-  T.eq(Rules.bankInterest(1000, base()), 300);
-  T.eq(Rules.bankInterest(1000, base({ car: 'mercC' })), 270);
-  T.eq(Rules.bankInterest(1000, base({ car: 'mercG' })), 200);
-  T.eq(Rules.spinCosts(base({ bankDebt: 1000, car: 'mercS' })).interest, 240);
+  T.eq(Rules.bankInterest(1000), 80);
+  T.eq(Rules.bankInterest(1000, base()), 80);
+  T.eq(Rules.bankInterest(1000, base({ car: 'mercC' })), 70);
+  T.eq(Rules.bankInterest(1000, base({ car: 'mercG' })), 50);
+  T.eq(Rules.spinCosts(base({ bankDebt: 1000, car: 'mercS' })).interest, 60);
 });
-T.test('bankLoanAllowed / isGameOver: Mercedes-Limit', () => {
-  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 3000, car: 'mercC' }), 1000), true);
-  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 3000, car: 'mercC' }), 1001), false);
-  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 3000 }), 1), false);
-  T.eq(Rules.isGameOver(base({ bankDebt: 3000, mafiaDebt: 300, balance: 0 })), true);
-  T.eq(Rules.isGameOver(base({ bankDebt: 3000, mafiaDebt: 300, balance: 0, car: 'mercC' })), false);
+T.test('bankLoanAllowed / isGameOver: Mercedes-Limit, beide Quellen zu', () => {
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 0, car: 'mercC' }), 4000), null);
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 0, car: 'mercC' }), 4001), 'limit');
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 0 }), 4000), 'limit');
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 0, car: 'mercS' }), 6000), null);
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 0, car: 'mercS' }), 6001), 'limit');
+  T.eq(Rules.isGameOver(base({ bankDebt: 500, mafiaDebt: 300, balance: 0 })), true);
+  T.eq(Rules.isGameOver(base({ bankDebt: 0, mafiaDebt: 300, balance: 0 })), false);
+  T.eq(Rules.isGameOver(base({ bankDebt: 500, mafiaDebt: 0, balance: 0 })), false);
+  T.eq(Rules.isGameOver(base({ bankDebt: 500, mafiaDebt: 300, balance: 100 })), false);
 });
 T.test('postmanTier: Schuhe geben Zeit und Lohn', () => {
   T.eq(Rules.postmanTier(0), { t: 5, r: 5 });
   T.eq(Rules.postmanTier(0, base({ shoes: 'basic' })), { t: 6, r: 5 });
-  T.eq(Rules.postmanTier(11, base({ shoes: 'carbon' })), { t: 2.5, r: 60 });
+  T.eq(Rules.postmanTier(11, base({ shoes: 'carbon' })), { t: 1.5, r: 60 }, 'schnellste Stufe max 1,5 s');
+  T.eq(Rules.postmanTier(6, base({ shoes: 'carbon' })), { t: 3.5, r: 35 });
   T.eq(Rules.postmanTier(2, base({ shoes: 'trail' })), { t: 4, r: 15 });
 });
 T.test('postmanTier: Story-Zeitfaktor', () => {
@@ -7330,6 +8017,224 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
   });
 }
 
+/* ---- Tisch & Bank ---- */
+T.test('INVEST: neue Werte', () => {
+  T.eq([Rules.INVEST.bank.rate, Rules.INVEST.bank.spins, Rules.INVEST.bank.risk], [0.08, 6, 10]);
+  T.eq([Rules.INVEST.scam.rate, Rules.INVEST.scam.spins, Rules.INVEST.scam.risk], [0.5, 10, 55]);
+  T.eq([Rules.INVEST.stock.rate, Rules.INVEST.stock.spins, Rules.INVEST.stock.risk], [1.0, 2, 85]);
+  T.eq(Rules.BANK_RATE, 0.08);
+  T.eq([Rules.GEAR.cars.mercC.bankRate, Rules.GEAR.cars.mercS.bankRate, Rules.GEAR.cars.mercG.bankRate], [0.07, 0.06, 0.05]);
+});
+T.test('canInvest / investRunning: je Sorte eine, Mindestbetrag, Geld', () => {
+  const s = base({ balance: 100, investments: [{ type: 'bank', name: 'Festgeld', amount: 50, rate: 0.08, spins: 3, risk: 10 }] });
+  T.eq(Rules.canInvest(s, 'bank', 50), { ok: false, reason: 'running' });
+  T.eq(Rules.canInvest(s, 'stock', 50), { ok: true });
+  T.eq(Rules.canInvest(s, 'scam', 5), { ok: false, reason: 'min' });
+  T.eq(Rules.canInvest(s, 'scam', 101), { ok: false, reason: 'funds' });
+  T.eq(Rules.investRunning(s, 'bank').amount, 50);
+  T.eq(Rules.investRunning(s, 'scam'), null);
+  const alt = base({ balance: 100, investments: [{ name: 'Trickbetrug', amount: 20, rate: 0.3, spins: 2, risk: 55 }] });
+  T.eq(Rules.canInvest(alt, 'scam', 20).reason, 'running', 'alte Anlage ohne type über den Namen erkannt');
+});
+T.test('rouletteTotal / rouletteSettle: Zahl + Rot + Gerade', () => {
+  const bets = [{ type: 'number', n: 17, amount: 10 }, { type: 'red', n: null, amount: 50 }, { type: 'even', n: null, amount: 20 }];
+  T.eq(Rules.rouletteTotal(bets), 80);
+  const r18 = Rules.rouletteSettle(bets, 18);              // 18: rot, gerade
+  T.eq(r18.payout, 100 + 40);
+  T.eq(r18.hits.map((x) => x.win), [false, true, true]);
+  T.eq(r18.hits.map((x) => x.payout), [0, 100, 40]);
+  const r17 = Rules.rouletteSettle(bets, 17);              // 17: schwarz, ungerade
+  T.eq(r17.payout, 360);
+  T.eq(r17.hits.map((x) => x.payout), [360, 0, 0]);
+  const r0 = Rules.rouletteSettle(bets, 0);
+  T.eq(r0.payout, 0);
+  T.eq(Rules.rouletteSettle([], 5), { payout: 0, hits: [] });
+});
+T.test('rouletteLuckTarget: höchster Außenfeld-Chip, Zahlen nie, dann Reihenfolge', () => {
+  T.eq(Rules.rouletteLuckTarget([]), -1);
+  T.eq(Rules.rouletteLuckTarget([{ type: 'number', n: 3, amount: 500 }]), -1, 'nur Zahlen → kein Ziel');
+  T.eq(Rules.rouletteLuckTarget([{ type: 'red', n: null, amount: 50 }, { type: 'number', n: 3, amount: 10 }]), 0);
+  T.eq(Rules.rouletteLuckTarget([{ type: 'number', n: 3, amount: 500 }, { type: 'red', n: null, amount: 50 }]), 1);
+  T.eq(Rules.rouletteLuckTarget([{ type: 'red', n: null, amount: 50 }, { type: 'even', n: null, amount: 80 }]), 1);
+  T.eq(Rules.rouletteLuckTarget([{ type: 'red', n: null, amount: 50 }, { type: 'black', n: null, amount: 50 }]), 0);
+});
+/* ---- Glück: Einsatzdeckel ---- */
+T.test('effectiveLuck: voll bis 100 €, darüber proportional weniger', () => {
+  T.eq(Rules.LUCK_CAP, 100);
+  T.eq(Rules.effectiveLuck(60, 10), 60);
+  T.eq(Rules.effectiveLuck(60, 100), 60);
+  T.eq(Rules.effectiveLuck(60, 200), 30);
+  T.eq(Rules.effectiveLuck(60, 400), 15);
+  T.eq(Rules.effectiveLuck(0, 10), 0);
+  T.eq(Rules.effectiveLuck(20, 0), 20);
+});
+
+/* ---- Perks: XP, Skills, Insider ---- */
+T.test('xpLevel: Schwellen und Punkte', () => {
+  T.eq(Rules.XP_LEVELS, [0, 25, 60, 110, 180, 270]);
+  T.eq(Rules.xpLevel(0), { level: 1, next: 25, points: 0 });
+  T.eq(Rules.xpLevel(24), { level: 1, next: 25, points: 0 });
+  T.eq(Rules.xpLevel(25), { level: 2, next: 60, points: 1 });
+  T.eq(Rules.xpLevel(110), { level: 4, next: 180, points: 2 });
+  T.eq(Rules.xpLevel(270), { level: 6, next: null, points: 3 });
+  T.eq(Rules.xpLevel(9999), { level: 6, next: null, points: 3 });
+});
+T.test('Kataloge: Skills mit Licht/Schatten, mods-Schlüssel bekannt', () => {
+  T.eq(Rules.SKILLS.length, 8); T.eq(Rules.INSIDER.length, 7);
+  for (const sk of Rules.SKILLS) { T.ok(sk.light && sk.shadow, sk.id); for (const k of Object.keys(sk.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${sk.id}.${k}`); }
+  for (const ins of Rules.INSIDER) { T.ok(ins.text && typeof ins.capped === 'boolean', ins.id); for (const k of Object.keys(ins.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${ins.id}.${k}`); }
+  T.eq(Rules.INSIDER_CAP, 250); T.eq(Rules.MAX_SKILLS, 3); T.eq(Rules.RESPEC_PRICE, 2000);
+  T.eq(Rules.XP_GAIN, { spin: 1, win: 2, job: 5, day: 5, achievement: 10 });
+});
+T.test('mods: neutral ohne Skills/Insider', () => {
+  T.eq(Rules.mods(base(), { insider: [] }), Rules.NEUTRAL_MODS);
+  T.eq(Rules.mods(base()), Rules.NEUTRAL_MODS, 'ohne meta');
+});
+T.test('mods: Skills und Insider stapeln', () => {
+  const m = Rules.mods(base({ skills: ['pokerface', 'zockerhaende', 'verhandler'] }), { insider: ['bankinsider', 'vitosneffe'] });
+  T.eq(m.bjNatural, 1.5); T.eq(m.bjPushBonus, 0.1); T.eq(m.beerLuckMult, 0);
+  T.eq(m.slotPairMult, 1.3);
+  near(m.bankRateAdd, 0.02 - 0.02 - 0.03, 'Zinsen addieren');
+  T.eq(m.mafiaSpins, 8, 'Maximum von 7 und 8'); T.eq(m.mafiaMult, 2);
+  T.eq(m.bankLimitAdd, 2000); near(m.investRateMult, 0.9); near(m.mugChanceMult, 0.5);
+  T.eq(m.postLetters, 15); T.eq(m.horsePayout, 3);
+  const k = Rules.mods(base({ skills: ['pferdefluesterer', 'strassenkoeter', 'eisenmagen'] }), { insider: ['postmeister', 'vitosneffe'] });
+  T.eq(k.horsePayout, 3.3); near(k.mugChanceMult, 1.5 * 0.5); T.eq(k.fightAdd, 0.15); T.eq(k.walletMult, 2); T.eq(k.bankLimitAdd, -1000);
+  T.eq(k.maxBeers, 4); T.eq(k.brownieSpins, 2); T.eq(k.postTimeAdd, -1); T.eq(k.postPayAdd, 5); T.eq(k.postLetters, 20);
+  T.eq(Rules.mods(base({ skills: ['unbekannt'] })), Rules.NEUTRAL_MODS, 'unbekannte IDs ignoriert');
+});
+T.test('canPickSkill / skillPointsFree', () => {
+  T.eq(Rules.skillPointsFree(base({ xp: 0, skills: [] })), 0);
+  T.eq(Rules.skillPointsFree(base({ xp: 60, skills: [] })), 1);
+  T.eq(Rules.skillPointsFree(base({ xp: 110, skills: ['pokerface'] })), 1);
+  T.eq(Rules.canPickSkill(base({ xp: 0, skills: [] }), 'pokerface').reason, 'points');
+  T.eq(Rules.canPickSkill(base({ xp: 25, skills: [] }), 'pokerface'), { ok: true });
+  T.eq(Rules.canPickSkill(base({ xp: 25, skills: [] }), 'gibtsnicht').reason, 'unknown');
+  T.eq(Rules.canPickSkill(base({ xp: 110, skills: ['pokerface'] }), 'pokerface').reason, 'active');
+  T.eq(Rules.canPickSkill(base({ xp: 110, skills: ['zockerhaende'] }), 'brieftraeger').reason, 'conflict');
+  T.eq(Rules.canPickSkill(base({ xp: 999, skills: ['pokerface', 'kalterkopf', 'verhandler'] }), 'eisenmagen').reason, 'full');
+});
+T.test('insiderDraw: 3 ungezogene, weniger wenn Pool kleiner', () => {
+  const all = Rules.INSIDER.map((i) => i.id);
+  const d = Rules.insiderDraw({ insider: [] }, seq(0, 0, 0));
+  T.eq(d.length, 3); T.ok(new Set(d).size === 3, 'verschieden'); d.forEach((id) => T.ok(all.includes(id)));
+  const d2 = Rules.insiderDraw({ insider: all.slice(0, 5) }, seq(0, 0));
+  T.eq(d2.length, 2); d2.forEach((id) => T.ok(!all.slice(0, 5).includes(id), 'nie gewählte'));
+  T.eq(Rules.insiderDraw({ insider: all }, seq(0)), []);
+});
+T.test('effectiveInsider: Deckel 250', () => {
+  T.eq(Rules.effectiveInsider(1.2, 250), 1.2);
+  near(Rules.effectiveInsider(1.2, 500), 1.1, 'Bonusanteil halbiert');
+  T.eq(Rules.effectiveInsider(true, 250), true); T.eq(Rules.effectiveInsider(true, 251), false);
+  T.eq(Rules.effectiveInsider(false, 10), false);
+});
+T.test('effectiveBonus: Deckel 250 wie effectiveInsider, aber mit Neutralwert', () => {
+  T.eq(Rules.effectiveBonus(3.3, 3, 250), 3.3);
+  near(Rules.effectiveBonus(3.3, 3, 500), 3.15);
+  T.eq(Rules.horseDelta(true, 500, M({ horsePayout: Rules.effectiveBonus(3.3, 3, 500) })), 1575, 'Pferdeflüsterer über 250 € gedeckelt');
+});
+T.test('deckHot / pickExcluded / pickLoser', () => {
+  const hot = [...Array(20)].map(() => ({ val: '10' })).concat([{ val: '3' }]);
+  T.eq(Rules.deckHot(hot), true);
+  const cold = [...Array(20)].map(() => ({ val: '3' })).concat([{ val: 'A' }]);
+  T.eq(Rules.deckHot(cold), false);
+  const ex = Rules.pickExcluded(Math.random);
+  T.eq(ex.length, 12); T.eq(new Set(ex).size, 12); ex.forEach((n) => T.ok(n >= 1 && n <= 36));
+  for (let i = 0; i < 50; i++) T.ok(Rules.pickLoser(2, Math.random) !== 2);
+  T.ok([1, 3, 4].includes(Rules.pickLoser(2, seq(0))));
+});
+T.test('State.fresh/freshMeta: Perk-Felder', () => {
+  const f = State.fresh(); T.eq([f.xp, f.skills, f.skillRespecs, f.insiderExcluded, f.mechRespins], [0, [], 0, [], 0]);
+  const m = State.freshMeta(); T.eq([m.insider, m.insiderClaimed], [[], {}]);
+});
+
+/* ---- Regel-Hooks mit mods ---- */
+const M = (o) => Object.assign({}, Rules.NEUTRAL_MODS, o);
+T.test('luck mit mods: Bier/Brownie-Multiplikatoren, 4. Bier', () => {
+  T.eq(Rules.BEER_LUCK, [0, 10, 15, 20, 25]);
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 1 }), M({ beerLuckMult: 0 })), 0);
+  T.eq(Rules.luck(base({ beers: 4, beerTimer: 1 })), 25);
+  T.eq(Rules.luck(base({ brownieTimer: 1 }), M({ brownieLuckMult: 0.5 })), 20);
+  T.eq(Rules.canBeer(base({ beers: 3, balance: 100 })).reason, 'max');
+  T.eq(Rules.canBeer(base({ beers: 3, balance: 100 }), Rules.PRICES.beer, M({ maxBeers: 4 })), { ok: true });
+});
+T.test('Bank/Vito mit mods', () => {
+  near(Rules.bankRateFor(base(), M({ bankRateAdd: -0.03 })), 0.05);
+  near(Rules.bankRateFor(base({ car: 'mercG' }), M({ bankRateAdd: -0.05 })), 0.01, 'Untergrenze 1 %');
+  T.eq(Rules.bankLimitFor(base(), M({ bankLimitAdd: 2000 })), 5000);
+  T.eq(Rules.bankLimitFor(base(), M({ bankLimitAdd: -9000 })), 500, 'Untergrenze 500');
+  T.eq(Rules.bankInterest(1000, base(), M({ bankRateAdd: -0.03 })), 50);
+  T.eq(Rules.bankLoanReason(base(), 4000, M({ bankLimitAdd: 2000 })), null);
+  T.eq(Rules.bankLoanReason(base(), 5001, M({ bankLimitAdd: 2000 })), 'limit');
+  T.eq(Rules.mafiaSpins(), 5); T.eq(Rules.mafiaSpins(M({ mafiaSpins: 8 })), 8);
+  T.eq(Rules.mafiaBill(300), 900); T.eq(Rules.mafiaBill(300, M({ mafiaMult: 2 })), 600);
+});
+T.test('Roulette mit mods: 36:1, Ausschlussliste', () => {
+  T.eq(Rules.roulettePayout('number', 17, 17, 10), 350);
+  T.eq(Rules.roulettePayout('number', 17, 17, 10, M({ rouletteNumberPayout: 36 })), 360);
+  T.eq(Rules.rouletteSettle([{ type: 'number', n: 17, amount: 10 }], 17, M({ rouletteNumberPayout: 36 })).payout, 370);
+  const ex = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  for (let i = 0; i < 1000; i++) T.ok(!ex.includes(Rules.rouletteRoll(Math.random, ex)), 'nie ausgeschlossen');
+  T.eq(Rules.rouletteRoll(seq(0.05, 0.99), ex), 36, 'zweiter Wurf nach Ausschluss');
+  T.eq(Rules.rouletteRoll(seq(0), []), 0);
+});
+T.test('Slots/Pferde mit mods', () => {
+  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍋', M({ slotPairMult: 1.5 })), 1.5);
+  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍋', M({ slotPairMult: 0 })), 0);
+  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍒', M({ slotPairMult: 0 })), 5, 'Drilling unberührt');
+  T.eq(Rules.horseDelta(true, 100), 300); T.eq(Rules.horseDelta(true, 100, M({ horsePayout: 3.3 })), 330); T.eq(Rules.horseDelta(false, 100, M({ horsePayout: 3.3 })), -100);
+  near(Rules.horseStep(false, 0, seq(0), Rules.HORSE_LAME_STEP), 1.5 * Rules.HORSE_LAME_STEP, 'Handicap');
+});
+T.test('Slots: Erwartungswert bleibt unter 1 (Zockerhände 1,3×, neutral)', () => {
+  const evFor = (mods) => {
+    let sum = 0, n = 0;
+    for (const a of Rules.SYMBOLS) for (const b of Rules.SYMBOLS) for (const c of Rules.SYMBOLS) { sum += Rules.slotMultiplier(a, b, c, mods); n++; }
+    return { sum, n, avg: sum / n };
+  };
+  const zocker = evFor(M({ slotPairMult: 1.3 }));
+  T.eq(zocker.n, 216, 'alle Walzen-Kombinationen');
+  T.ok(zocker.avg < 1, `Zockerhände 1,3× bleibt -EV (avg=${zocker.avg})`);
+  const neutral = evFor(Rules.NEUTRAL_MODS);
+  T.ok(neutral.avg < 1, `neutral bleibt -EV (avg=${neutral.avg})`);
+});
+T.test('Blackjack mit mods: Natural 3:2, Push +10 %, heißes Deck 1,2:1', () => {
+  T.eq(Rules.bjDelta('win', 100), 100);
+  T.eq(Rules.bjDelta('win', 100, M({ bjNatural: 1.5 }), { natural: true }), 150);
+  T.eq(Rules.bjDelta('push', 100, M({ bjPushBonus: 0.1 })), 10);
+  T.eq(Rules.bjDelta('win', 100, M({ bjHotDeck: 1.2 }), { hot: true }), 120);
+  T.eq(Rules.bjDelta('win', 100, M({ bjHotDeck: 1.2, bjNatural: 1.5 }), { hot: true, natural: true }), 150, 'Natural schlägt heiß');
+  T.eq(Rules.bjDelta('dealer', 100, M({ bjNatural: 1.5 }), { natural: true }), -100);
+  T.eq(Rules.bjDelta('win', 500, M({ bjHotDeck: Rules.effectiveInsider(1.2, 500) }), { hot: true }), 550, 'Deckel schwächt heißes Deck über 250 € ab');
+  T.eq(Rules.bjDelta('win', 1000, M({ bjHotDeck: Rules.effectiveInsider(1.2, 1000) }), { hot: true }), 1050, 'Deckel schwächt heißes Deck weiter über 250 € ab');
+});
+T.test('Anlagen/Post/Überfall mit mods', () => {
+  T.eq(Rules.investmentResolve({ amount: 100, rate: 0.5, risk: 0 }, seq(0.99)).payout, 150);
+  T.eq(Rules.investmentResolve({ amount: 100, rate: 0.5, risk: 0 }, seq(0.99), M({ investRateMult: 0.9 })).payout, 145);
+  T.eq(Rules.postmanTier(0, base(), M({ postTimeAdd: 1, postPayAdd: 5 })), { t: 6, r: 10 });
+  T.eq(Rules.postmanTier(11, base(), M({ postTimeAdd: -1 })), { t: 0.5, r: 50 }, 'Untergrenze 0,5 s');
+  T.eq(Rules.postmanTier(11, base({ shoes: 'carbon' }), M({ postTimeAdd: 1 })), { t: 1.5, r: 60 }, 'Schuh-Deckel bleibt');
+  near(Rules.mugChance(mugBase(), 'door', M({ mugChanceMult: 0.5 })), 0.03);
+  near(Rules.fightChance(0, M({ fightAdd: 0.15 })), 0.5); near(Rules.fightChance(50, M({ fightAdd: 0.15 })), 0.9);
+  T.eq(Rules.mugWallet(() => 0, M({ walletMult: 2 })), 100);
+});
+
+if (typeof Perks !== 'undefined') T.test('Perks.refreshExcluded: 12 Zahlen nur mit Croupier-Auge', () => {
+  const s = State.s, m = State.meta; const bakS = s.insiderExcluded, bakM = m.insider;
+  m.insider = ['croupierauge']; Perks.refreshExcluded(); T.eq(s.insiderExcluded.length, 12);
+  m.insider = []; Perks.refreshExcluded(); T.eq(s.insiderExcluded, []);
+  s.insiderExcluded = bakS; m.insider = bakM;
+});
+if (typeof Perks !== 'undefined') T.test('Perks.refreshExcluded: ohne force bleibt eine passende Liste stabil', () => {
+  const s = State.s, m = State.meta; const bakS = s.insiderExcluded, bakM = m.insider;
+  m.insider = ['croupierauge'];
+  s.insiderExcluded = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  Perks.refreshExcluded();
+  T.eq(s.insiderExcluded, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], 'passende Liste (12) wird nicht neu gemischt');
+  Perks.refreshExcluded(true);
+  T.ok(s.insiderExcluded.length === 12, 'force zieht trotzdem neu (kann zufällig gleich bleiben)');
+  s.insiderExcluded = bakS; m.insider = bakM;
+});
+
 /* --- SELFTEST CASES END --- */
 </script>
 
@@ -7364,7 +8269,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
   if (params.get('screen') === 'royal' && params.has('game') && ['megaslots', 'craps', 'wheel'].includes(params.get('game'))) { await UI.show(params.get('game')); }
   else await UI.show(params.get('screen') || 'hub');
   let gameOverAtBoot = false;
-  if (Rules.isGameOver(State.s)) { gameOverAtBoot = true; await Bus.emit('gameover', {}); }
+  if (Rules.isGameOver(State.s, Perks.mods())) { gameOverAtBoot = true; await Bus.emit('gameover', {}); }
   if (params.has('scene')) {
     await Cutscene.play(params.get('scene'), { bill: 900, before: 1000, after: 500, price: '1.000 €', debt: 300, stats: { Spins: 12, 'Höchster Kontostand': '1.234 €' } });
   } else if (!State.s.flags.intro && !params.has('screen')) {

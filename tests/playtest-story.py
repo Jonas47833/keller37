@@ -39,11 +39,11 @@ try:
 except ImportError:
     HAVE_PIL = False
 
-PORT = 9335
+PORT = int(os.environ.get("K37_PORT", "9335"))
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HTML = os.path.join(ROOT, "keller37.html")
 URL_BASE = "file://" + HTML
-SHOT_DIR = "/tmp/k37story"
+SHOT_DIR = os.environ.get("K37_SHOTS", "/tmp/k37story")
 CHROME_CANDIDATES = [
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     "/Applications/Chromium.app/Contents/MacOS/Chromium",
@@ -122,7 +122,7 @@ class CDP:
         self._listen_task = None
 
     def launch(self, mobile=False):
-        profile = "/tmp/k37story-profile"
+        profile = os.environ.get("K37_PROFILE", "/tmp/k37story-profile")
         subprocess.run(["rm", "-rf", profile])
         args = [
             find_chrome(),
@@ -894,6 +894,7 @@ async def scenario_stadt_shop(cdp):
     await cdp.navigate(URL_BASE + "?fresh&screen=stadt")
     await asyncio.sleep(1.0)
     await cdp.inject_helpers()
+    await cdp.eval("State.meta.insider = []; State.meta.insiderClaimed = {}; State.saveMeta(); 0", await_promise=False)
     # Strasse: vier Schaufenster (Autohaus, INTERSPORT, Casino Royal ohne Auto gesperrt), Laden noch zu
     n_fronts = await cdp.eval("document.querySelectorAll('#strasse .storefront').length", await_promise=False)
     royal_locked = await cdp.eval("document.querySelector('#strasse .storefront.royal').classList.contains('locked')", await_promise=False)
@@ -949,7 +950,7 @@ async def scenario_stadt_shop(cdp):
     line = await cdp.eval("document.querySelector('#gearLine') && document.querySelector('#gearLine').textContent", await_promise=False)
     record("stadt: Seitenleiste zeigt Besitz", line is not None and "Mercedes C-Klasse" in line and "Trail-Runner" in line and "💪 0" in line, "line=%s" % line)
     terms = await cdp.eval("UI.show('finance').then(()=>document.querySelector('#bankTerms').textContent)")
-    record("stadt: Bank zeigt Mercedes-Konditionen", terms is not None and "27 %" in terms and "4.000" in terms, "terms=%s" % terms)
+    record("stadt: Bank zeigt Mercedes-Konditionen", terms is not None and "7 %" in terms and "4.000" in terms, "terms=%s" % terms)
 
 
 async def scenario_royal_free(cdp):
@@ -1155,6 +1156,10 @@ async def scenario_free_sandbox_unchanged(cdp):
     ref_dir = os.path.join(ROOT, "docs", "superpowers", "screenshots")
     if not HAVE_PIL:
         record("freie sandbox: Pillow verfuegbar", False, "import PIL schlug fehl -- Vergleich faellt auf Dateigroesse zurueck")
+    # Insider-Upgrades sind Meta-weit und ueberleben "?fresh" (das loescht nur den Spielstand) --
+    # scenario_endings() kann beim Durchklicken einer Story-Ende-Cutscene zufaellig eins mitnehmen.
+    # Fuer den reinen UI-Pixel-Vergleich hier zuruecksetzen, sonst ist der Vergleich nicht deterministisch.
+    await cdp.eval("localStorage.removeItem('keller37.meta'); 0", await_promise=False)
     for screen in ["slots", "roulette", "blackjack", "hub"]:
         await cdp.send("Emulation.clearDeviceMetricsOverride")
         await cdp.navigate(URL_BASE + "?fresh&screen=%s" % screen)
@@ -1417,6 +1422,178 @@ async def scenario_kater(cdp):
     record("kater: Trophaee Hausherr (endeWirt) vergeben", trophy is True, "trophy=%s" % trophy)
 
 
+async def scenario_roulette_chips(cdp):
+    """Roulette: Chips legen/zurueck/leeren, ein Dreh wertet alles aus, Wie zuletzt; Bank-Sperre; Anlagen-Sperre."""
+    await cdp.navigate(URL_BASE + "?fresh&screen=roulette")
+    await asyncio.sleep(1.0)
+    await cdp.inject_helpers()
+    await cdp.eval("State.meta.insider = []; State.meta.insiderClaimed = {}; State.saveMeta(); 0", await_promise=False)
+    await cdp.eval("State.s.balance = 1000; State.save(); UI.setBalance(1000, {animate:false}); 0", await_promise=False)
+    await cdp.eval("document.querySelector('#rouletteBet').value = 10; Roulette.place('number', 17, Roulette.cellFor('number', 17)); 0", await_promise=False)
+    await cdp.eval("document.querySelector('#rouletteBet').value = 50; Roulette.place('red', null, Roulette.cellFor('red', null)); 0", await_promise=False)
+    await cdp.eval("document.querySelector('#rouletteBet').value = 20; Roulette.place('even', null, Roulette.cellFor('even', null)); 0", await_promise=False)
+    await asyncio.sleep(0.6)
+    total = await cdp.eval("document.querySelector('#tableTotal').textContent", await_promise=False)
+    stacks = await cdp.eval("[...document.querySelectorAll('.chip-stack')].map(e=>e.dataset.key+':'+e.textContent).sort().join(',')", await_promise=False)
+    record("roulette: drei Chips liegen, Summe 80", total is not None and "80 €" in total and "3 Chips" in total and stacks == "even:20,n17:10,red:50", "total=%s stacks=%s" % (total, stacks))
+    await cdp.click(".chip[data-chip=max]")
+    await asyncio.sleep(0.2)
+    maxval = await cdp.eval("document.querySelector('#rouletteBet').value", await_promise=False)
+    record("roulette: Max-Chip zieht bereits liegende Chips ab (1000 - 80 = 920)", maxval == "920", "val=%s" % maxval)
+    await cdp.screenshot("roulette-chips.png")
+    await cdp.click("#btnUndo")
+    await asyncio.sleep(0.2)
+    n = await cdp.eval("Roulette.bets.length", await_promise=False)
+    record("roulette: Chip zurueck entfernt den letzten", n == 2, "bets=%s" % n)
+    await cdp.click("#btnClear")
+    await asyncio.sleep(0.2)
+    n = await cdp.eval("Roulette.bets.length", await_promise=False)
+    spin_disabled = await cdp.eval("document.querySelector('#btnSpin').disabled", await_promise=False)
+    record("roulette: Tisch leeren, Drehen gesperrt", n == 0 and spin_disabled is True, "bets=%s disabled=%s" % (n, spin_disabled))
+    # erneut legen, Ergebnis 18 (rot, gerade) erzwingen: rouletteRoll = floor(rng*37) -> rng = 18.5/37; Luck ist 0
+    await cdp.eval("document.querySelector('#rouletteBet').value = 10; Roulette.place('number', 17, Roulette.cellFor('number', 17)); document.querySelector('#rouletteBet').value = 50; Roulette.place('red', null, Roulette.cellFor('red', null)); 0", await_promise=False)
+    await cdp.eval("window.__origRandom = Math.random; Math.random = () => 18.5/37; 0", await_promise=False)
+    await cdp.click("#btnSpin")
+    await asyncio.sleep(0.3)
+    bal_mid = await cdp.eval("State.s.balance", await_promise=False)
+    record("roulette: Einsatz 60 einmal abgezogen (Escrow)", bal_mid == 940, "bal=%s" % bal_mid)
+    await asyncio.sleep(4.6)  # Kugel 4000 ms (animateBall) + wait(4100) im Spin-Ablauf + Puffer
+    await cdp.eval("Math.random = window.__origRandom; 0", await_promise=False)
+    bal = await cdp.eval("State.s.balance", await_promise=False)
+    status = await cdp.eval("document.querySelector('#rouletteStatus').textContent", await_promise=False)
+    record("roulette: 18 -> 17 verliert, Rot gewinnt, netto +40", bal == 1040 and status is not None and "Rot ✓ +50" in status and "17 ✗" in status, "bal=%s status=%s" % (bal, status))
+    last = await cdp.eval("JSON.stringify(Roulette.lastBets)", await_promise=False)
+    await cdp.click("#btnRepeat")
+    await asyncio.sleep(0.3)
+    again = await cdp.eval("JSON.stringify(Roulette.bets)", await_promise=False)
+    record("roulette: Wie zuletzt legt dieselben Chips", last is not None and again == last, "last=%s again=%s" % (last, again))
+    # Bank: ein Kredit auf einmal
+    await cdp.eval("UI.show('finance'); 0", await_promise=False)
+    await asyncio.sleep(0.6)
+    await cdp.eval("Finance.loanBank(500); 0", await_promise=False)
+    await asyncio.sleep(0.6)
+    await cdp.advance_cutscene()
+    await asyncio.sleep(0.3)
+    disabled = await cdp.eval("[...document.querySelectorAll('[data-loan]')].every(b=>b.disabled)", await_promise=False)
+    hint = await cdp.eval("document.querySelector('#bankHint').textContent", await_promise=False)
+    debt = await cdp.eval("State.s.bankDebt", await_promise=False)
+    record("bank: bei offenem Kredit alle Kredit-Knoepfe gesperrt, Hinweis sichtbar", debt == 500 and disabled is True and hint is not None and "tilgen" in hint, "debt=%s disabled=%s hint=%s" % (debt, disabled, hint))
+    terms = await cdp.eval("document.querySelector('#bankTerms').textContent", await_promise=False)
+    record("bank: Konditionen 8 %", terms is not None and "8 %" in terms, "terms=%s" % terms)
+    # Limit-Kredit: erst tilgen (Guthaben reicht), dann bis zum Limit leihen
+    await cdp.eval("Finance.repayBank(); 0", await_promise=False)
+    await asyncio.sleep(0.3)
+    await cdp.click("[data-loan=limit]")
+    await asyncio.sleep(0.3)
+    await cdp.advance_cutscene()
+    await asyncio.sleep(0.3)
+    debt_limit = await cdp.eval("State.s.bankDebt", await_promise=False)
+    record("bank: Limit-Knopf leiht bis zum Kreditlimit (3000)", debt_limit == 3000, "debt=%s" % debt_limit)
+    await cdp.screenshot("story-free-finance.png")
+    # Anlagen: je Sorte eine
+    await cdp.eval("UI.show('invest'); 0", await_promise=False)
+    await asyncio.sleep(0.6)
+    await cdp.eval("document.querySelector('#invBank').value = 20; Invest.invest('bank'); 0", await_promise=False)
+    await asyncio.sleep(0.4)
+    running = await cdp.eval("document.querySelector('.chalk.inv[data-type=bank] .inv-running').textContent", await_promise=False)
+    form_hidden = await cdp.eval("document.querySelector('.chalk.inv[data-type=bank] .inv-form').classList.contains('hidden')", await_promise=False)
+    inv = await cdp.eval("JSON.stringify(State.s.investments)", await_promise=False)
+    record("anlagen: Festgeld laeuft, Karte zeigt laufende Anlage, Eingabe weg", form_hidden is True and running is not None and "20 €" in running and "6 Spins" in running and inv is not None and '"type":"bank"' in inv, "running=%s hidden=%s inv=%s" % (running, form_hidden, inv))
+    bal_before = await cdp.eval("State.s.balance", await_promise=False)
+    await cdp.eval("Invest.invest('bank'); 0", await_promise=False)
+    await asyncio.sleep(0.3)
+    bal_after = await cdp.eval("State.s.balance", await_promise=False)
+    n_inv = await cdp.eval("State.s.investments.length", await_promise=False)
+    record("anlagen: zweites Festgeld abgelehnt", bal_after == bal_before and n_inv == 1, "before=%s after=%s n=%s" % (bal_before, bal_after, n_inv))
+    await cdp.screenshot("story-free-invest.png")
+
+
+async def scenario_perks(cdp):
+    """XP -> Level 2 -> Skill; Umskillen; Insider-Wahl am Story-Ende; Croupier-Auge; Stallbursche; Mechaniker."""
+    await cdp.navigate(URL_BASE + "?fresh&screen=skills")
+    await asyncio.sleep(1.0)
+    await cdp.inject_helpers()
+    await cdp.eval("localStorage.removeItem('keller37.meta'); State.meta.insider = []; State.meta.insiderClaimed = {}; State.saveMeta(); 0", await_promise=False)
+    try:
+        await _scenario_perks_body(cdp)
+    finally:
+        await cdp.eval("State.meta.insider = []; State.meta.insiderClaimed = {}; State.saveMeta(); 0", await_promise=False)
+
+
+async def _scenario_perks_body(cdp):
+    n = await cdp.eval("document.querySelectorAll('#skillCards .btn').length", await_promise=False)
+    record("perks: ohne Punkt kein Waehlen-Button", n == 0, "buttons=%s" % n)
+    await cdp.eval("Perks.addXp(25, 'test'); 0", await_promise=False)
+    await asyncio.sleep(0.4)
+    pulsing = await cdp.eval("document.querySelector('#lvBadge').classList.contains('point')", await_promise=False)
+    n = await cdp.eval("document.querySelectorAll('#skillCards .btn').length", await_promise=False)
+    record("perks: Level 2 -> Badge pulsiert, 8 Skills waehlbar", pulsing is True and n == 8, "pulsing=%s buttons=%s" % (pulsing, n))
+    await cdp.screenshot("skills.png")
+    # Zusaetzliche XP auf Level 4 (110 XP gesamt = 2 Skill-Punkte), damit nach dem Pick von
+    # Zockerhaende noch ein Punkt frei ist -- sonst meldet canPickSkill fuer Brieftraegerherz
+    # "points" statt "conflict" (Punkt-Pruefung kommt vor der Konflikt-Pruefung), und der naechste
+    # Check koennte den Konflikt-Grund nie sehen.
+    await cdp.eval("Perks.addXp(85, 'test'); 0", await_promise=False)
+    await asyncio.sleep(0.4)
+    await cdp.eval("Perks.pick('zockerhaende'); 0", await_promise=False)
+    await asyncio.sleep(0.3)
+    skills = await cdp.eval("JSON.stringify(State.s.skills)", await_promise=False)
+    conflict = await cdp.eval("[...document.querySelectorAll('#skillCards .skill-card')].find(c=>c.textContent.includes('Brieftr')).querySelector('.reason').textContent", await_promise=False)
+    record("perks: Skill aktiv, Konflikt-Grund sichtbar", skills == '["zockerhaende"]' and conflict is not None and "Passt nicht" in conflict, "skills=%s conflict=%s" % (skills, conflict))
+    await cdp.eval("State.s.balance = 5000; State.save(); UI.setBalance(5000, {animate:false}); Perks.respec(); 0", await_promise=False)
+    await asyncio.sleep(0.5)
+    await cdp.advance_cutscene(label_hint="Ja, alles vergessen")
+    await asyncio.sleep(0.4)
+    bal = await cdp.eval("State.s.balance", await_promise=False)
+    skills = await cdp.eval("JSON.stringify(State.s.skills)", await_promise=False)
+    record("perks: Umskillen kostet 2000 und leert die Skills", bal == 3000 and skills == "[]", "bal=%s skills=%s" % (bal, skills))
+    # Insider-Wahl am Story-Ende: Statistik-Panel -> Insider-Angebot -> erst danach "Nächste Story / Zum Titel"
+    await cdp.navigate(URL_BASE + "?fresh&story=schuld&ending=ehrlich")
+    await asyncio.sleep(1.5)
+    await cdp.inject_helpers()
+    await cdp.eval("State.meta.insider = []; State.meta.insiderClaimed = {}; State.saveMeta(); 0", await_promise=False)
+    n_choices = 0
+    for _ in range(40):
+        n_choices = await cdp.eval("document.querySelectorAll('.cs-choices button').length", await_promise=False)
+        if n_choices == 3:
+            break
+        await cdp.eval("__pt.advance(null)", await_promise=False)
+        await asyncio.sleep(0.15)
+    record("insider: Story-Ende bietet 3 Upgrades (vor der Nächste-Story-Wahl)", n_choices == 3, "choices=%s" % n_choices)
+    await cdp.screenshot("insider-offer.png")
+    await cdp.eval("__pt.advance(null)", await_promise=False)
+    await asyncio.sleep(0.5)
+    ins = await cdp.eval("JSON.stringify(State.meta.insider)", await_promise=False)
+    claimed = await cdp.eval("JSON.stringify(State.meta.insiderClaimed)", await_promise=False)
+    record("insider: Wahl in Meta gespeichert, Story-Teil abgehakt", ins is not None and ins != "[]" and claimed is not None and "schuld" in claimed, "insider=%s claimed=%s" % (ins, claimed))
+    await cdp.advance_cutscene(max_steps=3, label_hint="Zum Titel")
+    # Croupier-Auge + Stallbursche im freien Spiel
+    await cdp.navigate(URL_BASE + "?fresh&screen=roulette")
+    await asyncio.sleep(1.0)
+    await cdp.inject_helpers()
+    await cdp.eval("State.meta.insider = ['croupierauge', 'stallbursche', 'mechaniker']; State.saveMeta(); Perks.refreshExcluded(); Roulette.applyExcluded(); 0", await_promise=False)
+    await asyncio.sleep(0.3)
+    n_ex = await cdp.eval("document.querySelectorAll('.rcell.excluded').length", await_promise=False)
+    never = await cdp.eval("(()=>{const ex=State.s.insiderExcluded; for(let i=0;i<200;i++){ if(ex.includes(Rules.rouletteRoll(Math.random, ex))) return false; } return true; })()", await_promise=False)
+    record("insider: Croupier-Auge graut 12 Zahlen aus, Kugel faellt nie dorthin", n_ex == 12 and never is True, "excluded=%s never=%s" % (n_ex, never))
+    await cdp.screenshot("roulette-croupierauge.png")
+    await cdp.eval("UI.show('horses'); 0", await_promise=False)
+    await asyncio.sleep(0.6)
+    lame = await cdp.eval("(()=>{const r=document.querySelector('.runner.lame'); return r ? parseInt(r.id.slice(2),10) : null})()", await_promise=False)
+    sel = await cdp.eval("State.s.selectedHorse", await_promise=False)
+    record("insider: Stallbursche markiert ein lahmes Pferd (nicht das gewaehlte)", lame is not None and lame != sel, "lame=%s selected=%s" % (lame, sel))
+    await cdp.eval("UI.show('slots'); 0", await_promise=False)
+    await asyncio.sleep(0.6)
+    await cdp.eval("State.s.balance = 1000; State.s.mechRespins = 5; State.save(); window.__origRandom = Math.random; Math.random = () => 0.0; 0", await_promise=False)
+    # Math.random -> 0 liefert drei 🍒 (Drilling) – für eine Niete andere Werte: 0.05 / 0.4 / 0.8 -> 🍒 🍇 💎
+    await cdp.eval("let q=[0.05,0.4,0.8,0.99,0.99]; Math.random = () => q.length ? q.shift() : 0.99; 0", await_promise=False)
+    await cdp.click("#btnSpin")
+    await asyncio.sleep(2.8)
+    await cdp.eval("Math.random = window.__origRandom; 0", await_promise=False)
+    holds = await cdp.eval("[...document.querySelectorAll('.hold-btn')].filter(b=>!b.classList.contains('hidden')).length", await_promise=False)
+    record("insider: Mechaniker zeigt nach Niete Festhalten-Buttons", holds == 3, "holds=%s" % holds)
+
+
 async def main():
     cdp = CDP()
     cdp.launch(mobile=MOBILE)
@@ -1442,6 +1619,8 @@ async def main():
         await scenario_kater(cdp)
         await scenario_mugging(cdp)
         await scenario_story_stadt(cdp)
+        await scenario_roulette_chips(cdp)
+        await scenario_perks(cdp)
     finally:
         n_errors = len(cdp.console_errors)
         for e in cdp.console_errors:
