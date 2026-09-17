@@ -35,7 +35,9 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
   Entscheidungen zeigen und Geld sowie Story-Variablen verändern.
 - **Enden:** Story 1 „Die Schuld" hat vier unterschiedliche Enden, je nachdem wie die 30 Tage
   verlaufen – mehr wird hier nicht verraten. Erreichte Enden werden pro Story gemerkt; die
-  Trophäenwand bekommt einen eigenen Abschnitt für Story-Erfolge.
+  Trophäenwand bekommt einen eigenen Abschnitt für Story-Erfolge. Stories können eine
+  Voraussetzung haben (`requires`); der Titelscreen zeigt dann an, welche Story als Nächstes
+  startet und welche noch gesperrt ist.
 
 ## Dev-Parameter
 
@@ -50,6 +52,7 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
 | `?day=12` | Story-Tag setzen (nur zusammen mit `?fresh`; überspringt das Intro) |
 | `?job=spueler` | Jobbörse überspringen, Job direkt starten (impliziert `mode=story`; der Job muss freigeschaltet und seine Voraussetzung erfüllt sein) |
 | `?ending=sturz` | ein Story-Ende direkt abspielen (nur beim Story-Neustart, z. B. `?fresh&story=schuld&ending=sturz`) |
+| `?prev=doc` | zusammen mit `?fresh&story=…`: setzt das „vorige Ende" der vorausgesetzten Story (für Fortsetzungen) |
 | `?mug=1\|junkie\|jugend\|cousin` | erzwingt den nächsten Überfall (`1` bzw. leer: zufälliger Räubertyp; sonst gezielt `junkie`, `jugend` oder `cousin`) |
 
 `story`, `day`, `job`, `ending` und `fresh` gelten genau einmal: die Engine entfernt sie nach dem Einstieg

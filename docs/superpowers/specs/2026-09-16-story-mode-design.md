@@ -63,6 +63,7 @@ Jede Bedingung ist ein Objekt; `Story.check(cond, s)` wertet aus:
 { flag: 'igorZweifelt' } | { notFlag: 'geflohen' }
 { jobDone: 'tuersteher', gte: 3 }
 { unlocked: 'croupier' }
+{ prevEnding: { story: 'schuld', id: 'doc' } }
 { all: [ … ] } | { any: [ … ] } | { not: … }
 ```
 Vergleichsoperatoren: `eq, ne, gte, lte, gt, lt`. Ungültige Bedingungen werfen beim Laden der Story (der Selbsttest fängt das ab).
@@ -71,20 +72,24 @@ Vergleichsoperatoren: `eq, ne, gte, lte, gt, lt`. Ungültige Bedingungen werfen 
 
 ```js
 Stories.define({
-  id: 'schuld', title: 'Die Schuld', days: 30,
+  id: 'schuld', title: 'Die Schuld', days: 30, requires: 'vorgaenger',   // Story erst wählbar, wenn 'vorgaenger' ein Ende erreicht hat
   start: { balance: 50, unlocked: { jobs: ['spueler', 'post'], doors: ['slots', 'horses'], rooms: ['bar', 'vito'] }, vars: { schuld: 50000, vertrauen: 0, ruf: 0 } },
-  hud: [ { var: 'schuld', label: 'Vito', fmt: 'money', tone: 'danger' }, { var: 'vertrauen', label: '🤝', max: 10 } ],
+  prices: { brownie: 300, therapy: 8000 },   // überschreibt Rules.PRICES-Einträge für diese Story
+  disabled: ['tinder', 'house', 'dealer'],   // Sandbox-Räume/Käufe, die diese Story sperrt
+  hud: [ { var: 'schuld', label: 'Vito', fmt: 'money', tone: 'danger' }, { var: 'vertrauen', label: (s) => s.story.vars.ruf > 5 ? '🤝 (Ruf!)' : '🤝', max: 10 } ],
   goalText: (s) => `Ziel: Vito ${UI.fmt(s.story.vars.schuld)}`,
   intro: 'schuld.intro',                    // Szene beim Start
   chapters: [ { id, title, when: cond, intro: sceneId, unlock: { jobs, doors, rooms } } ],
-  events: [ { id, when: cond, once: true, at: 'night'|'morning'|'spin:after', scene: sceneId, effects: [ … ] } ],
+  events: [ { id, when: cond, once: true, at: 'night'|'morning'|'sleep'|'spin:after'|'buy:beer'|'buy:brownie'|'buy:kidney'|'buy:therapy'|'royal:enter', scene: sceneId, effects: [ … ] } ],
   jobScenes: { tuersteher: [ sceneIds… ], … },   // Story-spezifische Schicht-Karten-Szenen
-  endings: [ { id, title, priority, when: cond, scene: sceneId, fallback?: true } ],
+  endings: [ { id, title, priority, when: cond, scene: sceneId, fallback?: true, immediate?: true } ],
 });
 ```
 - **Effekte** (in Szenen-Choices und Ereignissen): `{ var: 'vertrauen', add: 1 }`, `{ var: 'schuld', set: 0 }`, `{ flag: 'x' }`, `{ balance: -250 }`, `{ unlock: { jobs: ['taxi'] } }`, `{ force: 'duel' }` (erzwungenes Spiel), `{ loseDay: true }`.
+- Weitere Effekte: `{ luckMod: -15 }` (Story-Glücksmodifikator, wird auf das Endergebnis addiert, das Resultat klemmt auf ≥ 0), `{ jobMod: { spuelerZone, taxiBrakeDelay, postTime, shiftPay } }` bzw. `{ jobMod: null }` (setzt zurück) für Job-Feintuning, `{ price: { brownie: 300 } }` ändert einen Preis zur Laufzeit, `{ enable: ['therapy'] }` / `{ disable: ['beer'] }` schalten Sandbox-Käufe pro Story um.
 - Szenen werden mit der bestehenden `Cutscene.define` definiert; Choices bekommen zusätzlich `effects: [...]`, die die Engine nach der Wahl anwendet. Platzhalter `{{var.schuld}}`, `{{day}}`, `{{balance}}` werden aus dem Story-Kontext gefüllt.
 - **Prüfungen / erzwungene Spiele:** `force: 'duel'` startet `Russian.start({ forced: true, bet: 0 })`: kein Einsatz, Ausgang wird als Flag `duelWon`/`duelLost` gemeldet (Spieler getroffen = Story-Effekt, kein Spital).
+- Ein Ende mit `immediate: true` wird nach jedem Effekt und jedem Kauf geprüft (nicht erst nachts) und schließt sich mit `fallback` aus.
 
 ## 8. Job-Pool
 
