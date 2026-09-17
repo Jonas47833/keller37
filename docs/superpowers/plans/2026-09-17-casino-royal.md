@@ -109,8 +109,8 @@ T.test('megaScatters / megaWin / megaDelta', () => {
   T.eq(w.payout, 0, 'keine Linie: Mitte 🍒 ⭐ 🍒 🔔 🔔 → 1 von links');
   const g2 = G(['🍒 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒', '🔔 🔔 🔔', '🔔 🔔 🔔']);
   const w2 = RoyalRules.megaWin(g2, 500, false);
-  T.eq(w2.payout, 3 * 2 * 100, 'drei Linien 🍒×3 → 3 × 2 × Linieneinsatz 100');
-  T.eq(RoyalRules.megaWin(g2, 500, true).payout, 1200, 'Freispiel ×2');
+  T.eq(w2.payout, 5 * 2 * 100, 'einheitliche Spalten: alle fünf Linien 🍒×3 → 5 × 2 × Linieneinsatz 100');
+  T.eq(RoyalRules.megaWin(g2, 500, true).payout, 2000, 'Freispiel ×2');
   T.eq(RoyalRules.megaDelta(500, 600, false), 100);
   T.eq(RoyalRules.megaDelta(500, 0, false), -500);
   T.eq(RoyalRules.megaDelta(500, 1200, true), 1200, 'Freispiel kostet nichts');
