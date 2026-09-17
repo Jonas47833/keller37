@@ -3683,10 +3683,11 @@ const StoryRules = {
   dueEvents(story, s, at) {
     return story.events.filter((e) => e.at === at && !(e.once && s.story.seen.includes(e.id)) && StoryRules.check(e.when, s));
   },
-  ending(story, s) {
-    const sorted = story.endings.filter((e) => !e.fallback).slice().sort((a, b) => b.priority - a.priority);
+  ending(story, s, { immediateOnly = false } = {}) {
+    const cands = story.endings.filter((e) => !e.fallback && (!immediateOnly || e.immediate));
+    const sorted = cands.slice().sort((a, b) => b.priority - a.priority);
     for (const e of sorted) if (StoryRules.check(e.when, s)) return e;
-    if (s.story.day > story.days) return story.endings.find((e) => e.fallback) || null;
+    if (!immediateOnly && s.story.day > story.days) return story.endings.find((e) => e.fallback) || null;
     return null;
   },
   advanceDay(s) { s.story.day++; s.story.phase = 'morning'; s.story.jobToday = null; if ((s.mugCooldown || 0) > 0) s.mugCooldown--; },
@@ -3727,7 +3728,7 @@ const StoryRules = {
       scene(e.scene, e.id); for (const eff of e.effects || []) { scene(eff.scene, e.id); jobs(eff.unlock && eff.unlock.jobs, e.id); rooms(eff.unlock && eff.unlock.rooms, e.id); }
     }
     for (const [job, list] of Object.entries(story.jobScenes || {})) { jobs([job], 'jobScenes'); list.forEach((id) => scene(id, `jobScenes.${job}`)); }
-    for (const e of story.endings || []) scene(e.scene, e.id);
+    for (const e of story.endings || []) { scene(e.scene, e.id); if (e.immediate && e.fallback) errs.push(`${story.id}: Ende ${e.id} – immediate und fallback schließen sich aus`); }
     if ((story.endings || []).filter((e) => e.fallback).length !== 1) errs.push(`${story.id}: genau ein Fallback-Ende nötig`);
     if (story.requires && storyIds && !storyIds.includes(story.requires)) errs.push(`${story.id}: requires "${story.requires}" unbekannt`);
     for (const k of Object.keys(story.prices || {})) if (!(k in Rules.PRICES)) errs.push(`${story.id}: Preis "${k}" unbekannt`);
@@ -3865,6 +3866,7 @@ const Story = {
   forcedNext: null,
   lostDay: false,
   sleeping: false,
+  finishing: false,
   get s() { return State.s.story; },
 
   /* ---- Einstieg ---- */
@@ -3954,6 +3956,7 @@ const Story = {
     UI.setBalance(State.s.balance);
     UI.renderWallet(); UI.renderSide();
     this.renderDaybar();
+    await this.checkImmediate();
   },
   async runEvents(at) {
     for (const e of StoryRules.dueEvents(this.story, State.s, at)) {
@@ -3961,7 +3964,17 @@ const Story = {
       await this.applyEffects(e.effects || []);
       /* erst nach Szene und Effekten als gesehen markieren – ein Reload mittendrin überspringt nichts */
       if (e.once) { this.s.seen.push(e.id); State.save(); }
+      if (this.s.ended) return;
     }
+  },
+  /* Sofortiges Ende prüfen (nach Effekten/Käufen) – spielt es sofort, unabhängig von Nacht/Fallback */
+  async checkImmediate() {
+    if (this.finishing || !this.story || !this.s || this.s.ended) return false;
+    const end = StoryRules.ending(this.story, State.s, { immediateOnly: true });
+    if (!end) return false;
+    this.finishing = true;
+    try { await this.finish(end); } finally { this.finishing = false; }
+    return true;
   },
   /* Generischer Einstiegspunkt für Käufe/Zimmer: Events des Hooks abarbeiten, dann sofortige Enden prüfen */
   async hook(at) {
@@ -4014,7 +4027,9 @@ const Story = {
     try {
       await this.fade(`Nacht ${this.s.day}`);
       await this.runEvents('sleep');
+      if (this.s.ended) return;
       await this.runEvents('night');
+      if (this.s.ended) return;
       let end = StoryRules.ending(this.story, State.s);
       if (end) return this.finish(end);
       StoryRules.advanceDay(State.s);
@@ -5481,6 +5496,24 @@ T.test('STORY_PROBE: Tagesablauf mit StoryRules', () => {
   T.eq(StoryRules.ending(STORY_PROBE, s).id, 'mutig');
   s.story.vars.mut = 0; s.story.day = 4;
   T.eq(StoryRules.ending(STORY_PROBE, s).id, 'aus');
+});
+T.test('StoryRules.ending: immediate-Enden', () => {
+  const st = Object.assign({}, STORY_PROBE, { endings: [
+    { id: 'tot', title: 'Tot', priority: 60, immediate: true, when: { var: 'mut', gte: 3 }, scene: 'probe.aus' },
+    { id: 'mutig', title: 'Mutig', priority: 1, when: { var: 'mut', gte: 2 }, scene: 'probe.mutig' },
+    { id: 'aus', title: 'Aus', priority: 0, scene: 'probe.aus', fallback: true },
+  ] });
+  const s = Object.assign(base(), { story: StoryRules.freshStoryPart(st) });
+  s.story.vars.mut = 2;
+  T.eq(StoryRules.ending(st, s, { immediateOnly: true }), null, 'normales Ende nicht sofort');
+  T.eq(StoryRules.ending(st, s).id, 'mutig');
+  s.story.vars.mut = 3;
+  T.eq(StoryRules.ending(st, s, { immediateOnly: true }).id, 'tot');
+  T.eq(StoryRules.ending(st, s).id, 'tot', 'nachts greift es ebenfalls');
+});
+T.test('StoryRules.validate: immediate nicht mit fallback', () => {
+  const st = Object.assign({}, STORY_PROBE, { id: 'x', endings: [{ id: 'aus', title: 'Aus', priority: 0, scene: 'probe.aus', fallback: true, immediate: true }] });
+  T.eq(StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), ['x: Ende aus – immediate und fallback schließen sich aus']);
 });
 
 /* ---- Story-Schuld ---- */
