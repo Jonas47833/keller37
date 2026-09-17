@@ -4207,6 +4207,7 @@ const Jobs = {
     await this.runShift(job);
   },
   async runShift(job) {
+    const run = State.s; // Story-Teil dieses Laufs – falls ein sofortiges Ende die Story wechselt, gilt der Rest hier nicht mehr
     const list = (Story.story.jobScenes || {})[job.id] || [];
     const seen = Story.s.seenJobScenes[job.id] || (Story.s.seenJobScenes[job.id] = []);
     let cands = list.filter((sid) => !seen.includes(sid));
@@ -4218,8 +4219,10 @@ const Jobs = {
     Game.applyDelta(job.base + bonus, { quiet: true });
     UI.toast({ icon: job.icon, title: `${job.name}: Schicht`, text: bonus > 0 ? `+${UI.fmt(job.base)} Lohn, +${UI.fmt(bonus)} weil keiner mit dir diskutiert.` : `+${UI.fmt(job.base)} Lohn.`, tone: 'win' });
     if (sceneId) await Story.playScene(sceneId);
+    if (State.s !== run || run.story.ended) return; // Szene hat die Story sofort beendet/gewechselt
     const extra = (Story.story.jobEffects || {})[sceneId];
     if (extra) await Story.applyEffects(extra);
+    if (State.s !== run || run.story.ended) return; // Effekte haben die Story sofort beendet/gewechselt
     const earned = State.s.balance - before;
     Story.jobDone(job.id, earned);
     await Bus.emit('job:done', { id: job.id, earned });
