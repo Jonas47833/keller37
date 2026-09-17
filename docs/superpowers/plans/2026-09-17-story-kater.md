@@ -362,7 +362,7 @@ T.test('STORY_KATER: Intro-Szene je vorigem Ende', () => {
     const s = katerState({}, { schuld: prev });
     const panels = STORY_KATER.scenes['kater.intro']({ raw: { flags: {}, vars: {} }, prev: s.story.prev });
     T.ok(panels.length >= 4, `${prev}: Variante + Hochzeit`);
-    T.eq(panels[panels.length - 1].bg, 'standesamt', `${prev}: endet im Standesamt`);
+    T.eq(panels[panels.length - 1].bg, 'villa', `${prev}: endet in der Villa`);
   }
 });
 ```
@@ -393,7 +393,7 @@ Die Intro-Funktion liest `ctx.prev` (Task 1).
         ],
         doc: [
           { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Wach? Eine Niere weniger, ein Zettel weniger. Vito ist zufrieden. Die Naht hält, meistens.' },
-          { bg: 'klinik', who: 'chantal', mood: 'calm', text: 'Sie ist die ganze Nacht geblieben. Das hat noch keine. Krause war auch da – er hat einen Job für dich.' },
+          { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Sie ist die ganze Nacht geblieben. Das hat noch keine. Krause war auch da – er hat einen Job für dich.' },
         ],
       }[prev];
       return start.concat([
