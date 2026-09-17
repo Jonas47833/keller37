@@ -61,7 +61,7 @@ varMax: { pegel: 3 }   // Bier 4+ erhöht den Pegel nicht mehr, gibt Glück wie 
 - Pegel wird jede Nacht auf 0 gesetzt.
 
 **Zitter-Tag** (`flag: zitter`, endet mit dem ersten Bier bzw. Brownie des Tages):
-- Story-Glücksmodifikator −15 an allen Tischen. Der Modifikator wird in `Rules.luck` addiert und das Ergebnis auf ≥ 0 geklemmt – er neutralisiert Bier-/Brownie-/Auto-Glück, macht Tische aber nicht schlechter als nüchtern.
+- Story-Glücksmodifikator −15 an allen Tischen. Der Modifikator wird in `Rules.luck` addiert, das Ergebnis darf negativ werden – negatives Glück = Pech: mit |x| % wird ein Gewinn einmal neu ausgewürfelt (kann wieder gewinnen; Roulette-Zahlen wie beim Glück ausgenommen, Einsatzdeckel gilt genauso; `Rules.pech`). Bier-/Brownie-/Auto-Glück rechnen dagegen an. Blackjack und Igor bleiben unberührt.
 - Minispiele schwerer: Spüler-Trefferzone −30 %, Taxi-Bremse reagiert 150 ms verzögert, Postbote-Zeit −25 %. Umsetzung über einen Story-Job-Modifikator, den die drei Spiele abfragen (`Story.jobMod()` → `{ spuelerZone: 0.7, taxiBrakeDelay: 150, postTime: 0.75 }`, Standard `{}`).
 - Schicht-Jobs zahlen −50 % („Du hast die Gläser fallen lassen").
 - Casino Royal verweigert den Einlass (Abschnitt 7).

@@ -1153,15 +1153,17 @@ const Rules = {
     if (s.beerTimer > 0) l += Rules.BEER_LUCK[Math.min(s.beers, Rules.BEER_LUCK.length - 1)] * mods.beerLuckMult;
     if (s.brownieTimer > 0) l += Rules.BROWNIE_LUCK * mods.brownieLuckMult;
     l += Rules.gear(s).luck;
-    if (s.story && s.story.luckMod) l += s.story.luckMod; // Story-Modifikator (z. B. Zitter-Tag), kürzt höchstens auf 0
-    return Math.max(0, l);
+    if (s.story && s.story.luckMod) l += s.story.luckMod; // Story-Modifikator (z. B. Zitter-Tag); negativ = Pech
+    return l;
   },
-  /* Glück ist ein Trinkgeld, keine Geldmaschine: voll bis LUCK_CAP, darüber im Verhältnis kleiner */
+  /* Glück ist ein Trinkgeld, keine Geldmaschine: voll bis LUCK_CAP, darüber im Verhältnis kleiner (Pech genauso) */
   effectiveLuck(luck, bet) {
     if (!luck) return 0;
     if (!bet || bet <= Rules.LUCK_CAP) return luck;
     return luck * Rules.LUCK_CAP / bet;
   },
+  /* Pech (negatives Glück): mit |luck| % wird ein Gewinn einmal neu ausgewürfelt – ein rng-Aufruf, nur wenn luck < 0 */
+  pech(luck, rng) { return luck < 0 && rng() * 100 < -luck; },
   bankRateFor(s, mods = Rules.NEUTRAL_MODS) { return Math.max(0.01, Rules.gear(s).bankRate + mods.bankRateAdd); },
   bankLimitFor(s, mods = Rules.NEUTRAL_MODS) { return Math.max(500, Rules.gear(s).bankLimit + mods.bankLimitAdd); },
   bankInterest(debt, s, mods = Rules.NEUTRAL_MODS) {
@@ -1210,8 +1212,13 @@ const Rules = {
     return 0;
   },
   /* Glück hilft bei Farben und Gerade/Ungerade – nie bei Zahlen (der Kessel kennt keine Freunde).
-     Croupier-Auge kann die übliche Glückszahl ausschließen; dann die erste freie Zahl der Art. */
+     Croupier-Auge kann die übliche Glückszahl ausschließen; dann die erste freie Zahl der Art.
+     Pech (luck < 0): ein gewinnender Außenfeld-Chip wird mit |luck| % einmal neu ausgewürfelt. */
   rouletteLuckOverride(type, chosen, rolled, luck, rng, excluded = []) {
+    if (luck < 0) {
+      if (type !== 'number' && Rules.roulettePayout(type, chosen, rolled, 1) > 0 && Rules.pech(luck, rng)) return Rules.rouletteRoll(rng, excluded);
+      return rolled;
+    }
     const r = rng() * 100;
     if (r < luck && rolled !== 0) {
       const firstFree = (fallback, list) => (!excluded.includes(fallback) ? fallback : list.find((n) => !excluded.includes(n)));
@@ -1256,8 +1263,9 @@ const Rules = {
   /* ---- Slots ---- */
   SYMBOLS: ['🍒', '🍋', '🍇', '🔔', '💎', '7️⃣'],
   slotRoll(rng) { return [0, 1, 2].map(() => Rules.SYMBOLS[Math.floor(rng() * Rules.SYMBOLS.length)]); },
-  /* Glück erzwingt höchstens ein Paar – Jackpots bleiben Glückssache */
+  /* Glück erzwingt höchstens ein Paar – Jackpots bleiben Glückssache; Pech würfelt einen Gewinn einmal neu */
   slotLuckOverride(res, luck, rng) {
+    if (luck < 0) return Rules.slotMultiplier(...res) > 0 && Rules.pech(luck, rng) ? Rules.slotRoll(rng) : res;
     const [a, b, c] = res;
     if (rng() * 100 < luck) return [a, a, c];
     return [a, b, c];
@@ -1278,7 +1286,7 @@ const Rules = {
   ],
   horseStep(isSelected, luck, rng, handicap = 1) {
     let step = rng() * 3 + 1;
-    if (isSelected && luck > 0) step += luck * 0.001; // pro Tick, summiert sich über das ganze Rennen
+    if (isSelected && luck !== 0) step = Math.max(0.2, step + luck * 0.001); // pro Tick, summiert sich über das ganze Rennen; Pech bremst
     return step * 1.5 * handicap;
   },
   horseDelta(won, bet, mods = Rules.NEUTRAL_MODS) { return won ? Math.round(bet * mods.horsePayout) : -bet; },
@@ -1954,11 +1962,12 @@ const UI = {
     const s = State.s;
     const mods = Perks.mods();
     const luck = Rules.luck(s, mods);
-    const segs = luck >= 60 ? 5 : luck >= 40 ? 4 : luck >= 20 ? 3 : luck >= 15 ? 2 : luck >= 10 ? 1 : 0;
+    const segs = luck >= 60 ? 5 : luck >= 40 ? 4 : luck >= 20 ? 3 : luck >= 15 ? 2 : luck >= 10 ? 1 : 0; // Pech (< 0): keine Segmente, nur Vorzeichen
+    const luckTxt = (luck < 0 ? '−' : '+') + Math.abs(luck);
     const luckEl = qs('#luck');
-    luckEl.title = `Glück +${luck} %`;
+    luckEl.title = `Glück ${luckTxt} %`;
     luckEl.innerHTML = '';
-    luckEl.append('🍀', ...[0, 1, 2, 3, 4].map((i) => h('span', { class: 'seg' + (i < segs ? ' on' : '') })), h('span', { class: 'luck-val' }, `+${luck}%`));
+    luckEl.append('🍀', ...[0, 1, 2, 3, 4].map((i) => h('span', { class: 'seg' + (i < segs ? ' on' : '') })), h('span', { class: 'luck-val' }, `${luckTxt}%`));
     const notes = qs('#notes');
     notes.innerHTML = '';
     if (s.isHeartbroken) notes.append(h('span', { class: 'note pink' }, `💔 Liebeskummer · ${s.beers}/2 🍺`));
@@ -3172,7 +3181,7 @@ const Craps = {
       SFX.loop('reelSpin', 100);
       let dice = RoyalRules.crapsRoll(Math.random);
       const mods = Perks.mods();
-      dice = RoyalRules.crapsLuckOverride(dice, point, bets.pass > 0, Rules.effectiveLuck(Rules.luck(State.s, mods), risk), Math.random);
+      dice = RoyalRules.crapsLuckOverride(dice, point, bets.pass > 0, Rules.effectiveLuck(Rules.luck(State.s, mods), risk), Math.random, bets.field > 0);
       await wait(matchMedia('(prefers-reduced-motion: reduce)').matches ? 150 : 900);
       SFX.stop('reelSpin');
       const r = RoyalRules.crapsSettle(bets, point, dice);
@@ -4999,8 +5008,10 @@ const RoyalRules = {
     g[reel] = dir > 0 ? [c[1], c[2], c[0]] : [c[2], c[0], c[1]];
     return g;
   },
-  /* Glück: gewinnt keine Linie, wird die Walze/Richtung gewählt, deren Ein-Schritt-Verschiebung am meisten zahlt */
+  /* Glück: gewinnt keine Linie, wird die Walze/Richtung gewählt, deren Ein-Schritt-Verschiebung am meisten zahlt.
+     Pech: ein gewinnendes Gitter wird mit |luck| % einmal neu gewürfelt. */
   megaLuckOverride(grid, luck, rng) {
+    if (luck < 0) return RoyalRules.megaLineWins(grid).length && Rules.pech(luck, rng) ? RoyalRules.megaRoll(rng) : grid;
     if (RoyalRules.megaLineWins(grid).length) return grid;
     if (!(rng() * 100 < luck)) return grid;
     let best = null, bestPay = 0;
@@ -5044,8 +5055,14 @@ const RoyalRules = {
     }
     return { delta, pass, field, point: newPoint, sum };
   },
-  /* Glück: ein verlierender Pass-Wurf (7 in der Punktphase, 2/3/12 im Come-out) wird um ±1 auf einem Würfel verschoben */
-  crapsLuckOverride(dice, point, hasPass, luck, rng) {
+  /* Glück: ein verlierender Pass-Wurf (7 in der Punktphase, 2/3/12 im Come-out) wird um ±1 auf einem Würfel verschoben.
+     Pech: ein gewinnender Wurf (Pass oder Field) wird mit |luck| % einmal neu gewürfelt. */
+  crapsLuckOverride(dice, point, hasPass, luck, rng, hasField = false) {
+    if (luck < 0) {
+      const s = dice[0] + dice[1];
+      const wins = (hasPass && RoyalRules.crapsPass(point, s).result === 'win') || (hasField && RoyalRules.crapsField(s) > 0);
+      return wins && Rules.pech(luck, rng) ? RoyalRules.crapsRoll(rng) : dice;
+    }
     if (!hasPass) return dice;
     const losing = (d) => { const s = d[0] + d[1]; return point != null ? s === 7 : (s === 2 || s === 3 || s === 12); };
     if (!losing(dice) || !(rng() * 100 < luck)) return dice;
@@ -5063,8 +5080,14 @@ const RoyalRules = {
   wheelSpin(rng) { return Math.floor(rng() * RoyalRules.WHEEL.SEGMENTS.length); },
   wheelPayout(index, bet) { return Math.round(bet * RoyalRules.WHEEL.SEGMENTS[index]); },
   wheelDelta(index, bet) { return RoyalRules.wheelPayout(index, bet) - bet; },
+  /* Glück: Bankrott rückt auf das nächste Nicht-Bankrott-Segment; Pech: ein Gewinn rückt auf das nächste Bankrott-Segment */
   wheelLuckOverride(index, luck, rng) {
     const S = RoyalRules.WHEEL.SEGMENTS;
+    if (luck < 0) {
+      if (S[index] === 0 || !Rules.pech(luck, rng)) return index;
+      for (let k = 1; k <= 2; k++) { const j = (index + k) % S.length; if (S[j] === 0) return j; }
+      return index;
+    }
     if (S[index] !== 0 || !(rng() * 100 < luck)) return index;
     for (let k = 1; k <= 2; k++) { const j = (index + k) % S.length; if (S[j] !== 0) return j; }
     return index;
@@ -6552,11 +6575,22 @@ T.test('luck: Brownie +40, mit 3 Bier 60', () => {
   T.eq(Rules.luck(base({ brownieTimer: 1 })), 40);
   T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, brownieTimer: 1 })), 60);
 });
-T.test('Rules.luck: Story-Modifikator, nie unter 0', () => {
+T.test('Rules.luck: Story-Modifikator, darf unter 0 fallen', () => {
   T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, story: { luckMod: -15 } })), 5);
-  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2, story: { luckMod: -15 } })), 0);
+  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2, story: { luckMod: -15 } })), -5);
   T.eq(Rules.luck(base({ story: { luckMod: 10 } })), 10);
   T.eq(Rules.luck(base({ story: {} })), 0);
+});
+T.test('luck: Story-Modifikator kann negativ werden (Pech)', () => {
+  T.eq(Rules.luck(base({ story: { luckMod: -15 } })), -15);
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, story: { luckMod: -15 } })), 5);
+  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2, story: { luckMod: -15 } })), -5);
+});
+T.test('effectiveLuck: Pech wird wie Glück gedeckelt', () => { T.eq(Rules.effectiveLuck(-60, 200), -30); T.eq(Rules.effectiveLuck(-15, 50), -15); });
+T.test('pech: nur bei negativem Glück, Wahrscheinlichkeit |luck| %', () => {
+  let calls = 0; const counting = () => { calls++; return 0; };
+  T.eq(Rules.pech(20, counting), false); T.eq(Rules.pech(0, counting), false); T.eq(calls, 0, 'bei luck ≥ 0 kein rng-Aufruf');
+  T.eq(Rules.pech(-15, seq(0.14)), true); T.eq(Rules.pech(-15, seq(0.15)), false); T.eq(Rules.pech(-100, seq(0.999)), true);
 });
 T.test('bankInterest: 8 % gerundet', () => {
   T.eq(Rules.bankInterest(0), 0);
@@ -6638,6 +6672,14 @@ T.test('rouletteLuckOverride: meidet ausgeschlossene Zahlen (Croupier-Auge)', ()
   T.eq(Rules.rouletteLuckOverride('black', null, 20, 40, seq(0.1), [8, 2, 4, 6]), 10, 'erste freie Schwarz-Zahl');
   T.eq(Rules.rouletteLuckOverride('red', null, 20, 40, seq(0.1), []), 7, 'ohne Ausschluss unverändert');
 });
+T.test('rouletteLuckOverride: Pech würfelt einen Gewinn neu, Zahlen nie', () => {
+  T.eq(Rules.rouletteLuckOverride('red', null, 7, -100, seq(0, 0.5)), 18, 'Rot gewinnt → neu gewürfelt: floor(0.5·37)');
+  T.eq(Rules.rouletteLuckOverride('red', null, 8, -100, seq(0, 0.5)), 8, 'Schwarz verliert → bleibt');
+  T.eq(Rules.rouletteLuckOverride('red', null, 7, -15, seq(0.15, 0.5)), 7, 'rng 15 ≥ |luck| 15 → bleibt');
+  T.eq(Rules.rouletteLuckOverride('number', 7, 7, -100, seq(0, 0.5)), 7, 'Zahlen nie neu gewürfelt');
+  T.eq(Rules.rouletteLuckOverride('red', null, 7, 0, seq(0, 0.5)), 7, 'luck 0 unverändert');
+  T.eq(Rules.rouletteLuckOverride('red', null, 7, -100, seq(0, 0.5, 0.6), [18]), 22, 'Neuwurf meidet Croupier-Auge: 18 ausgeschlossen → floor(0.6·37)');
+});
 T.test('roulettePayout: Farben 1:1, Null verliert', () => {
   T.eq(Rules.roulettePayout('red', null, 7, 10), 10);
   T.eq(Rules.roulettePayout('red', null, 8, 10), -10);
@@ -6668,6 +6710,14 @@ T.test('slotLuckOverride: kein Glück', () => {
   T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.5)), ['🍒', '🍋', '🍇']);
   T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 0, seq(0)), ['🍒', '🍋', '🍇']);
 });
+T.test('slotLuckOverride: Pech würfelt einen Gewinn neu, Niete bleibt', () => {
+  T.eq(Rules.slotLuckOverride(['🍒', '🍒', '🔔'], -100, seq(0, 0, 0.5, 0.99)), ['🍒', '🔔', '7️⃣'], 'Paar → slotRoll(seq(0, 0.5, 0.99))');
+  T.eq(Rules.slotLuckOverride(['🍒', '🍒', '🔔'], -15, seq(0.15, 0, 0.5, 0.99)), ['🍒', '🍒', '🔔'], 'rng 15 ≥ |luck| 15 → bleibt');
+  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], -100, seq(0, 0, 0.5, 0.99)), ['🍒', '🍋', '🍇'], 'Niete bleibt');
+  let calls = 0; const counting = () => { calls++; return 0.5; };
+  T.eq(Rules.slotLuckOverride(['🍒', '🍒', '🔔'], 0, counting), ['🍒', '🍒', '🔔'], 'luck 0 unverändert');
+  T.eq(calls, 1, 'luck 0: nur der bisherige eine rng-Aufruf');
+});
 T.test('slotMultiplier', () => {
   T.eq(Rules.slotMultiplier('7️⃣', '7️⃣', '7️⃣'), 40);
   T.eq(Rules.slotMultiplier('💎', '💎', '💎'), 25);
@@ -6692,6 +6742,11 @@ T.test('horseStep: (rng*3+1)*1.5, Glück nur für gewähltes Pferd', () => {
   T.eq(Rules.horseStep(true, 0, seq(0)), 1.5);
   T.eq(Rules.horseStep(true, 40, seq(0)), 1.56);
   T.eq(Rules.horseStep(false, 0, seq(1)), 6);
+});
+T.test('horseStep: Pech bremst nur das gewählte Pferd', () => {
+  near(Rules.horseStep(true, -100, seq(0)), (1 - 0.1) * 1.5, 'gewählt, Pech −100');
+  T.eq(Rules.horseStep(false, -100, seq(0)), 1.5, 'nicht gewählt unverändert');
+  near(Rules.horseStep(true, -100, seq(0), 0.5), (1 - 0.1) * 1.5 * 0.5, 'Handicap multipliziert');
 });
 T.test('horseDelta', () => { T.eq(Rules.horseDelta(true, 10), 30); T.eq(Rules.horseDelta(false, 10), -10); });
 T.test('raceWinner: größte Position gewinnt, nicht der niedrigste Index', () => {
@@ -6952,6 +7007,17 @@ T.test('megaLuckOverride: kein Glück / Pech-Wurf / bester Ein-Schritt-Gewinn / 
   const win = G(['🍒 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒', '🔔 🔔 🔔', '🔔 🔔 🔔']);
   T.eq(RoyalRules.megaLuckOverride(win, 100, seq(0)), win, 'bestehender Gewinn bleibt');
 });
+T.test('megaLuckOverride: Pech würfelt ein gewinnendes Gitter neu, Niete bleibt', () => {
+  const win = G(['🍒 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒', '🔔 🔔 🔔', '🔔 🔔 🔔']);
+  // pech verbraucht den ersten Wert (0), megaRoll die folgenden 15 (alle 0,5) → wie megaRoll(seq(0.5))
+  const o = RoyalRules.megaLuckOverride(win, -100, seq(0, ...Array(15).fill(0.5)));
+  T.ok(JSON.stringify(o) !== JSON.stringify(win), 'Gewinn wurde neu gewürfelt');
+  T.eq(o, RoyalRules.megaRoll(seq(0.5)), 'neuer Wurf aus den Folgewerten');
+  T.eq(RoyalRules.megaLuckOverride(win, -15, seq(0.15, 0.5)), win, 'rng 15 ≥ |luck| 15 → bleibt');
+  const g = G(['🔔 7️⃣ 💎', '7️⃣ BAR 💎', '💎 7️⃣ 🔔', '🔔 7️⃣ BAR', 'BAR 7️⃣ 💎']);
+  T.eq(RoyalRules.megaLuckOverride(g, -100, seq(0, 0.5)), g, 'Niete bleibt');
+  T.eq(RoyalRules.megaLuckOverride(win, 0, seq(0, 0.5)), win, 'luck 0 unverändert');
+});
 T.test('Mega Seven: RTP-Korridor (60.000 Spins, Seed 7)', () => {
   const rng = seeded(7); let paid = 0, ret = 0, free = 0;
   for (let i = 0; i < 60000; i++) {
@@ -7015,6 +7081,15 @@ T.test('crapsLuckOverride: verlierender Wurf wird verschoben, Gewinner nie', () 
   T.eq(RoyalRules.crapsLuckOverride([4, 4], 8, true, 100, seq(0)), [4, 4], 'Gewinner bleibt');
   T.eq(RoyalRules.crapsLuckOverride([6, 6], 6, true, 100, seq(0)), [6, 6], 'neutraler Wurf (12 in Punktphase) bleibt');
 });
+T.test('crapsLuckOverride: Pech würfelt einen Gewinn neu (Pass oder Field), Verlust bleibt', () => {
+  T.eq(RoyalRules.crapsLuckOverride([3, 4], null, true, -100, seq(0, 0.5, 0.17)), [4, 2], 'Natural 7 im Come-out → crapsRoll(seq(0.5, 0.17))');
+  T.eq(RoyalRules.crapsLuckOverride([4, 4], 8, true, -100, seq(0, 0.5, 0.17)), [4, 2], 'Punkt getroffen → neu');
+  T.eq(RoyalRules.crapsLuckOverride([3, 4], null, true, -15, seq(0.15, 0.5, 0.17)), [3, 4], 'rng 15 ≥ |luck| 15 → bleibt');
+  T.eq(RoyalRules.crapsLuckOverride([1, 1], null, true, -100, seq(0, 0.5, 0.17)), [1, 1], 'Craps 2 verliert → bleibt');
+  T.eq(RoyalRules.crapsLuckOverride([6, 6], null, false, -100, seq(0, 0.5, 0.17), true), [4, 2], 'Field-Gewinn 12 ohne Pass → neu');
+  T.eq(RoyalRules.crapsLuckOverride([6, 6], null, false, -100, seq(0, 0.5, 0.17)), [6, 6], 'ohne Pass und Field nichts zu verderben');
+  T.eq(RoyalRules.crapsLuckOverride([3, 4], null, true, 0, seq(0, 0.5, 0.17)), [3, 4], 'luck 0 unverändert');
+});
 
 /* ---- RoyalRules: Glücksrad ---- */
 T.test('WHEEL: 24 Segmente, Verteilung, Erwartungswert 93,75 %', () => {
@@ -7046,6 +7121,15 @@ T.test('wheelLuckOverride: Bankrott rückt auf das nächste Nicht-Bankrott-Segme
   T.ok(S[o] !== 0 && (o === (i0 + 1) % 24 || o === (i0 + 2) % 24), 'nächstes Nicht-Bankrott, 1–2 Schritte weiter');
   T.eq(RoyalRules.wheelLuckOverride(S.indexOf(10), 100, seq(0)), S.indexOf(10), 'Gewinn bleibt');
   T.eq(RoyalRules.wheelLuckOverride(i0, 50, seq(0.999)), i0, 'Glück greift nicht (rng ≥ luck/100)');
+});
+T.test('wheelLuckOverride: Pech rückt einen Gewinn auf das nächste Bankrott-Segment', () => {
+  const S = RoyalRules.WHEEL.SEGMENTS;
+  const i10 = S.indexOf(10), i0 = S.indexOf(0);
+  T.eq(i10, 19); T.eq(S[20], 0);
+  T.eq(RoyalRules.wheelLuckOverride(i10, -100, seq(0)), 20, '×10 (Index 19) → Nachbar 20 ist Bankrott');
+  T.eq(RoyalRules.wheelLuckOverride(i10, -15, seq(0.15)), i10, 'rng 15 ≥ |luck| 15 → bleibt');
+  T.eq(RoyalRules.wheelLuckOverride(i0, -100, seq(0)), i0, 'Bankrott bleibt');
+  T.eq(RoyalRules.wheelLuckOverride(i10, 0, seq(0)), i10, 'luck 0 unverändert');
 });
 
 /* ---- RoyalRules: Eintritt ---- */
@@ -7977,6 +8061,20 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       Story.sleeping = false; Story.finishing = false; Story.lostDay = false;
       UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide(); Story.renderDaybar();
     }
+  });
+  T.test('UI.renderWallet: Pech steht mit Vorzeichen im Glücks-Meter, Segmente bleiben aus', () => {
+    const keep = State.s;
+    try {
+      const k = State.freshStory(STORY_KATER); k.story.luckMod = -15;
+      State.s = k; UI.renderWallet();
+      T.eq(qs('#luck .luck-val').textContent, '−15%');
+      T.eq(qs('#luck').title, 'Glück −15 %');
+      T.eq(qsa('#luck .seg.on').length, 0, 'keine Segmente an');
+      k.story.luckMod = 0; UI.renderWallet();
+      T.eq(qs('#luck .luck-val').textContent, '+0%');
+      k.beers = 3; k.beerTimer = 2; UI.renderWallet();
+      T.eq(qs('#luck .luck-val').textContent, '+20%'); T.eq(qsa('#luck .seg.on').length, 3);
+    } finally { State.s = keep; UI.renderWallet(); }
   });
   T.test('STORY_KATER.goal: Tagesziel rechnet Deckel dazu und den Bücher-Rabatt ab', () => {
     const s = State.freshStory(STORY_KATER);
