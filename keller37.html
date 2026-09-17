@@ -5652,6 +5652,49 @@ const STORY_KATER = {
       { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Fünftausend. Vier Wochen Programm in drei Tagen, ich hab Beziehungen. Ab morgen zittert nichts mehr.' },
       { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Der Wirt schenkt dir nichts mehr ein, ich hab\'s ihm gesagt. Und das Glück im Glas? Gibt\'s nicht mehr. Nüchtern spielt sich anders.' },
     ],
+    /* Filialleiter (Kapitel 1) – keine Wahl, nur Vorahnung */
+    'kater.fil.anruf': [{ bg: 'bank', who: 'krause', mood: 'calm', text: 'Ihre Frau hat angerufen. Wollte die Kontonummer der Filiale wissen – für eine Überraschung, sagt sie. Reizend.' }],
+    'kater.fil.vollmacht': [{ bg: 'bank', who: 'chantal', mood: 'happy', text: 'Ich hol nur die Vollmacht ab, Schatz. Für die Flitterwochen. Herr Krause war so nett, sie gleich zu beglaubigen.' }],
+    'kater.fil.lob': [{ bg: 'bank', who: 'krause', mood: 'happy', text: 'Eine bemerkenswerte Frau. Sie fragt nach Dingen, die sonst niemand fragt. Sie können stolz sein.' }],
+    /* Türsteher (Kapitel 3) */
+    'kater.tuer.chantal': [
+      { bg: 'keller', who: 'chantal', mood: 'calm', text: 'Sie steht in der Schlange. Mit einem anderen. Er trägt meinen Mantel. Sie tut, als würde sie mich nicht kennen. Sie kann das gut.',
+        choices: [{ label: 'Reinlassen', value: 'rein', cls: 'ghost' }, { label: 'Nicht heute', value: 'raus', cls: 'red', effects: [{ flag: 'chantalAbgewiesen' }] }] },
+    ],
+    'kater.tuer.sylvie': [
+      { bg: 'keller', who: 'sylvie', mood: 'calm', text: 'Madame Sylvie, im Keller. Sie sieht sich um wie jemand, der Quadratmeter zählt. „Ihr Wirt will verkaufen. Ich kaufe gern."' },
+      { bg: 'keller', who: 'sylvie', mood: 'calm', text: '„Sie wollen auch? Dann beeilen Sie sich. Ich habe Zeit, Sie haben eine Leber."' },
+    ],
+    'kater.tuer.kevin': [
+      { bg: 'keller', who: 'kevin', mood: 'happy', text: 'Kevin drückt mir fünfzig in die Hand. „Für nichts. Du hast mich nicht gesehen." Ich hab ihn nicht gesehen.' },
+    ],
+    /* Croupier (Kapitel 3, 3 Türsteher-Nächte) */
+    'kater.croup.buecher': [
+      { bg: 'hinterzimmer', who: 'du', mood: 'shock', text: 'Der Wirt hat die Bücher offen liegen lassen. Der Keller macht das Doppelte von dem, was er sagt. Vierzigtausend ist ein Freundschaftspreis – oder ein Test.' },
+    ],
+    'kater.croup.wirt': [
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Du gibst gut Karten. Ruhige Hände heute. Wie viele waren\'s? Drei? Merkt man. Merken die Gäste auch.' },
+    ],
+    'kater.croup.hand': [
+      { bg: 'keller', who: 'igor', mood: 'calm', text: 'Igor legt einen Chip auf den Tisch. „Für dich. Nicht setzen. Halten." Ich halte ihn. Er ist warm.' },
+    ],
+    /* Eintreiber (Kapitel 4, nur wenn Vito noch da ist) */
+    'kater.vito.zurueck': [
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Ich bin kein Unmensch. Aber du trinkst. Trinkende Männer haben Listen im Kopf, die sie vergessen. Ich habe eine auf Papier. Willst du sie abarbeiten?' },
+    ],
+    'kater.eintr.vito': [
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: '„Deine Frau steht auch drauf. Zeile vier." Er lässt mich die Zeile lesen. Ich lese sie zweimal.' },
+    ],
+    'kater.eintr.kiosk': [
+      { bg: 'gasse', who: 'du', mood: 'calm', text: 'Der Kioskbesitzer zahlt, bevor ich die Hand hebe. Hundert extra „für den Weg". Ich nehme sie. Meine Hände zittern nicht, wenn sie Geld halten.' },
+    ],
+    'kater.igor.partner': [
+      { bg: 'bar', who: 'igor', mood: 'calm', text: 'Igor sitzt neben mir. „Der Wirt verkauft. Ich bleibe an der Tür, wer auch kauft. Kauf du. Ich mag deine Hände, wenn sie ruhig sind."' },
+    ],
+    /* Casino Royal */
+    'kater.sylvie': [
+      { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Gast des Hauses. Ich weiß, was Sie vorhaben. Vierzigtausend für einen Keller – ich zahle mehr, wenn Sie es nicht schaffen.' },
+    ],
     'kater.k4': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
     'kater.royal.zitter': [
       { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Der Türsteher hebt die Hand. Sie zittern. Wir haben eine Hausordnung – kommen Sie wieder, wenn die Hände still sind.' },
@@ -5700,10 +5743,24 @@ const STORY_KATER = {
     /* ---- Therapie ---- */
     { id: 'therapieFrei', when: { all: [{ day: { gte: 11 } }, { flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }] }, once: true, at: 'morning', effects: [{ enable: ['therapy'] }] },
     { id: 'therapie', when: { flag: 'abgestuerzt' }, at: 'buy:therapy', scene: 'kater.therapie', effects: [{ flag: 'nuechtern' }, { disable: ['beer', 'brownie', 'therapy'] }, { unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }, { price: { beer: 50 } }] },
+    /* ---- Kapitel 4: Eintreiber nur, wenn Vito noch da ist ---- */
+    { id: 'eintreiberJob', when: { all: [{ day: { gte: 21 } }, { flag: 'abgestuerzt' }, { not: { prevEnding: { story: 'schuld', id: 'sturz' } } }] }, once: true, at: 'morning', scene: 'kater.vito.zurueck', effects: [{ unlock: { jobs: ['eintreiber'] } }] },
+    { id: 'igorPartner', when: { all: [{ day: { gte: 21 } }, { flag: 'abgestuerzt' }, { prevEnding: { story: 'schuld', id: 'sturz' } }] }, once: true, at: 'morning', scene: 'kater.igor.partner' },
+    /* ---- Casino Royal ---- */
+    { id: 'sylvieGast', when: { flag: 'abgestuerzt' }, once: true, at: 'royal:guest', scene: 'kater.sylvie' },
   ],
   actions: [ /* Task 7 */ ],
-  jobScenes: { /* Task 6 */ },
-  jobEffects: { /* Task 6 */ },
+  jobScenes: {
+    filialleiter: ['kater.fil.anruf', 'kater.fil.vollmacht', 'kater.fil.lob'],
+    tuersteher: ['kater.tuer.chantal', 'kater.tuer.sylvie', 'kater.tuer.kevin'],
+    croupier: ['kater.croup.buecher', 'kater.croup.wirt', 'kater.croup.hand'],
+    eintreiber: ['kater.eintr.vito', 'kater.eintr.kiosk'],
+  },
+  jobEffects: {
+    'kater.croup.buecher': [{ flag: 'buecher' }],
+    'kater.tuer.kevin': [{ balance: 50 }],
+    'kater.eintr.kiosk': [{ balance: 100 }],
+  },
   endings: [
     { id: 'bett', title: 'Das Bett beim Doc', priority: 60, immediate: true, when: { var: 'leber', lte: 0 }, scene: 'kater.ende.bett' },
     { id: 'wirt', title: 'Der Wirt', priority: 50, immediate: true, when: { flag: 'gekauft' }, scene: 'kater.ende.wirt' },
@@ -6851,6 +6908,26 @@ T.test('STORY_KATER: Kapitel-3-Morgen gibt Therapie frei', () => {
   const s = katerDay(11);
   T.ok(runHook(s, 'morning').includes('therapieFrei'));
   T.eq(StoryRules.purchaseAllowed(s, 'therapy'), true);
+});
+T.test('STORY_KATER: Schicht-Szenen vorhanden, Eintreiber nur ohne Sturz', () => {
+  T.eq(STORY_KATER.jobScenes.filialleiter.length, 3);
+  T.eq(STORY_KATER.jobScenes.tuersteher.length, 3);
+  T.eq(STORY_KATER.jobScenes.croupier.length, 3);
+  T.eq(STORY_KATER.jobScenes.eintreiber.length, 2);
+  const a = katerDay(21, {}); T.eq(runHook(a, 'morning').includes('eintreiberJob'), true);
+  T.eq(a.story.unlocked.jobs.includes('eintreiber'), true);
+  const b = katerState({}, { schuld: 'sturz' }); b.story.day = 21; b.story.flags.abgestuerzt = true;
+  T.eq(runHook(b, 'morning').includes('eintreiberJob'), false);
+  T.eq(runHook(b, 'morning').includes('igorPartner') || b.story.seen.includes('igorPartner'), true, 'nach Sturz stattdessen Igor-Szene');
+});
+T.test('STORY_KATER: Croupier sieht die Bücher → Rabatt-Flag', () => {
+  const s = katerDay(15);
+  T.eq(STORY_KATER.jobEffects['kater.croup.buecher'], [{ flag: 'buecher' }]);
+});
+T.test('STORY_KATER: Sylvie nach dem ersten großen Gewinn', () => {
+  const s = katerDay(15);
+  T.eq(runHook(s, 'royal:guest'), ['sylvieGast']);
+  T.eq(runHook(s, 'royal:guest'), [], 'einmalig');
 });
 
 /* ---- Gear: Katalog, Boni, Kauf ---- */
