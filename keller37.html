@@ -565,6 +565,10 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .insider-list { display: flex; flex-wrap: wrap; gap: 10px; }
 .insider-chip { border: 1px solid rgba(76,201,240,.4); border-radius: 8px; padding: 8px 12px; background: rgba(0,0,0,.3); font-family: var(--font-mono); font-size: .8rem; max-width: 280px; }
 .insider-chip b { display: block; color: var(--neon-blue); }
+.rcell.excluded { opacity: .28; filter: grayscale(1); pointer-events: none; }
+.insider-hint { font-family: var(--font-mono); font-size: .75rem; color: var(--neon-blue); }
+.runner.lame .horse { filter: grayscale(.8); opacity: .7; }
+.runner .lame-tag { position: absolute; left: 6px; top: -10px; font-family: var(--font-mono); font-size: .7rem; color: #ff8a80; }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
@@ -788,6 +792,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
           <button class="btn ghost sm" id="btnClear" disabled>Tisch leeren</button>
           <button class="btn ghost sm" id="btnRepeat" disabled>Wie zuletzt</button>
         </div>
+        <div class="insider-hint hidden" id="rouletteInsider"></div>
         <div class="bet-bar">
           <span class="dim">Chip:</span>
           <div class="bet-field"><button data-step="-5">−</button><input type="number" id="rouletteBet" value="10" min="1"><button data-step="5">+</button></div>
@@ -806,6 +811,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
   <div class="panel horses-panel">
     <div class="commentary" id="commentary">Wähle dein Pferd und setz.</div>
     <div class="track" id="track"><div class="finish"></div><div class="photo-flash" id="photoFlash"></div></div>
+    <div class="insider-hint hidden" id="horseInsider"></div>
     <div class="horse-picks" id="horsePicks"></div>
     <div class="status" id="horseStatus"></div>
     <div class="bet-bar">
@@ -1330,6 +1336,7 @@ Object.assign(Rules, {
   MAX_SKILLS: 3,
   RESPEC_PRICE: 2000,
   INSIDER_CAP: 250,
+  HORSE_LAME_STEP: 0.85,
   NEUTRAL_MODS: {
     beerLuckMult: 1, brownieLuckMult: 1, maxBeers: 3, brownieSpins: 1,
     bjNatural: 1, bjPushBonus: 0, bjHotDeck: 1,
@@ -2983,8 +2990,17 @@ const Roulette = {
     }
     t.append(cell('Rot', 'out red', 'red', null, 'grid-column: 2 / span 3'), cell('Schwarz', 'out black', 'black', null),
       cell('Gerade', 'out', 'even', null), cell('Ungerade', 'out', 'odd', null));
+    this.applyExcluded();
   },
-  drawWheel(highlight = -1) {
+  excluded() { return Perks.mods().rouletteExclude > 0 ? (State.s.insiderExcluded || []) : []; },
+  applyExcluded() {
+    const ex = this.excluded();
+    qsa('.rcell', this.root).forEach((c) => { const n = c.dataset.key.startsWith('n') ? parseInt(c.dataset.key.slice(1), 10) : null; c.classList.toggle('excluded', n !== null && ex.includes(n)); });
+    const hint = qs('#rouletteInsider', this.root);
+    hint.classList.toggle('hidden', !ex.length);
+    hint.textContent = ex.length ? `👁️ Croupier-Auge: ${ex.length} Zahlen fallen nicht (wirkt bis ${UI.fmt(Rules.INSIDER_CAP)} Gesamteinsatz)` : '';
+  },
+  drawWheel(highlight = -1, excluded = this.excluded()) {
     const c = qs('#wheelCanvas', this.root);
     if (!c) return;
     const ctx = c.getContext('2d');
@@ -2998,7 +3014,7 @@ const Roulette = {
       const center = -Math.PI / 2 + i * slice;
       const num = Rules.WHEEL[i];
       ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, center - slice / 2, center + slice / 2); ctx.closePath();
-      ctx.fillStyle = i === highlight ? '#e8c65a' : num === 0 ? '#1f7a4d' : Rules.isRed(num) ? '#b3261e' : '#1c1c1c';
+      ctx.fillStyle = i === highlight ? '#e8c65a' : excluded.includes(num) ? '#3a3a3a' : num === 0 ? '#1f7a4d' : Rules.isRed(num) ? '#b3261e' : '#1c1c1c';
       ctx.fill();
       ctx.strokeStyle = 'rgba(201,162,39,.5)'; ctx.lineWidth = 1; ctx.stroke();
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(center); ctx.translate(r - 16, 0); ctx.rotate(Math.PI / 2);
@@ -3067,6 +3083,7 @@ const Roulette = {
   },
   place(type, n, cell) {
     if (this.spinning || !this.root) return;
+    if (type === 'number' && this.excluded().includes(n)) return;
     const amount = Game.readBet('rouletteBet');
     const chk = Rules.checkSpin(State.s, this.total() + amount);
     if (!chk.ok) {
@@ -3123,9 +3140,12 @@ const Roulette = {
     try {
       qs('#rtable', this.root).classList.add('locked');
       qsa('.chip.placed', this.root).forEach((c) => c.remove());
-      qs('#rouletteStatus', this.root).textContent = 'Kugel rollt…';
+      const mods = Perks.mods();
+      const ex = Rules.effectiveInsider(this.excluded().length > 0, total) ? this.excluded() : [];
+      qs('#rouletteStatus', this.root).textContent = (this.excluded().length && !ex.length)
+        ? 'Über 250 € schaut der Croupier genauer hin – keine Hilfe.' : 'Kugel rollt…';
       qs('#resultNum', this.root).className = 'result-num';
-      let rolled = Rules.rouletteRoll(Math.random);
+      let rolled = Rules.rouletteRoll(Math.random, ex);
       const ti = Rules.rouletteLuckTarget(bets);
       if (ti >= 0) rolled = Rules.rouletteLuckOverride(bets[ti].type, bets[ti].n, rolled, Rules.effectiveLuck(Rules.luck(State.s), bets[ti].amount), Math.random);
       const targetIdx = Rules.WHEEL.indexOf(rolled);
@@ -3139,7 +3159,7 @@ const Roulette = {
       qs('#wheelCanvas', this.root).style.transform = `rotate(${this.wheelDeg}deg)`;
       this.animateBall(4000, gen);
       await wait(4100);
-      const result = Rules.rouletteSettle(bets, rolled);
+      const result = Rules.rouletteSettle(bets, rolled, mods);
       const delta = result.payout - total;
       this.lastBets = bets;
       if (this.gen === gen) this.bets = [];
@@ -3200,7 +3220,7 @@ UI.register('roulette', {
 <script id="game-horses">
 /* ================= PFERDERENNEN ================= */
 const Horses = {
-  root: null, racing: false, loop: null, commentTimer: null, resolveRace: null, gen: 0,
+  root: null, racing: false, loop: null, commentTimer: null, resolveRace: null, gen: 0, loser: null,
   alive(gen) { return !!this.root && this.gen === gen; },
   build() {
     const track = qs('#track', this.root);
@@ -3219,7 +3239,14 @@ const Horses = {
     State.s.selectedHorse = id;
     State.save();
     qsa('.pick', this.root).forEach((p) => p.classList.toggle('on', p.id === `pick-${id}`));
+    this.pickLoser();
     SFX.play('click');
+  },
+  pickLoser() {
+    this.loser = Perks.mods().horseLoserMarked ? Rules.pickLoser(State.s.selectedHorse, Math.random) : null;
+    qsa('.runner', this.root).forEach((r) => { const id = parseInt(r.id.slice(2), 10); const lame = id === this.loser; r.classList.toggle('lame', lame); qsa('.lame-tag', r).forEach((t) => t.remove()); if (lame) r.append(h('span', { class: 'lame-tag' }, '🚫 lahmt')); });
+    const hint = qs('#horseInsider', this.root);
+    if (hint) { hint.classList.toggle('hidden', this.loser === null); hint.textContent = this.loser !== null ? `🐴 Stallbursche: ${Rules.HORSES.find((x) => x.id === this.loser).name} gewinnt heute nicht (wirkt bis ${UI.fmt(Rules.INSIDER_CAP)} Einsatz)` : ''; }
   },
   comment(pos) {
     if (!this.root) return;
@@ -3244,12 +3271,15 @@ const Horses = {
     if (this.racing || !this.root) return;
     const bet = Game.readBet('horseBet');
     if (!Game.beginSpin(bet)) return;
+    const mods = Perks.mods();
+    const marked = Rules.effectiveInsider(mods.horseLoserMarked, bet) ? this.loser : null;
     const run = Game.run;
     const gen = this.gen;
     this.racing = true;
     try {
       qs('#btnRace', this.root).disabled = true;
-      qs('#horseStatus', this.root).textContent = '';
+      qs('#horseStatus', this.root).textContent = (this.loser !== null && marked === null)
+        ? 'Über 250 € hält der Stallbursche den Mund.' : '';
       const track = qs('#track', this.root);
       const goal = track.clientWidth - 65;
       const pos = [0, 0, 0, 0];
@@ -3267,7 +3297,7 @@ const Horses = {
           if (!this.alive(gen)) { clearInterval(this.loop); this.resolveRace = null; resolve(null); return; }
           let win = null;
           Rules.HORSES.forEach((hrs, i) => {
-            pos[i] += Rules.horseStep(hrs.id === selected, luck, Math.random);
+            pos[i] += Rules.horseStep(hrs.id === selected, luck, Math.random, hrs.id === marked ? Rules.HORSE_LAME_STEP : 1);
             runners[i].style.transform = `translateX(${pos[i]}px)`;
             if (tick % 4 === i) this.dust(runners[i], pos[i]);
             if (pos[i] >= goal && !win) win = hrs;
@@ -3280,7 +3310,7 @@ const Horses = {
       SFX.stop('gallop');
       if (!winner) { Game.forfeit(); return; } // Rennen abgebrochen (Screen verlassen) – Einsatz verfällt
       const won = winner.id === selected;
-      const delta = Rules.horseDelta(won, bet);
+      const delta = Rules.horseDelta(won, bet, mods);
       if (this.alive(gen)) {
         const flash = qs('#photoFlash', this.root);
         flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on');
@@ -3292,12 +3322,13 @@ const Horses = {
         setTimeout(() => { if (wr.isConnected) { wr.style.transition = ''; wr.classList.remove('running'); } }, 800);
         qs('#commentary', this.root).textContent = `${winner.name} gewinnt!`;
         qs('#horseStatus', this.root).innerHTML = won
-          ? `<span class="win">${winner.name} siegt · +${UI.fmt(bet * 3)}</span>`
+          ? `<span class="win">${winner.name} siegt · +${UI.fmt(delta)}</span>`
           : `<span class="loss">${winner.name} siegt · −${UI.fmt(bet)}</span>`;
         qs('#btnRace', this.root).disabled = false;
       }
       await Bus.emit('horses:result', { winner: winner.id, selected, bet });
       await Game.settle(delta, { from: this.alive(gen) ? qs('#track', this.root) : null, game: 'horses', bet, run });
+      if (this.alive(gen)) this.pickLoser();
     } finally {
       if (this.gen === gen) this.racing = false;
     }
@@ -3310,6 +3341,7 @@ UI.register('horses', {
     Horses.gen++;
     Horses.root = root;
     Horses.build();
+    Horses.pickLoser();
     Game.bindBet(root, 'horseBet');
     qs('#btnRace', root).addEventListener('click', () => Horses.start());
   },
