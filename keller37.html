@@ -2837,7 +2837,7 @@ const Roulette = {
     document.body.append(c);
     void c.offsetWidth;
     c.style.transform = `translate(${to.left + to.width / 2 - from.left - 23}px, ${to.top + to.height / 2 - from.top - 23}px)`;
-    setTimeout(() => { c.remove(); if (this.alive(gen)) cell.append(h('div', { class: 'chip placed' }, label)); }, 420);
+    setTimeout(() => { c.remove(); if (this.alive(gen) && cell.querySelector('.chip-stack')) cell.append(h('div', { class: 'chip placed' }, label)); }, 420);
   },
   animateBall(dur, gen) {
     const ball = qs('#ball', this.root);
@@ -2874,6 +2874,10 @@ const Roulette = {
       const won = result ? result.hits.some((x) => this.key(x.bet.type, x.bet.n) === k && x.win) : null;
       cell.append(h('div', { class: 'chip-stack' + (won === true ? ' won' : won === false ? ' lost' : ''), 'data-key': k }, String(sum)));
     }
+    this.renderBar();
+  },
+  renderBar() {
+    if (!this.root) return;
     qs('#tableTotal', this.root).textContent = `Auf dem Tisch: ${UI.fmt(this.total())} · ${this.bets.length} Chip${this.bets.length === 1 ? '' : 's'}`;
     const idle = !this.spinning;
     qs('#btnSpin', this.root).disabled = !idle || this.bets.length === 0;
@@ -2897,12 +2901,27 @@ const Roulette = {
     this.renderTable();
     qs('#rouletteStatus', this.root).textContent = 'Chip liegt. Weitere legen oder drehen.';
   },
-  undo() { if (this.spinning || !this.bets.length) return; this.bets.pop(); SFX.play('click'); this.renderTable(); },
-  clear() { if (this.spinning || !this.bets.length) return; this.bets = []; SFX.play('click'); this.renderTable(); },
+  undo() {
+    if (this.spinning || !this.bets.length) return;
+    const popped = this.bets.pop();
+    const cell = this.cellFor(popped.type, popped.n);
+    if (cell) { const tokens = qsa('.chip.placed', cell); if (tokens.length) tokens[tokens.length - 1].remove(); }
+    SFX.play('click');
+    this.renderTable();
+  },
+  clear() {
+    if (this.spinning || !this.bets.length) return;
+    this.bets = [];
+    qsa('.chip.placed', this.root).forEach((c) => c.remove());
+    SFX.play('click');
+    this.renderTable();
+  },
   repeat() {
     if (this.spinning || !this.lastBets.length) return;
     if (!Rules.checkSpin(State.s, Rules.rouletteTotal(this.lastBets)).ok) return;
+    qsa('.chip.placed', this.root).forEach((c) => c.remove());
     this.bets = this.lastBets.map((b) => Object.assign({}, b));
+    for (const b of this.bets) { const cell = this.cellFor(b.type, b.n); if (cell) cell.append(h('div', { class: 'chip placed' }, String(b.amount))); }
     SFX.play('chip');
     this.renderTable();
   },
@@ -2959,7 +2978,7 @@ const Roulette = {
       if (this.gen === gen) {
         this.spinning = false;
         qs('#rtable', this.root).classList.remove('locked');
-        this.renderTable();
+        this.renderBar();
       }
     }
   },
