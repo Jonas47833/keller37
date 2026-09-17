@@ -4903,11 +4903,18 @@ const StoryRules = {
     if ('show' in eff) out.show = eff.show;
     return out;
   },
-  requirementMet(story, storyRuns) {
-    if (!story.requires) return true;
+  /* null = spielbar; 'requires' = Vorgänger nie beendet; 'prevEnding' = letztes Vorgänger-Ende nicht in prevEndings */
+  lockReasonFor(story, storyRuns) {
+    if (!story.requires) return null;
     const run = storyRuns[story.requires];
-    return !!(run && run.endings && run.endings.length);
+    if (!(run && run.endings && run.endings.length)) return 'requires';
+    if (story.prevEndings) {
+      const last = run.last || run.endings[run.endings.length - 1];
+      if (!story.prevEndings.includes(last)) return 'prevEnding';
+    }
+    return null;
   },
+  requirementMet(story, storyRuns) { return StoryRules.lockReasonFor(story, storyRuns) === null; },
   pickStory(stories, storyRuns, rng) {
     const cands = stories.filter((st) => !st.dev && StoryRules.requirementMet(st, storyRuns));
     if (!cands.length) throw new Error('Keine wählbare Story');
@@ -4984,7 +4991,7 @@ const StoryRules = {
   },
   jobMod(s) { return (s.story && s.story.jobMod) || {}; },
   shiftPay(base, bonus, jobMod) { return Math.round((base + bonus) * (jobMod.shiftPay != null ? jobMod.shiftPay : 1)); },
-  validate(story, sceneIds, jobIds, storyIds = null) {
+  validate(story, sceneIds, jobIds, storyIds = null, stories = {}) {
     const errs = [];
     const scene = (id, where) => { if (id && !sceneIds.includes(id)) errs.push(`${story.id}: Szene "${id}" fehlt (${where})`); };
     const jobs = (list, where) => (list || []).forEach((j) => { if (!jobIds.includes(j)) errs.push(`${story.id}: Job "${j}" unbekannt (${where})`); });
@@ -5009,6 +5016,10 @@ const StoryRules = {
     for (const k of Object.keys(story.prices || {})) if (!(k in Rules.PRICES)) errs.push(`${story.id}: Preis "${k}" unbekannt`);
     for (const [screen, list] of Object.entries(story.gates || {})) list.forEach((g, i) => { scene(g.scene, `gate ${screen}[${i}]`); if (!g.when || !g.text) errs.push(`${story.id}: Gate ${screen}[${i}] braucht when und text`); });
     for (const [end] of Object.entries(story.trophies || {})) if (!(story.endings || []).some((e) => e.id === end)) errs.push(`${story.id}: Trophäe für unbekanntes Ende "${end}"`);
+    if (story.prevEndings && stories[story.requires]) {
+      const ids = (stories[story.requires].endings || []).map((e) => e.id);
+      for (const p of story.prevEndings) if (!ids.includes(p)) errs.push(`${story.id}: prevEnding "${p}" ist kein Ende von ${story.requires}`);
+    }
     return errs;
   },
   freshStoryPart(story, storyRuns = {}) {
@@ -5217,7 +5228,7 @@ const Title = {
       }
       const locked = typeof Stories !== 'undefined' ? Stories.locked() : [];
       const lockEl = qs('#titleStoryLock', root);
-      if (locked.length) { lockEl.textContent = locked.map((l) => `🔒 ${l.title} – erst „${l.requires}“ beenden`).join(' · '); lockEl.classList.remove('hidden'); }
+      if (locked.length) { lockEl.textContent = locked.map((l) => l.text).join(' · '); lockEl.classList.remove('hidden'); }
       qs('#titleMute', root).textContent = State.meta.muted ? '🔇' : '🔊';
       qs('#titleMute', root).addEventListener('click', (e) => { SFX.setMuted(!State.meta.muted); e.currentTarget.textContent = State.meta.muted ? '🔇' : '🔊'; });
       qs('#titleTrophiesBtn', root).addEventListener('click', () => {
@@ -5287,7 +5298,12 @@ const Stories = {
     try { const id = StoryRules.pickStory(this.list(), State.meta.storyRuns, Math.random); const st = this.get(id); return { id, title: st.title }; } catch (e) { return null; }
   },
   locked() {
-    return this.list().filter((st) => !StoryRules.requirementMet(st, State.meta.storyRuns)).map((st) => ({ id: st.id, title: st.title, requires: this.get(st.requires) ? this.get(st.requires).title : st.requires }));
+    return this.list().filter((st) => !StoryRules.requirementMet(st, State.meta.storyRuns)).map((st) => {
+      const why = StoryRules.lockReasonFor(st, State.meta.storyRuns);
+      const reqTitle = this.get(st.requires) ? this.get(st.requires).title : st.requires;
+      const text = why === 'prevEnding' && st.lockText ? `🔒 ${st.title} – ${st.lockText}` : `🔒 ${st.title} – erst „${reqTitle}“ beenden`;
+      return { id: st.id, title: st.title, requires: reqTitle, text };
+    });
   },
   runInfo() {
     const p = State.peekStory();
@@ -5300,7 +5316,7 @@ const Stories = {
     const jobIds = typeof Jobs !== 'undefined' ? Object.keys(Jobs.POOL) : null;
     const errs = [];
     const storyIds = Object.keys(this.all);
-    for (const st of Object.values(this.all)) errs.push(...StoryRules.validate(st, sceneIds, jobIds || (st.start.unlocked.jobs), storyIds));
+    for (const st of Object.values(this.all)) errs.push(...StoryRules.validate(st, sceneIds, jobIds || (st.start.unlocked.jobs), storyIds, this.all));
     if (errs.length) { errs.forEach((e) => console.error('[story]', e)); UI.toast({ icon: '🐛', title: 'Story-Daten fehlerhaft', text: errs[0], tone: 'loss', ms: 8000 }); }
     return errs;
   },
@@ -7435,6 +7451,22 @@ T.test('StoryRules.requirementMet / pickStory: requires filtert', () => {
   T.eq(StoryRules.pickStory([a, b], {}, seq(0.99)), 'a', 'b ist gesperrt');
   T.eq(StoryRules.pickStory([a, b], { a: { lastPlayed: 5, endings: ['x'] } }, seq(0)), 'b', 'b nie gespielt = ältestes');
   T.throws(() => StoryRules.pickStory([b], {}, seq(0)), 'keine wählbare Story wirft');
+});
+T.test('StoryRules.prevEndings: Story nur nach erlaubtem letzten Ende der Voraussetzung', () => {
+  const st = { id: 'x', requires: 'kater', prevEndings: ['wirt', 'nuechtern'] };
+  T.eq(StoryRules.lockReasonFor(st, {}), 'requires');
+  T.eq(StoryRules.lockReasonFor(st, { kater: { endings: ['bett'], last: 'bett' } }), 'prevEnding');
+  T.eq(StoryRules.lockReasonFor(st, { kater: { endings: ['bett', 'wirt'], last: 'wirt' } }), null);
+  T.eq(StoryRules.lockReasonFor(st, { kater: { endings: ['wirt', 'bett'] } }), 'prevEnding', 'ohne last zählt das letzte in endings');
+  T.eq(StoryRules.requirementMet(st, { kater: { endings: ['nuechtern'], last: 'nuechtern' } }), true);
+  T.eq(StoryRules.requirementMet({ id: 'y' }, {}), true);
+  T.eq(StoryRules.requirementMet({ id: 'y', requires: 'kater' }, { kater: { endings: ['bett'], last: 'bett' } }), true, 'ohne prevEndings reicht irgendein Ende');
+});
+T.test('StoryRules.validate: prevEndings müssen Enden der Voraussetzung sein', () => {
+  const kater = { id: 'k', endings: [{ id: 'a', fallback: true }, { id: 'b' }] };
+  const st = Object.assign({}, STORY_PROBE, { id: 'x', requires: 'k', prevEndings: ['a', 'zzz'] });
+  const errs = StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post'], ['k', 'x'], { k: kater });
+  T.eq(errs.length, 1); T.ok(errs[0].includes('zzz'));
 });
 T.test('StoryRules.nextStory: Reihenfolge, Voraussetzung, sonst pickStory', () => {
   const a = { id: 'a' }, b = { id: 'b', requires: 'a' }, c = { id: 'c' };
