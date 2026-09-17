@@ -3759,6 +3759,70 @@ const StoryRules = {
 };
 </script>
 
+<script id="royal-rules">
+/* ================= CASINO ROYAL – reine Spielregeln (Mega Seven, Craps, Glücksrad) ================= */
+const RoyalRules = {
+  ENTRY_FEE: 100,
+  GUEST_WIN: 5000,
+  /* ---- Mega Seven: 5 Walzen × 3 Reihen, 5 feste Linien ---- */
+  MEGA: {
+    SYMBOLS: ['🍒', '🔔', 'BAR', '💎', '7️⃣', '⭐'],
+    WEIGHTS: [30, 25, 18, 12, 7, 8],
+    LINES: [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [2, 2, 2, 2, 2], [0, 1, 2, 1, 0], [2, 1, 0, 1, 2]], // Reihe je Walze
+    PAY: { '🍒': [0, 0, 0, 2, 5, 10], '🔔': [0, 0, 0, 3, 10, 25], BAR: [0, 0, 0, 5, 20, 50], '💎': [0, 0, 0, 10, 40, 100], '7️⃣': [0, 0, 0, 20, 100, 500] },
+    BETS: [100, 250, 500, 1000],
+    FREE_SPINS: 5, FREE_MULT: 2, FREE_MAX: 15, SCATTER: '⭐',
+  },
+  megaSymbol(rng) {
+    const M = RoyalRules.MEGA;
+    const total = M.WEIGHTS.reduce((a, b) => a + b, 0);
+    let r = rng() * total;
+    for (let i = 0; i < M.SYMBOLS.length; i++) { r -= M.WEIGHTS[i]; if (r < 0) return M.SYMBOLS[i]; }
+    return M.SYMBOLS[M.SYMBOLS.length - 1];
+  },
+  megaRoll(rng) { return [0, 1, 2, 3, 4].map(() => [0, 1, 2].map(() => RoyalRules.megaSymbol(rng))); },
+  megaLineWins(grid) {
+    const M = RoyalRules.MEGA, out = [];
+    M.LINES.forEach((rows, line) => {
+      const sym = grid[0][rows[0]];
+      if (sym === M.SCATTER || !M.PAY[sym]) return;
+      let count = 1;
+      for (let r = 1; r < 5; r++) { if (grid[r][rows[r]] === sym) count++; else break; }
+      if (count >= 3) out.push({ line, sym, count, mult: M.PAY[sym][count] });
+    });
+    return out;
+  },
+  megaScatters(grid) { return grid.flat().filter((s) => s === RoyalRules.MEGA.SCATTER).length; },
+  megaWin(grid, bet, free) {
+    const M = RoyalRules.MEGA;
+    const lines = RoyalRules.megaLineWins(grid);
+    const lineBet = bet / M.LINES.length;
+    const payout = Math.round(lines.reduce((a, w) => a + w.mult * lineBet, 0) * (free ? M.FREE_MULT : 1));
+    const scatters = RoyalRules.megaScatters(grid);
+    return { lines, scatters, payout, freeSpins: scatters >= 3 ? M.FREE_SPINS : 0 };
+  },
+  megaShift(grid, reel, dir) {
+    const g = grid.map((c) => c.slice());
+    const c = g[reel];
+    g[reel] = dir > 0 ? [c[1], c[2], c[0]] : [c[2], c[0], c[1]];
+    return g;
+  },
+  /* Glück: gewinnt keine Linie, wird die Walze/Richtung gewählt, deren Ein-Schritt-Verschiebung am meisten zahlt */
+  megaLuckOverride(grid, luck, rng) {
+    if (RoyalRules.megaLineWins(grid).length) return grid;
+    if (!(rng() * 100 < luck)) return grid;
+    let best = null, bestPay = 0;
+    for (let reel = 0; reel < 5; reel++) for (const dir of [1, -1]) {
+      const g = RoyalRules.megaShift(grid, reel, dir);
+      const pay = RoyalRules.megaLineWins(g).reduce((a, w) => a + w.mult, 0);
+      if (pay > bestPay) { best = g; bestPay = pay; }
+    }
+    return best || grid;
+  },
+  megaDelta(bet, payout, free) { return free ? payout : payout - bet; },
+};
+</script>
+
 <script id="title">
 /* ================= TITELSCREEN – Modus-Wahl ================= */
 const Title = {
@@ -4916,6 +4980,8 @@ const SelfTest = {
 };
 /* deterministischer rng: liefert die Werte der Reihe nach, dann von vorn */
 const seq = (...vals) => { let i = 0; return () => vals[i++ % vals.length]; };
+/* deterministischer rng mit Seed (Mulberry32) – für Simulationen */
+const seeded = (a) => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const T = SelfTest;
 
 /* ---- Rules: Wirtschaft ---- */
@@ -5265,6 +5331,71 @@ T.test('Bus.emit: werfender Handler stoppt andere Handler nicht, liefert Promise
   const r = Bus.emit('t2', { x: 1 });
   T.eq(seen, [1]);
   T.ok(r instanceof Promise);
+});
+
+/* ---- RoyalRules: Mega Seven ---- */
+const G = (cols) => cols.map((c) => c.split(' ')); // 'a b c' je Walze, oben→unten
+T.test('megaSymbol: gewichtete Ziehung', () => {
+  T.eq(RoyalRules.megaSymbol(seq(0)), '🍒');
+  T.eq(RoyalRules.megaSymbol(seq(0.299)), '🍒');
+  T.eq(RoyalRules.megaSymbol(seq(0.30)), '🔔');
+  T.eq(RoyalRules.megaSymbol(seq(0.92)), '⭐');
+  T.eq(RoyalRules.megaSymbol(seq(0.999)), '⭐');
+});
+T.test('megaRoll: 5 Walzen × 3 Reihen', () => {
+  const g = RoyalRules.megaRoll(seeded(1));
+  T.eq(g.length, 5); g.forEach((r) => T.eq(r.length, 3));
+  g.flat().forEach((s) => T.ok(RoyalRules.MEGA.SYMBOLS.includes(s)));
+});
+T.test('megaLineWins: Mitte, oben, unten, V, umgekehrtes V', () => {
+  T.eq(RoyalRules.megaLineWins(G(['🔔 🍒 🔔', '🔔 🍒 🔔', '🔔 🍒 🔔', '🔔 🔔 🔔', '🔔 🔔 🔔'])).map((w) => [w.line, w.sym, w.count, w.mult]),
+    [[0, '🍒', 3, 2], [1, '🔔', 5, 25], [2, '🔔', 5, 25]]);
+  T.eq(RoyalRules.megaLineWins(G(['BAR 🍒 🍒', '🍒 BAR 🍒', '🍒 🍒 BAR', '🍒 BAR 🍒', 'BAR 🍒 🍒'])).map((w) => [w.line, w.sym, w.count, w.mult]), [[3, 'BAR', 5, 50]]);
+  T.eq(RoyalRules.megaLineWins(G(['🍒 🍒 💎', '🍒 💎 🍒', '💎 🍒 🍒', '🍒 💎 🍒', '🍒 🍒 💎'])).map((w) => [w.line, w.sym, w.count, w.mult]), [[4, '💎', 5, 100]]);
+});
+T.test('megaLineWins: nur von links, zwei gleiche zählen nicht, Scatter bildet keine Linie', () => {
+  const g = G(['🍒 7️⃣ 🍒', '🍒 7️⃣ 🍒', '🍒 🍒 🍒', '🍒 7️⃣ 🍒', '🍒 7️⃣ 🍒']); // Mitte: 7️⃣ 7️⃣ 🍒 7️⃣ 7️⃣ → 2 von links → nichts; oben/unten 🍒×5; V und ΛV brechen nach 1
+  T.eq(RoyalRules.megaLineWins(g).map((w) => [w.line, w.sym, w.count]), [[1, '🍒', 5], [2, '🍒', 5]]);
+  T.eq(RoyalRules.megaLineWins(G(['⭐ 🍒 🍒', '⭐ 🍒 🍒', '⭐ 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒'])).filter((w) => w.sym === '⭐'), []);
+});
+T.test('megaScatters / megaWin / megaDelta', () => {
+  const g = G(['⭐ 🍒 🍒', '🍒 ⭐ 🍒', '🍒 🍒 ⭐', '🔔 🔔 🔔', '🔔 🔔 🔔']);
+  T.eq(RoyalRules.megaScatters(g), 3);
+  const w = RoyalRules.megaWin(g, 500, false);
+  T.eq(w.scatters, 3); T.eq(w.freeSpins, 5);
+  T.eq(w.payout, 0, 'keine Linie: Mitte 🍒 ⭐ 🍒 🔔 🔔 → 1 von links');
+  const g2 = G(['🍒 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒', '🔔 🔔 🔔', '🔔 🔔 🔔']);
+  const w2 = RoyalRules.megaWin(g2, 500, false);
+  T.eq(w2.payout, 1000, 'fünf Linien 🍒×3 → 5 × 2 × Linieneinsatz 100');
+  T.eq(RoyalRules.megaWin(g2, 500, true).payout, 2000, 'Freispiel ×2');
+  T.eq(RoyalRules.megaDelta(500, 600, false), 100);
+  T.eq(RoyalRules.megaDelta(500, 0, false), -500);
+  T.eq(RoyalRules.megaDelta(500, 1200, true), 1200, 'Freispiel kostet nichts');
+});
+T.test('megaShift: Spalte rotieren', () => {
+  const g = G(['a b c', 'd e f', 'g h i', 'j k l', 'm n o']);
+  T.eq(RoyalRules.megaShift(g, 1, 1)[1], ['e', 'f', 'd']);
+  T.eq(RoyalRules.megaShift(g, 1, -1)[1], ['f', 'd', 'e']);
+  T.eq(RoyalRules.megaShift(g, 1, 1)[0], ['a', 'b', 'c'], 'andere Walzen unverändert');
+  T.eq(g[1], ['d', 'e', 'f'], 'Original unverändert');
+});
+T.test('megaLuckOverride: kein Glück / bereits Gewinn / bester Ein-Schritt-Gewinn', () => {
+  const g = G(['🍒 🔔 🍒', '🔔 🍒 🔔', '🍒 🔔 🍒', '💎 💎 💎', '💎 💎 💎']); // Mitte: 🔔 🍒 🔔 → kein Gewinn; Walze 2 um −1 → Mitte 🔔 🔔 🔔 💎 💎 → 🔔×3
+  T.eq(RoyalRules.megaLuckOverride(g, 0, seq(0.5)), g, 'ohne Glück unverändert');
+  const o = RoyalRules.megaLuckOverride(g, 100, seq(0));
+  T.ok(RoyalRules.megaLineWins(o).length > 0, 'nach Override gewinnt eine Linie');
+  const win = G(['🍒 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒', '🔔 🔔 🔔', '🔔 🔔 🔔']);
+  T.eq(RoyalRules.megaLuckOverride(win, 100, seq(0)), win, 'bestehender Gewinn bleibt');
+});
+T.test('Mega Seven: RTP-Korridor (60.000 Spins, Seed 7)', () => {
+  const rng = seeded(7); let paid = 0, ret = 0, free = 0;
+  for (let i = 0; i < 60000; i++) {
+    const isFree = free > 0; if (isFree) free--; else paid += 500;
+    const w = RoyalRules.megaWin(RoyalRules.megaRoll(rng), 500, isFree);
+    ret += w.payout; if (w.freeSpins) free = Math.min(RoyalRules.MEGA.FREE_MAX, free + w.freeSpins);
+  }
+  const rtp = ret / paid;
+  T.ok(rtp > 0.88 && rtp < 0.98, `RTP ${rtp.toFixed(3)} außerhalb 0,88–0,98`);
 });
 
 /* ---- StoryRules ---- */
