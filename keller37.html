@@ -1080,9 +1080,9 @@ const Rules = {
     if (s.balance < Rules.PRICES.tinder) return { ok: false, reason: 'funds' };
     return { ok: true };
   },
-  canTherapy(s) {
+  canTherapy(s, price = Rules.PRICES.therapy) {
     if (!s.isHeartbroken && !(s.story && s.story.enabled && s.story.enabled.therapy)) return { ok: false, reason: 'notNeeded' };
-    if (s.balance < Rules.PRICES.therapy) return { ok: false, reason: 'funds' };
+    if (s.balance < price) return { ok: false, reason: 'funds' };
     return { ok: true };
   },
   canDealer(s) {
@@ -1090,9 +1090,9 @@ const Rules = {
     if (s.balance < Rules.PRICES.dealer) return { ok: false, reason: 'funds' };
     return { ok: true };
   },
-  canBeer(s) {
+  canBeer(s, price = Rules.PRICES.beer) {
     if (s.beers >= Rules.MAX_BEERS) return { ok: false, reason: 'max' };
-    if (s.balance < Rules.PRICES.beer) return { ok: false, reason: 'funds' };
+    if (s.balance < price) return { ok: false, reason: 'funds' };
     return { ok: true };
   },
   canBrownie(s) {
@@ -1559,7 +1559,7 @@ const UI = {
     const room = (r) => !inStory || Story.roomUnlocked(r);
     const secs = [];
     if (room('bar')) secs.push(sec('Die Bar',
-      btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/3)` : ''}`, this.fmt(StoryRules.price(s, 'beer')), 'beer', !Rules.canBeer(s).ok || StoryRules.purchaseAllowed(s, 'beer') === false),
+      btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/3)` : ''}`, this.fmt(StoryRules.price(s, 'beer')), 'beer', !Rules.canBeer(s, StoryRules.price(s, 'beer')).ok || StoryRules.purchaseAllowed(s, 'beer') === false),
       btn('🍪 Brownie', this.fmt(s.brownieCost), 'brownie', !Rules.canBrownie(s).ok || StoryRules.purchaseAllowed(s, 'brownie') === false),
       h('p', { class: 'side-hint' }, 'Bier hält 2 Spins, Brownie 1 Spin.')));
     const hz = [];
@@ -1970,7 +1970,7 @@ Actions.beer = async () => {
     UI.toast({ icon: '🍺', title: 'Kein Bier mehr', text: 'Der Wirt schenkt dir nichts mehr ein.', tone: 'loss' });
     return;
   }
-  const c = Rules.canBeer(s);
+  const c = Rules.canBeer(s, StoryRules.price(s, 'beer'));
   if (!c.ok) {
     UI.toast({ icon: '🍺', title: c.reason === 'max' ? 'Maximal 3 Bier' : `Bier kostet ${UI.fmt(StoryRules.price(s, 'beer'))}`, text: c.reason === 'max' ? 'Der Wirt schüttelt den Kopf.' : 'Zu wenig Geld.', tone: 'loss' });
     return;
@@ -2222,11 +2222,11 @@ const Life = {
         ? { pic: '🏰', title: 'Penthouse-Villa', text: 'Blick auf den Hafen. +30 €/min von Untermietern, nach denen du nicht fragst.' }
         : { pic: '🏚️', empty: true, title: 'Kein Haus', text: 'Penthouse für 2.500 €. Nur ohne Schulden, nüchtern im Herzen und ledig.', action: () => Life.buyHouse(), label: 'Kaufen · 2.500 €', check: Rules.canBuyHouse(s) });
     const love = s.isHeartbroken
-      ? { pic: '💔', title: 'Liebeskummer', text: 'Chantal ist weg, das Haus auch. Ohne 2 Bier pro Spin klappst du zusammen (−250 €).', action: () => Life.therapy(), label: `Therapie & Anwalt · ${UI.fmt(StoryRules.price(s, 'therapy'))}`, cls: 'pink', check: Rules.canTherapy(s) }
+      ? { pic: '💔', title: 'Liebeskummer', text: 'Chantal ist weg, das Haus auch. Ohne 2 Bier pro Spin klappst du zusammen (−250 €).', action: () => Life.therapy(), label: `Therapie & Anwalt · ${UI.fmt(StoryRules.price(s, 'therapy'))}`, cls: 'pink', check: Rules.canTherapy(s, StoryRules.price(s, 'therapy')) }
       : s.isMarried
         ? { pic: '💍', title: 'Verheiratet', text: `Mit Chantal-Monique. Noch ${Rules.MARRIAGE_SPINS - s.marriageSpins} Spin${Rules.MARRIAGE_SPINS - s.marriageSpins === 1 ? '' : 's'} bis… irgendwas.` }
         : StoryRules.purchaseAllowed(s, 'therapy') === true
-          ? { pic: '🩺', title: 'Therapie', text: (Story.story && Story.story.copy && Story.story.copy.therapy) || 'Der Doc hat ein Programm. Kein Bier mehr – und kein Glück daraus.', action: () => Life.therapy(), label: `Therapie · ${UI.fmt(StoryRules.price(s, 'therapy'))}`, cls: 'pink', check: Rules.canTherapy(s) }
+          ? { pic: '🩺', title: 'Therapie', text: (Story.story && Story.story.copy && Story.story.copy.therapy) || 'Der Doc hat ein Programm. Kein Bier mehr – und kein Glück daraus.', action: () => Life.therapy(), label: `Therapie · ${UI.fmt(StoryRules.price(s, 'therapy'))}`, cls: 'pink', check: Rules.canTherapy(s, StoryRules.price(s, 'therapy')) }
           : StoryRules.purchaseAllowed(s, 'tinder') === false ? this.notToday()
             : { pic: '🔥', empty: !s.hasHouse, title: 'Tinder Gold', text: 'Chantal-Monique steht auf Penthouses. 50 €, und ihr heiratet sofort.', action: () => Life.tinder(), label: 'Matchen · 50 €', cls: 'pink', check: Rules.canTinder(s) };
     this.card(qs('#lifeLove', this.root), love);
@@ -2255,7 +2255,7 @@ const Life = {
   },
   async therapy() {
     const s = State.s;
-    if (!Rules.canTherapy(s).ok) return;
+    if (!Rules.canTherapy(s, StoryRules.price(s, 'therapy')).ok) return;
     Game.applyDelta(-StoryRules.price(s, 'therapy'), { from: qs('#lifeLove') });
     s.isHeartbroken = false; State.save();
     this.render(); UI.renderWallet();
@@ -5107,6 +5107,10 @@ T.test('Rules.canTherapy: Story kann Therapie freigeben', () => {
   T.eq(Rules.canTherapy(base({ balance: 4999, story: { enabled: { therapy: true } } })), { ok: false, reason: 'funds' });
   T.eq(Rules.canTherapy(base({ balance: 5000, story: { enabled: {} } })), { ok: false, reason: 'notNeeded' });
 });
+T.test('Rules.canTherapy: Story-Preis statt fixem Preis', () => {
+  T.eq(Rules.canTherapy(base({ balance: 6000, story: { enabled: { therapy: true } } }), 8000), { ok: false, reason: 'funds' });
+  T.eq(Rules.canTherapy(base({ balance: 8000, story: { enabled: { therapy: true } } }), 8000), { ok: true });
+});
 T.test('canBeer / canBrownie', () => {
   T.eq(Rules.canBeer(base()), { ok: true });
   T.eq(Rules.canBeer(base({ beers: 3 })), { ok: false, reason: 'max' });
@@ -5114,6 +5118,10 @@ T.test('canBeer / canBrownie', () => {
   T.eq(Rules.canBrownie(base({ balance: 1000, brownieCost: 1000 })), { ok: true });
   T.eq(Rules.canBrownie(base({ balance: 1000, brownieCost: 1000, brownieTimer: 1 })), { ok: false, reason: 'active' });
   T.eq(Rules.canBrownie(base({ balance: 999, brownieCost: 1000 })), { ok: false, reason: 'funds' });
+});
+T.test('Rules.canBeer: Story-Preis statt fixem Preis', () => {
+  T.eq(Rules.canBeer(base({ balance: 0 }), 0), { ok: true });
+  T.eq(Rules.canBeer(base({ balance: 49 })), { ok: false, reason: 'funds' });
 });
 
 /* ---- State ---- */
