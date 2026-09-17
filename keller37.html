@@ -4963,6 +4963,11 @@ const StoryRules = {
     if (job.requires && !StoryRules.check(job.requires, s)) return { ok: false, reason: job.requireText || 'Voraussetzung fehlt' };
     return { ok: true };
   },
+  /* Job-Definition für diese Story: story.jobOverrides[id] überlagert Felder (requires: null hebt eine Voraussetzung auf) */
+  jobDef(job, story) {
+    const o = story && story.jobOverrides && story.jobOverrides[job.id];
+    return o ? Object.assign({}, job, o) : job;
+  },
   ROOMS: ['bar', 'doc', 'bank', 'mafia', 'invest', 'life', 'vito', 'stadt', 'royal'],
   HOOKS: ['morning', 'night', 'sleep', 'spin:after', 'buy:beer', 'buy:brownie', 'buy:kidney', 'buy:therapy', 'royal:enter', 'royal:guest', 'fight:after', 'job:after'],
   SET_KEYS: ['car', 'shoes', 'weapon', 'hasHouse', 'hasDealer', 'kidneySold'],
@@ -5729,12 +5734,13 @@ const Jobs = {
     docassi: { id: 'docassi', name: 'Assistent beim Doc', icon: '🩺', kind: 'shift', base: 250, desc: 'Handschuhe an. Nicht hinsehen.', pay: '250 €' },
     filialleiter: { id: 'filialleiter', name: 'Filialleiter bei Krause', icon: '🏦', kind: 'shift', base: 400, desc: 'Anzug, Schlüssel, Unterschriftenmappe. Ihre Frau ruft öfter an.', pay: '400 €' },
   },
+  def(id) { const j = this.POOL[id]; return j ? StoryRules.jobDef(j, Story.story) : null; },
   render(root) {
     const board = qs('#pinboard', root);
     board.innerHTML = '';
     const s = State.s;
     const postLetters = Perks.mods().postLetters;
-    for (const job of Object.values(this.POOL)) {
+    for (const job of Object.keys(this.POOL).map((id) => this.def(id))) {
       if (!s.story.unlocked.jobs.includes(job.id)) continue;
       const av = StoryRules.jobAvailable(job, s);
       const desc = job.id === 'post' ? job.desc.replace('{{n}}', postLetters) : job.desc;
@@ -5748,11 +5754,11 @@ const Jobs = {
     if (!board.children.length) board.append(h('p', { class: 'paper' }, 'Nichts an der Pinnwand. Komm morgen wieder.'));
   },
   async take(id) {
-    const job = this.POOL[id];
+    const job = this.def(id);
     if (!job || !StoryRules.jobAvailable(job, State.s).ok) return;
     if (job.kind === 'game') {
       if (!UI.screens.has(job.screen)) { UI.toast({ icon: '🚧', title: 'Job noch nicht verfügbar', tone: 'info' }); return; }
-      Story.jobStart = { id, balance: State.s.balance };
+      Story.jobStart = { id, balance: State.s.balance, variant: job.variant || null };
       Story.allowOnce = job.screen;
       await UI.show(job.screen);
       return;
@@ -5782,18 +5788,22 @@ const Jobs = {
     const earned = State.s.balance - before;
     Story.jobDone(job.id, earned);
     await Bus.emit('job:done', { id: job.id, earned });
+    await Story.hook('job:after');
+    if (State.s !== run || run.story.ended) return;
     await Story.evening();
     if (Story.lostDay) { Story.lostDay = false; UI.toast({ icon: '🚔', title: 'Tag verloren', text: 'Der Abend fällt aus.', tone: 'loss' }); await Story.night(); }
   },
   /* Lohn verbuchen und den Tag verbrauchen – ohne Navigation. Wird am Ende eines Mini-Spiels
      gerufen, damit der Job auch bei Escape/Reload vor „Feierabend" als erledigt gilt. */
-  async collect(id) {
+  async collect(id, flags = {}) {
     const start = Story.jobStart;
     if (!start || start.id !== id) return false;
     Story.jobStart = null;
     const earned = State.s.balance - start.balance;
+    Object.assign(Story.s.flags, flags); // Ergebnis-Flags des Minispiels (z. B. kontrolle) für job:after-Events
     Story.jobDone(id, earned);
     await Bus.emit('job:done', { id, earned });
+    await Story.hook('job:after');
     return true;
   },
   /* „Feierabend": verbuchen (falls noch nicht geschehen) und in den Abend wechseln */
@@ -5959,12 +5969,13 @@ UI.register('job-spueler', {
 <script id="job-taxi">
 /* ================= JOB: NACHTTAXI – drei Spuren, 60 Sekunden ================= */
 const Taxi = {
-  root: null, gen: 0, running: false, raf: null, spawnTimer: null, timeLeft: 60, laneIdx: 1, passengers: 0, tickets: 0, tip: 0, braking: false, brakeUntil: 0, entities: [], speed: 160, lastT: 0,
+  root: null, gen: 0, running: false, raf: null, spawnTimer: null, timeLeft: 60, laneIdx: 1, passengers: 0, tickets: 0, tip: 0, braking: false, brakeUntil: 0, entities: [], speed: 160, lastT: 0, jobId: 'taxi',
   DURATION: 60,
   alive(gen) { return !!this.root && this.gen === gen; },
   start() {
     if (this.running || !this.root) return;
     const gen = this.gen;
+    this.jobId = Story.jobStart ? Story.jobStart.id : 'taxi';
     this.running = true; this.timeLeft = this.DURATION; this.laneIdx = 1; this.passengers = 0; this.tickets = 0; this.tip = Rules.gear(State.s).taxiTip; this.entities = []; this.speed = 160;
     qs('#btnTaxiStart', this.root).classList.add('hidden');
     qs('#taxiRoad', this.root).classList.add('running');
@@ -6034,7 +6045,7 @@ const Taxi = {
     if (pay !== 0) Game.applyDelta(pay, { from: this.root ? qs('#taxiRoad', this.root) : null });
     if (pay >= 0) SFX.play('cash');
     await Bus.emit('taxi:result', { passengers: this.passengers, tickets: this.tickets, pay });
-    await Jobs.collect('taxi');
+    await Jobs.collect(Story.jobStart ? Story.jobStart.id : 'taxi');
   },
   onKey(e) {
     if (!qs('#cutscene').hidden) return;
@@ -6052,7 +6063,7 @@ UI.register('job-taxi', {
   mount(root) {
     Taxi.root = root; Taxi.gen++; Taxi.running = false;
     qs('#btnTaxiStart', root).addEventListener('click', () => { SFX.play('click'); Taxi.start(); });
-    qs('#btnTaxiDone', root).addEventListener('click', (e) => { e.currentTarget.disabled = true; SFX.play('click'); Jobs.finishGame('taxi'); });
+    qs('#btnTaxiDone', root).addEventListener('click', (e) => { e.currentTarget.disabled = true; SFX.play('click'); Jobs.finishGame(Taxi.jobId); });
     qs('#taxiRoad', root).addEventListener('pointerdown', Taxi.onTap);
     document.addEventListener('keydown', Taxi.onKey);
   },
@@ -7577,6 +7588,17 @@ T.test('StoryRules.jobAvailable', () => {
   T.eq(StoryRules.jobAvailable({ id: 'taxi', requires: { balance: { gte: 200 } }, requireText: 'Kaution 200 €' }, s), { ok: false, reason: 'Kaution 200 €' });
   s.story.jobToday = 'spueler';
   T.eq(StoryRules.jobAvailable({ id: 'spueler' }, s), { ok: false, reason: 'done' });
+});
+T.test('StoryRules.jobDef: Story-Overrides überlagern Job-Definition, requires: null löscht Voraussetzung', () => {
+  const job = { id: 'eintreiber', name: 'Eintreiber', kind: 'shift', base: 150, requires: { strength: { gte: 4 } }, requireText: 'Stärke 4', pay: '150 €' };
+  T.eq(StoryRules.jobDef(job, {}), job);
+  const d = StoryRules.jobDef(job, { jobOverrides: { eintreiber: { base: 1000, requires: null, pay: '1.000 €' } } });
+  T.eq([d.base, d.requires, d.pay, d.name], [1000, null, '1.000 €', 'Eintreiber']);
+  T.eq(job.base, 150, 'Original unverändert');
+  const s = base({ strength: 0, story: StoryRules.freshStoryPart(STORY_PROBE) });
+  s.story.unlocked.jobs.push('eintreiber');
+  T.eq(StoryRules.jobAvailable(job, s).ok, false);
+  T.eq(StoryRules.jobAvailable(d, s).ok, true);
 });
 T.test('StoryRules Lohn', () => {
   T.eq(StoryRules.spuelerPay(10, 0), 50); T.eq(StoryRules.spuelerPay(7, 3), 5); T.eq(StoryRules.spuelerPay(0, 10), -100);
