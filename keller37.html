@@ -2390,6 +2390,7 @@ const Game = {
     try {
       if (run !== State.s) return; // Spielstand wurde inzwischen ersetzt (Game Over / Neues Spiel) – Runde verfällt
       this.applyDelta(delta + bet, { from, net: delta });
+      if (bet > 0) await Bus.emit('stake', { bet, game }); // Umsatz – jeder Einsatz, gewonnen oder verloren (Freispiele: bet 0)
       if (delta > 0) { SFX.play('cash'); await Bus.emit('win', { amount: delta, game }); }
       else if (delta < 0) { SFX.play('lose'); await Bus.emit('loss', { amount: -delta, game }); }
       await this.afterSpin();
@@ -5012,6 +5013,13 @@ const StoryRules = {
     if (delta > 0) { stats.wins++; stats.streak++; stats.bestStreak = Math.max(stats.bestStreak, stats.streak); stats.biggestWin = Math.max(stats.biggestWin, delta); }
     else if (delta < 0) stats.streak = 0;
   },
+  /* Umsatz (Summe der Einsätze) – jede Story zählt umsatz/umsatzTotal, optional Gruppen je Spiel-ID (story.turnoverGroups) */
+  recordStake(st, bet, game, story = {}) {
+    if (!(bet > 0)) return;
+    st.vars.umsatz = (st.vars.umsatz || 0) + bet;
+    st.vars.umsatzTotal = (st.vars.umsatzTotal || 0) + bet;
+    for (const [name, games] of Object.entries(story.turnoverGroups || {})) if (games.includes(game)) st.vars[name] = (st.vars[name] || 0) + bet;
+  },
   fmtMoney(n) { return `${Math.round(n).toLocaleString('de-DE')} €`; },
 };
 </script>
@@ -5637,6 +5645,7 @@ Bus.on('spin:after', () => {
 });
 Bus.on('win', ({ amount }) => { if (State.mode === 'story' && Story.story) { StoryRules.recordSpin(Story.s.stats, amount); State.save(); } });
 Bus.on('loss', ({ amount }) => { if (State.mode === 'story' && Story.story) { Story.s.stats.gambled += amount; StoryRules.recordSpin(Story.s.stats, -amount); State.save(); } });
+Bus.on('stake', ({ bet, game }) => { if (State.mode === 'story' && Story.story && Story.s && !Story.s.ended) { StoryRules.recordStake(Story.s, bet, game, Story.story); State.save(); } });
 </script>
 
 <script id="jobs">
@@ -7513,6 +7522,21 @@ T.test('StoryRules.recordSpin: Serie, Siege, größter Gewinn', () => {
   T.eq([st.wins, st.streak, st.bestStreak], [2, 0, 2]);
   StoryRules.recordSpin(st, 5);
   T.eq([st.streak, st.bestStreak, st.biggestWin], [1, 2, 700]);
+});
+T.test('StoryRules.recordStake: Umsatz gesamt, Gruppen je Spiel, bet ≤ 0 zählt nicht', () => {
+  const story = { turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel'], umsatzHinterzimmer: ['baccarat'] } };
+  const st = { vars: {} };
+  StoryRules.recordStake(st, 500, 'roulette', story);
+  T.eq(st.vars, { umsatz: 500, umsatzTotal: 500 });
+  StoryRules.recordStake(st, 1000, 'craps', story);
+  T.eq(st.vars, { umsatz: 1500, umsatzTotal: 1500, umsatzRoyal: 1000 });
+  StoryRules.recordStake(st, 10000, 'baccarat', story);
+  T.eq(st.vars.umsatzHinterzimmer, 10000); T.eq(st.vars.umsatz, 11500);
+  StoryRules.recordStake(st, 0, 'slots', story); StoryRules.recordStake(st, -5, 'slots', story);
+  T.eq(st.vars.umsatz, 11500, 'Freispiel (0) und Unsinn (<0) zählen nicht');
+  const plain = { vars: { umsatz: 7 } };
+  StoryRules.recordStake(plain, 3, 'slots', {});
+  T.eq(plain.vars, { umsatz: 10, umsatzTotal: 3 }, 'ohne turnoverGroups nur umsatz/umsatzTotal');
 });
 
 /* ---- State: Modi ---- */
