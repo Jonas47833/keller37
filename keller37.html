@@ -569,6 +569,10 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .insider-hint { font-family: var(--font-mono); font-size: .75rem; color: var(--neon-blue); }
 .runner.lame .horse { filter: grayscale(.8); opacity: .7; }
 .runner .lame-tag { position: absolute; left: 6px; bottom: -8px; font-family: var(--font-mono); font-size: .7rem; color: #ff8a80; }
+.hand-label .insider-hint { margin-left: 8px; }
+.holds { display: flex; gap: 10px; padding: 0 12px; margin-bottom: 6px; }
+.hold-btn { flex: 1; }
+.slot-machine .insider-hint { display: block; padding: 0 12px; margin-bottom: 6px; }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
@@ -715,6 +719,12 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
     <div class="slots-top">
       <div class="slot-machine">
         <div class="slot-head neon" style="--neon: var(--neon-amber)">Lucky Seven</div>
+        <div class="holds" id="holds">
+          <button class="btn ghost sm hold-btn hidden" data-reel="0">Festhalten</button>
+          <button class="btn ghost sm hold-btn hidden" data-reel="1">Festhalten</button>
+          <button class="btn ghost sm hold-btn hidden" data-reel="2">Festhalten</button>
+        </div>
+        <div class="insider-hint hidden" id="slotInsider"></div>
         <div class="reels">
           <div class="reel-win" id="reel1"><div class="strip"></div></div>
           <div class="reel-win" id="reel2"><div class="strip"></div></div>
@@ -730,7 +740,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
           <tr><td>💎 💎 💎</td><td>25×</td></tr>
           <tr><td>🔔 🔔 🔔</td><td>15×</td></tr>
           <tr><td>Drilling</td><td>5×</td></tr>
-          <tr><td>Paar</td><td>1,2×</td></tr>
+          <tr><td>Paar</td><td id="payPair">1,2×</td></tr>
         </table>
       </div>
     </div>
@@ -750,7 +760,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
     <div class="bj-table">
       <div class="shoe" id="shoe"></div>
       <div class="bj-hand dealer">
-        <div class="hand-label">Dealer <span class="hand-val" id="bjDealerVal">–</span></div>
+        <div class="hand-label">Dealer <span class="hand-val" id="bjDealerVal">–</span> <span class="insider-hint hidden" id="bjDeckHeat"></span></div>
         <div class="cards" id="dealerCards"></div>
       </div>
       <div class="bj-arc">Black Jack zahlt 1:1 · Dealer zieht bis 17</div>
@@ -2738,7 +2748,25 @@ const Slots = {
   root: null,
   spinning: false,
   gen: 0,
+  lastRes: null,
+  lastBet: 0,
+  holdIndex: -1,
   alive(gen) { return !!this.root && this.gen === gen; },
+  updateInsiderHint(bet) {
+    if (!this.root) return;
+    const hint = qs('#slotInsider', this.root);
+    if (!hint) return;
+    const mods = Perks.mods();
+    if (mods.slotHoldEvery <= 0) { hint.classList.add('hidden'); hint.textContent = ''; return; }
+    hint.classList.remove('hidden');
+    if (!Rules.effectiveInsider(true, bet)) {
+      hint.textContent = `🔧 Mechaniker: wirkt bis ${UI.fmt(Rules.INSIDER_CAP)}`;
+    } else if (State.s.mechRespins >= mods.slotHoldEvery) {
+      hint.textContent = '🔧 Mechaniker: bereit';
+    } else {
+      hint.textContent = `🔧 Mechaniker: nächster Gratisdreh in ${mods.slotHoldEvery - State.s.mechRespins} Runden`;
+    }
+  },
   cell() { const c = qs('.cell', this.root); return c ? c.offsetHeight : 90; },
   buildStrips() {
     qsa('.strip', this.root).forEach((strip) => {
@@ -2761,8 +2789,11 @@ const Slots = {
     const run = Game.run;
     const gen = this.gen;
     this.spinning = true;
+    this.lastRes = null;
+    this.holdIndex = -1;
     try {
       qs('#btnSpin', this.root).disabled = true;
+      qsa('.hold-btn', this.root).forEach((b) => b.classList.add('hidden'));
       const lever = qs('#lever', this.root);
       lever.classList.add('pulled');
       setTimeout(() => lever.classList.remove('pulled'), 500);
@@ -2781,8 +2812,12 @@ const Slots = {
       }, ms));
       await wait(2450);
       SFX.stop('reelSpin');
-      const m = Rules.slotMultiplier(...res);
+      const mods = Perks.mods();
+      const m = Rules.slotMultiplier(...res, mods);
       const delta = Rules.slotDelta(bet, m);
+      if (mods.slotHoldEvery > 0) { State.s.mechRespins++; State.save(); }
+      const canHold = m === 0 && mods.slotHoldEvery > 0 && State.s.mechRespins >= mods.slotHoldEvery && Rules.effectiveInsider(true, bet);
+      if (canHold) { this.lastRes = res; this.lastBet = bet; }
       if (this.alive(gen)) {
         const stat = qs('#slotStatus', this.root);
         if (m > 0) {
@@ -2792,6 +2827,8 @@ const Slots = {
         } else {
           stat.innerHTML = `<span class="loss">Niete · −${UI.fmt(bet)}</span>`;
         }
+        if (canHold) qsa('.hold-btn', this.root).forEach((b) => b.classList.remove('hidden'));
+        this.updateInsiderHint(bet);
       }
       await Bus.emit('slots:result', { res, m, bet });
       await Game.settle(delta, { from: this.alive(gen) ? qs('.slot-machine', this.root) : null, game: 'slots', bet, run });
@@ -2816,6 +2853,32 @@ const Slots = {
     }
   },
   onKey(e) { if (e.code === 'Space' && qs('#cutscene').hidden && !e.repeat) { e.preventDefault(); Slots.spin(); } },
+  /* Gratisdreh des Mechanikers: keine neue Runde – kein beginSpin/settle, keine Zinsen/Meds. Nur ein Gewinn gibt XP (win). */
+  async respin(k) {
+    if (this.spinning || !this.root || !this.lastRes) return;
+    const bet = this.lastBet, gen = this.gen, held = this.lastRes[k];
+    this.lastRes = null; State.s.mechRespins = 0; State.save();
+    this.spinning = true;
+    try {
+      qsa('.hold-btn', this.root).forEach((b) => b.classList.add('hidden'));
+      qs('#slotStatus', this.root).textContent = `Walze ${k + 1} festgehalten – Gratisdreh…`;
+      const fresh = Rules.slotRoll(Math.random);
+      const res = fresh.map((sym, i) => (i === k ? held : sym));
+      [0, 1, 2].filter((i) => i !== k).forEach((i, j) => { const s = qs(`#reel${i + 1} .strip`, this.root); s.style.transition = 'none'; s.style.transform = 'translateY(0)'; void s.offsetHeight; s.classList.add('spinning'); setTimeout(() => { if (this.alive(gen)) { this.setReel(i + 1, res[i], true); qs(`#reel${i + 1}`, this.root).classList.add('locked'); SFX.play('reelStop'); } }, 800 + j * 600); });
+      SFX.loop('reelSpin', 120);
+      await wait(1900);
+      SFX.stop('reelSpin');
+      const m = Rules.slotMultiplier(...res, Perks.mods());
+      const payout = m > 0 ? Math.round(bet * m) : 0;
+      if (this.alive(gen)) qs('#slotStatus', this.root).innerHTML = payout > 0 ? `<span class="win">Gratisdreh: ${String(m).replace('.', ',')}× · +${UI.fmt(payout)}</span>` : `<span class="loss">Gratisdreh: Niete. Der Mechaniker zuckt mit den Schultern.</span>`;
+      if (payout > 0) { Game.applyDelta(payout, { from: this.alive(gen) ? qs('.slot-machine', this.root) : null }); SFX.play('cash'); await Bus.emit('win', { amount: payout, game: 'slots' }); }
+      if (this.alive(gen)) this.updateInsiderHint(bet);
+      State.save();
+    } finally {
+      SFX.stop('reelSpin');
+      if (this.gen === gen) this.spinning = false;
+    }
+  },
 };
 
 UI.register('slots', {
@@ -2823,14 +2886,24 @@ UI.register('slots', {
   mount(root) {
     Slots.gen++;
     Slots.root = root;
+    Slots.lastRes = null;
+    Slots.holdIndex = -1;
     Slots.buildStrips();
     ['🍒', '7️⃣', '💎'].forEach((s, i) => Slots.setReel(i + 1, s, false));
+    const mods = Perks.mods();
+    qs('#payPair', root).textContent = `${String(mods.slotPairMult).replace('.', ',')}×`;
     Game.bindBet(root, 'slotBet');
     qs('#btnSpin', root).addEventListener('click', () => Slots.spin());
     qs('#lever', root).addEventListener('click', () => Slots.spin());
+    qsa('.hold-btn', root).forEach((b) => b.addEventListener('click', () => {
+      const k = parseInt(b.dataset.reel, 10);
+      Slots.holdIndex = k;
+      Slots.respin(k);
+    }));
+    Slots.updateInsiderHint(Game.readBet('slotBet'));
     document.addEventListener('keydown', Slots.onKey);
   },
-  unmount() { Slots.gen++; document.removeEventListener('keydown', Slots.onKey); SFX.stop('reelSpin'); Slots.root = null; Slots.spinning = false; },
+  unmount() { Slots.gen++; document.removeEventListener('keydown', Slots.onKey); SFX.stop('reelSpin'); Slots.root = null; Slots.spinning = false; Slots.lastRes = null; Slots.holdIndex = -1; },
 });
 </script>
 
@@ -2876,12 +2949,24 @@ const Blackjack = {
       qsa('.hand-val', this.root).forEach((v) => v.classList.remove('push'));
       qs('#bjBetControls', this.root).classList.add('hidden');
       qs('#bjActionControls', this.root).classList.remove('hidden');
+      qs('#bjDeckHeat', this.root).classList.add('hidden');
       qs('#bjStatus', this.root).textContent = 'Hit oder Stand?';
       round.pHand.push(round.deck.pop()); await this.dealTo('playerCards', round.pHand[0]);
       round.dHand.push(round.deck.pop()); await this.dealTo('dealerCards', round.dHand[0], true);
       round.pHand.push(round.deck.pop()); await this.dealTo('playerCards', round.pHand[1]);
       round.dHand.push(round.deck.pop()); await this.dealTo('dealerCards', round.dHand[1]);
       this.updateVals(false);
+      round.natural = round.pHand.length === 2 && Rules.handSum(round.pHand) === 21;
+      const mods = Perks.mods();
+      round.hot = Rules.effectiveInsider(mods.bjHotDeck, bet) > 1 && Rules.deckHot(round.deck);
+      if (this.alive(gen)) {
+        const heat = qs('#bjDeckHeat', this.root);
+        if (mods.bjHotDeck > 1) {
+          heat.classList.remove('hidden');
+          heat.textContent = (Rules.deckHot(round.deck) ? '🔥 Deck heiß' : '❄️ Deck kalt') + (bet > Rules.INSIDER_CAP ? ` (wirkt bis ${UI.fmt(Rules.INSIDER_CAP)})` : '');
+        }
+        if (round.natural) qs('#bjStatus', this.root).textContent = 'Blackjack! Stand, um zu kassieren.';
+      }
     } finally {
       if (this.gen === gen) this.dealing = false;
       else this.drop(round); // Screen während des Austeilens verlassen
@@ -2932,14 +3017,18 @@ const Blackjack = {
   async finish(outcome, round) {
     if (round.done) return;
     round.done = true;
-    const delta = Rules.bjDelta(outcome, round.bet);
+    const mods = Perks.mods();
+    const ctx = { natural: round.natural && round.pHand.length === 2 && outcome === 'win', hot: !!round.hot };
+    const delta = Rules.bjDelta(outcome, round.bet, mods, ctx);
     try {
       if (this.alive(round.gen)) {
+        const winSuffix = ctx.natural ? ' (Blackjack 3:2)' : ctx.hot ? ' (heißes Deck 1,2:1)' : '';
+        const pushTip = delta > 0 ? ` · +${UI.fmt(delta)} Trinkgeld` : '';
         const msgs = {
-          win: `<span class="win">Gewonnen · +${UI.fmt(round.bet)}</span>`,
+          win: `<span class="win">Gewonnen · +${UI.fmt(delta)}${winSuffix}</span>`,
           bust: `<span class="loss">Bust · über 21 · −${UI.fmt(round.bet)}</span>`,
           dealer: `<span class="loss">Dealer gewinnt · −${UI.fmt(round.bet)}</span>`,
-          push: 'Push · Unentschieden',
+          push: `Push · Unentschieden${pushTip}`,
         };
         qs('#bjStatus', this.root).innerHTML = msgs[outcome];
         if (outcome === 'bust') qsa('#playerCards .pcard', this.root).forEach((c) => c.classList.add('bust'));
