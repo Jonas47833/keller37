@@ -502,27 +502,37 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 @media (min-width: 1440px) and (min-height: 820px) { .body, .title-inner { zoom: 1.15; } }
 @media (min-width: 1700px) and (min-height: 900px) { .body, .title-inner { zoom: 1.35; } }
 @media (min-width: 2200px) and (min-height: 1100px) { .body, .title-inner { zoom: 1.65; } }
-/* ==== Stadt – Autohaus & INTERSPORT ==== */
-.stadt { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
-.shop { background: var(--panel-2); border: 1px solid rgba(255,255,255,.06); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow); }
-.shop h3 { font-family: var(--font-display); letter-spacing: .12em; font-size: 1.25rem; text-align: center; }
-.shop.audi h3 { color: #d8d8d8; text-shadow: 0 0 10px rgba(255,255,255,.35); }
-.shop.merc h3 { color: #cfd8e3; text-shadow: 0 0 10px rgba(76,201,240,.45); }
-.shop.sport h3 { color: #ff6a3d; text-shadow: 0 0 10px rgba(255,106,61,.5); }
-.shop .seller { font-family: var(--font-mono); font-size: .8rem; color: var(--dim); text-align: center; font-style: italic; min-height: 2.2em; }
-.gear-card { background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; padding: 12px; display: grid; grid-template-columns: 52px 1fr; gap: 6px 12px; align-items: center; }
-.gear-card.owned { border-color: var(--gold); box-shadow: 0 0 14px rgba(201,162,39,.25); }
-.gear-card .pic { font-size: 2.2rem; grid-row: span 3; text-align: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,.6)); }
-.gear-card .name { font-weight: 700; }
-.gear-card .price { font-family: var(--font-mono); color: var(--gold-2); font-size: .85rem; }
-.gear-card ul { list-style: none; font-family: var(--font-mono); font-size: .75rem; color: var(--dim); display: flex; flex-wrap: wrap; gap: 4px 10px; }
-.gear-card .btn { grid-column: 2; justify-self: start; font-size: .9rem; padding: 6px 14px; }
-.gear-card .reason { grid-column: 2; font-family: var(--font-mono); font-size: .75rem; color: var(--dim); }
+/* ==== Stadt – Straße mit drei Läden, Laden mit drei Karten ==== */
+.stadt-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.stadt-head .btn.sm { font-size: .85rem; padding: 6px 14px; }
+.strasse { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.storefront { position: relative; min-height: 330px; border-radius: 10px 10px 4px 4px; background: linear-gradient(180deg, #2b2b30, #141417); border: 2px solid #3a3a42; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 18px 14px; text-align: center; transition: transform .2s, box-shadow .2s; }
+.storefront::before { content: ""; position: absolute; inset: 8px; border-radius: 6px; background: linear-gradient(180deg, rgba(255,255,255,.08), transparent 55%); pointer-events: none; }
+.storefront::after { content: ""; position: absolute; left: 10%; right: 10%; top: 0; height: 6px; background: var(--neon); filter: blur(6px); opacity: .35; transition: opacity .25s; }
+.storefront:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,.6); }
+.storefront:hover::after { opacity: .9; }
+.storefront .sign { font-family: var(--font-display); font-size: 1.35rem; letter-spacing: .12em; color: #fff; text-shadow: 0 0 10px var(--neon), 0 0 22px var(--neon); }
+.storefront .glyph { font-size: 3.4rem; filter: drop-shadow(0 6px 10px rgba(0,0,0,.7)); }
+.storefront .seller { font-family: var(--font-mono); font-size: .78rem; color: var(--dim); font-style: italic; }
+.storefront .owned { font-family: var(--font-mono); font-size: .78rem; color: var(--gold-2); border: 1px solid rgba(201,162,39,.35); border-radius: 4px; padding: 3px 10px; background: rgba(0,0,0,.35); }
+.storefront.audi { --neon: #e8e8e8; }
+.storefront.merc { --neon: var(--neon-blue); }
+.storefront.sport { --neon: #ff6a3d; }
+.laden-seller { font-family: var(--font-mono); font-size: .85rem; color: var(--dim); font-style: italic; text-align: center; }
+.laden { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: stretch; }
+.gear-card { background: var(--panel-2); border: 1px solid rgba(255,255,255,.06); border-radius: 12px; padding: 20px 16px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; box-shadow: var(--shadow); }
+.gear-card.owned { border-color: var(--gold); box-shadow: 0 0 18px rgba(201,162,39,.25); }
+.gear-card .pic { font-size: 3.4rem; height: 80px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 6px 10px rgba(0,0,0,.6)); }
+.gear-card .name { font-weight: 700; font-size: 1.1rem; }
+.gear-card .price { font-family: var(--font-mono); color: var(--gold-2); font-size: .95rem; }
+.gear-card ul { list-style: none; font-family: var(--font-mono); font-size: .78rem; color: var(--dim); display: flex; flex-direction: column; gap: 3px; margin: 6px 0 4px; }
+.gear-card .btn { margin-top: auto; font-size: .95rem; padding: 8px 18px; }
+.gear-card .reason { margin-top: auto; font-family: var(--font-mono); font-size: .78rem; color: var(--dim); padding: 8px 0; }
 .gear-line { font-family: var(--font-mono); font-size: .78rem; color: var(--gold-2); }
 .cs-bg.autohaus { background: linear-gradient(180deg, #e8eef3 0%, #b9c4cf 45%, #3c4249 46%, #1b1f23 100%); }
 .cs-bg.intersport { background: linear-gradient(180deg, #1a1a1a 0%, #2b2b2b 50%, #ff6a3d 51%, #b03d1c 100%); }
-@media (max-width: 1100px) { .stadt { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 760px) { .stadt { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .strasse, .laden { grid-template-columns: 1fr; } .storefront { min-height: 180px; } }
 .cs-bg.gasse { background: linear-gradient(180deg, #05060a 0%, #14161e 55%, #2a2418 56%, #0d0b07 100%); }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -879,12 +889,10 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 </template>
 <template id="tpl-stadt">
   <div class="panel stretch">
-    <h2>🏙️ Stadt</h2>
-    <div class="stadt">
-      <section class="shop audi"><h3>Audi Zentrum</h3><p class="seller" id="sellerAudi"></p><div id="shopAudi"></div></section>
-      <section class="shop merc"><h3>Mercedes-Benz Niederlassung</h3><p class="seller" id="sellerMerc"></p><div id="shopMerc"></div></section>
-      <section class="shop sport"><h3>INTERSPORT</h3><p class="seller" id="sellerSport"></p><div id="shopSport"></div></section>
-    </div>
+    <div class="stadt-head"><h2 id="stadtTitle">🏙️ Stadt</h2><button class="btn ghost sm hidden" id="stadtBack">← Zurück auf die Straße</button></div>
+    <p class="laden-seller hidden" id="ladenSeller"></p>
+    <div class="strasse" id="strasse"></div>
+    <div class="laden hidden" id="laden"></div>
   </div>
 </template>
 <!-- /TEMPLATES -->
@@ -2288,6 +2296,12 @@ Cutscene.bind('dealer.hired', 'dealer.hired');
 /* ================= STADT – Autohaus (Audi / Mercedes) und INTERSPORT ================= */
 const Stadt = {
   root: null,
+  shop: null,   // null = Straße, sonst 'audi' | 'merc' | 'sport'
+  SHOPS: {
+    audi: { name: 'Audi Zentrum', icon: '🚗', kind: 'car', brand: 'audi' },
+    merc: { name: 'Mercedes-Benz Niederlassung', icon: '🚘', kind: 'car', brand: 'merc' },
+    sport: { name: 'INTERSPORT', icon: '👟', kind: 'shoes' },
+  },
   SELLER: {
     none: 'Zu Fuß gekommen? Mutig.',
     same: 'Schön, dass du wieder da bist.',
@@ -2323,27 +2337,55 @@ const Stadt = {
     else el.append(h('span', { class: 'reason' }, (this.REASON[check.reason] || check.reason) + reasonSuffix));
     return el;
   },
+  seller(id) {
+    if (id === 'sport') return this.SELLER.sport;
+    const cur = State.s.car ? Rules.GEAR.cars[State.s.car] : null;
+    return !cur ? this.SELLER.none : cur.brand === id ? this.SELLER.same : this.SELLER.other;
+  },
+  ownedLine(id) {
+    const s = State.s;
+    if (id === 'sport') return `Deine Schuhe: ${s.shoes ? Rules.GEAR.shoes[s.shoes].name : '–'}`;
+    return `Dein Wagen: ${s.car ? Rules.GEAR.cars[s.car].name : '–'}`;
+  },
+  open(id) { if (!this.SHOPS[id]) return; SFX.play('click'); this.shop = id; this.render(); },
+  close() { SFX.play('click'); this.shop = null; this.render(); },
   render() {
     if (!this.root) return;
+    const street = qs('#strasse', this.root), laden = qs('#laden', this.root);
+    const shop = this.shop ? this.SHOPS[this.shop] : null;
+    qs('#stadtTitle', this.root).textContent = shop ? `${shop.icon} ${shop.name}` : '🏙️ Stadt';
+    qs('#stadtBack', this.root).classList.toggle('hidden', !shop);
+    qs('#ladenSeller', this.root).classList.toggle('hidden', !shop);
+    street.classList.toggle('hidden', !!shop);
+    laden.classList.toggle('hidden', !shop);
+    street.innerHTML = ''; laden.innerHTML = '';
+    if (!shop) {
+      for (const [id, sh] of Object.entries(this.SHOPS)) {
+        street.append(h('div', { class: `storefront ${id}`, 'data-shop': id, onclick: () => this.open(id) },
+          h('div', { class: 'sign' }, sh.name),
+          h('div', { class: 'glyph' }, sh.icon),
+          h('p', { class: 'seller' }, this.seller(id)),
+          h('div', { class: 'owned' }, this.ownedLine(id))));
+      }
+      return;
+    }
+    qs('#ladenSeller', this.root).textContent = this.seller(this.shop);
     const s = State.s;
-    const cur = s.car ? Rules.GEAR.cars[s.car] : null;
-    for (const [brand, boxId, sellerId] of [['audi', '#shopAudi', '#sellerAudi'], ['merc', '#shopMerc', '#sellerMerc']]) {
-      const box = qs(boxId, this.root); box.innerHTML = '';
-      qs(sellerId, this.root).textContent = !cur ? this.SELLER.none : cur.brand === brand ? this.SELLER.same : this.SELLER.other;
-      Object.entries(Rules.GEAR.cars).filter(([, c]) => c.brand === brand).sort((a, b) => a[1].tier - b[1].tier).forEach(([id, c]) => {
+    if (shop.kind === 'car') {
+      const cur = s.car ? Rules.GEAR.cars[s.car] : null;
+      Object.entries(Rules.GEAR.cars).filter(([, c]) => c.brand === shop.brand).sort((a, b) => a[1].tier - b[1].tier).forEach(([id, c]) => {
         const check = Rules.canBuyCar(s, id);
         const brandSwitch = cur && cur.brand !== c.brand;
         const verb = cur ? (brandSwitch && check.cost === 0 ? 'Wechsel' : 'Upgrade') : 'Kaufen';
         const label = `${verb} · ${UI.fmt(check.cost)}`;
         const reasonSuffix = check.reason === 'funds' && cur ? ` · ${UI.fmt(check.cost)}` : '';
-        box.append(this.card(c, this.carPerks(c), check, label, () => this.buyCar(id), reasonSuffix));
+        laden.append(this.card(c, this.carPerks(c), check, label, () => this.buyCar(id), reasonSuffix));
+      });
+    } else {
+      Object.entries(Rules.GEAR.shoes).sort((a, b) => a[1].tier - b[1].tier).forEach(([id, sh]) => {
+        laden.append(this.card(sh, this.shoePerks(sh), Rules.canBuyShoes(s, id), `Kaufen · ${UI.fmt(sh.price)}`, () => this.buyShoes(id)));
       });
     }
-    const box = qs('#shopSport', this.root); box.innerHTML = '';
-    qs('#sellerSport', this.root).textContent = this.SELLER.sport;
-    Object.entries(Rules.GEAR.shoes).sort((a, b) => a[1].tier - b[1].tier).forEach(([id, sh]) => {
-      box.append(this.card(sh, this.shoePerks(sh), Rules.canBuyShoes(s, id), `Kaufen · ${UI.fmt(sh.price)}`, () => this.buyShoes(id)));
-    });
   },
   busy() { return Cutscene.active || Game.inFlight > 0; },
   async buyCar(id) {
@@ -2359,7 +2401,7 @@ const Stadt = {
       if (choice !== 'yes' || this.busy() || !Rules.canBuyCar(s, id).ok) return; // Zustand kann sich während der Szene geändert haben
     }
     SFX.play('cash');
-    Game.applyDelta(-Rules.canBuyCar(s, id).cost, { from: this.root ? qs(car.brand === 'audi' ? '#shopAudi' : '#shopMerc', this.root) : null });
+    Game.applyDelta(-Rules.canBuyCar(s, id).cost, { from: this.root ? qs('#laden', this.root) : null });
     s.car = id;
     State.save();
     await Cutscene.play('stadt.car', { name: car.name });
@@ -2373,7 +2415,7 @@ const Stadt = {
     if (!Rules.canBuyShoes(s, id).ok) return;
     const sh = Rules.GEAR.shoes[id];
     SFX.play('cash');
-    Game.applyDelta(-sh.price, { from: this.root ? qs('#shopSport', this.root) : null });
+    Game.applyDelta(-sh.price, { from: this.root ? qs('#laden', this.root) : null });
     s.shoes = id;
     State.save();
     await Cutscene.play('stadt.shoes', { name: sh.name });
@@ -2398,8 +2440,8 @@ const Stadt = {
 };
 UI.register('stadt', {
   template: 'tpl-stadt',
-  mount(root) { Stadt.root = root; Stadt.render(); },
-  unmount() { Stadt.root = null; },
+  mount(root) { Stadt.root = root; qs('#stadtBack', root).addEventListener('click', () => Stadt.close()); Stadt.render(); },
+  unmount() { Stadt.root = null; Stadt.shop = null; },
 });
 Cutscene.define('stadt.tradein', (ctx) => [
   { bg: 'autohaus', who: 'verkaeufer', mood: 'calm', text: `Dein ${ctx.old} geht mit ${ctx.tradeIn} in Zahlung. Bleiben ${ctx.cost} für den ${ctx.neu}. Weiter?`,
@@ -5498,6 +5540,7 @@ T.test('Story Schuld: stadtOffen ab Tag 4, Eintreiber mit Türsteher freigeschal
   if (!skipTitle) { const choice = await Title.show(); await Modes.enter(choice); return; }
   /* Dev-Pfad freies Spiel: wie bisher */
   document.body.classList.add('mode-free');
+  if (params.has('shop') && typeof Stadt !== 'undefined') Stadt.shop = Stadt.SHOPS[params.get('shop')] ? params.get('shop') : null;
   await UI.show(params.get('screen') || 'hub');
   let gameOverAtBoot = false;
   if (Rules.isGameOver(State.s)) { gameOverAtBoot = true; await Bus.emit('gameover', {}); }
