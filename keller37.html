@@ -6,7 +6,7 @@
 <title>KELLER 37</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@400;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
 <style>
 /* ==== 1. TOKENS ==== */
 :root {
@@ -481,6 +481,62 @@ body.cs-open .toast { max-width: 300px; }
   .door:hover .sign { opacity: .8; }
   .rcell:hover { filter: none; }
 }
+/* ==== ROYAL ZONE (Art déco, nur unter body[data-zone="royal"]) ==== */
+#zonefade { position: fixed; inset: 0; z-index: 78; background: radial-gradient(ellipse at 50% 50%, rgba(201,169,97,.35), #000 70%); opacity: 0; pointer-events: none; transition: opacity var(--zf, .4s) ease; }
+#zonefade.on { opacity: 1; }
+.brand-sub { display: none; }
+body[data-zone="royal"] {
+  --bg: #0b0a0c; --panel: #141216; --panel-2: #1c1920;
+  --gold: #c9a961; --gold-2: #f1dfa8; --bronze: #8a6a2e;
+  --emerald: #1d6b4a; --bordeaux: #5a1a24; --ivory: #efe6cf; --text: #efe6cf; --dim: #9d9481;
+  --font-display: "Cinzel", Georgia, "Times New Roman", serif;
+  --radius: 4px; --shadow: 0 12px 34px rgba(0,0,0,.7);
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.02), transparent 60%),
+    conic-gradient(from 180deg at 50% -10%, transparent 0deg, rgba(201,169,97,.03) 7.5deg, transparent 15deg) 0 0 / 100% 100%,
+    var(--bg);
+  color: var(--text);
+}
+body[data-zone="royal"] .grain { opacity: .03; }
+/* Kopfzeile */
+body[data-zone="royal"] .wallet { background: #0b0a0c; border-bottom: 1px solid var(--gold); box-shadow: 0 4px 0 -3px var(--bronze); backdrop-filter: none; }
+body[data-zone="royal"] .brand { font-family: var(--font-display); font-weight: 700; color: var(--gold); text-shadow: 0 0 10px rgba(201,169,97,.35); animation: none; letter-spacing: .12em; display: flex; flex-direction: column; align-items: flex-start; line-height: 1; }
+body[data-zone="royal"] .brand-sub { display: block; font-size: .6rem; letter-spacing: .18em; text-transform: uppercase; color: var(--bronze); margin-top: 3px; }
+body[data-zone="royal"] .balance { background: linear-gradient(#2a2418, #14110b); border: 1px solid var(--gold); box-shadow: inset 0 0 0 3px #14110b, inset 0 0 0 4px var(--bronze); color: var(--gold-2); font-family: var(--font-mono); border-radius: 4px; }
+body[data-zone="royal"] .note { background: var(--ivory); color: #2a2418; border: 1px solid var(--bronze); box-shadow: 2px 3px 6px rgba(0,0,0,.6); }
+body[data-zone="royal"] .note.danger { border-left: 4px solid var(--bordeaux); background: var(--ivory); }
+body[data-zone="royal"] .note.pink { background: var(--ivory); border-left: 4px solid #a04a6a; }
+body[data-zone="royal"] .luck .seg { background: #1c1920; border-color: var(--bronze); }
+body[data-zone="royal"] .luck .seg.on { background: var(--gold); box-shadow: 0 0 6px rgba(201,169,97,.6); }
+body[data-zone="royal"] .lv-badge { border-color: var(--bronze); color: var(--gold-2); }
+body[data-zone="royal"] .icon-btn { border-color: var(--bronze); border-radius: 4px; }
+body[data-zone="royal"] .icon-btn:hover { border-color: var(--gold); }
+/* Seitenleiste */
+body[data-zone="royal"] .side-sec { background: var(--panel); border: 1px solid var(--gold); border-radius: 4px; box-shadow: var(--shadow); }
+body[data-zone="royal"] .side-sec h3 { font-family: var(--font-display); font-variant: small-caps; letter-spacing: .18em; font-size: .85rem; color: var(--gold); text-align: center; }
+body[data-zone="royal"] .side-sec h3::after { content: "— ✦ —"; display: block; font-size: .65rem; color: var(--bronze); margin-top: 2px; letter-spacing: .3em; }
+body[data-zone="royal"] .side-btn { background: var(--panel-2); border: 1px solid var(--bronze); border-radius: 3px; color: var(--ivory); }
+body[data-zone="royal"] .side-btn:hover:not(:disabled) { border-color: var(--gold); background: #24202a; }
+body[data-zone="royal"] .side-btn .price { color: var(--gold-2); }
+body[data-zone="royal"] .side-hint { color: var(--dim); }
+body[data-zone="royal"] .side-tabs button.on { color: var(--gold-2); border-top-color: var(--gold); }
+/* Gemeinsame Bausteine: Chips, Knöpfe, Tafeln, Status, Neon */
+body[data-zone="royal"] .chip { --chip: #141216; background: var(--chip); border: 4px dashed var(--gold); box-shadow: inset 0 0 0 3px #0b0a0c, inset 0 0 0 4px var(--bronze), 0 3px 6px rgba(0,0,0,.6); color: var(--gold-2); }
+body[data-zone="royal"] .chip:hover, body[data-zone="royal"] .chip:active { --chip: var(--gold); color: #141216; }
+body[data-zone="royal"] .btn { font-family: var(--font-display); font-weight: 700; letter-spacing: .15em; border-radius: 3px; --c: var(--gold); color: var(--gold-2); background: transparent; }
+body[data-zone="royal"] .btn.solid { background: linear-gradient(#e2c77a, #b8923f); color: #1a1208; border-color: #e2c77a; }
+body[data-zone="royal"] .btn.solid:hover:not(:disabled) { background: linear-gradient(#f1dfa8, #c9a961); box-shadow: 0 0 14px rgba(201,169,97,.5); }
+body[data-zone="royal"] .btn.ghost { --c: var(--bronze); color: var(--ivory); }
+body[data-zone="royal"] .btn.green { --c: var(--emerald); color: #bfe8d0; background: transparent; }
+body[data-zone="royal"] .btn.blue { --c: var(--gold-2); color: var(--gold-2); background: transparent; }
+body[data-zone="royal"] .btn.red { --c: var(--bordeaux); color: #f0c0c8; background: transparent; }
+body[data-zone="royal"] .chalk.paytable { background: linear-gradient(160deg, #b8923f, #e2c77a 45%, #9a7a2f); color: #2a1d08; border: 2px solid #5a4520; box-shadow: inset 0 0 0 1px #e2c77a, var(--shadow); font-family: var(--font-mono); }
+body[data-zone="royal"] .chalk.paytable h4 { font-family: var(--font-display); color: #2a1d08; letter-spacing: .12em; }
+body[data-zone="royal"] .chalk.paytable td, body[data-zone="royal"] .chalk.paytable .side-hint { color: #2a1d08; }
+body[data-zone="royal"] .status { font-family: var(--font-display); font-size: .95rem; color: var(--gold-2); letter-spacing: .08em; }
+body[data-zone="royal"] .neon { animation: none; color: var(--gold-2); text-shadow: 0 0 12px rgba(201,169,97,.5); }
+body[data-zone="royal"] .panel { background: var(--panel); border: 1px solid var(--bronze); border-radius: 4px; }
+@media (max-width: 760px) { body[data-zone="royal"] .side { background: #0b0a0c; border-top: 1px solid var(--gold); } }
+@media (prefers-reduced-motion: reduce) { #zonefade { transition: none; } }
 /* -- Reduced Motion -- */
 @media (prefers-reduced-motion: reduce) {
   .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running, .plate.hit, .plate.broken, .taxi-road.running, .brake-flash.on, .ticket-pop, .mega-grid .cell.spin, .die.rolling, .lv-badge.point { animation: none !important; }
@@ -739,6 +795,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 <div id="cutscene" hidden></div>
 <div id="title" hidden></div>
 <div id="nightfade" aria-hidden="true"></div>
+<div id="zonefade" aria-hidden="true"></div>
 
 <!-- TEMPLATES -->
 <template id="tpl-hub">
@@ -1946,6 +2003,15 @@ const UI = {
   fmt(n) { return Math.round(n).toLocaleString('de-DE') + ' €'; },
   register(id, def) { this.screens.set(id, def); },
   mobile() { return window.matchMedia('(max-width: 760px)').matches; },
+  /* Gold-Vorhang beim Zonenwechsel Keller ↔ Royal; Reduced-Motion: sofort */
+  zoneFade(on) {
+    const el = qs('#zonefade');
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const ms = reduced ? 0 : (this.mobile() ? 250 : 400);
+    el.style.setProperty('--zf', ms + 'ms');
+    el.classList.toggle('on', on);
+    return wait(ms);
+  },
   async show(id) {
     if (this.busy) return;
     const def = this.screens.get(id);
@@ -1957,20 +2023,24 @@ const UI = {
     }
     this.busy = true;
     const stage = qs('#stage');
+    const curZone = document.body.dataset.zone || 'keller';
+    const nextZone = typeof RoyalRules !== 'undefined' ? RoyalRules.zoneFor(id) : 'keller';
+    const zoneChange = curZone !== nextZone;
     if (this.current) {
       try { this.current.def.unmount?.(); } catch (e) { console.error(e); }
-      stage.classList.add('leaving');
-      await wait(UI.mobile() ? 120 : 180);
-    }
+      if (zoneChange) await this.zoneFade(true);
+      else { stage.classList.add('leaving'); await wait(UI.mobile() ? 120 : 180); }
+    } else if (zoneChange) { await this.zoneFade(true); }
     stage.innerHTML = '';
     stage.classList.remove('leaving');
     stage.appendChild(qs('#' + def.template).content.cloneNode(true));
     this.current = { id, def };
     document.body.dataset.screen = id;
-    stage.classList.add('entering');
+    document.body.dataset.zone = nextZone;
+    if (!zoneChange) stage.classList.add('entering');
     try { def.mount?.(stage); } catch (e) { console.error(e); }
-    await wait(UI.mobile() ? 180 : 250);
-    stage.classList.remove('entering');
+    if (zoneChange) { this.renderWallet(); await this.zoneFade(false); }
+    else { await wait(UI.mobile() ? 180 : 250); stage.classList.remove('entering'); }
     this.busy = false;
   },
   toast({ icon = '📌', title = '', text = '', tone = 'info', ms = 3000 } = {}) {
@@ -2036,6 +2106,7 @@ const UI = {
     if (s.kidneySold) notes.append(h('span', { class: 'note danger' }, '💊 −20 €/Spin'));
     if (s.hasHouse || s.hasDealer) notes.append(h('span', { class: 'note gold' }, `💸 +${Rules.passivePerMin(s)} €/min`));
     if (State.mode === 'story' && typeof Story !== 'undefined' && Story.story) notes.append(...Story.hudNotes());
+    const sub = qs('#brandSub'); if (sub) sub.textContent = s.flags && s.flags.royalGuest ? 'Gast des Hauses' : 'Gast im Casino Royal';
     qs('#mute').textContent = State.meta.muted ? '🔇' : '🔊';
     if (typeof Perks !== 'undefined') Perks.renderBadge();
   },
@@ -2102,7 +2173,8 @@ const UI = {
     const w = qs('#wallet');
     w.innerHTML = '';
     w.append(
-      h('button', { class: 'brand neon', id: 'brand', style: '--neon: var(--neon-amber)', title: 'Zurück in den Gang', onclick: () => { if (State.mode === 'story' && Story.s && Story.s.phase === 'morning') UI.show(UI.screens.has('jobs') ? 'jobs' : 'hub'); else UI.show('hub'); } }, 'Keller 37'),
+      h('button', { class: 'brand neon', id: 'brand', style: '--neon: var(--neon-amber)', title: 'Zurück in den Gang', onclick: () => { if (State.mode === 'story' && Story.s && Story.s.phase === 'morning') UI.show(UI.screens.has('jobs') ? 'jobs' : 'hub'); else UI.show('hub'); } },
+        'Keller 37', h('span', { class: 'brand-sub', id: 'brandSub' }, 'Gast im Casino Royal')),
       h('div', { class: 'wallet-mid' }, h('div', { class: 'luck', id: 'luck' }), h('button', { class: 'lv-badge', id: 'lvBadge', title: 'Skills', onclick: () => UI.show('skills') }), h('div', { class: 'notes', id: 'notes' })),
       h('div', { class: 'wallet-right' },
         h('button', { class: 'icon-btn', id: 'mute', title: 'Ton an/aus', onclick: () => { SFX.setMuted(!State.meta.muted); UI.renderWallet(); } }, '🔊'),
@@ -5021,6 +5093,9 @@ const StoryRules = {
 const RoyalRules = {
   ENTRY_FEE: 100,
   GUEST_WIN: 5000,
+  /* Screens, die in der Zone „royal“ liegen (Body-Attribut data-zone, Gold-Vorhang beim Wechsel) */
+  SCREENS: ['royal', 'megaslots', 'craps', 'wheel'],
+  zoneFor(id) { return RoyalRules.SCREENS.includes(id) ? 'royal' : 'keller'; },
   /* ---- Eintritt ---- */
   canEnter(s) {
     if (!s.car) return { ok: false, reason: 'car', text: 'Parkservice only – zu Fuß kommt hier keiner rein.' };
@@ -7207,6 +7282,11 @@ T.test('RoyalRules.canEnter / entryFee', () => {
   const st = { day: 4, royalPaidDay: 4 };
   T.eq(RoyalRules.entryFee(base({ car: 'audiA3', story: st })), 0, 'Story: heute schon bezahlt');
   T.eq(RoyalRules.entryFee(base({ car: 'audiA3', story: { day: 5, royalPaidDay: 4 } })), 100);
+});
+T.test('RoyalRules.zoneFor: Royal-Screens sind Zone royal, alles andere keller', () => {
+  T.eq(RoyalRules.SCREENS, ['royal', 'megaslots', 'craps', 'wheel']);
+  for (const id of RoyalRules.SCREENS) T.eq(RoyalRules.zoneFor(id), 'royal');
+  for (const id of ['hub', 'roulette', 'stadt', 'jobs', 'skills', undefined, null]) T.eq(RoyalRules.zoneFor(id), 'keller');
 });
 T.test('StoryRules.gate: bedingte Sperre mit Text', () => {
   const st = Object.assign({}, STORY_PROBE, { gates: { royal: [{ when: { flag: 'zitter' }, text: 'Sie zittern.' }, { when: { var: 'mut', lte: 0 }, text: 'Zu wenig Mut.' }] } });
