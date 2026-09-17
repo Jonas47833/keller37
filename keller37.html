@@ -727,22 +727,24 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 @media (prefers-reduced-motion: reduce) { .mega-machine .slot-head { animation: none; } .mega-lines-svg polyline { animation: none; stroke-dashoffset: 0; } .mega-free { transition: none; } .mega-grid .cell.spin { animation: none; } }
 /* Casino Royal – Craps */
 .craps-panel { align-items: stretch; }
-.craps-table { background: radial-gradient(ellipse at 50% 30%, #1f6b3a, #0d3a20 70%, #082414); border: 6px solid #4a2a12; border-radius: 120px / 40px; padding: 18px 26px; box-shadow: var(--shadow), inset 0 0 60px rgba(0,0,0,.5); }
-.craps-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-display); font-size: 1.4rem; }
-.craps-point { font-family: var(--font-mono); font-size: .9rem; background: #fff; color: #222; border-radius: 50%; padding: 6px 10px; }
-.craps-point.on { background: var(--gold); }
+.craps-table { position: relative; background: radial-gradient(ellipse at 50% 30%, #1f6b4a, #0e3d2a 70%, #082416); border: 6px solid #141216; border-radius: 80px / 30px; padding: 18px 26px 22px; box-shadow: 0 0 0 2px var(--gold), var(--shadow); }
+.craps-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-display); font-weight: 700; font-size: 1.4rem; letter-spacing: .2em; color: var(--gold-2); }
+.craps-point { font-family: var(--font-display); font-size: .8rem; letter-spacing: .1em; background: #141216; color: var(--gold-2); border: 2px solid var(--gold); border-radius: 50%; padding: 8px 10px; min-width: 64px; text-align: center; }
+.craps-point.on { background: var(--gold); color: #141216; }
 .craps-dice { display: flex; gap: 18px; justify-content: center; margin: 16px 0; }
-.die { width: 70px; height: 70px; border-radius: 12px; background: #fff; color: #222; font-size: 3.2rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px rgba(0,0,0,.6); }
+.die { width: 70px; height: 70px; border-radius: 12px; background: var(--ivory); color: #141216; font-size: 3.2rem; display: flex; align-items: center; justify-content: center; border: 2px solid var(--gold); box-shadow: 0 6px 10px rgba(0,0,0,.6); }
 .die.rolling { animation: dieRoll .5s linear infinite; }
 @keyframes dieRoll { 0% { transform: rotate(0) translateY(0); } 50% { transform: rotate(180deg) translateY(-14px); } 100% { transform: rotate(360deg) translateY(0); } }
 .craps-bets { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.craps-bet { border: 2px dashed rgba(255,255,255,.5); border-radius: 10px; padding: 10px; text-align: center; color: #fff; }
-.craps-bet h4 { margin: 0; font-family: var(--font-display); letter-spacing: .15em; }
+.craps-bet { position: relative; border: 1px solid var(--gold); border-radius: 6px; padding: 12px 10px; text-align: center; color: var(--ivory); background: rgba(0,0,0,.25); box-shadow: inset 0 2px 8px rgba(0,0,0,.6); }
+.craps-bet h4 { margin: 0; font-family: var(--font-display); font-weight: 700; letter-spacing: .18em; color: var(--gold-2); }
 .craps-bet .amt { font-family: var(--font-mono); font-size: 1.2rem; color: var(--gold-2); }
-.craps-bet p { font-size: .75rem; color: rgba(255,255,255,.7); margin: 4px 0 0; }
-.craps-bet.won { box-shadow: 0 0 0 3px var(--neon-green); } .craps-bet.lost { opacity: .5; }
-.craps-history { font-family: var(--font-mono); font-size: .8rem; color: rgba(255,255,255,.7); text-align: center; margin-top: 10px; min-height: 1.2em; }
-@media (max-width: 760px) { .craps-table { border-radius: 60px / 30px; padding: 14px 16px; } .craps-bets { grid-template-columns: 1fr; } }
+.craps-bet p { font-size: .75rem; color: rgba(239,230,207,.7); margin: 4px 0 0; }
+.craps-bet .chip-stack { right: 8px; top: 8px; }
+.craps-bet.won { box-shadow: 0 0 0 2px var(--gold-2), inset 0 2px 8px rgba(0,0,0,.6); }
+.craps-bet.lost { opacity: .5; }
+.craps-history { font-family: var(--font-display); font-size: .8rem; letter-spacing: .08em; color: rgba(241,223,168,.7); text-align: center; margin-top: 10px; min-height: 1.2em; }
+@media (max-width: 760px) { .craps-table { border-radius: 40px / 22px; padding: 14px 16px; } .craps-bets { grid-template-columns: 1fr; } }
 /* Casino Royal – Glücksrad */
 .wheel-panel { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
 .wheel-panel .status, .wheel-panel .bet-bar { grid-column: 1 / -1; }
@@ -1229,8 +1231,8 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
       <div class="craps-head"><span class="neon" style="--neon: var(--neon-green)">CRAPS</span><span class="craps-point" id="crapsPoint">Come-out</span></div>
       <div class="craps-dice"><div class="die" id="die1">⚄</div><div class="die" id="die2">⚂</div></div>
       <div class="craps-bets">
-        <div class="craps-bet" id="passBox"><h4>PASS LINE</h4><div class="amt" id="passAmt">0 €</div><p>7/11 gewinnt · 2/3/12 verliert · sonst Punkt</p></div>
-        <div class="craps-bet" id="fieldBox"><h4>FIELD</h4><div class="amt" id="fieldAmt">0 €</div><p>3 4 9 10 11 zahlen 1:1 · 2 und 12 zahlen 2:1</p></div>
+        <div class="craps-bet" id="passBox"><span class="chip-stack hidden" id="passStack">0</span><h4>PASS LINE</h4><div class="amt" id="passAmt">0 €</div><p>7/11 gewinnt · 2/3/12 verliert · sonst Punkt</p></div>
+        <div class="craps-bet" id="fieldBox"><span class="chip-stack hidden" id="fieldStack">0</span><h4>FIELD</h4><div class="amt" id="fieldAmt">0 €</div><p>3 4 9 10 11 zahlen 1:1 · 2 und 12 zahlen 2:1</p></div>
       </div>
       <div class="craps-history" id="crapsHistory"></div>
     </div>
@@ -3342,6 +3344,7 @@ UI.register('megaslots', {
 const Craps = {
   root: null, rolling: false, gen: 0, point: null, bets: { pass: 0, field: 0 }, history: [], run: null,
   FACES: ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'],
+  stackText(v) { return v >= 1000 ? `${Math.round(v / 100) / 10}k` : String(v); },
   alive(gen) { return !!this.root && this.gen === gen; },
   /* Tischzustand gehört zum Spielstand: anderer State.s (Moduswechsel, Neues Spiel) → Tisch räumen */
   checkRun() { if (this.run !== State.s) { this.reset(); this.render(); } },
@@ -3362,6 +3365,11 @@ const Craps = {
     if (!this.root) return;
     qs('#passAmt', this.root).textContent = UI.fmt(this.bets.pass);
     qs('#fieldAmt', this.root).textContent = UI.fmt(this.bets.field);
+    for (const k of ['pass', 'field']) {
+      const st = qs(`#${k}Stack`, this.root);
+      st.textContent = this.stackText(this.bets[k]);
+      st.classList.toggle('hidden', this.bets[k] === 0);
+    }
     const p = qs('#crapsPoint', this.root); p.textContent = this.point == null ? 'Come-out' : `Punkt ${this.point}`; p.classList.toggle('on', this.point != null);
     qs('#crapsHistory', this.root).textContent = this.history.slice(-10).join(' · ');
     qs('#btnPass', this.root).disabled = this.point != null;
@@ -3380,6 +3388,7 @@ const Craps = {
     this.rolling = true; this.render();
     try {
       qsa('.craps-bet', this.root).forEach((b) => b.classList.remove('won', 'lost'));
+      qsa('.chip-stack', this.root).forEach((c) => c.classList.remove('won', 'lost'));
       qsa('.die', this.root).forEach((d) => d.classList.add('rolling'));
       qs('#crapsStatus', this.root).textContent = 'Die Würfel rollen…';
       SFX.loop('reelSpin', 100);
@@ -3398,19 +3407,26 @@ const Craps = {
         qsa('.die', this.root).forEach((d) => d.classList.remove('rolling'));
         qs('#die1', this.root).textContent = this.FACES[dice[0]]; qs('#die2', this.root).textContent = this.FACES[dice[1]];
         SFX.play('reelStop');
-        if (r.pass === 'win') qs('#passBox', this.root).classList.add('won'); if (r.pass === 'lose') qs('#passBox', this.root).classList.add('lost');
-        if (r.field === 'win') qs('#fieldBox', this.root).classList.add('won'); if (r.field === 'lose') qs('#fieldBox', this.root).classList.add('lost');
+        this.render();
+        if (r.pass === 'win') { qs('#passBox', this.root).classList.add('won'); qs('#passStack', this.root).classList.add('won'); }
+        if (r.pass === 'lose') { qs('#passBox', this.root).classList.add('lost'); qs('#passStack', this.root).classList.add('lost'); }
+        if (r.field === 'win') { qs('#fieldBox', this.root).classList.add('won'); qs('#fieldStack', this.root).classList.add('won'); }
+        if (r.field === 'lose') { qs('#fieldBox', this.root).classList.add('lost'); qs('#fieldStack', this.root).classList.add('lost'); }
         const txt = [];
         if (r.pass === 'point') txt.push(`Punkt ist ${r.point}`); if (r.pass === 'win') txt.push('Pass gewinnt'); if (r.pass === 'lose') txt.push(r.sum === 7 ? 'Seven out' : 'Craps');
         if (r.field === 'win') txt.push(`Field ${RoyalRules.crapsField(r.sum) === 2 ? 'doppelt' : 'gewinnt'}`); if (r.field === 'lose') txt.push('Field verliert');
         qs('#crapsStatus', this.root).innerHTML = `<span class="${r.delta > 0 ? 'win' : r.delta < 0 ? 'loss' : ''}">${txt.join(' · ') || 'Weiter'} (${r.delta >= 0 ? '+' : '−'}${UI.fmt(Math.abs(r.delta))})</span>`;
-        this.render();
       }
       await Bus.emit('craps:result', { delta: r.delta, bet: risk, detail: { dice, sum: r.sum, pass: r.pass, field: r.field, point: r.point, bets } });
       await Game.settle(r.delta, { from: this.alive(gen) ? qs('.craps-table', this.root) : null, game: 'craps', bet: risk, run });
     } finally {
       SFX.stop('reelSpin');
       if (this.gen === gen) { this.rolling = false; this.render(); }
+    }
+    /* render() oben blendet Marker anhand der Restbeträge aus – für die Ergebnisanzeige hier mit dem Schnappschuss wieder einblenden */
+    if (this.alive(gen)) {
+      if (bets.pass > 0) { const st = qs('#passStack', this.root); st.textContent = this.stackText(bets.pass); st.classList.remove('hidden'); }
+      if (bets.field > 0) { const st = qs('#fieldStack', this.root); st.textContent = this.stackText(bets.field); st.classList.remove('hidden'); }
     }
   },
   onKey(e) { if (e.code === 'Space' && qs('#cutscene').hidden && !e.repeat) { e.preventDefault(); Craps.roll(); } },
