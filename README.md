@@ -39,6 +39,10 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
   Trophäenwand bekommt einen eigenen Abschnitt für Story-Erfolge. Stories können eine
   Voraussetzung haben (`requires`); der Titelscreen zeigt dann an, welche Story als Nächstes
   startet und welche noch gesperrt ist.
+- **Story 2 „Der Kater":** Fortsetzung – erst spielbar, wenn „Die Schuld" ein Ende hat, und der
+  Einstieg hängt davon ab, welches. Hochzeit, Absturz, drei Bier am Tag als Pflicht und als
+  Glücksquelle, eine Leber als Countdown, der Doc mit einem Angebot, und der Keller, der zu
+  kaufen ist. Sechs Enden.
 
 ## Dev-Parameter
 
@@ -49,11 +53,11 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
 | `?scene=divorce` | nur freies Spiel: eine Szene abspielen |
 | `?selftest` | Regel-Selbsttest im Browser (Ergebnis als Toast und in der Konsole) |
 | `?mode=story` \| `?mode=free` | Titelscreen überspringen, direkt in den Modus |
-| `?story=schuld` | Story erzwingen (impliziert `mode=story`) |
+| `?story=schuld` | Story erzwingen (`schuld`, `kater`; impliziert `mode=story`) |
 | `?day=12` | Story-Tag setzen (nur zusammen mit `?fresh`; überspringt das Intro) |
 | `?job=spueler` | Jobbörse überspringen, Job direkt starten (impliziert `mode=story`; der Job muss freigeschaltet und seine Voraussetzung erfüllt sein) |
-| `?ending=sturz` | ein Story-Ende direkt abspielen (nur beim Story-Neustart, z. B. `?fresh&story=schuld&ending=sturz`) |
-| `?prev=doc` | zusammen mit `?fresh&story=…`: setzt das „vorige Ende" der vorausgesetzten Story (für Fortsetzungen) |
+| `?ending=sturz` | ein Story-Ende direkt abspielen (nur beim Story-Neustart, z. B. `?fresh&story=schuld&ending=sturz` oder `?fresh&story=kater&prev=doc&ending=wirt`) |
+| `?prev=doc` | zusammen mit `?fresh&story=…`: setzt das „vorige Ende" der vorausgesetzten Story (für Fortsetzungen, z. B. `?fresh&story=kater&prev=doc` – Intro-Variante nach dem Doc-Ende) |
 | `?mug=1\|junkie\|jugend\|cousin` | erzwingt den nächsten Überfall (`1` bzw. leer: zufälliger Räubertyp; sonst gezielt `junkie`, `jugend` oder `cousin`) |
 
 `story`, `day`, `job`, `ending`, `fresh` und `prev` gelten genau einmal: die Engine entfernt sie nach dem Einstieg
