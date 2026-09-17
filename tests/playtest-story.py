@@ -892,10 +892,13 @@ async def scenario_stadt_shop(cdp):
     await cdp.navigate(URL_BASE + "?fresh&screen=stadt")
     await asyncio.sleep(1.0)
     await cdp.inject_helpers()
-    # Strasse: drei Schaufenster, Laden noch zu
+    # Strasse: vier Schaufenster (Autohaus, INTERSPORT, Casino Royal ohne Auto gesperrt), Laden noch zu
     n_fronts = await cdp.eval("document.querySelectorAll('#strasse .storefront').length", await_promise=False)
+    royal_locked = await cdp.eval("document.querySelector('#strasse .storefront.royal').classList.contains('locked')", await_promise=False)
     laden_hidden = await cdp.eval("document.querySelector('#laden').classList.contains('hidden')", await_promise=False)
-    record("stadt: Strasse zeigt drei Schaufenster, Laden zu", n_fronts == 3 and laden_hidden is True, "fronts=%s laden_hidden=%s" % (n_fronts, laden_hidden))
+    record("stadt: Strasse zeigt vier Schaufenster (Casino Royal ohne Auto gesperrt), Laden zu",
+           n_fronts == 4 and royal_locked is True and laden_hidden is True,
+           "fronts=%s royal_locked=%s laden_hidden=%s" % (n_fronts, royal_locked, laden_hidden))
     await cdp.screenshot("stadt-strasse.png")
     await cdp.click(".storefront.audi")
     await asyncio.sleep(0.3)
@@ -945,6 +948,74 @@ async def scenario_stadt_shop(cdp):
     record("stadt: Seitenleiste zeigt Besitz", line is not None and "Mercedes C-Klasse" in line and "Trail-Runner" in line and "💪 0" in line, "line=%s" % line)
     terms = await cdp.eval("UI.show('finance').then(()=>document.querySelector('#bankTerms').textContent)")
     record("stadt: Bank zeigt Mercedes-Konditionen", terms is not None and "27 %" in terms and "4.000" in terms, "terms=%s" % terms)
+
+
+async def scenario_royal_free(cdp):
+    """Casino Royal im freien Spiel: kein zweiter Eintritt ueber die Seitenleiste, Eintritts-Toast erst
+    nach der Erstbesuch-Szene, Freispiele/Craps-Tisch haengen am Spielstand, Craps rechnet den
+    Schnappschuss der Einsaetze ab (Remount waehrend des Wurfs erzeugt kein Geld)."""
+    await cdp.navigate(URL_BASE + "?fresh&mode=free")
+    await asyncio.sleep(0.8)
+    await cdp.inject_helpers()
+    await cdp.advance_cutscene(max_steps=10)
+    await cdp.eval("State.s.car = 'audiA3'; State.s.balance = 1000; State.save(); UI.renderWallet(); UI.renderSide();", await_promise=False)
+    # Erster Eintritt: 100 EUR, royal.first-Szene laeuft, der Toast darf erst danach kommen (#5)
+    await cdp.click("#side [data-action='royal']")
+    await cdp.wait_for("__pt.cutsceneActive()", timeout=2.0)
+    toast_during = await cdp.eval("document.querySelector('#toasts').textContent.includes('Eintritt')", await_promise=False)
+    await cdp.advance_cutscene(max_steps=10)
+    await cdp.wait_for("UI.current && UI.current.id === 'royal' && !UI.busy", timeout=3.0)
+    toast_after = await cdp.eval("document.querySelector('#toasts').textContent.includes('Eintritt')", await_promise=False)
+    balance = await cdp.eval("State.s.balance", await_promise=False)
+    record("royal: erster Eintritt kostet 100 EUR, Toast erst nach der Erstbesuch-Szene",
+           balance == 900 and toast_during is False and toast_after is True,
+           "balance=%s toast_waehrend=%s toast_danach=%s" % (balance, toast_during, toast_after))
+    # Seitenleiste erneut: kein zweiter Eintritt, Screen bleibt Lobby (#1)
+    await cdp.click("#side [data-action='royal']")
+    await asyncio.sleep(0.6)
+    balance2 = await cdp.eval("State.s.balance", await_promise=False)
+    screen2 = await cdp.eval("UI.current.id", await_promise=False)
+    record("royal: Seitenleisten-Klick in der Lobby kassiert nicht erneut", balance2 == 900 and screen2 == "royal",
+           "balance=%s screen=%s" % (balance2, screen2))
+    # Vom Tisch aus: zurueck in die Lobby, ohne Gebuehr (#1)
+    await cdp.eval("UI.show('megaslots')")
+    await cdp.click("#side [data-action='royal']")
+    await cdp.wait_for("UI.current && UI.current.id === 'royal' && !UI.busy", timeout=3.0)
+    balance3 = await cdp.eval("State.s.balance", await_promise=False)
+    screen3 = await cdp.eval("UI.current.id", await_promise=False)
+    record("royal: Seitenleisten-Klick am Tisch fuehrt gebuehrenfrei in die Lobby", balance3 == 900 and screen3 == "royal",
+           "balance=%s screen=%s" % (balance3, screen3))
+    # Craps: Einsatz platziert, Remount waehrend des Wurfs gibt place() wieder frei -- abgerechnet wird trotzdem nur der Schnappschuss (#4)
+    await cdp.eval("UI.show('craps')")
+    craps = await cdp.eval("""(async function(){
+      RoyalRules.crapsRoll = function(){ return [3, 4]; };  // 7 im Come-out: Pass gewinnt 1:1
+      document.querySelector('#crapsBet').value = '100';
+      Craps.place('pass');
+      var before = State.s.balance, placed = Craps.bets.pass;
+      var p = Craps.roll();
+      UI.current.def.unmount(); UI.current.def.mount(document.querySelector('#stage'));  // Remount: rolling=false, place() wieder moeglich
+      Craps.place('pass');
+      var live = Craps.bets.pass;
+      await p;
+      return { before: before, placed: placed, live: live, after: State.s.balance, pass: Craps.bets.pass, field: Craps.bets.field };
+    })()""")
+    craps_ok = bool(craps) and craps.get("placed") == 100 and craps.get("live") == 200 and craps.get("after") == craps.get("before") + 100 and craps.get("pass") == 0 and craps.get("field") == 0
+    record("royal: Craps rechnet den Einsatz-Schnappschuss ab (Remount waehrend des Wurfs erzeugt kein Geld)", craps_ok, "%s" % (craps,))
+    # Freispiele und Craps-Tisch haengen am Spielstand: neuer State.s -> verfallen (#2)
+    await cdp.eval("MegaSlots.freeLeft = 3; MegaSlots.lastBet = 100; MegaSlots.freeRun = State.s; Craps.point = 6; Craps.bets.pass = 100; Craps.run = State.s;", await_promise=False)
+    await cdp.eval("State.reset(); Modes.enter('free')", await_promise=False)
+    await asyncio.sleep(0.6)
+    await cdp.advance_cutscene(max_steps=10)
+    await cdp.wait_for("UI.current && UI.current.id === 'hub' && !UI.busy", timeout=3.0)
+    await cdp.eval("UI.show('megaslots')")
+    free_left = await cdp.eval("MegaSlots.freeLeft", await_promise=False)
+    mega_btn = await cdp.eval("document.querySelector('#btnMega').textContent", await_promise=False)
+    await cdp.eval("UI.show('craps')")
+    craps_point = await cdp.eval("Craps.point", await_promise=False)
+    craps_pass = await cdp.eval("Craps.bets.pass", await_promise=False)
+    record("royal: Freispiele und Craps-Tisch verfallen mit neuem Spielstand",
+           free_left == 0 and mega_btn == "Drehen" and craps_point is None and craps_pass == 0,
+           "freeLeft=%s btn=%s point=%s pass=%s" % (free_left, mega_btn, craps_point, craps_pass))
 
 
 async def scenario_mugging(cdp):
@@ -1118,6 +1189,7 @@ async def main():
         await scenario_all_scenes(cdp)
         await scenario_free_sandbox_unchanged(cdp)
         await scenario_stadt_shop(cdp)
+        await scenario_royal_free(cdp)
         await scenario_mugging(cdp)
         await scenario_story_stadt(cdp)
     finally:

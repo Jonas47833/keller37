@@ -2657,6 +2657,8 @@ const Royal = {
   async enter() {
     const s = State.s;
     if (Cutscene.active || Game.inFlight > 0 || UI.busy) return;
+    /* Schon drin (Lobby oder Tisch): kein zweiter Eintritt – nur zurück in die Lobby */
+    if (UI.current && ['royal', ...this.GAMES].includes(UI.current.id)) { if (UI.current.id !== 'royal') await UI.show('royal'); return; }
     const chk = RoyalRules.canEnter(s);
     if (!chk.ok) { UI.toast({ icon: '🎩', title: 'Casino Royal', text: chk.text, tone: 'loss' }); SFX.play('lose'); return; }
     if (this.inStory() && Story.isLocked('royal')) { UI.toast({ icon: '🔒', title: Story.lockReason('royal'), tone: 'loss' }); SFX.play('lose'); return; }
@@ -2665,10 +2667,11 @@ const Royal = {
     if (fee > 0) {
       Game.applyDelta(-fee, { quiet: true });
       if (this.inStory()) s.story.royalPaidDay = s.story.day;
-      UI.toast({ icon: '🎩', title: 'Eintritt −100 €', text: this.SYLVIE.paid, tone: 'info' });
     }
     if (this.inStory()) s.story.stats.royalVisits++;
     if (!s.flags.royalSeen) { s.flags.royalSeen = true; State.save(); await Cutscene.play('royal.first', {}); }
+    /* Toast erst nach der Erstbesuch-Szene, sonst verschwindet er hinter dem Cutscene-Overlay */
+    if (fee > 0) UI.toast({ icon: '🎩', title: 'Eintritt −100 €', text: this.SYLVIE.paid, tone: 'info' });
     State.save(); UI.renderWallet(); UI.renderSide();
     await UI.show('royal');
     if (typeof Story !== 'undefined') await Story.hook('royal:enter');
@@ -2706,8 +2709,10 @@ Bus.on('win', ({ amount, game }) => Royal.onWin(amount, game));
 
 /* ---- Mega Seven ---- */
 const MegaSlots = {
-  root: null, spinning: false, gen: 0, freeLeft: 0, lastBet: 0,
+  root: null, spinning: false, gen: 0, freeLeft: 0, lastBet: 0, freeRun: null,
   alive(gen) { return !!this.root && this.gen === gen; },
+  /* Freispiele gehören zum Spielstand, in dem sie gewonnen wurden: anderer State.s (Moduswechsel, Neues Spiel) → verfallen */
+  checkFreeRun() { if (this.freeRun !== State.s) { this.freeLeft = 0; this.freeRun = null; } },
   cellText(sym) { return sym === 'BAR' ? 'BAR' : sym; },
   render(grid, opts = {}) {
     const g = qs('#megaGrid', this.root); if (!g) return;
@@ -2724,6 +2729,7 @@ const MegaSlots = {
     }
   },
   syncFree() {
+    this.checkFreeRun();
     if (!this.root) return;
     qs('#megaFree', this.root).classList.toggle('hidden', this.freeLeft === 0);
     qs('#megaFreeLeft', this.root).textContent = this.freeLeft;
@@ -2731,6 +2737,7 @@ const MegaSlots = {
   },
   async spin() {
     if (this.spinning || !this.root) return;
+    this.checkFreeRun();
     const free = this.freeLeft > 0;
     const bet = free ? this.lastBet : Game.readBet('megaBet');
     if (!free && !RoyalRules.MEGA.BETS.includes(bet)) { UI.toast({ icon: '🎰', title: 'Einsatz', text: 'Hier gilt 100, 250, 500 oder 1.000 €.', tone: 'loss' }); return; }
@@ -2762,7 +2769,7 @@ const MegaSlots = {
       SFX.stop('reelSpin');
       const w = RoyalRules.megaWin(grid, bet, free);
       const delta = RoyalRules.megaDelta(bet, w.payout, free);
-      if (w.freeSpins) this.freeLeft = Math.min(RoyalRules.MEGA.FREE_MAX, this.freeLeft + w.freeSpins);
+      if (w.freeSpins) { this.freeLeft = Math.min(RoyalRules.MEGA.FREE_MAX, this.freeLeft + w.freeSpins); this.freeRun = run; }
       if (this.alive(gen)) {
         this.markHits(w.lines);
         qs('#megaLines', this.root).textContent = w.lines.map((l) => `Linie ${l.line + 1}: ${this.cellText(l.sym)} ×${l.count} → ${l.mult}×`).join(' · ') + (w.scatters >= 3 ? `${w.lines.length ? ' · ' : ''}⭐×${w.scatters}: +${w.freeSpins} Freispiele` : '');
@@ -2795,20 +2802,24 @@ UI.register('megaslots', {
 });
 /* ---- Craps ---- */
 const Craps = {
-  root: null, rolling: false, gen: 0, point: null, bets: { pass: 0, field: 0 }, history: [],
+  root: null, rolling: false, gen: 0, point: null, bets: { pass: 0, field: 0 }, history: [], run: null,
   FACES: ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'],
   alive(gen) { return !!this.root && this.gen === gen; },
+  /* Tischzustand gehört zum Spielstand: anderer State.s (Moduswechsel, Neues Spiel) → Tisch räumen */
+  checkRun() { if (this.run !== State.s) { this.reset(); this.render(); } },
   place(kind) {
     if (this.rolling || !this.root) return;
+    this.checkRun();
     const v = Game.readBet('crapsBet');
     if (!(v >= RoyalRules.CRAPS.MIN && v <= RoyalRules.CRAPS.MAX)) { UI.toast({ icon: '🎲', title: 'Einsatz', text: `Zwischen ${UI.fmt(RoyalRules.CRAPS.MIN)} und ${UI.fmt(RoyalRules.CRAPS.MAX)}.`, tone: 'loss' }); return; }
     if (kind === 'pass' && this.point != null) { UI.toast({ icon: '🎲', title: 'Punkt läuft', text: 'Pass Line erst nach der Entscheidung.', tone: 'loss' }); return; }
     this.bets[kind] = Math.min(RoyalRules.CRAPS.MAX, this.bets[kind] + v);
+    this.run = State.s;
     SFX.play('chip'); this.render();
   },
   /* Leeren: während ein Punkt läuft, bleibt der Pass-Einsatz auf dem Tisch (nur Field wird zurückgenommen) */
   clear() { if (this.rolling || !this.root) return; if (this.point != null) this.bets.field = 0; else this.bets = { pass: 0, field: 0 }; SFX.play('click'); this.render(); },
-  reset() { this.point = null; this.bets = { pass: 0, field: 0 }; this.history = []; },
+  reset() { this.point = null; this.bets = { pass: 0, field: 0 }; this.history = []; this.run = null; },
   render() {
     if (!this.root) return;
     qs('#passAmt', this.root).textContent = UI.fmt(this.bets.pass);
@@ -2820,7 +2831,10 @@ const Craps = {
   },
   async roll() {
     if (this.rolling || !this.root) return;
-    const risk = this.bets.pass + this.bets.field;
+    this.checkRun();
+    /* Schnappschuss der Einsätze: abgerechnet wird genau das, was treuhänderisch abgezogen wurde – auch wenn place() nach einem Remount währenddessen wieder freigegeben ist */
+    const bets = { ...this.bets }, point = this.point;
+    const risk = bets.pass + bets.field;
     if (risk === 0) return;
     /* Jeder Wurf ist ein Spin: Pass + Field werden treuhänderisch abgezogen; settle() zahlt delta + risk zurück (bei „none“ kommt der Pass-Einsatz zurück und wird beim nächsten Wurf erneut riskiert) */
     if (!Game.beginSpin(risk)) return;
@@ -2832,14 +2846,14 @@ const Craps = {
       qs('#crapsStatus', this.root).textContent = 'Die Würfel rollen…';
       SFX.loop('reelSpin', 100);
       let dice = RoyalRules.crapsRoll(Math.random);
-      dice = RoyalRules.crapsLuckOverride(dice, this.point, this.bets.pass > 0, Rules.luck(State.s), Math.random);
+      dice = RoyalRules.crapsLuckOverride(dice, point, bets.pass > 0, Rules.luck(State.s), Math.random);
       await wait(matchMedia('(prefers-reduced-motion: reduce)').matches ? 150 : 900);
       SFX.stop('reelSpin');
-      const r = RoyalRules.crapsSettle(this.bets, this.point, dice);
-      const bets = Object.assign({}, this.bets);
+      const r = RoyalRules.crapsSettle(bets, point, dice);
       this.history.push(`${dice[0]}+${dice[1]}=${r.sum}`);
       this.point = r.point;
-      if (r.pass === 'win' || r.pass === 'lose') this.bets.pass = 0;
+      /* Rest-Einsatz aus dem Schnappschuss, nicht aus dem Live-Objekt (zwischenzeitlich Gesetztes wurde nie abgezogen und verfällt) */
+      this.bets.pass = (r.pass === 'win' || r.pass === 'lose') ? 0 : bets.pass;
       this.bets.field = 0;
       if (this.alive(gen)) {
         qsa('.die', this.root).forEach((d) => d.classList.remove('rolling'));
@@ -2866,6 +2880,7 @@ UI.register('craps', {
   template: 'tpl-craps',
   mount(root) {
     Craps.gen++; Craps.root = root;
+    if (Craps.run !== State.s) Craps.reset();
     Game.bindBet(root, 'crapsBet');
     qs('#btnPass', root).addEventListener('click', () => Craps.place('pass'));
     qs('#btnField', root).addEventListener('click', () => Craps.place('field'));
@@ -2942,8 +2957,8 @@ UI.register('wheel', {
   unmount() { Wheel.gen++; document.removeEventListener('keydown', Wheel.onKey); Wheel.root = null; Wheel.spinning = false; },
 });
 /* Neustart / Tagesende: Freispiele verfallen, die Tische werden geräumt */
-Bus.on('gameover:restart', () => { MegaSlots.freeLeft = 0; Craps.reset(); });
-Bus.on('story:day', () => { MegaSlots.freeLeft = 0; Craps.reset(); });
+Bus.on('gameover:restart', () => { MegaSlots.freeLeft = 0; MegaSlots.freeRun = null; Craps.reset(); });
+Bus.on('story:day', () => { MegaSlots.freeLeft = 0; MegaSlots.freeRun = null; Craps.reset(); });
 </script>
 
 <script id="game-slots">
