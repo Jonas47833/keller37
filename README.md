@@ -12,7 +12,7 @@ Ein satirisches Casino-Lebenssimulations-Spiel in einer einzigen HTML-Datei. Fü
 - **Stadt:** Autohaus (Audi-Linie senkt das Überfallrisiko und erhöht die Fluchtchance, Mercedes-Linie hebt Bank-Limit und senkt die Zinsen) und INTERSPORT (Laufschuhe verbessern die Flucht, bringen mehr Zeit/Lohn beim Postboten und helfen bei den Job-Minispielen). Ein neues Auto nimmt das alte mit 50 % seines Preises in Zahlung, Schuhe gibt es nur zum vollen Preis.
 - **Casino Royal:** am Ende der Straße, nur mit Auto (Parkservice). Eintritt 100 € – bis zum ersten Einzelgewinn ab 5.000 €, dann bist du Gast des Hauses. Drei Tische mit höheren Einsätzen: **Mega Seven** (5 Walzen, 5 Linien, Freispiele ×2), **Craps** (Pass Line und Field, jeder Wurf ein Spin) und das **Glücksrad** (24 Felder, ×10 bis Bankrott). Madame Sylvie sieht alles.
 - **Überfälle & Stärke:** auf dem Weg in den Keller kann es einen Überfall geben – Kämpfen, Wegrennen oder Zahlen. Ein Kampf (gewonnen oder verloren) erhöht 💪 Stärke; Stärke verbessert die Kampfchance und den Türsteher-Bonus, schaltet den Job „Eintreiber" frei und macht ab 10 gefürchtet (seltener Ziel für Überfälle).
-- **Cutscenes:** 31 Visual-Novel-Szenen mit 13 Charakteren, Typewriter-Text, Entscheidungen und Effekten.
+- **Cutscenes:** 33 Visual-Novel-Szenen mit 14 Charakteren, Typewriter-Text, Entscheidungen und Effekten.
 - **Extras:** synthetisierter Sound (Web Audio, keine Dateien), Spielstand in `localStorage`, Game Over mit Statistik, Trophäen, Mobile-Layout, Reduced-Motion.
 
 ## Story-Modus
