@@ -18,7 +18,7 @@
 - Alle Zahlen im Story-Objekt (`prices`, Leber-Raten, Kaufpreis) – keine neuen `Rules`-Konstanten.
 - Keine Story-2-Bezeichner in der Engine; alle Engine-Ergänzungen generisch und einzeln getestet.
 - Szenen-IDs mit Präfix `kater.`; Charaktere nur aus `CAST` (wirt, chantal, vito, igor, doc, krause, kevin, sylvie, du, makler, schmalz); Hintergründe nur aus den vorhandenen (`bar, hinterzimmer, standesamt, villa, hafen, hafen-morgen, klinik, bank, strasse, keller, autohaus, intersport, gasse, royal`).
-- Vor jedem Commit `node tests/run-selftest.mjs` grün; vor dem letzten Commit `tests/dom-selftest.sh` und `python3 tests/playtest-story.py`.
+- Vor jedem Commit `node tests/run-selftest.mjs` grün; vor dem letzten Commit `tests/dom-selftest.sh` und `python3 tests/playtest-story.py` (Playtest nur ohne parallele Chrome-/Agent-Last laufen lassen – die Taxi-Schicht ist lastempfindlich; ein TIMEOUT bei `taxi: Schicht abgeschlossen` ist ein bekannter Flake → einmal wiederholen).
 - Commit-Messages enden mit `Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>`.
 
 ---
@@ -134,6 +134,7 @@ Reihenfolge der Fehlermeldungen wie im Test: Szene vor Raum (beide in der `actio
 - `ctx(extra)`: vor `return Object.assign(c, extra);` → `c.raw = { balance: s.balance, day: this.s.day, vars: Object.assign({}, this.s.vars), flags: Object.assign({}, this.s.flags) }; c.prev = this.s.prev || {};`
 - `applyEffects`: nach `const out = …` → `if (out.achievement && typeof Achievements !== 'undefined') Achievements.unlock(out.achievement);`
 - `Story.enter`, Fortsetzungspfad (der Zweig nach `State.setMode('story')` mit `if (st.phase === 'morning') await this.morning(); else await this.evening();`): vor dem abschließenden `UI.toast({ icon: '📖', … Tag ${this.s.day} … })` und vor dem `?job=`-Zweig `if (this.stale(st)) return;` einfügen – ein sofortiges Ende in einem Morgen-Event darf den Toast/`Jobs.take` nicht mehr auf `undefined` laufen lassen (Residuum der Plan-1-Review). Ebenso in `forceDuel` nach dem Duell-Await: `const st = this.s;` vorher merken und `if (this.stale(st)) return victim;` vor dem Flag-Schreiben.
+- Gate-Szene (Spec §7 „Türsteher-Panel“ statt nur Toast): Gate-Einträge dürfen `scene: '<sceneId>'` tragen. `StoryRules.gateEntry(story, s, screen)` liefert den ersten zutreffenden Eintrag (oder null); `gate()` bleibt die Text-Variante darauf aufgebaut. In `Royal.enter` (Block `casino-royal`) den Zweig `if (this.inStory() && Story.isLocked('royal'))` so erweitern: `const g = StoryRules.gateEntry(Story.story, State.s, 'royal'); if (g && g.scene) { await Story.playScene(g.scene); return; }` vor dem Toast. `validate` prüft `scene` von Gates wie andere Szenen-Referenzen (`scene(g.scene, \`gate ${screen}[${i}]\`)`). Test: `StoryRules.gateEntry` liefert den Eintrag mit `scene`, `validate` meldet fehlende Gate-Szene.
 - Neu:
 
 ```js
@@ -284,7 +285,7 @@ const STORY_KATER = {
   ],
   goal: (s) => (s.story.flags.gekauft ? 'Der Keller gehört dir.' : s.story.flags.abgestuerzt ? `Ziel: Keller ${UI.fmt(STORY_KATER.N.kaufpreis + (s.story.vars.deckel || 0))} bis Tag 30` : 'Flitterwochen. Genieß es.'),
   lockReason: { royal: 'Parkservice only' },
-  gates: { royal: [{ when: { flag: 'zitter' }, text: 'Sie zittern. Wir haben eine Hausordnung.' }] },
+  gates: { royal: [{ when: { flag: 'zitter' }, text: 'Sie zittern. Wir haben eine Hausordnung.', scene: 'kater.royal.zitter' }] },
   intro: 'kater.intro',
   scenes: { /* Task 3–8 */ },
   chapters: [
@@ -317,7 +318,7 @@ Hinweis zu `day: { gte: 30 }` in den Tag-30-Enden: Die Engine prüft Enden nacht
 
 - [ ] **Step 4: Tests**
 
-Run: `node tests/run-selftest.mjs` → alle grün außer evtl. Szenen-Validierung (Skelett-Szenen müssen für `intro`, Kapitel-Intros und Enden existieren – im Skelett anlegen: `kater.intro`, `kater.k2`, `kater.k3`, `kater.k4`, `kater.ende.bett`, `kater.ende.wirt`, `kater.ende.nuechtern`, `kater.ende.brownie`, `kater.ende.taxi`, `kater.ende.stammgast` mit `TODO`-Panel).
+Run: `node tests/run-selftest.mjs` → alle grün außer evtl. Szenen-Validierung (Skelett-Szenen müssen für `intro`, Kapitel-Intros und Enden existieren – im Skelett anlegen: `kater.intro`, `kater.k2`, `kater.k3`, `kater.k4`, `kater.ende.bett`, `kater.ende.wirt`, `kater.ende.nuechtern`, `kater.ende.brownie`, `kater.ende.taxi`, `kater.ende.stammgast` mit `TODO`-Panel; zusätzlich `kater.royal.zitter`, weil das Gate darauf zeigt).
 
 - [ ] **Step 5: Commit**
 
@@ -522,6 +523,9 @@ Die Zahlen aus `STORY_KATER.N` hier bewusst **ausgeschrieben** (Event-Objekte si
     ],
     'kater.leber': [
       { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Deine Leber und ich haben gesprochen. Sie war kurz angebunden. Dreißig Prozent, sagt sie. Ich sage: Ich hab ein Bett frei.' },
+    ],
+    'kater.royal.zitter': [
+      { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Der Türsteher hebt die Hand. Sie zittern. Wir haben eine Hausordnung – kommen Sie wieder, wenn die Hände still sind.' },
     ],
 ```
 
