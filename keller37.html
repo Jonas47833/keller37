@@ -1049,8 +1049,9 @@ const Rules = {
   POST_HOUSES: [{ n: 12, c: '#ffb432' }, { n: 45, c: '#4cc9f0' }, { n: 88, c: '#3ddc84' }, { n: 99, c: '#ff3b3b' }],
   postmanTier(streak, s) {
     const g = s ? Rules.gear(s) : { postTime: 0, postPay: 0 };
+    const jm = s && s.story && s.story.jobMod ? s.story.jobMod : {};
     const t = streak < 2 ? { t: 5, r: 5 } : streak < 6 ? { t: 3, r: 10 } : streak < 11 ? { t: 1.5, r: 25 } : { t: 0.5, r: 50 };
-    return { t: t.t + g.postTime, r: t.r + g.postPay };
+    return { t: (t.t + g.postTime) * (jm.postTime != null ? jm.postTime : 1), r: t.r + g.postPay };
   },
 
   /* ---- Anlagen ---- */
@@ -3714,6 +3715,7 @@ const StoryRules = {
     return null;
   },
   jobMod(s) { return (s.story && s.story.jobMod) || {}; },
+  shiftPay(base, bonus, jobMod) { return Math.round((base + bonus) * (jobMod.shiftPay != null ? jobMod.shiftPay : 1)); },
   validate(story, sceneIds, jobIds, storyIds = null) {
     const errs = [];
     const scene = (id, where) => { if (id && !sceneIds.includes(id)) errs.push(`${story.id}: Szene "${id}" fehlt (${where})`); };
@@ -4216,8 +4218,11 @@ const Jobs = {
     if (sceneId) seen.push(sceneId);
     const before = State.s.balance;
     const bonus = job.id === 'tuersteher' ? StoryRules.tuerBonus(State.s.strength) : 0;
-    Game.applyDelta(job.base + bonus, { quiet: true });
-    UI.toast({ icon: job.icon, title: `${job.name}: Schicht`, text: bonus > 0 ? `+${UI.fmt(job.base)} Lohn, +${UI.fmt(bonus)} weil keiner mit dir diskutiert.` : `+${UI.fmt(job.base)} Lohn.`, tone: 'win' });
+    const jm = StoryRules.jobMod(State.s);
+    const pay = StoryRules.shiftPay(job.base, bonus, jm);
+    Game.applyDelta(pay, { quiet: true });
+    const cut = pay < job.base + bonus ? ' Du hast die Gläser fallen lassen – halber Lohn.' : '';
+    UI.toast({ icon: job.icon, title: `${job.name}: Schicht`, text: (bonus > 0 ? `+${UI.fmt(job.base)} Lohn, +${UI.fmt(bonus)} weil keiner mit dir diskutiert.` : `+${UI.fmt(job.base)} Lohn.`) + cut, tone: 'win' });
     if (sceneId) await Story.playScene(sceneId);
     if (State.s !== run || run.story.ended) return; // Szene hat die Story sofort beendet/gewechselt
     const extra = (Story.story.jobEffects || {})[sceneId];
@@ -4321,7 +4326,7 @@ const Spueler = {
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const k = (this.plate - 1) / (this.TOTAL - 1);
     this.dur = reduced ? 1800 : Math.round(1600 - k * 700);          // 1600 → 900 ms
-    const band = 1 + Rules.gear(State.s).spuelerBand; // Trail-Runner/Carbon: Band 20 % breiter
+    const band = (1 + Rules.gear(State.s).spuelerBand) * (StoryRules.jobMod(State.s).spuelerZone != null ? StoryRules.jobMod(State.s).spuelerZone : 1); // Trail-Runner/Carbon: Band 20 % breiter
     this.zone = { c: rand(0.35, 0.75), w: (reduced ? 0.3 : 0.3 - k * 0.18) * band }; // 30 % → 12 %
     this.resolved = false;
     const zone = qs('#dishZone', this.root), plate = qs('#dishPlate', this.root);
@@ -4455,7 +4460,12 @@ const Taxi = {
   },
   placeCar() { if (this.root) qs('#taxiCar', this.root).style.left = `${this.laneIdx * 33.3}%`; },
   lane(dir) { if (!this.running) return; this.laneIdx = Math.max(0, Math.min(2, this.laneIdx + dir)); this.placeCar(); SFX.play('click'); },
-  brake() { if (!this.running || !this.root) return; this.braking = true; this.brakeUntil = performance.now() + 600; qs('#taxiCar', this.root).classList.add('braking'); const f = qs('#brakeFlash', this.root); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); },
+  brake() {
+    if (!this.running || !this.root) return;
+    const delay = StoryRules.jobMod(State.s).taxiBrakeDelay || 0;
+    const apply = () => { if (!this.running || !this.root) return; this.braking = true; this.brakeUntil = performance.now() + 600; qs('#taxiCar', this.root).classList.add('braking'); const f = qs('#brakeFlash', this.root); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); };
+    if (delay > 0) setTimeout(apply, delay); else apply();
+  },
   ticket() { if (!this.root) return; const p = h('div', { class: 'ticket-pop' }, 'STRAFZETTEL −50 €'); qs('#taxiRoad', this.root).append(p); UI.shake(qs('#taxiRoad', this.root)); setTimeout(() => p.remove(), 900); },
   floatText(txt, cls) { if (!this.root) return; const el = h('div', { class: 'ticket-pop', style: 'background:#2f7a1f' }, txt); qs('#taxiRoad', this.root).append(el); setTimeout(() => el.remove(), 600); },
   score() { if (this.root) qs('#taxiScore', this.root).textContent = `Fahrgäste ${this.passengers} · Strafzettel ${this.tickets}`; },
@@ -5697,6 +5707,18 @@ T.test('postmanTier: Schuhe geben Zeit und Lohn', () => {
   T.eq(Rules.postmanTier(0, base({ shoes: 'basic' })), { t: 6, r: 5 });
   T.eq(Rules.postmanTier(11, base({ shoes: 'carbon' })), { t: 2.5, r: 60 });
   T.eq(Rules.postmanTier(2, base({ shoes: 'trail' })), { t: 4, r: 15 });
+});
+T.test('postmanTier: Story-Zeitfaktor', () => {
+  const s = base({ story: { jobMod: { postTime: 0.5 } } });
+  T.eq(Rules.postmanTier(0, s).t, 2.5);
+  T.eq(Rules.postmanTier(0, base({ story: { jobMod: {} } })).t, 5);
+  T.eq(Rules.postmanTier(0, base({ shoes: 'basic', story: { jobMod: { postTime: 0.5 } } })).t, 3, 'Schuh-Bonus vor dem Faktor');
+});
+T.test('StoryRules.shiftPay: Faktor auf Lohn + Bonus, gerundet', () => {
+  T.eq(StoryRules.shiftPay(100, 30, {}), 130);
+  T.eq(StoryRules.shiftPay(100, 30, { shiftPay: 0.5 }), 65);
+  T.eq(StoryRules.shiftPay(150, 0, { shiftPay: 0.5 }), 75);
+  T.eq(StoryRules.shiftPay(105, 0, { shiftPay: 0.5 }), 53);
 });
 
 /* ---- Story: Stärke, Räume, Cooldown ---- */
