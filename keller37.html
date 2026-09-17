@@ -417,24 +417,29 @@ body.cs-open .toast { max-width: 300px; }
   .side-tabs .tab-ic { font-size: 1.25rem; line-height: 1; }
   .side-tabs .tab-lb { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Keller */
-  .hub { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .hub, .hub.royal-hub { grid-template-columns: 1fr 1fr; gap: 10px; }
   .door { height: 150px; padding-top: 14px; gap: 6px; }
-  .door .sign { font-size: 1.2rem; padding: 2px 8px; }
+  .door .sign { font-size: 1.2rem; padding: 2px 8px; white-space: nowrap; max-width: 94%; overflow: hidden; text-overflow: ellipsis; }
   .door .glyph { font-size: 2rem; }
   .door .chalk-tag { max-width: 92%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; }
   .door:last-child:nth-child(odd) { grid-column: 1 / -1; }   /* einzelne letzte Tuer ueber beide Spalten */
   .finance, .invest-grid, .life-grid { grid-template-columns: 1fr; }
-  /* Einsatz-Leiste: Stepper-Zeile, Chip-Zeile, Hauptknopf volle Breite */
-  .bet-bar { width: 100%; gap: 8px 10px; }
+  /* Einsatz-Leiste als 60er-Raster: Stepper volle Breite, Chips in einer Reihe (4 je 15, Roulette 5 je 12, Igor 3 je 20),
+     Hauptknopf volle Breite, zwei grosse Knoepfe nebeneinander (Hit/Stand), kleine Knoepfe zu dritt, letzter kleiner Knopf allein volle Breite */
+  .bet-bar { display: grid; grid-template-columns: repeat(60, 1fr); gap: 8px 6px; width: 100%; align-items: center; }
   .bet-bar > .dim { display: none; }
-  .bet-bar .bet-field { flex: 1 1 100%; }
+  .bet-bar > .bet-field { grid-column: 1 / -1; }
   .bet-field button { flex: 0 0 44px; width: 44px; height: 44px; font-size: 1.25rem; }
   .bet-field input { min-width: 0; }
   .bet-bar .bet-field input { flex: 1; width: auto; font-size: 1.2rem; }
   .bet-bar .bet-field button { flex: 0 0 48px; width: 48px; height: 46px; font-size: 1.3rem; }
-  .bet-bar > .btn { flex: 1 1 100%; min-height: 48px; font-size: 1.15rem; }
-  .bet-bar > .btn:has(+ .btn), .bet-bar > .btn + .btn { flex: 1 1 40%; }
-  .bet-bar > .btn.sm { flex: 1 1 30%; min-height: 42px; font-size: .95rem; }
+  .bet-bar > .chip { grid-column: span 15; justify-self: center; }
+  .roulette-panel .bet-bar > .chip { grid-column: span 12; }
+  .rr-panel .bet-bar > .chip { grid-column: span 20; }
+  .bet-bar > .btn { grid-column: 1 / -1; min-height: 48px; font-size: 1.15rem; }
+  .bet-bar > .btn:not(.sm):has(+ .btn:not(.sm)), .bet-bar > .btn:not(.sm) + .btn:not(.sm) { grid-column: span 30; }
+  .bet-bar > .btn.sm { grid-column: span 20; min-height: 42px; font-size: .95rem; }
+  .bet-bar > .btn.sm:last-child:not(:first-child), .bet-bar > .btn.sm:only-child { grid-column: 1 / -1; }
   /* Roulette: kleineres Rad, hochkant gedrehter Tisch mit Touch-Feldern */
   .roulette-top { flex-direction: column; gap: 8px; }
   .wheel-box { transform: scale(.75); margin: -40px 0; }
@@ -2070,7 +2075,7 @@ const UI = {
       ...acts('royal')));
     side.append(...secs);
     const tabs = h('div', { class: 'side-tabs' });
-    const TAB_ICONS = { 'Die Bar': '🍺', 'Hinterzimmer': '🚪', 'Zuhause': '🏠', 'Kopf': '🧠', 'Stadt': '🏙️' };
+    const TAB_ICONS = { 'Die Bar': '🍺', 'Hinterzimmer': '🚪', 'Zuhause': '🏠', 'Kopf': '🧠', 'Stadt': '🏙️', 'Casino Royal': '👑' };
     qsa('.side-sec h3', side).map((el) => el.textContent).forEach((label, i) => {
       tabs.append(h('button', { onclick: () => {
         const secs = qsa('.side-sec', side);

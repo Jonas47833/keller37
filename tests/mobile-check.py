@@ -36,7 +36,7 @@ def record(name, ok, detail=""):
 
 
 # Screens im freien Spiel; jobs ist Story-only und wird unten separat geladen
-FREE_SCREENS = ["hub", "slots", "blackjack", "roulette", "horses", "russian", "postman", "finance", "invest", "life", "stadt", "skills"]
+FREE_SCREENS = ["hub", "slots", "blackjack", "roulette", "horses", "russian", "postman", "finance", "invest", "life", "stadt", "skills", "royal", "craps", "megaslots", "wheel"]
 
 TAP_SELECTORS = [".side-tabs button", ".icon-btn", ".chip", ".bet-bar .btn", ".bet-field button", ".rcell", ".table-bar .btn", ".door", ".side-btn"]
 
