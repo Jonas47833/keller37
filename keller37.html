@@ -568,7 +568,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .rcell.excluded { opacity: .28; filter: grayscale(1); pointer-events: none; }
 .insider-hint { font-family: var(--font-mono); font-size: .75rem; color: var(--neon-blue); }
 .runner.lame .horse { filter: grayscale(.8); opacity: .7; }
-.runner .lame-tag { position: absolute; left: 6px; top: -10px; font-family: var(--font-mono); font-size: .7rem; color: #ff8a80; }
+.runner .lame-tag { position: absolute; left: 6px; bottom: -8px; font-family: var(--font-mono); font-size: .7rem; color: #ff8a80; }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes neonFlicker { 0%, 100% { opacity: 1; } 3% { opacity: .55; } 4% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .7; } 43% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: .5; } 72.5% { opacity: 1; } }
@@ -1047,14 +1047,18 @@ const Rules = {
     for (let n = 0; n < 37; n++) if (!excluded.includes(n)) return n;
     return 0;
   },
-  /* Glück hilft bei Farben und Gerade/Ungerade – nie bei Zahlen (der Kessel kennt keine Freunde) */
-  rouletteLuckOverride(type, chosen, rolled, luck, rng) {
+  /* Glück hilft bei Farben und Gerade/Ungerade – nie bei Zahlen (der Kessel kennt keine Freunde).
+     Croupier-Auge kann die übliche Glückszahl ausschließen; dann die erste freie Zahl der Art. */
+  rouletteLuckOverride(type, chosen, rolled, luck, rng, excluded = []) {
     const r = rng() * 100;
     if (r < luck && rolled !== 0) {
-      if (type === 'red') return 7;
-      if (type === 'black') return 8;
-      if (type === 'even') return 8;
-      if (type === 'odd') return 7;
+      const firstFree = (fallback, list) => (!excluded.includes(fallback) ? fallback : list.find((n) => !excluded.includes(n)));
+      let n;
+      if (type === 'red') n = firstFree(7, Rules.RED);
+      else if (type === 'black') n = firstFree(8, Array.from({ length: 36 }, (_, i) => i + 1).filter((x) => !Rules.isRed(x)));
+      else if (type === 'even') n = firstFree(8, Array.from({ length: 18 }, (_, i) => (i + 1) * 2));
+      else if (type === 'odd') n = firstFree(7, Array.from({ length: 18 }, (_, i) => i * 2 + 1));
+      if (n !== undefined) return n;
     }
     return rolled;
   },
@@ -3115,7 +3119,14 @@ const Roulette = {
   },
   repeat() {
     if (this.spinning || !this.lastBets.length) return;
-    const lastTotal = Rules.rouletteTotal(this.lastBets);
+    const ex = this.excluded();
+    const bets = this.lastBets.filter((b) => !(b.type === 'number' && ex.includes(b.n)));
+    if (!bets.length) {
+      UI.toast({ icon: '🚫', title: 'Gesperrte Zahlen', tone: 'loss', text: 'Die alten Chips lägen auf gesperrten Zahlen.' });
+      SFX.play('lose');
+      return;
+    }
+    const lastTotal = Rules.rouletteTotal(bets);
     const chk = Rules.checkSpin(State.s, lastTotal);
     if (!chk.ok) {
       UI.toast({ icon: '🚫', title: 'Zu wenig Geld', tone: 'loss', ms: 4500, text: `Wie zuletzt wären ${UI.fmt(lastTotal)} (+ Zinsen ${UI.fmt(chk.interest)} + Meds ${UI.fmt(chk.meds)}).` });
@@ -3123,7 +3134,7 @@ const Roulette = {
       return;
     }
     qsa('.chip.placed', this.root).forEach((c) => c.remove());
-    this.bets = this.lastBets.map((b) => Object.assign({}, b));
+    this.bets = bets.map((b) => Object.assign({}, b));
     for (const b of this.bets) { const cell = this.cellFor(b.type, b.n); if (cell) cell.append(h('div', { class: 'chip placed' }, String(b.amount))); }
     SFX.play('chip');
     this.renderTable();
@@ -3143,11 +3154,11 @@ const Roulette = {
       const mods = Perks.mods();
       const ex = Rules.effectiveInsider(this.excluded().length > 0, total) ? this.excluded() : [];
       qs('#rouletteStatus', this.root).textContent = (this.excluded().length && !ex.length)
-        ? 'Über 250 € schaut der Croupier genauer hin – keine Hilfe.' : 'Kugel rollt…';
+        ? `Über ${UI.fmt(Rules.INSIDER_CAP)} schaut der Croupier genauer hin – keine Hilfe.` : 'Kugel rollt…';
       qs('#resultNum', this.root).className = 'result-num';
       let rolled = Rules.rouletteRoll(Math.random, ex);
       const ti = Rules.rouletteLuckTarget(bets);
-      if (ti >= 0) rolled = Rules.rouletteLuckOverride(bets[ti].type, bets[ti].n, rolled, Rules.effectiveLuck(Rules.luck(State.s), bets[ti].amount), Math.random);
+      if (ti >= 0) rolled = Rules.rouletteLuckOverride(bets[ti].type, bets[ti].n, rolled, Rules.effectiveLuck(Rules.luck(State.s), bets[ti].amount), Math.random, ex);
       const targetIdx = Rules.WHEEL.indexOf(rolled);
       const sliceDeg = 360 / 37;
       const targetDeg = (360 - targetIdx * sliceDeg) % 360;
@@ -3279,7 +3290,7 @@ const Horses = {
     try {
       qs('#btnRace', this.root).disabled = true;
       qs('#horseStatus', this.root).textContent = (this.loser !== null && marked === null)
-        ? 'Über 250 € hält der Stallbursche den Mund.' : '';
+        ? `Über ${UI.fmt(Rules.INSIDER_CAP)} hält der Stallbursche den Mund.` : '';
       const track = qs('#track', this.root);
       const goal = track.clientWidth - 65;
       const pos = [0, 0, 0, 0];
@@ -3763,7 +3774,7 @@ async function restartGame({ playIntro }) {
   State.reset();
   State.s.flags.intro = true;
   State.save();
-  if (typeof Perks !== 'undefined') Perks.refreshExcluded();
+  if (typeof Perks !== 'undefined') Perks.refreshExcluded(true);
   Roulette.lastBets = [];
   UI.setBalance(State.s.balance, { animate: false });
   UI.renderWallet();
@@ -4014,9 +4025,14 @@ const Perks = {
     UI.toast({ icon: '🧠', title: 'Kopf frei', text: 'Alle Skill-Punkte sind wieder verfügbar.', tone: 'info' });
     this.render(); this.renderBadge(); UI.renderWallet(); UI.renderSide();
   },
-  refreshExcluded() {
+  /* Ohne force nur neu ziehen, wenn die Liste nicht zu den Mods passt – sonst bleiben die Zahlen
+     innerhalb eines Spielstands stabil (kein erneutes Mischen bei jedem Moduswechsel). */
+  refreshExcluded(force = false) {
     const s = State.s;
-    s.insiderExcluded = this.mods().rouletteExclude > 0 ? Rules.pickExcluded(Math.random) : [];
+    const wantExcl = this.mods().rouletteExclude > 0;
+    const mismatched = wantExcl ? s.insiderExcluded.length !== 12 : s.insiderExcluded.length > 0;
+    if (!force && !mismatched) return;
+    s.insiderExcluded = wantExcl ? Rules.pickExcluded(Math.random) : [];
     State.save();
   },
   async offerInsider(storyId) {
@@ -4248,6 +4264,8 @@ const Modes = {
   async enter(choice) {
     if (choice === 'free') {
       State.setMode('free');
+      if (typeof Perks !== 'undefined') Perks.refreshExcluded();
+      if (typeof Roulette !== 'undefined') Roulette.lastBets = [];
       document.body.classList.remove('mode-story'); document.body.classList.add('mode-free');
       UI.mountShell();
       if (typeof Story !== 'undefined') Story.renderDaybar();
@@ -4316,7 +4334,8 @@ const Story = {
       const id = forced && Stories.get(forced) ? forced : StoryRules.pickStory(Stories.list(), State.meta.storyRuns, Math.random);
       const story = Stories.get(id);
       State.startStory(story);
-      if (typeof Perks !== 'undefined') Perks.refreshExcluded();
+      if (typeof Perks !== 'undefined') Perks.refreshExcluded(true);
+      if (typeof Roulette !== 'undefined') Roulette.lastBets = [];
       if (params.has('day') && params.has('fresh')) State.s.story.day = Math.max(1, parseInt(params.get('day'), 10) || 1);
       this.story = story;
       this.setup();
@@ -5364,6 +5383,11 @@ T.test('rouletteLuckOverride: greift bei Glück, nicht bei 0', () => {
   T.eq(Rules.rouletteLuckOverride('red', null, 20, 40, seq(0.5)), 20, 'rng 50 >= luck 40');
   T.eq(Rules.rouletteLuckOverride('red', null, 20, 0, seq(0)), 20, 'kein Glück');
 });
+T.test('rouletteLuckOverride: meidet ausgeschlossene Zahlen (Croupier-Auge)', () => {
+  T.eq(Rules.rouletteLuckOverride('red', null, 20, 40, seq(0.1), [7, 1, 3]), 5, 'erste freie Rot-Zahl');
+  T.eq(Rules.rouletteLuckOverride('black', null, 20, 40, seq(0.1), [8, 2, 4, 6]), 10, 'erste freie Schwarz-Zahl');
+  T.eq(Rules.rouletteLuckOverride('red', null, 20, 40, seq(0.1), []), 7, 'ohne Ausschluss unverändert');
+});
 T.test('roulettePayout: Farben 1:1, Null verliert', () => {
   T.eq(Rules.roulettePayout('red', null, 7, 10), 10);
   T.eq(Rules.roulettePayout('red', null, 8, 10), -10);
@@ -6196,7 +6220,7 @@ T.test('Slots/Pferde mit mods', () => {
   T.eq(Rules.slotMultiplier('🍒', '🍒', '🍋', M({ slotPairMult: 0 })), 0);
   T.eq(Rules.slotMultiplier('🍒', '🍒', '🍒', M({ slotPairMult: 0 })), 5, 'Drilling unberührt');
   T.eq(Rules.horseDelta(true, 100), 300); T.eq(Rules.horseDelta(true, 100, M({ horsePayout: 3.3 })), 330); T.eq(Rules.horseDelta(false, 100, M({ horsePayout: 3.3 })), -100);
-  near(Rules.horseStep(false, 0, seq(0), 0.85), 1.5 * 0.85, 'Handicap');
+  near(Rules.horseStep(false, 0, seq(0), Rules.HORSE_LAME_STEP), 1.5 * Rules.HORSE_LAME_STEP, 'Handicap');
 });
 T.test('Blackjack mit mods: Natural 3:2, Push +10 %, heißes Deck 1,2:1', () => {
   T.eq(Rules.bjDelta('win', 100), 100);
@@ -6221,6 +6245,16 @@ if (typeof Perks !== 'undefined') T.test('Perks.refreshExcluded: 12 Zahlen nur m
   const s = State.s, m = State.meta; const bakS = s.insiderExcluded, bakM = m.insider;
   m.insider = ['croupierauge']; Perks.refreshExcluded(); T.eq(s.insiderExcluded.length, 12);
   m.insider = []; Perks.refreshExcluded(); T.eq(s.insiderExcluded, []);
+  s.insiderExcluded = bakS; m.insider = bakM;
+});
+if (typeof Perks !== 'undefined') T.test('Perks.refreshExcluded: ohne force bleibt eine passende Liste stabil', () => {
+  const s = State.s, m = State.meta; const bakS = s.insiderExcluded, bakM = m.insider;
+  m.insider = ['croupierauge'];
+  s.insiderExcluded = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  Perks.refreshExcluded();
+  T.eq(s.insiderExcluded, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], 'passende Liste (12) wird nicht neu gemischt');
+  Perks.refreshExcluded(true);
+  T.ok(s.insiderExcluded.length === 12, 'force zieht trotzdem neu (kann zufällig gleich bleiben)');
   s.insiderExcluded = bakS; m.insider = bakM;
 });
 
