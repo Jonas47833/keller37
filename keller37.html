@@ -418,7 +418,7 @@ body.cs-open .toast { max-width: 300px; }
 }
 /* -- Reduced Motion -- */
 @media (prefers-reduced-motion: reduce) {
-  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running, .plate.hit, .plate.broken, .taxi-road.running, .brake-flash.on, .ticket-pop { animation: none !important; }
+  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running, .plate.hit, .plate.broken, .taxi-road.running, .brake-flash.on, .ticket-pop, .mega-grid .cell.spin { animation: none !important; }
   .strip.spinning { animation: none !important; filter: none; }
   .stage, .stage.leaving, .stage.entering { transition: none; animation: none; }
   #wheelCanvas { transition-duration: .3s; }
@@ -546,6 +546,19 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .storefront.royal.locked .sign { text-shadow: none; color: var(--dim); }
 .strasse .storefront.royal { grid-column: 1 / -1; min-height: 200px; }
 @media (max-width: 760px) { .strasse, .laden { grid-template-columns: 1fr; } .storefront { min-height: 180px; } }
+/* Casino Royal – Mega Seven */
+.mega-panel { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; }
+.mega-panel .status, .mega-panel .bet-bar { grid-column: 1 / -1; }
+.mega-machine { --cell: 64px; position: relative; background: linear-gradient(180deg, #3a1020, #150409); border: 4px solid var(--gold-2); border-radius: 18px; padding: 14px 18px 18px; box-shadow: var(--shadow), inset 0 0 40px rgba(0,0,0,.6); }
+.mega-grid { display: grid; grid-template-columns: repeat(5, var(--cell)); gap: 6px; background: #0a0a0a; padding: 10px; border-radius: 10px; border: 3px solid #5a3a12; justify-content: center; }
+.mega-grid .cell { width: var(--cell); height: var(--cell); display: flex; align-items: center; justify-content: center; font-size: calc(var(--cell) * .5); background: linear-gradient(180deg, #fff, #e0d8c0); border-radius: 6px; font-family: var(--font-display); color: #222; }
+.mega-grid .cell.bar { font-size: calc(var(--cell) * .3); letter-spacing: .05em; }
+.mega-grid .cell.spin { filter: blur(2px); animation: megaFlicker .12s linear infinite; }
+.mega-grid .cell.hit { box-shadow: 0 0 0 3px var(--gold-2), 0 0 18px var(--gold-2); animation: hitGlow .6s ease 3; }
+.mega-lines { font-family: var(--font-mono); font-size: .8rem; color: var(--gold-2); min-height: 1.2em; margin-top: 8px; text-align: center; }
+.mega-free { margin-top: 6px; text-align: center; font-family: var(--font-display); color: var(--neon-amber); letter-spacing: .15em; }
+@keyframes megaFlicker { 0% { opacity: .6; } 100% { opacity: 1; } }
+@media (max-width: 760px) { .mega-panel { grid-template-columns: 1fr; } .mega-panel .paytable { justify-self: center; } .mega-machine { --cell: 50px; } }
 .cs-bg.gasse { background: linear-gradient(180deg, #05060a 0%, #14161e 55%, #2a2418 56%, #0d0b07 100%); }
 /* ==== 7. ANIMATIONEN ==== */
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -918,6 +931,38 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
       <div class="door" data-screen="wheel" style="--neon: var(--neon-red)"><div class="sign">Glücksrad</div><div class="glyph">🎡</div><div class="chalk-tag">bis 10×</div><div class="knob"></div></div>
     </div>
     <div class="bet-bar"><button class="btn ghost sm" id="royalLeave">← Zurück in die Stadt</button></div>
+  </div>
+</template>
+<template id="tpl-megaslots">
+  <div class="panel mega-panel">
+    <div class="mega-machine">
+      <div class="slot-head neon" style="--neon: var(--gold-2)">Mega Seven</div>
+      <div class="mega-grid" id="megaGrid"></div>
+      <div class="mega-lines" id="megaLines"></div>
+      <div class="mega-free hidden" id="megaFree">FREISPIELE <span id="megaFreeLeft">0</span> · ×2</div>
+    </div>
+    <div class="chalk paytable">
+      <h4>Auszahlung × Linieneinsatz</h4>
+      <table>
+        <tr><td>7️⃣</td><td>20 / 100 / 500</td></tr>
+        <tr><td>💎</td><td>10 / 40 / 100</td></tr>
+        <tr><td>BAR</td><td>5 / 20 / 50</td></tr>
+        <tr><td>🔔</td><td>3 / 10 / 25</td></tr>
+        <tr><td>🍒</td><td>2 / 5 / 10</td></tr>
+        <tr><td>⭐ ×3+</td><td>5 Freispiele, ×2</td></tr>
+      </table>
+      <p class="side-hint">5 Linien · Linieneinsatz = Einsatz ÷ 5</p>
+    </div>
+    <div class="status" id="megaStatus">Einsatz wählen und drehen</div>
+    <div class="bet-bar">
+      <input type="number" id="megaBet" value="100" min="100" hidden>
+      <button class="chip" data-chip="100" data-v="100">100</button>
+      <button class="chip" data-chip="250" data-v="25">250</button>
+      <button class="chip" data-chip="500" data-v="50">500</button>
+      <button class="chip" data-chip="1000" data-v="max">1000</button>
+      <button class="btn solid" id="btnMega">Drehen</button>
+      <button class="btn ghost sm" id="megaBack">← Lobby</button>
+    </div>
   </div>
 </template>
 <!-- /TEMPLATES -->
@@ -2577,6 +2622,99 @@ Cutscene.define('royal.guest', [
   { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Das Haus schenkt nichts. Es investiert.' },
 ]);
 Bus.on('win', ({ amount, game }) => Royal.onWin(amount, game));
+
+/* ---- Mega Seven ---- */
+const MegaSlots = {
+  root: null, spinning: false, gen: 0, freeLeft: 0, lastBet: 0,
+  alive(gen) { return !!this.root && this.gen === gen; },
+  cellText(sym) { return sym === 'BAR' ? 'BAR' : sym; },
+  render(grid, opts = {}) {
+    const g = qs('#megaGrid', this.root); if (!g) return;
+    g.innerHTML = '';
+    for (let row = 0; row < 3; row++) for (let reel = 0; reel < 5; reel++) {
+      const sym = grid[reel][row];
+      g.append(h('div', { class: 'cell' + (sym === 'BAR' ? ' bar' : '') + (opts.spin && opts.spin.includes(reel) ? ' spin' : ''), 'data-reel': reel, 'data-row': row }, this.cellText(sym)));
+    }
+  },
+  markHits(lines) {
+    for (const w of lines) for (let r = 0; r < w.count; r++) {
+      const row = RoyalRules.MEGA.LINES[w.line][r];
+      const el = qs(`.cell[data-reel="${r}"][data-row="${row}"]`, this.root); if (el) el.classList.add('hit');
+    }
+  },
+  syncFree() {
+    if (!this.root) return;
+    qs('#megaFree', this.root).classList.toggle('hidden', this.freeLeft === 0);
+    qs('#megaFreeLeft', this.root).textContent = this.freeLeft;
+    const b = qs('#btnMega', this.root); if (b) b.textContent = this.freeLeft > 0 ? `Freispiel (${this.freeLeft})` : 'Drehen';
+  },
+  async spin() {
+    if (this.spinning || !this.root) return;
+    const free = this.freeLeft > 0;
+    const bet = free ? this.lastBet : Game.readBet('megaBet');
+    if (!free && !RoyalRules.MEGA.BETS.includes(bet)) { UI.toast({ icon: '🎰', title: 'Einsatz', text: 'Hier gilt 100, 250, 500 oder 1.000 €.', tone: 'loss' }); return; }
+    /* Freispiel: kein Einsatz, kein beginSpin (checkSpin verlangt bet > 0) – nur die Runde als laufend markieren; settle() räumt sie wieder ab */
+    if (free) { if (Game.settling) return; Game.inFlight++; }
+    else if (!Game.beginSpin(bet)) return;
+    const run = State.s, gen = this.gen;
+    this.spinning = true;
+    try {
+      qs('#btnMega', this.root).disabled = true;
+      if (free) this.freeLeft--;
+      this.lastBet = bet;
+      qs('#megaStatus', this.root).textContent = free ? 'Freispiel läuft…' : 'Walzen laufen…';
+      qs('#megaLines', this.root).textContent = '';
+      let grid = RoyalRules.megaRoll(Math.random);
+      grid = RoyalRules.megaLuckOverride(grid, Rules.luck(State.s), Math.random);
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const shown = RoyalRules.megaRoll(Math.random);
+      this.render(shown, { spin: [0, 1, 2, 3, 4] });
+      SFX.loop('reelSpin', 120);
+      const stops = reduced ? [100, 150, 200, 250, 300] : [700, 1050, 1400, 1750, 2100];
+      for (let i = 0; i < 5; i++) {
+        await wait(stops[i] - (i ? stops[i - 1] : 0));
+        if (!this.alive(gen)) break;
+        shown[i] = grid[i];
+        this.render(shown, { spin: [1, 2, 3, 4].filter((k) => k > i) });
+        SFX.play('reelStop');
+      }
+      SFX.stop('reelSpin');
+      const w = RoyalRules.megaWin(grid, bet, free);
+      const delta = RoyalRules.megaDelta(bet, w.payout, free);
+      if (w.freeSpins) this.freeLeft = Math.min(RoyalRules.MEGA.FREE_MAX, this.freeLeft + w.freeSpins);
+      if (this.alive(gen)) {
+        this.markHits(w.lines);
+        qs('#megaLines', this.root).textContent = w.lines.map((l) => `Linie ${l.line + 1}: ${this.cellText(l.sym)} ×${l.count} → ${l.mult}×`).join(' · ') + (w.scatters >= 3 ? `${w.lines.length ? ' · ' : ''}⭐×${w.scatters}: +${w.freeSpins} Freispiele` : '');
+        const st = qs('#megaStatus', this.root);
+        st.innerHTML = w.payout > 0 ? `<span class="win">Auszahlung ${UI.fmt(w.payout)}${free ? ' (Freispiel ×2)' : ''}</span>` : `<span class="loss">${free ? 'Freispiel · nichts' : `Niete · −${UI.fmt(bet)}`}</span>`;
+        this.syncFree();
+      }
+      if (w.lines.some((l) => l.sym === '7️⃣' && l.count === 5)) Achievements.unlock('fuenfSiebener');
+      await Bus.emit('megaslots:result', { delta, bet: free ? 0 : bet, detail: { grid, lines: w.lines, scatters: w.scatters, free, freeLeft: this.freeLeft } });
+      await Game.settle(delta, { from: this.alive(gen) ? qs('.mega-machine', this.root) : null, game: 'megaslots', bet: free ? 0 : bet, run });
+    } finally {
+      SFX.stop('reelSpin');
+      if (this.gen === gen) { this.spinning = false; const b = qs('#btnMega', this.root); if (b) b.disabled = false; this.syncFree(); }
+    }
+  },
+  onKey(e) { if (e.code === 'Space' && qs('#cutscene').hidden && !e.repeat) { e.preventDefault(); MegaSlots.spin(); } },
+};
+UI.register('megaslots', {
+  template: 'tpl-megaslots',
+  mount(root) {
+    MegaSlots.gen++; MegaSlots.root = root;
+    MegaSlots.render([['🍒', '7️⃣', '💎'], ['🔔', '7️⃣', 'BAR'], ['💎', '7️⃣', '🍒'], ['BAR', '7️⃣', '🔔'], ['🍒', '7️⃣', '💎']]);
+    Game.bindBet(root, 'megaBet');
+    qs('#btnMega', root).addEventListener('click', () => MegaSlots.spin());
+    qs('#megaBack', root).addEventListener('click', () => { SFX.play('click'); UI.show('royal'); });
+    document.addEventListener('keydown', MegaSlots.onKey);
+    MegaSlots.syncFree();
+  },
+  unmount() { MegaSlots.gen++; document.removeEventListener('keydown', MegaSlots.onKey); SFX.stop('reelSpin'); MegaSlots.root = null; MegaSlots.spinning = false; },
+});
+/* Neustart / Tagesende: Freispiele verfallen (die Tische werden geräumt) */
+Bus.on('gameover:restart', () => { MegaSlots.freeLeft = 0; });
+Bus.on('story:day', () => { MegaSlots.freeLeft = 0; });
 </script>
 
 <script id="game-slots">
