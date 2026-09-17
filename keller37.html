@@ -2827,7 +2827,6 @@ const Slots = {
         } else {
           stat.innerHTML = `<span class="loss">Niete · −${UI.fmt(bet)}</span>`;
         }
-        if (canHold) qsa('.hold-btn', this.root).forEach((b) => b.classList.remove('hidden'));
         this.updateInsiderHint(bet);
       }
       await Bus.emit('slots:result', { res, m, bet });
@@ -2837,6 +2836,8 @@ const Slots = {
       if (this.gen === gen) {
         this.spinning = false;
         qs('#btnSpin', this.root).disabled = false;
+        /* Erst nach der Abrechnung sichtbar, sonst kassiert ein Klick waehrend der Post-Spin-Cutscene ins Leere */
+        if (this.lastRes) qsa('.hold-btn', this.root).forEach((b) => b.classList.remove('hidden'));
       }
     }
   },
@@ -2857,8 +2858,10 @@ const Slots = {
   async respin(k) {
     if (this.spinning || !this.root || !this.lastRes) return;
     const bet = this.lastBet, gen = this.gen, held = this.lastRes[k];
+    const run = State.s; // wie Game.settle: erkennt "Neues Spiel" waehrend der 1,9s
     this.lastRes = null; State.s.mechRespins = 0; State.save();
     this.spinning = true;
+    Game.inFlight++; // Gratisdreh zaehlt wie eine laufende Runde fuer Story.night()/Mugging.blocked()
     try {
       qsa('.hold-btn', this.root).forEach((b) => b.classList.add('hidden'));
       qs('#slotStatus', this.root).textContent = `Walze ${k + 1} festgehalten – Gratisdreh…`;
@@ -2871,11 +2874,12 @@ const Slots = {
       const m = Rules.slotMultiplier(...res, Perks.mods());
       const payout = m > 0 ? Math.round(bet * m) : 0;
       if (this.alive(gen)) qs('#slotStatus', this.root).innerHTML = payout > 0 ? `<span class="win">Gratisdreh: ${String(m).replace('.', ',')}× · +${UI.fmt(payout)}</span>` : `<span class="loss">Gratisdreh: Niete. Der Mechaniker zuckt mit den Schultern.</span>`;
-      if (payout > 0) { Game.applyDelta(payout, { from: this.alive(gen) ? qs('.slot-machine', this.root) : null }); SFX.play('cash'); await Bus.emit('win', { amount: payout, game: 'slots' }); }
+      if (payout > 0 && run === State.s) { Game.applyDelta(payout, { from: this.alive(gen) ? qs('.slot-machine', this.root) : null }); SFX.play('cash'); await Bus.emit('win', { amount: payout, game: 'slots' }); }
       if (this.alive(gen)) this.updateInsiderHint(bet);
       State.save();
     } finally {
       SFX.stop('reelSpin');
+      Game.inFlight = Math.max(0, Game.inFlight - 1);
       if (this.gen === gen) this.spinning = false;
     }
   },
@@ -3017,7 +3021,10 @@ const Blackjack = {
   async finish(outcome, round) {
     if (round.done) return;
     round.done = true;
-    const mods = Perks.mods();
+    /* bjHotDeck ist ein Insider-Bonus (im Gegensatz zu bjNatural, einem Skill) und muss daher wie
+       Rules.deckHot's Anzeige über INSIDER_CAP anteilig schwächer werden, statt voll zu zahlen. */
+    const mods = Object.assign({}, Perks.mods());
+    mods.bjHotDeck = Rules.effectiveInsider(mods.bjHotDeck, round.bet);
     const ctx = { natural: round.natural && round.pHand.length === 2 && outcome === 'win', hot: !!round.hot };
     const delta = Rules.bjDelta(outcome, round.bet, mods, ctx);
     try {
@@ -3035,6 +3042,7 @@ const Blackjack = {
         if (outcome === 'push') qsa('.hand-val', this.root).forEach((v) => v.classList.add('push'));
         qs('#bjActionControls', this.root).classList.add('hidden');
         qs('#bjBetControls', this.root).classList.remove('hidden');
+        qs('#bjDeckHeat', this.root).classList.add('hidden'); // Lesung ist mit der Runde Geschichte
       }
     } finally {
       if (this.gen === round.gen) { this.inRound = false; this.dealing = false; }
@@ -6318,6 +6326,8 @@ T.test('Blackjack mit mods: Natural 3:2, Push +10 %, heißes Deck 1,2:1', () => 
   T.eq(Rules.bjDelta('win', 100, M({ bjHotDeck: 1.2 }), { hot: true }), 120);
   T.eq(Rules.bjDelta('win', 100, M({ bjHotDeck: 1.2, bjNatural: 1.5 }), { hot: true, natural: true }), 150, 'Natural schlägt heiß');
   T.eq(Rules.bjDelta('dealer', 100, M({ bjNatural: 1.5 }), { natural: true }), -100);
+  T.eq(Rules.bjDelta('win', 500, M({ bjHotDeck: Rules.effectiveInsider(1.2, 500) }), { hot: true }), 550, 'Deckel schwächt heißes Deck über 250 € ab');
+  T.eq(Rules.bjDelta('win', 1000, M({ bjHotDeck: Rules.effectiveInsider(1.2, 1000) }), { hot: true }), 1050, 'Deckel schwächt heißes Deck weiter über 250 € ab');
 });
 T.test('Anlagen/Post/Überfall mit mods', () => {
   T.eq(Rules.investmentResolve({ amount: 100, rate: 0.5, risk: 0 }, seq(0.99)).payout, 150);
