@@ -905,7 +905,7 @@ const Rules = {
   HOSPITAL_RR: 100,
   HEARTBREAK_BILL: 250,
   BANK_LIMIT: 3000,
-  BANK_RATE: 0.3,
+  BANK_RATE: 0.08,
   POST_PENALTY: 25,
   BEER_LUCK: [0, 10, 15, 20],
   BROWNIE_LUCK: 40,
@@ -941,11 +941,17 @@ const Rules = {
     return { ok: true, total, interest: c.interest, meds: c.meds };
   },
   mafiaBill(debt) { return debt * 3; },
-  bankLoanAllowed(s, amt) { return s.bankDebt + amt <= Rules.gear(s).bankLimit; },
-  /* Game Over: beide Kreditquellen zu und nicht mal ein 1-€-Spin (inkl. Zinsen/Meds) mehr bezahlbar */
+  /* null = erlaubt; 'open' = es läuft schon ein Kredit; 'limit' = Betrag übersteigt das Limit */
+  bankLoanReason(s, amt) {
+    if (s.bankDebt > 0) return 'open';
+    if (amt > Rules.gear(s).bankLimit) return 'limit';
+    return null;
+  },
+  bankLoanAllowed(s, amt) { return Rules.bankLoanReason(s, amt) === null; },
+  /* Game Over: beide Kreditquellen zu (Bank-Kredit offen, Vito-Zettel offen) und nicht mal ein 1-€-Spin (inkl. Zinsen/Meds) bezahlbar */
   isGameOver(s) {
     const c = Rules.spinCosts(s);
-    return s.bankDebt >= Rules.gear(s).bankLimit && s.mafiaDebt > 0 && s.balance < 1 + c.interest + c.meds;
+    return s.bankDebt > 0 && s.mafiaDebt > 0 && s.balance < 1 + c.interest + c.meds;
   },
   passiveTick(s) { return (s.hasHouse ? 3 : 0) + (s.hasDealer ? 5 : 0); },
   passivePerMin(s) { return (s.hasHouse ? 30 : 0) + (s.hasDealer ? 50 : 0); },
@@ -972,6 +978,26 @@ const Rules = {
     if (type === 'odd' && rolled % 2 !== 0) return bet;
     if (type === 'number' && rolled === chosen) return bet * 35;
     return -bet;
+  },
+  rouletteTotal(bets) { return bets.reduce((sum, b) => sum + b.amount, 0); },
+  /* Auszahlung aller Chips: pro Chip Einsatz + Gewinn bei Treffer, sonst 0 */
+  rouletteSettle(bets, rolled) {
+    const hits = bets.map((bet) => {
+      const d = Rules.roulettePayout(bet.type, bet.n, rolled, bet.amount);
+      const win = d > 0;
+      return { bet, win, payout: win ? bet.amount + d : 0 };
+    });
+    return { payout: hits.reduce((sum, x) => sum + x.payout, 0), hits };
+  },
+  /* Der Chip, auf den das Glück wirkt: höchster Einsatz; bei Gleichstand Zahl vor Außenfeld; dann der zuerst gelegte */
+  rouletteLuckTarget(bets) {
+    let best = -1;
+    bets.forEach((b, i) => {
+      if (best < 0) { best = i; return; }
+      const cur = bets[best];
+      if (b.amount > cur.amount || (b.amount === cur.amount && b.type === 'number' && cur.type !== 'number')) best = i;
+    });
+    return best;
   },
 
   /* ---- Slots ---- */
@@ -1052,9 +1078,21 @@ const Rules = {
 
   /* ---- Anlagen ---- */
   INVEST: {
-    bank: { name: 'Festgeld', rate: 0.08, spins: 5, risk: 10, min: 10 },
+    bank: { name: 'Festgeld', rate: 0.08, spins: 6, risk: 10, min: 10 },
     stock: { name: 'Aktien', rate: 1.0, spins: 2, risk: 85, min: 10 },
-    scam: { name: 'Trickbetrug', rate: 0.3, spins: 10, risk: 55, min: 10 },
+    scam: { name: 'Trickbetrug', rate: 0.5, spins: 10, risk: 55, min: 10 },
+  },
+  investRunning(s, kind) {
+    const def = Rules.INVEST[kind];
+    return (s.investments || []).find((inv) => inv.type === kind || (!inv.type && inv.name === def.name)) || null;
+  },
+  canInvest(s, kind, amount) {
+    const def = Rules.INVEST[kind];
+    if (!def) return { ok: false, reason: 'unknown' };
+    if (Rules.investRunning(s, kind)) return { ok: false, reason: 'running' };
+    if (!Number.isFinite(amount) || amount < def.min) return { ok: false, reason: 'min' };
+    if (s.balance < amount) return { ok: false, reason: 'funds' };
+    return { ok: true };
   },
   investmentResolve(inv, rng) {
     const won = rng() * 100 >= inv.risk;
@@ -1108,9 +1146,9 @@ Object.assign(Rules, {
       audiA3:  { brand: 'audi', tier: 1, name: 'Audi A3 (gebraucht)', icon: '🚗', price: 1500,  mugMult: 0.7,  flee: 10, luck: 0 },
       audiRS4: { brand: 'audi', tier: 2, name: 'Audi RS 4 quattro',   icon: '🏎️', price: 8000,  mugMult: 0.45, flee: 20, luck: 2 },
       audiR8:  { brand: 'audi', tier: 3, name: 'Audi R8',             icon: '🏎️', price: 30000, mugMult: 0.2,  flee: 35, luck: 4 },
-      mercC:   { brand: 'merc', tier: 1, name: 'Mercedes C-Klasse',   icon: '🚙', price: 2000,  bankLimit: 4000,  bankRate: 0.27, luck: 0 },
-      mercS:   { brand: 'merc', tier: 2, name: 'Mercedes S-Klasse',   icon: '🚘', price: 10000, bankLimit: 6000,  bankRate: 0.24, luck: 2 },
-      mercG:   { brand: 'merc', tier: 3, name: 'Mercedes AMG G 63',   icon: '🚐', price: 40000, bankLimit: 10000, bankRate: 0.20, luck: 4 },
+      mercC:   { brand: 'merc', tier: 1, name: 'Mercedes C-Klasse',   icon: '🚙', price: 2000,  bankLimit: 4000,  bankRate: 0.07, luck: 0 },
+      mercS:   { brand: 'merc', tier: 2, name: 'Mercedes S-Klasse',   icon: '🚘', price: 10000, bankLimit: 6000,  bankRate: 0.06, luck: 2 },
+      mercG:   { brand: 'merc', tier: 3, name: 'Mercedes AMG G 63',   icon: '🚐', price: 40000, bankLimit: 10000, bankRate: 0.05, luck: 4 },
     },
     shoes: {
       basic:  { tier: 1, name: 'Laufschuh Basic',  icon: '👟', price: 300,  flee: 15, postTime: 1, postPay: 0,  spuelerBand: 0,   taxiTip: 0 },
@@ -4769,20 +4807,20 @@ T.test('luck: Brownie +40, mit 3 Bier 60', () => {
   T.eq(Rules.luck(base({ brownieTimer: 1 })), 40);
   T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, brownieTimer: 1 })), 60);
 });
-T.test('bankInterest: 30% gerundet', () => {
+T.test('bankInterest: 8 % gerundet', () => {
   T.eq(Rules.bankInterest(0), 0);
-  T.eq(Rules.bankInterest(200), 60);
-  T.eq(Rules.bankInterest(1000), 300);
-  T.eq(Rules.bankInterest(333), 100);
+  T.eq(Rules.bankInterest(200), 16);
+  T.eq(Rules.bankInterest(1000), 80);
+  T.eq(Rules.bankInterest(333), 27);
 });
 T.test('spinCosts: Zinsen + Meds', () => {
   T.eq(Rules.spinCosts(base()), { interest: 0, meds: 0 });
-  T.eq(Rules.spinCosts(base({ bankDebt: 200, kidneySold: true })), { interest: 60, meds: 20 });
+  T.eq(Rules.spinCosts(base({ bankDebt: 200, kidneySold: true })), { interest: 16, meds: 20 });
 });
 T.test('maxBet: Guthaben minus Kosten, mindestens 1', () => {
   T.eq(Rules.maxBet(base()), 50);
-  T.eq(Rules.maxBet(base({ bankDebt: 200, kidneySold: true })), 1);
-  T.eq(Rules.maxBet(base({ balance: 500, bankDebt: 200 })), 440);
+  T.eq(Rules.maxBet(base({ bankDebt: 400, kidneySold: true })), 1);
+  T.eq(Rules.maxBet(base({ balance: 500, bankDebt: 200 })), 484);
 });
 T.test('checkSpin: ungültiger Einsatz', () => {
   T.eq(Rules.checkSpin(base(), 0).ok, false);
@@ -4791,27 +4829,29 @@ T.test('checkSpin: ungültiger Einsatz', () => {
   T.eq(Rules.checkSpin(base(), -5).ok, false);
 });
 T.test('checkSpin: zu wenig Geld inkl. Kosten', () => {
-  const r = Rules.checkSpin(base({ balance: 80, bankDebt: 200, kidneySold: true }), 10);
-  T.eq(r, { ok: false, reason: 'funds', total: 90, interest: 60, meds: 20 });
+  const r = Rules.checkSpin(base({ balance: 40, bankDebt: 200, kidneySold: true }), 10);
+  T.eq(r, { ok: false, reason: 'funds', total: 46, interest: 16, meds: 20 });
 });
 T.test('checkSpin: ok', () => {
-  T.eq(Rules.checkSpin(base({ balance: 100, bankDebt: 200, kidneySold: true }), 10), { ok: true, total: 90, interest: 60, meds: 20 });
+  T.eq(Rules.checkSpin(base({ balance: 100, bankDebt: 200, kidneySold: true }), 10), { ok: true, total: 46, interest: 16, meds: 20 });
   T.eq(Rules.checkSpin(base(), 50).ok, true);
   T.eq(Rules.checkSpin(base(), 51).ok, false);
 });
 T.test('mafiaBill = 3x', () => T.eq(Rules.mafiaBill(300), 900));
-T.test('bankLoanAllowed: Limit 3000', () => {
-  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 2000 }), 1000), true);
-  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 2500 }), 1000), false);
-  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 3000 }), 200), false);
+T.test('bankLoanAllowed: ein Kredit, Limit 3000', () => {
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 0 }), 3000), null);
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 0 }), 3001), 'limit');
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 500 }), 500), 'open');
+  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 0 }), 1000), true);
+  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 2000 }), 1000), false);
 });
 T.test('isGameOver: beide Quellen zu und kein Spin mehr bezahlbar', () => {
-  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 3000, mafiaDebt: 300 })), true);
-  T.eq(Rules.isGameOver(base({ balance: 901, bankDebt: 3000, mafiaDebt: 300 })), false); // 1 € + 900 € Zinsen reicht genau
-  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 2000, mafiaDebt: 300 })), false);
-  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 3000, mafiaDebt: 0 })), false);
-  T.eq(Rules.isGameOver(base({ balance: 500, bankDebt: 3000, mafiaDebt: 300 })), true); // positiv, aber unter 901 €
-  T.eq(Rules.isGameOver(base({ balance: 920, bankDebt: 3000, mafiaDebt: 300, kidneySold: true })), true); // Meds: 921 nötig
+  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 1000, mafiaDebt: 300 })), true);
+  T.eq(Rules.isGameOver(base({ balance: 81, bankDebt: 1000, mafiaDebt: 300 })), false); // 1 € + 80 € Zinsen reicht genau
+  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 0, mafiaDebt: 300 })), false);
+  T.eq(Rules.isGameOver(base({ balance: -10, bankDebt: 1000, mafiaDebt: 0 })), false);
+  T.eq(Rules.isGameOver(base({ balance: 50, bankDebt: 1000, mafiaDebt: 300 })), true); // positiv, aber unter 81 €
+  T.eq(Rules.isGameOver(base({ balance: 100, bankDebt: 1000, mafiaDebt: 300, kidneySold: true })), true); // Meds: 101 nötig
 });
 T.test('passiveTick / passivePerMin', () => {
   T.eq(Rules.passiveTick(base()), 0);
@@ -4960,9 +5000,9 @@ T.test('postmanTier: Grenzen', () => {
 
 /* ---- Rules: Anlagen ---- */
 T.test('INVEST', () => {
-  T.eq(Rules.INVEST.bank, { name: 'Festgeld', rate: 0.08, spins: 5, risk: 10, min: 10 });
+  T.eq(Rules.INVEST.bank, { name: 'Festgeld', rate: 0.08, spins: 6, risk: 10, min: 10 });
   T.eq(Rules.INVEST.stock, { name: 'Aktien', rate: 1.0, spins: 2, risk: 85, min: 10 });
-  T.eq(Rules.INVEST.scam, { name: 'Trickbetrug', rate: 0.3, spins: 10, risk: 55, min: 10 });
+  T.eq(Rules.INVEST.scam, { name: 'Trickbetrug', rate: 0.5, spins: 10, risk: 55, min: 10 });
 });
 T.test('investmentResolve: rng*100 >= risk gewinnt', () => {
   const inv = { amount: 100, rate: 0.08, risk: 10 };
@@ -5363,15 +5403,15 @@ T.test('GEAR: Preise steigen je Linie, Glück ≤ 4, Zinsen sinken', () => {
   T.ok(cars.audiR8.flee + shoes[2].flee <= 80, 'Flucht-Summe ≤ 80');
 });
 T.test('gear: ohne Ausrüstung neutral', () => {
-  T.eq(Rules.gear(base()), { luck: 0, mugMult: 1, flee: 0, bankLimit: 3000, bankRate: 0.3, postTime: 0, postPay: 0, spuelerBand: 0, taxiTip: 0 });
+  T.eq(Rules.gear(base()), { luck: 0, mugMult: 1, flee: 0, bankLimit: 3000, bankRate: 0.08, postTime: 0, postPay: 0, spuelerBand: 0, taxiTip: 0 });
 });
 T.test('gear: Audi R8 + Carbon', () => {
   const g = Rules.gear(base({ car: 'audiR8', shoes: 'carbon' }));
-  T.eq([g.luck, g.mugMult, g.flee, g.bankLimit, g.bankRate, g.postTime, g.postPay, g.spuelerBand, g.taxiTip], [4, 0.2, 80, 3000, 0.3, 2, 10, 0.2, 5]);
+  T.eq([g.luck, g.mugMult, g.flee, g.bankLimit, g.bankRate, g.postTime, g.postPay, g.spuelerBand, g.taxiTip], [4, 0.2, 80, 3000, 0.08, 2, 10, 0.2, 5]);
 });
 T.test('gear: Mercedes G', () => {
   const g = Rules.gear(base({ car: 'mercG' }));
-  T.eq([g.luck, g.mugMult, g.flee, g.bankLimit, g.bankRate], [4, 1, 0, 10000, 0.2]);
+  T.eq([g.luck, g.mugMult, g.flee, g.bankLimit, g.bankRate], [4, 1, 0, 10000, 0.05]);
 });
 T.test('gear: Stärke 10 halbiert mugMult', () => {
   near(Rules.gear(base({ strength: 10 })).mugMult, 0.5);
@@ -5436,18 +5476,20 @@ T.test('luck: Auto-Glück addiert sich', () => {
   T.eq(Rules.luck(base({ car: 'mercG', beers: 3, beerTimer: 1, brownieTimer: 1 })), 64);
 });
 T.test('bankInterest: Mercedes-Zinssatz', () => {
-  T.eq(Rules.bankInterest(1000), 300);
-  T.eq(Rules.bankInterest(1000, base()), 300);
-  T.eq(Rules.bankInterest(1000, base({ car: 'mercC' })), 270);
-  T.eq(Rules.bankInterest(1000, base({ car: 'mercG' })), 200);
-  T.eq(Rules.spinCosts(base({ bankDebt: 1000, car: 'mercS' })).interest, 240);
+  T.eq(Rules.bankInterest(1000), 80);
+  T.eq(Rules.bankInterest(1000, base()), 80);
+  T.eq(Rules.bankInterest(1000, base({ car: 'mercC' })), 70);
+  T.eq(Rules.bankInterest(1000, base({ car: 'mercG' })), 50);
+  T.eq(Rules.spinCosts(base({ bankDebt: 1000, car: 'mercS' })).interest, 60);
 });
-T.test('bankLoanAllowed / isGameOver: Mercedes-Limit', () => {
-  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 3000, car: 'mercC' }), 1000), true);
-  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 3000, car: 'mercC' }), 1001), false);
-  T.eq(Rules.bankLoanAllowed(base({ bankDebt: 3000 }), 1), false);
-  T.eq(Rules.isGameOver(base({ bankDebt: 3000, mafiaDebt: 300, balance: 0 })), true);
-  T.eq(Rules.isGameOver(base({ bankDebt: 3000, mafiaDebt: 300, balance: 0, car: 'mercC' })), false);
+T.test('bankLoanAllowed / isGameOver: Mercedes-Limit, beide Quellen zu', () => {
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 0, car: 'mercC' }), 4000), null);
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 0, car: 'mercC' }), 4001), 'limit');
+  T.eq(Rules.bankLoanReason(base({ bankDebt: 0 }), 4000), 'limit');
+  T.eq(Rules.isGameOver(base({ bankDebt: 500, mafiaDebt: 300, balance: 0 })), true);
+  T.eq(Rules.isGameOver(base({ bankDebt: 0, mafiaDebt: 300, balance: 0 })), false);
+  T.eq(Rules.isGameOver(base({ bankDebt: 500, mafiaDebt: 0, balance: 0 })), false);
+  T.eq(Rules.isGameOver(base({ bankDebt: 500, mafiaDebt: 300, balance: 100 })), false);
 });
 T.test('postmanTier: Schuhe geben Zeit und Lohn', () => {
   T.eq(Rules.postmanTier(0), { t: 5, r: 5 });
@@ -5508,6 +5550,46 @@ T.test('Story Schuld: stadtOffen ab Tag 4, Eintreiber mit Türsteher freigeschal
   T.eq(st.jobEffects['schuld.eintreiber.kiosk'], [{ var: 'ruf', add: 1 }]);
   T.eq(st.jobEffects['schuld.eintreiber.zahnarzt'], [{ var: 'ruf', add: 1 }]);
   for (const id of ['schuld.stadt', 'schuld.eintreiber.kiosk', 'schuld.eintreiber.zahnarzt']) T.ok(Array.isArray(st.scenes[id]) && st.scenes[id].length >= 2, id);
+});
+
+/* ---- Tisch & Bank ---- */
+T.test('INVEST: neue Werte', () => {
+  T.eq([Rules.INVEST.bank.rate, Rules.INVEST.bank.spins, Rules.INVEST.bank.risk], [0.08, 6, 10]);
+  T.eq([Rules.INVEST.scam.rate, Rules.INVEST.scam.spins, Rules.INVEST.scam.risk], [0.5, 10, 55]);
+  T.eq([Rules.INVEST.stock.rate, Rules.INVEST.stock.spins, Rules.INVEST.stock.risk], [1.0, 2, 85]);
+  T.eq(Rules.BANK_RATE, 0.08);
+  T.eq([Rules.GEAR.cars.mercC.bankRate, Rules.GEAR.cars.mercS.bankRate, Rules.GEAR.cars.mercG.bankRate], [0.07, 0.06, 0.05]);
+});
+T.test('canInvest / investRunning: je Sorte eine, Mindestbetrag, Geld', () => {
+  const s = base({ balance: 100, investments: [{ type: 'bank', name: 'Festgeld', amount: 50, rate: 0.08, spins: 3, risk: 10 }] });
+  T.eq(Rules.canInvest(s, 'bank', 50), { ok: false, reason: 'running' });
+  T.eq(Rules.canInvest(s, 'stock', 50), { ok: true });
+  T.eq(Rules.canInvest(s, 'scam', 5), { ok: false, reason: 'min' });
+  T.eq(Rules.canInvest(s, 'scam', 101), { ok: false, reason: 'funds' });
+  T.eq(Rules.investRunning(s, 'bank').amount, 50);
+  T.eq(Rules.investRunning(s, 'scam'), null);
+  const alt = base({ balance: 100, investments: [{ name: 'Trickbetrug', amount: 20, rate: 0.3, spins: 2, risk: 55 }] });
+  T.eq(Rules.canInvest(alt, 'scam', 20).reason, 'running', 'alte Anlage ohne type über den Namen erkannt');
+});
+T.test('rouletteTotal / rouletteSettle: Zahl + Rot + Gerade', () => {
+  const bets = [{ type: 'number', n: 17, amount: 10 }, { type: 'red', n: null, amount: 50 }, { type: 'even', n: null, amount: 20 }];
+  T.eq(Rules.rouletteTotal(bets), 80);
+  const r18 = Rules.rouletteSettle(bets, 18);              // 18: rot, gerade
+  T.eq(r18.payout, 100 + 40);
+  T.eq(r18.hits.map((x) => x.win), [false, true, true]);
+  T.eq(r18.hits.map((x) => x.payout), [0, 100, 40]);
+  const r17 = Rules.rouletteSettle(bets, 17);              // 17: schwarz, ungerade
+  T.eq(r17.payout, 360);
+  T.eq(r17.hits.map((x) => x.payout), [360, 0, 0]);
+  const r0 = Rules.rouletteSettle(bets, 0);
+  T.eq(r0.payout, 0);
+  T.eq(Rules.rouletteSettle([], 5), { payout: 0, hits: [] });
+});
+T.test('rouletteLuckTarget: höchster Einsatz, Zahl vor Außenfeld, dann Reihenfolge', () => {
+  T.eq(Rules.rouletteLuckTarget([]), -1);
+  T.eq(Rules.rouletteLuckTarget([{ type: 'red', n: null, amount: 50 }, { type: 'number', n: 3, amount: 10 }]), 0);
+  T.eq(Rules.rouletteLuckTarget([{ type: 'red', n: null, amount: 50 }, { type: 'number', n: 3, amount: 50 }]), 1);
+  T.eq(Rules.rouletteLuckTarget([{ type: 'red', n: null, amount: 50 }, { type: 'black', n: null, amount: 50 }]), 0);
 });
 
 /* --- SELFTEST CASES END --- */
