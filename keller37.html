@@ -1972,11 +1972,13 @@ Actions.beer = async () => {
   Game.applyDelta(-Rules.PRICES.beer, { quiet: true });
   s.beers++;
   s.beerTimer = Rules.BEER_SPINS;
+  if (State.mode === 'story' && State.s.story) State.s.story.stats.beers++;
   State.save();
   UI.renderWallet(); UI.renderSide();
   SFX.play('coin');
   UI.toast({ icon: '🍺', title: `Prost! Bier #${s.beers}`, text: `+${Rules.BEER_LUCK[s.beers]} % Glück für 2 Spins.`, tone: 'gold' });
   await Bus.emit('beer', { beers: s.beers });
+  if (typeof Story !== 'undefined') await Story.hook('buy:beer');
 };
 
 Actions.brownie = async () => {
@@ -1990,6 +1992,7 @@ Actions.brownie = async () => {
   Game.applyDelta(-price, { quiet: true });
   s.brownieTimer = Rules.BROWNIE_SPINS;
   s.brownieCost = Rules.PRICES.brownieNext;
+  if (State.mode === 'story' && State.s.story) State.s.story.stats.brownies++;
   State.save();
   UI.renderWallet(); UI.renderSide();
   if (!s.flags.brownie) {
@@ -1999,6 +2002,7 @@ Actions.brownie = async () => {
     UI.toast({ icon: '🍪', title: 'Brownie', text: '+40 % Glück für 1 Spin. Frag nicht.', tone: 'gold' });
   }
   await Bus.emit('brownie', {});
+  if (typeof Story !== 'undefined') await Story.hook('buy:brownie');
 };
 
 Actions.kidney = async () => {
@@ -2014,6 +2018,7 @@ Actions.kidney = async () => {
   await Cutscene.play('kidney.sold', {});
   UI.renderWallet(); UI.renderSide();
   await Bus.emit('kidney.sold', {});
+  if (typeof Story !== 'undefined') await Story.hook('buy:kidney');
 };
 
 Cutscene.define('brownie.first', [
@@ -2239,6 +2244,7 @@ const Life = {
     s.isHeartbroken = false; State.save();
     this.render(); UI.renderWallet();
     await Bus.emit('therapy.done', {});
+    if (typeof Story !== 'undefined') await Story.hook('buy:therapy');
     this.render();
   },
   async dealer() {
@@ -3671,6 +3677,7 @@ const StoryRules = {
     return { ok: true };
   },
   ROOMS: ['bar', 'doc', 'bank', 'mafia', 'invest', 'life', 'vito', 'stadt'],
+  HOOKS: ['morning', 'night', 'sleep', 'spin:after', 'buy:beer', 'buy:brownie', 'buy:kidney', 'buy:therapy', 'royal:enter'],
   spuelerPay(hits, breaks) { return hits * 5 - breaks * 10; },
   taxiPay(passengers, tickets, tip = 0) { return passengers * (15 + tip) - tickets * 50; },
   tuerBonus(strength) { return Math.min(50, 10 * (strength || 0)); },
@@ -3683,7 +3690,10 @@ const StoryRules = {
     jobs(story.start && story.start.unlocked && story.start.unlocked.jobs, 'start');
     rooms(story.start && story.start.unlocked && story.start.unlocked.rooms, 'start');
     for (const ch of story.chapters || []) { scene(ch.intro, ch.id); jobs(ch.unlock && ch.unlock.jobs, ch.id); rooms(ch.unlock && ch.unlock.rooms, ch.id); }
-    for (const e of story.events || []) { scene(e.scene, e.id); for (const eff of e.effects || []) { scene(eff.scene, e.id); jobs(eff.unlock && eff.unlock.jobs, e.id); rooms(eff.unlock && eff.unlock.rooms, e.id); } }
+    for (const e of story.events || []) {
+      if (!StoryRules.HOOKS.includes(e.at)) errs.push(`${story.id}: Hook "${e.at}" in Event ${e.id}`);
+      scene(e.scene, e.id); for (const eff of e.effects || []) { scene(eff.scene, e.id); jobs(eff.unlock && eff.unlock.jobs, e.id); rooms(eff.unlock && eff.unlock.rooms, e.id); }
+    }
     for (const [job, list] of Object.entries(story.jobScenes || {})) { jobs([job], 'jobScenes'); list.forEach((id) => scene(id, `jobScenes.${job}`)); }
     for (const e of story.endings || []) scene(e.scene, e.id);
     if ((story.endings || []).filter((e) => e.fallback).length !== 1) errs.push(`${story.id}: genau ein Fallback-Ende nötig`);
@@ -3919,6 +3929,12 @@ const Story = {
       if (e.once) { this.s.seen.push(e.id); State.save(); }
     }
   },
+  /* Generischer Einstiegspunkt für Käufe/Zimmer: Events des Hooks abarbeiten, dann sofortige Enden prüfen */
+  async hook(at) {
+    if (State.mode !== 'story' || !this.story || !this.s || this.s.ended) return;
+    await this.runEvents(at);
+    if (this.checkImmediate) await this.checkImmediate();
+  },
   async applyChapter() {
     const ch = StoryRules.chapterFor(this.story, State.s);
     if (!ch || ch.id === this.s.chapter) return;
@@ -3963,6 +3979,7 @@ const Story = {
     this.renderDaybar();
     try {
       await this.fade(`Nacht ${this.s.day}`);
+      await this.runEvents('sleep');
       await this.runEvents('night');
       let end = StoryRules.ending(this.story, State.s);
       if (end) return this.finish(end);
@@ -5252,6 +5269,20 @@ T.test('StoryRules.validate: requires muss bekannte Story sein', () => {
   const errs = StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post'], ['probe']);
   T.eq(errs, ['x: requires "gibtsnicht" unbekannt']);
   T.eq(StoryRules.validate(Object.assign({}, st, { requires: 'probe' }), Object.keys(STORY_PROBE.scenes), ['spueler', 'post'], ['probe']), []);
+});
+T.test('StoryRules.validate: unbekannter Hook', () => {
+  const st = Object.assign({}, STORY_PROBE, { id: 'x', events: [{ id: 'e', at: 'unbekannt', scene: 'probe.n1' }] });
+  T.eq(StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), ['x: Hook "unbekannt" in Event e']);
+  for (const at of StoryRules.HOOKS) {
+    const ok = Object.assign({}, STORY_PROBE, { id: 'y', events: [{ id: 'e', at, scene: 'probe.n1' }] });
+    T.eq(StoryRules.validate(ok, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), [], at);
+  }
+});
+T.test('StoryRules.dueEvents: sleep-Hook', () => {
+  const st = Object.assign({}, STORY_PROBE, { events: [{ id: 'z', at: 'sleep', when: { var: 'mut', lte: 0 }, scene: 'probe.n1' }] });
+  const s = Object.assign(base(), { story: StoryRules.freshStoryPart(st) });
+  T.eq(StoryRules.dueEvents(st, s, 'sleep').map((e) => e.id), ['z']);
+  T.eq(StoryRules.dueEvents(st, s, 'night'), []);
 });
 const probeStory = () => ({
   id: 'p', title: 'P', days: 3,
