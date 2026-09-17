@@ -533,6 +533,18 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .gear-line { font-family: var(--font-mono); font-size: .78rem; color: var(--gold-2); }
 .cs-bg.autohaus { background: linear-gradient(180deg, #e8eef3 0%, #b9c4cf 45%, #3c4249 46%, #1b1f23 100%); }
 .cs-bg.intersport { background: linear-gradient(180deg, #1a1a1a 0%, #2b2b2b 50%, #ff6a3d 51%, #b03d1c 100%); }
+.cs-bg.royal { background: radial-gradient(ellipse at 50% 0%, #6b1f2a 0%, #2a0a12 45%, #0d0508 100%); }
+.cs-bg.royal::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 60px, rgba(232,213,163,.05) 60px 62px); pointer-events: none; }
+/* Casino Royal – Lobby und Schaufenster */
+.royal { background: radial-gradient(ellipse at 50% 0%, rgba(107,31,42,.6), transparent 60%); }
+.royal-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; justify-content: space-between; }
+.royal-head h2 { font-family: var(--font-display); color: var(--gold-2); letter-spacing: .1em; margin: 0; }
+.royal-sylvie { font-family: var(--font-mono); font-style: italic; color: var(--dim); margin: 0; }
+.royal-hub { grid-template-columns: repeat(3, 1fr); }
+.storefront.royal { --neon: var(--gold-2); border-color: #5a3a12; background: linear-gradient(180deg, #3a1a22, #14080b); }
+.storefront.royal.locked { opacity: .7; }
+.storefront.royal.locked .sign { text-shadow: none; color: var(--dim); }
+.strasse .storefront.royal { grid-column: 1 / -1; min-height: 200px; }
 @media (max-width: 760px) { .strasse, .laden { grid-template-columns: 1fr; } .storefront { min-height: 180px; } }
 .cs-bg.gasse { background: linear-gradient(180deg, #05060a 0%, #14161e 55%, #2a2418 56%, #0d0b07 100%); }
 /* ==== 7. ANIMATIONEN ==== */
@@ -895,6 +907,17 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
     <p class="laden-seller hidden" id="ladenSeller"></p>
     <div class="strasse" id="strasse"></div>
     <div class="laden hidden" id="laden"></div>
+  </div>
+</template>
+<template id="tpl-royal">
+  <div class="panel stretch royal">
+    <div class="royal-head"><h2>🎩 Casino Royal</h2><p class="royal-sylvie" id="royalLine"></p></div>
+    <div class="hub royal-hub">
+      <div class="door" data-screen="megaslots" style="--neon: var(--gold-2)"><div class="sign">Mega Seven</div><div class="glyph">🎰</div><div class="chalk-tag">5 Walzen · Freispiele</div><div class="knob"></div></div>
+      <div class="door" data-screen="craps" style="--neon: var(--neon-green)"><div class="sign">Craps</div><div class="glyph">🎲</div><div class="chalk-tag">Pass Line · Field</div><div class="knob"></div></div>
+      <div class="door" data-screen="wheel" style="--neon: var(--neon-red)"><div class="sign">Glücksrad</div><div class="glyph">🎡</div><div class="chalk-tag">bis 10×</div><div class="knob"></div></div>
+    </div>
+    <div class="bet-bar"><button class="btn ghost sm" id="royalLeave">← Zurück in die Stadt</button></div>
   </div>
 </template>
 <!-- /TEMPLATES -->
@@ -1573,6 +1596,8 @@ const UI = {
     if (room('stadt')) secs.push(sec('Stadt',
       btn('🏙️ Autohaus · INTERSPORT', s.car || s.shoes ? '✓' : '', 'stadt'),
       h('p', { class: 'side-hint gear-line', id: 'gearLine' }, Stadt.line(s))));
+    if (room('royal') && typeof Royal !== 'undefined') secs.push(sec('Casino Royal',
+      btn('🎩 Casino Royal', s.flags.royalGuest ? 'Gast' : (s.car ? this.fmt(RoyalRules.ENTRY_FEE) : '🚗 nötig'), 'royal', !s.car)));
     side.append(...secs);
     const tabs = h('div', { class: 'side-tabs' });
     qsa('.side-sec h3', side).map((el) => el.textContent).forEach((label, i) => {
@@ -1654,6 +1679,7 @@ const Cutscene = {
     verkaeufer: { name: 'Der Verkäufer', emoji: '🤵', color: '#cfd8e3' },
     du: { name: 'Du', emoji: '🤠', color: '#ffffff' },
     raeuber: { name: 'Der Räuber', emoji: '🥷', color: 'var(--neon-red)' },
+    sylvie: { name: 'Madame Sylvie', emoji: '🎩', color: '#e8d5a3' },
   },
   PROPS: {
     bar: ['🍾', '🪑'], hinterzimmer: ['🕯️', '🚬'], standesamt: ['💐', '🔔'], villa: ['🏙️', '🌙'], hafen: ['🏗️', '🌙'],
@@ -2392,6 +2418,14 @@ const Stadt = {
           h('p', { class: 'seller' }, this.seller(id)),
           h('div', { class: 'owned' }, this.ownedLine(id))));
       }
+      const chk = RoyalRules.canEnter(State.s);
+      const gate = Royal.inStory() ? StoryRules.gate(Story.story, State.s, 'royal') : null;
+      const roomOpen = !Royal.inStory() || Story.roomUnlocked('royal');
+      if (roomOpen) street.append(h('div', { class: 'storefront royal' + (chk.ok && !gate ? '' : ' locked'), 'data-shop': 'royal', onclick: () => Royal.enter() },
+        h('div', { class: 'sign' }, 'Casino Royal'),
+        h('div', { class: 'glyph' }, '🎩'),
+        h('p', { class: 'seller' }, gate || (chk.ok ? 'Der Parkservice nimmt den Schlüssel.' : chk.text)),
+        h('div', { class: 'owned' }, State.s.flags.royalGuest ? 'Gast des Hauses' : `Eintritt ${UI.fmt(RoyalRules.ENTRY_FEE)}`)));
       return;
     }
     qs('#ladenSeller', this.root).textContent = this.seller(this.shop);
@@ -2482,6 +2516,67 @@ Cutscene.define('stadt.shoes', [
 ]);
 Bus.on('gear:car', () => Stadt.checkFullSet());
 Bus.on('gear:shoes', () => Stadt.checkFullSet());
+</script>
+
+<script id="casino-royal">
+/* ================= CASINO ROYAL – Lobby, Eintritt, Madame Sylvie ================= */
+const Royal = {
+  GAMES: ['megaslots', 'craps', 'wheel'],
+  SYLVIE: {
+    first: 'Madame Sylvie sieht kurz von ihren Zahlen auf. Sie sieht alles. Sie sagt nichts.',
+    guest: 'Madame Sylvie nickt. „Gast des Hauses. Der Eintritt entfällt. Das Haus behält sich alles andere vor.“',
+    paid: 'Hundert Euro. Die Garderobe ist links, die Ausgänge sind egal.',
+  },
+  inStory() { return State.mode === 'story' && typeof Story !== 'undefined' && Story.story; },
+  async enter() {
+    const s = State.s;
+    if (Cutscene.active || Game.inFlight > 0) return;
+    const chk = RoyalRules.canEnter(s);
+    if (!chk.ok) { UI.toast({ icon: '🎩', title: 'Casino Royal', text: chk.text, tone: 'loss' }); SFX.play('lose'); return; }
+    if (this.inStory() && Story.isLocked('royal')) { UI.toast({ icon: '🔒', title: Story.lockReason('royal'), tone: 'loss' }); SFX.play('lose'); return; }
+    const fee = RoyalRules.entryFee(s);
+    if (fee > 0 && s.balance < fee) { UI.toast({ icon: '🎩', title: 'Eintritt 100 €', text: 'So viel hast du nicht dabei.', tone: 'loss' }); SFX.play('lose'); return; }
+    if (fee > 0) {
+      Game.applyDelta(-fee, { quiet: true });
+      if (this.inStory()) s.story.royalPaidDay = s.story.day;
+      UI.toast({ icon: '🎩', title: 'Eintritt −100 €', text: this.SYLVIE.paid, tone: 'info' });
+    }
+    if (this.inStory()) s.story.stats.royalVisits++;
+    if (!s.flags.royalSeen) { s.flags.royalSeen = true; State.save(); await Cutscene.play('royal.first', {}); }
+    State.save(); UI.renderWallet(); UI.renderSide();
+    await UI.show('royal');
+    if (typeof Story !== 'undefined') await Story.hook('royal:enter');
+  },
+  async onWin(amount, game) {
+    if (!this.GAMES.includes(game) || amount < RoyalRules.GUEST_WIN) return;
+    Achievements.unlock('royalHigh');
+    const s = State.s;
+    if (s.flags.royalGuest) return;
+    s.flags.royalGuest = true; State.save();
+    await Cutscene.play('royal.guest', { amount: UI.fmt(amount) });
+    if (typeof Story !== 'undefined') await Story.hook('royal:guest');
+  },
+  line() { return State.s.flags.royalGuest ? 'Gast des Hauses. Madame Sylvie grüßt nicht, aber sie sieht her.' : 'Madame Sylvie steht am Ende des Saals. Sie zählt. Nicht Geld – Leute.'; },
+};
+Actions.royal = () => Royal.enter();
+UI.register('royal', {
+  template: 'tpl-royal',
+  mount(root) {
+    qs('#royalLine', root).textContent = Royal.line();
+    qsa('.door', root).forEach((d) => d.addEventListener('click', () => { SFX.play('click'); UI.show(d.dataset.screen); }));
+    qs('#royalLeave', root).addEventListener('click', () => { SFX.play('click'); UI.show('stadt'); });
+    if (typeof Story !== 'undefined') Story.decorateHub(root);
+  },
+});
+Cutscene.define('royal.first', [
+  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Willkommen. Sie sind neu. Man sieht es an den Schuhen, nicht am Auto.' },
+  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Drei Tische. Höhere Einsätze, bessere Beleuchtung, dieselbe Mathematik. Viel Vergnügen.' },
+]);
+Cutscene.define('royal.guest', [
+  { bg: 'royal', who: 'sylvie', mood: 'happy', text: '{{amount}} in einer Runde. Sie sind ab jetzt Gast des Hauses – der Eintritt entfällt.' },
+  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Das Haus schenkt nichts. Es investiert.' },
+]);
+Bus.on('win', ({ amount, game }) => Royal.onWin(amount, game));
 </script>
 
 <script id="game-slots">
@@ -3341,6 +3436,9 @@ const Achievements = {
     { id: 'phoenix', title: 'Auferstanden', icon: '🔥', desc: 'Nach dem Game Over weitergespielt.' },
     { id: 'strassenkaempfer', title: 'Straßenkämpfer', icon: '🥊', desc: 'Fünf Räuber verprügelt.' },
     { id: 'vollausgestattet', title: 'Vollausgestattet', icon: '🏁', desc: 'Top-Auto und Carbon-Sprinter.' },
+    { id: 'royalHigh', title: 'High Roller', icon: '🎩', desc: 'Einzelgewinn von 5.000 € im Casino Royal.' },
+    { id: 'fuenfSiebener', title: 'Fünf Siebener', icon: '7️⃣', desc: 'Fünf 7️⃣ auf einer Linie bei Mega Seven.' },
+    { id: 'gegenDieWand', title: 'Gegen die Wand', icon: '🎡', desc: 'Bankrott am Glücksrad mit 5.000 € Einsatz.' },
     { id: 'jobFirst', title: 'Erster Arbeitstag', icon: '🧾', desc: 'Einen Job in der Story beendet.', group: 'story' },
     { id: 'teller10', title: 'Tellerwäscher', icon: '🍽️', desc: '10 von 10 Tellern sauber.', group: 'story' },
     { id: 'nachtschicht', title: 'Nachtschicht', icon: '🚕', desc: 'Taxi-Schicht mit mindestens 200 €.', group: 'story' },
@@ -3704,8 +3802,13 @@ const StoryRules = {
     if (job.requires && !StoryRules.check(job.requires, s)) return { ok: false, reason: job.requireText || 'Voraussetzung fehlt' };
     return { ok: true };
   },
-  ROOMS: ['bar', 'doc', 'bank', 'mafia', 'invest', 'life', 'vito', 'stadt'],
-  HOOKS: ['morning', 'night', 'sleep', 'spin:after', 'buy:beer', 'buy:brownie', 'buy:kidney', 'buy:therapy', 'royal:enter'],
+  ROOMS: ['bar', 'doc', 'bank', 'mafia', 'invest', 'life', 'vito', 'stadt', 'royal'],
+  HOOKS: ['morning', 'night', 'sleep', 'spin:after', 'buy:beer', 'buy:brownie', 'buy:kidney', 'buy:therapy', 'royal:enter', 'royal:guest'],
+  /* Bedingte Sperre eines Screens: erste zutreffende Regel liefert den Kreidetext, sonst null */
+  gate(story, s, screen) {
+    for (const g of ((story.gates || {})[screen] || [])) if (StoryRules.check(g.when, s)) return g.text;
+    return null;
+  },
   spuelerPay(hits, breaks) { return hits * 5 - breaks * 10; },
   taxiPay(passengers, tickets, tip = 0) { return passengers * (15 + tip) - tickets * 50; },
   tuerBonus(strength) { return Math.min(50, 10 * (strength || 0)); },
@@ -3739,6 +3842,7 @@ const StoryRules = {
     if ((story.endings || []).filter((e) => e.fallback).length !== 1) errs.push(`${story.id}: genau ein Fallback-Ende nötig`);
     if (story.requires && storyIds && !storyIds.includes(story.requires)) errs.push(`${story.id}: requires "${story.requires}" unbekannt`);
     for (const k of Object.keys(story.prices || {})) if (!(k in Rules.PRICES)) errs.push(`${story.id}: Preis "${k}" unbekannt`);
+    for (const [screen, list] of Object.entries(story.gates || {})) list.forEach((g, i) => { if (!g.when || !g.text) errs.push(`${story.id}: Gate ${screen}[${i}] braucht when und text`); });
     return errs;
   },
   freshStoryPart(story, storyRuns = {}) {
@@ -3764,6 +3868,16 @@ const StoryRules = {
 const RoyalRules = {
   ENTRY_FEE: 100,
   GUEST_WIN: 5000,
+  /* ---- Eintritt ---- */
+  canEnter(s) {
+    if (!s.car) return { ok: false, reason: 'car', text: 'Parkservice only – zu Fuß kommt hier keiner rein.' };
+    return { ok: true };
+  },
+  entryFee(s) {
+    if (s.flags && s.flags.royalGuest) return 0;
+    if (s.story && s.story.royalPaidDay != null && s.story.royalPaidDay === s.story.day) return 0;
+    return RoyalRules.ENTRY_FEE;
+  },
   /* ---- Mega Seven: 5 Walzen × 3 Reihen, 5 feste Linien ---- */
   MEGA: {
     SYMBOLS: ['🍒', '🔔', 'BAR', '💎', '7️⃣', '⭐'],
@@ -3988,7 +4102,7 @@ const Stories = {
 
 const Story = {
   DOORS: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'postman'],
-  ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'] },
+  ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'], royal: ['royal'], megaslots: ['royal'], craps: ['royal'], wheel: ['royal'] },
   story: null,
   allowOnce: null,
   forcedNext: null,
@@ -4237,6 +4351,7 @@ const Story = {
     if (screen === this.allowOnce) { this.allowOnce = null; return false; }
     if (['jobs', 'vito'].includes(screen)) return false;
     if (['job-spueler', 'job-taxi'].includes(screen)) return this.s.phase !== 'morning';
+    if (StoryRules.gate(this.story, State.s, screen)) return true;
     if (this.DOORS.includes(screen)) {
       if (screen === 'postman') return true; // Post ist ein Job (morgens)
       return !this.s.unlocked.doors.includes(screen);
@@ -4245,6 +4360,7 @@ const Story = {
     return false;
   },
   lockReason(screen) {
+    const g = StoryRules.gate(this.story, State.s, screen); if (g) return g;
     if (screen === 'postman') return 'Morgens, an der Pinnwand';
     return (this.story.lockReason || {})[screen] || 'Noch geschlossen';
   },
@@ -5545,6 +5661,32 @@ T.test('wheelLuckOverride: Bankrott rückt auf das nächste Nicht-Bankrott-Segme
   T.eq(RoyalRules.wheelLuckOverride(i0, 50, seq(0.999)), i0, 'Glück greift nicht (rng ≥ luck/100)');
 });
 
+/* ---- RoyalRules: Eintritt ---- */
+T.test('RoyalRules.canEnter / entryFee', () => {
+  T.eq(RoyalRules.canEnter(base()), { ok: false, reason: 'car', text: 'Parkservice only – zu Fuß kommt hier keiner rein.' });
+  T.eq(RoyalRules.canEnter(base({ car: 'audiA3' })), { ok: true });
+  T.eq(RoyalRules.entryFee(base({ car: 'audiA3' })), 100);
+  T.eq(RoyalRules.entryFee(base({ car: 'audiA3', flags: { royalGuest: true } })), 0);
+  const st = { day: 4, royalPaidDay: 4 };
+  T.eq(RoyalRules.entryFee(base({ car: 'audiA3', story: st })), 0, 'Story: heute schon bezahlt');
+  T.eq(RoyalRules.entryFee(base({ car: 'audiA3', story: { day: 5, royalPaidDay: 4 } })), 100);
+});
+T.test('StoryRules.gate: bedingte Sperre mit Text', () => {
+  const st = Object.assign({}, STORY_PROBE, { gates: { royal: [{ when: { flag: 'zitter' }, text: 'Sie zittern.' }, { when: { var: 'mut', lte: 0 }, text: 'Zu wenig Mut.' }] } });
+  const s = Object.assign(base(), { story: StoryRules.freshStoryPart(st) });
+  T.eq(StoryRules.gate(st, s, 'royal'), 'Zu wenig Mut.', 'erste zutreffende Sperre');
+  s.story.flags.zitter = true;
+  T.eq(StoryRules.gate(st, s, 'royal'), 'Sie zittern.');
+  s.story.flags.zitter = false; s.story.vars.mut = 1;
+  T.eq(StoryRules.gate(st, s, 'royal'), null);
+  T.eq(StoryRules.gate(st, s, 'slots'), null, 'ohne Gate offen');
+  T.eq(StoryRules.gate(STORY_PROBE, s, 'royal'), null, 'Story ohne gates');
+});
+T.test('StoryRules.validate: gates brauchen when und text, Raum royal bekannt', () => {
+  const st = Object.assign({}, STORY_PROBE, { id: 'x', gates: { royal: [{ text: 'ohne when' }] }, start: Object.assign({}, STORY_PROBE.start, { unlocked: { jobs: ['spueler'], doors: [], rooms: ['royal'] } }) });
+  T.eq(StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), ['x: Gate royal[0] braucht when und text']);
+});
+
 /* ---- StoryRules ---- */
 const storyBase = (o = {}) => Object.assign(base({ balance: 500 }), {
   story: Object.assign({
@@ -6167,7 +6309,8 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
   /* Dev-Pfad freies Spiel: wie bisher */
   document.body.classList.add('mode-free');
   if (params.has('shop') && typeof Stadt !== 'undefined') Stadt.shop = Stadt.SHOPS[params.get('shop')] ? params.get('shop') : null;
-  await UI.show(params.get('screen') || 'hub');
+  if (params.get('screen') === 'royal' && params.has('game') && ['megaslots', 'craps', 'wheel'].includes(params.get('game'))) { await UI.show(params.get('game')); }
+  else await UI.show(params.get('screen') || 'hub');
   let gameOverAtBoot = false;
   if (Rules.isGameOver(State.s)) { gameOverAtBoot = true; await Bus.emit('gameover', {}); }
   if (params.has('scene')) {
