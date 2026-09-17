@@ -130,9 +130,9 @@ T.test('megaLuckOverride: kein Glück / bereits Gewinn / bester Ein-Schritt-Gewi
   const win = G(['🍒 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒', '🔔 🔔 🔔', '🔔 🔔 🔔']);
   T.eq(RoyalRules.megaLuckOverride(win, 100, seq(0)), win, 'bestehender Gewinn bleibt');
 });
-T.test('Mega Seven: RTP-Korridor (200.000 Spins, Seed 7)', () => {
+T.test('Mega Seven: RTP-Korridor (60.000 Spins, Seed 7)', () => {
   const rng = seeded(7); let paid = 0, ret = 0, free = 0;
-  for (let i = 0; i < 200000; i++) {
+  for (let i = 0; i < 60000; i++) {
     const isFree = free > 0; if (isFree) free--; else paid += 500;
     const w = RoyalRules.megaWin(RoyalRules.megaRoll(rng), 500, isFree);
     ret += w.payout; if (w.freeSpins) free = Math.min(RoyalRules.MEGA.FREE_MAX, free + w.freeSpins);
@@ -221,7 +221,7 @@ const RoyalRules = {
 
 - [ ] **Step 4: Tests**
 
-Run: `node tests/run-selftest.mjs` → 0 fehlgeschlagen (RTP-Test gibt bei Fehlschlag den Wert aus – dann Gewichte laut Spec anpassen, nicht die Struktur).
+Run: `node tests/run-selftest.mjs` → 0 fehlgeschlagen (RTP-Test gibt bei Fehlschlag den Wert aus – dann Gewichte laut Spec anpassen, nicht die Struktur). Hinweis: `SelfTest.run` ist seit Plan 1 async; `tests/dom-selftest.sh` hat ein 4-s-Budget – bleibt die Simulation darunter (Node-Laufzeit des Tests < 1 s), ist alles gut.
 
 - [ ] **Step 5: Commit**
 
