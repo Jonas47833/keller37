@@ -1735,7 +1735,7 @@ const State = {
       bankDebt: 0, mafiaDebt: 0, mafiaSpins: 0,
       investments: [],
       hasHouse: false, isMarried: false, marriageSpins: 0, isHeartbroken: false, hasDealer: false,
-      car: null, shoes: null, strength: 0, mugCooldown: 0,
+      car: null, shoes: null, weapon: 0, strength: 0, mugCooldown: 0,
       xp: 0, skills: [], skillRespecs: 0, insiderExcluded: [], mechRespins: 0,
       flags: { intro: false, mafiaLoan: false, bankLoan: false, bankLimit: false, brownie: false, igor: false },
       stats: { spins: 0, maxBalance: 50, biggestWin: 0, kidneys: 0, postStreakBest: 0, muggings: 0, fightsWon: 0 },
@@ -4846,6 +4846,11 @@ const StoryRules = {
   },
   applyEffect(s, eff, story = {}, rng = Math.random) {
     const st = s.story;
+    if ('call' in eff) {
+      const fn = (story.fns || {})[eff.call];
+      if (typeof fn !== 'function') throw new Error(`Story-Funktion "${eff.call}" fehlt`);
+      return fn(s, rng) || {};
+    }
     if ('chance' in eff) {
       if (rng() >= eff.chance) return {};
       const out = {};
@@ -4895,6 +4900,7 @@ const StoryRules = {
     if ('force' in eff) out.force = eff.force;
     if ('loseDay' in eff) out.loseDay = true;
     if ('scene' in eff) out.scene = eff.scene;
+    if ('show' in eff) out.show = eff.show;
     return out;
   },
   requirementMet(story, storyRuns) {
@@ -4951,8 +4957,8 @@ const StoryRules = {
     return { ok: true };
   },
   ROOMS: ['bar', 'doc', 'bank', 'mafia', 'invest', 'life', 'vito', 'stadt', 'royal'],
-  HOOKS: ['morning', 'night', 'sleep', 'spin:after', 'buy:beer', 'buy:brownie', 'buy:kidney', 'buy:therapy', 'royal:enter', 'royal:guest'],
-  SET_KEYS: ['car', 'shoes', 'hasHouse', 'hasDealer', 'kidneySold'],
+  HOOKS: ['morning', 'night', 'sleep', 'spin:after', 'buy:beer', 'buy:brownie', 'buy:kidney', 'buy:therapy', 'royal:enter', 'royal:guest', 'fight:after', 'job:after'],
+  SET_KEYS: ['car', 'shoes', 'weapon', 'hasHouse', 'hasDealer', 'kidneySold'],
   actionsFor(story, s, room) { return (story.actions || []).filter((a) => a.room === room && StoryRules.check(a.when, s)); },
   /* Bedingte Sperre eines Screens: erster zutreffender Eintrag (oder null); gate() ist die Text-Variante darauf */
   gateEntry(story, s, screen) {
@@ -4991,6 +4997,7 @@ const StoryRules = {
       if (!StoryRules.HOOKS.includes(e.at)) errs.push(`${story.id}: Hook "${e.at}" in Event ${e.id}`);
       scene(e.scene, e.id); for (const eff of e.effects || []) { scene(eff.scene, e.id); jobs(eff.unlock && eff.unlock.jobs, e.id); rooms(eff.unlock && eff.unlock.rooms, e.id); }
       for (const eff of e.effects || []) if ('break' in eff && !(eff.price > 0)) errs.push(`${story.id}: break "${eff.break}" ohne price (${e.id})`);
+      for (const eff of e.effects || []) if ('call' in eff && typeof (story.fns || {})[eff.call] !== 'function') errs.push(`${story.id}: call "${eff.call}" ohne Funktion (${e.id})`);
     }
     for (const a of story.actions || []) { scene(a.scene, `action ${a.id}`); if (!StoryRules.ROOMS.includes(a.room)) errs.push(`${story.id}: Raum "${a.room}" unbekannt (action ${a.id})`); }
     const setKeys = (list, where) => (list || []).forEach((eff) => { if (eff.set) for (const k of Object.keys(eff.set)) if (!StoryRules.SET_KEYS.includes(k)) errs.push(`${story.id}: set-Key "${k}" nicht erlaubt (${where})`); });
@@ -5410,6 +5417,8 @@ const Story = {
       if (out.toast) UI.toast(out.toast);
       if (out.scene) { await this.playScene(out.scene); if (this.stale(st)) return; }
       if (out.force === 'duel') { await this.forceDuel(); if (this.stale(st)) return; }
+      if (out.force === 'shootout' && typeof this.forceFight === 'function') { await this.forceFight(out.fight || {}); if (this.stale(st)) return; }
+      if (out.show) { await UI.show(out.show); if (this.stale(st)) return; }
       if (out.loseDay) this.lostDay = true;
     }
     State.save();
@@ -7598,6 +7607,36 @@ T.test('StoryRules: broken – Effekt break/repair, repair() zieht Geld ab, zäh
 T.test('StoryRules.validate: break braucht price', () => {
   const st = Object.assign({}, STORY_PROBE, { events: [{ id: 'x', at: 'night', effects: [{ break: 'slots' }] }] });
   T.ok(StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']).some((e) => e.includes('break')));
+});
+T.test('State.fresh: weapon 0; SET_KEYS erlaubt weapon', () => {
+  T.eq(State.fresh().weapon, 0);
+  const s = base({ story: StoryRules.freshStoryPart(STORY_PROBE) });
+  StoryRules.applyEffect(s, { set: { weapon: 2 } }, STORY_PROBE);
+  T.eq(s.weapon, 2);
+});
+T.test('StoryRules: Effekt call ruft story.fns auf, reicht rng durch, gibt out zurück', () => {
+  const story = Object.assign({}, STORY_PROBE, { fns: {
+    kasse: (s) => { s.balance += 250; return { toast: { title: 'Kasse' } }; },
+    wurf: (s, rng) => ({ scene: rng() < 0.5 ? 'p.gut' : 'p.aus' }),
+    nix: () => undefined,
+  } });
+  const s = base({ balance: 0, story: StoryRules.freshStoryPart(story) });
+  T.eq(StoryRules.applyEffect(s, { call: 'kasse' }, story), { toast: { title: 'Kasse' } });
+  T.eq(s.balance, 250);
+  T.eq(StoryRules.applyEffect(s, { call: 'wurf' }, story, seq(0.1)), { scene: 'p.gut' });
+  T.eq(StoryRules.applyEffect(s, { call: 'wurf' }, story, seq(0.9)), { scene: 'p.aus' });
+  T.eq(StoryRules.applyEffect(s, { call: 'nix' }, story), {});
+  T.throws(() => StoryRules.applyEffect(s, { call: 'fehlt' }, story), 'unbekannte Funktion');
+  T.eq(StoryRules.applyEffect(s, { show: 'stadt' }, story), { show: 'stadt' });
+});
+T.test('StoryRules.validate: call auf unbekannte Funktion, neue Hooks erlaubt', () => {
+  const st = Object.assign({}, STORY_PROBE, { fns: { a: () => ({}) }, events: [
+    { id: 'ok', at: 'fight:after', effects: [{ call: 'a' }] },
+    { id: 'ok2', at: 'job:after', effects: [] },
+    { id: 'bad', at: 'night', effects: [{ call: 'b' }] },
+  ] });
+  const errs = StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']);
+  T.eq(errs.length, 1); T.ok(errs[0].includes('call "b"'));
 });
 
 /* ---- State: Modi ---- */
