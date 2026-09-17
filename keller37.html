@@ -1787,7 +1787,8 @@ const UI = {
   },
   renderWallet() {
     const s = State.s;
-    const luck = Rules.luck(s);
+    const mods = Perks.mods();
+    const luck = Rules.luck(s, mods);
     const segs = luck >= 60 ? 5 : luck >= 40 ? 4 : luck >= 20 ? 3 : luck >= 15 ? 2 : luck >= 10 ? 1 : 0;
     const luckEl = qs('#luck');
     luckEl.title = `Glück +${luck} %`;
@@ -1797,7 +1798,7 @@ const UI = {
     notes.innerHTML = '';
     if (s.isHeartbroken) notes.append(h('span', { class: 'note pink' }, `💔 Liebeskummer · ${s.beers}/2 🍺`));
     else if (s.isMarried) notes.append(h('span', { class: 'note pink' }, `💍 Chantal · noch ${Rules.MARRIAGE_SPINS - s.marriageSpins} Spins`));
-    if (s.bankDebt > 0) notes.append(h('span', { class: 'note danger' }, `🏦 ${this.fmt(s.bankDebt)} · −${this.fmt(Rules.bankInterest(s.bankDebt, s))}/Spin`));
+    if (s.bankDebt > 0) notes.append(h('span', { class: 'note danger' }, `🏦 ${this.fmt(s.bankDebt)} · −${this.fmt(Rules.bankInterest(s.bankDebt, s, mods))}/Spin`));
     if (s.mafiaDebt > 0) notes.append(h('span', { class: 'note danger' }, `🕶️ ${this.fmt(s.mafiaDebt)} · ${s.mafiaSpins} Spins`));
     if (s.kidneySold) notes.append(h('span', { class: 'note danger' }, '💊 −20 €/Spin'));
     if (s.hasHouse || s.hasDealer) notes.append(h('span', { class: 'note gold' }, `💸 +${Rules.passivePerMin(s)} €/min`));
@@ -1807,6 +1808,7 @@ const UI = {
   },
   renderSide() {
     const s = State.s;
+    const mods = Perks.mods();
     const side = qs('#side');
     const openIdx = qsa('.side-sec', side).findIndex((sec) => sec.classList.contains('active'));
     side.innerHTML = '';
@@ -1817,7 +1819,7 @@ const UI = {
     const room = (r) => !inStory || Story.roomUnlocked(r);
     const secs = [];
     if (room('bar')) secs.push(sec('Die Bar',
-      btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/3)` : ''}`, '50 €', 'beer', !Rules.canBeer(s).ok),
+      btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/${mods.maxBeers})` : ''}`, '50 €', 'beer', !Rules.canBeer(s, mods).ok),
       btn('🍪 Brownie', s.brownieCost >= 10000 ? '10.000 €' : '1.000 €', 'brownie', !Rules.canBrownie(s).ok),
       h('p', { class: 'side-hint' }, 'Bier hält 2 Spins, Brownie 1 Spin. Glück wirkt voll bis 100 € Einsatz, nie auf Zahlen.')));
     const hz = [];
@@ -2086,7 +2088,7 @@ const Game = {
     UI.renderSide();
   },
   readBet(inputId) { return parseInt(qs('#' + inputId).value, 10); },
-  bindBet(root, inputId, maxFn = () => Rules.maxBet(State.s)) {
+  bindBet(root, inputId, maxFn = () => Rules.maxBet(State.s, Perks.mods())) {
     const input = qs('#' + inputId, root);
     const clamp = () => { const v = parseInt(input.value, 10); input.value = Number.isFinite(v) ? Math.max(1, v) : 1; };
     input.addEventListener('change', clamp);
@@ -2103,7 +2105,7 @@ const Game = {
   },
   beginSpin(bet) {
     if (this.settling) return false;
-    const chk = Rules.checkSpin(State.s, bet);
+    const chk = Rules.checkSpin(State.s, bet, Perks.mods());
     if (!chk.ok) {
       if (chk.reason === 'invalid') UI.toast({ icon: '🚫', title: 'Ungültiger Einsatz', text: 'Mindestens 1 €.', tone: 'loss' });
       else UI.toast({ icon: '🚫', title: 'Zu wenig Geld', tone: 'loss', ms: 4500,
@@ -2173,7 +2175,7 @@ const Game = {
     if (s.mafiaDebt > 0) {
       s.mafiaSpins--;
       if (s.mafiaSpins <= 0) {
-        const bill = Rules.mafiaBill(s.mafiaDebt);
+        const bill = Rules.mafiaBill(s.mafiaDebt, Perks.mods());
         s.balance -= bill; s.mafiaDebt = 0; s.mafiaSpins = 0;
         State.save();
         await Bus.emit('mafia.legbreak', { bill: UI.fmt(bill) });
@@ -2185,7 +2187,7 @@ const Game = {
       const inv = s.investments[i];
       inv.spins--;
       if (inv.spins <= 0) {
-        const r = Rules.investmentResolve(inv, Math.random);
+        const r = Rules.investmentResolve(inv, Math.random, Perks.mods());
         s.investments.splice(i, 1);
         if (r.won) {
           this.applyDelta(r.payout, { quiet: true });
@@ -2202,7 +2204,7 @@ const Game = {
     UI.renderWallet();
     UI.renderSide();
     await Bus.emit('spin:after', {});
-    if (Rules.isGameOver(s)) await Bus.emit('gameover', {});
+    if (Rules.isGameOver(s, Perks.mods())) await Bus.emit('gameover', {});
   },
 };
 
@@ -2226,9 +2228,10 @@ setInterval(() => {
 /* ---- Die Bar (Seitenleiste) ---- */
 Actions.beer = async () => {
   const s = State.s;
-  const c = Rules.canBeer(s);
+  const mods = Perks.mods();
+  const c = Rules.canBeer(s, mods);
   if (!c.ok) {
-    UI.toast({ icon: '🍺', title: c.reason === 'max' ? 'Maximal 3 Bier' : 'Bier kostet 50 €', text: c.reason === 'max' ? 'Der Wirt schüttelt den Kopf.' : 'Zu wenig Geld.', tone: 'loss' });
+    UI.toast({ icon: '🍺', title: c.reason === 'max' ? `Maximal ${mods.maxBeers} Bier` : 'Bier kostet 50 €', text: c.reason === 'max' ? 'Der Wirt schüttelt den Kopf.' : 'Zu wenig Geld.', tone: 'loss' });
     return;
   }
   Game.applyDelta(-Rules.PRICES.beer, { quiet: true });
@@ -2237,7 +2240,8 @@ Actions.beer = async () => {
   State.save();
   UI.renderWallet(); UI.renderSide();
   SFX.play('coin');
-  UI.toast({ icon: '🍺', title: `Prost! Bier #${s.beers}`, text: `+${Rules.BEER_LUCK[s.beers]} % Glück für 2 Spins.`, tone: 'gold' });
+  const luckGain = Rules.BEER_LUCK[s.beers] * mods.beerLuckMult;
+  UI.toast({ icon: '🍺', title: `Prost! Bier #${s.beers}`, text: luckGain > 0 ? `+${luckGain} % Glück für 2 Spins.` : 'Bier schmeckt, wirkt aber nicht – Pokerface.', tone: 'gold' });
   await Bus.emit('beer', { beers: s.beers });
 };
 
@@ -2250,7 +2254,7 @@ Actions.brownie = async () => {
   }
   const price = s.brownieCost;
   Game.applyDelta(-price, { quiet: true });
-  s.brownieTimer = Rules.BROWNIE_SPINS;
+  s.brownieTimer = Perks.mods().brownieSpins;
   s.brownieCost = Rules.PRICES.brownieNext;
   State.save();
   UI.renderWallet(); UI.renderSide();
@@ -2294,42 +2298,44 @@ Cutscene.define('kidney.sold', [
 /* ---- Kredite ---- */
 const Finance = {
   root: null,
-  loanAmount(raw) { return raw === 'limit' ? Rules.gear(State.s).bankLimit : parseInt(raw, 10); },
+  loanAmount(raw) { return raw === 'limit' ? Rules.bankLimitFor(State.s, Perks.mods()) : parseInt(raw, 10); },
   render() {
     if (!this.root) return;
     const s = State.s;
-    const g = Rules.gear(s);
+    const mods = Perks.mods();
+    const rate = Rules.bankRateFor(s, mods), limit = Rules.bankLimitFor(s, mods);
     qs('#bankIou', this.root).innerHTML = s.bankDebt > 0
-      ? `<h4>Schuldschein</h4><div class="amt">${UI.fmt(s.bankDebt)}</div><div>−${UI.fmt(Rules.bankInterest(s.bankDebt, s))} Zinsen pro Spin</div>`
+      ? `<h4>Schuldschein</h4><div class="amt">${UI.fmt(s.bankDebt)}</div><div>−${UI.fmt(Rules.bankInterest(s.bankDebt, s, mods))} Zinsen pro Spin</div>`
       : `<h4>Schuldschein</h4><div class="amt">0 €</div><div>Sauberes Konto. Noch.</div>`;
     qs('#mafiaIou', this.root).innerHTML = s.mafiaDebt > 0
       ? `<h4>Vitos Zettel</h4><div class="amt">${UI.fmt(s.mafiaDebt)}</div><div class="deadline">Noch ${s.mafiaSpins} Spin${s.mafiaSpins === 1 ? '' : 's'}</div>`
       : `<h4>Vitos Zettel</h4><div class="amt">0 €</div><div>„Wir kennen uns nicht."</div>`;
-    qsa('[data-loan]', this.root).forEach((b) => { b.disabled = !Rules.bankLoanAllowed(s, this.loanAmount(b.dataset.loan)); });
-    qs('[data-loan="limit"]', this.root).textContent = `Limit · ${UI.fmt(g.bankLimit)}`;
+    qsa('[data-loan]', this.root).forEach((b) => { b.disabled = !Rules.bankLoanAllowed(s, this.loanAmount(b.dataset.loan), mods); });
+    qs('[data-loan="limit"]', this.root).textContent = `Limit · ${UI.fmt(limit)}`;
     const hint = qs('#bankHint', this.root);
     hint.classList.toggle('hidden', s.bankDebt === 0);
     hint.textContent = s.bankDebt > 0 ? 'Erst den Schuldschein tilgen – Herr Krause gibt nur einen Kredit auf einmal.' : '';
     qsa('[data-mloan]', this.root).forEach((b) => { b.disabled = s.mafiaDebt > 0; });
     qs('#repayBank', this.root).disabled = s.bankDebt === 0;
     qs('#repayMafia', this.root).disabled = s.mafiaDebt === 0;
-    qs('#bankTerms', this.root).textContent = `Herr Krause · ${Math.round(g.bankRate * 100)} % Zinsen pro Spin · Limit ${UI.fmt(g.bankLimit)}`;
+    qs('#bankTerms', this.root).textContent = `Herr Krause · ${Math.round(rate * 100)} % Zinsen pro Spin · Limit ${UI.fmt(limit)}`;
   },
   async loanBank(amt) {
     const s = State.s;
-    if (amt === 'limit') amt = Rules.gear(s).bankLimit;
-    const why = Rules.bankLoanReason(s, amt);
+    const mods = Perks.mods();
+    if (amt === 'limit') amt = Rules.bankLimitFor(s, mods);
+    const why = Rules.bankLoanReason(s, amt, mods);
     if (why === 'open') { UI.toast({ icon: '👔', title: 'Ein Kredit reicht', text: 'Erst den Schuldschein tilgen.', tone: 'loss' }); SFX.play('lose'); return; }
     if (why === 'limit') {
-      if (!s.flags.bankLimit) { s.flags.bankLimit = true; State.save(); await Cutscene.play('bank.limit', { limit: UI.fmt(Rules.gear(s).bankLimit) }); }
-      else UI.toast({ icon: '👔', title: 'Kreditlimit erreicht', text: `Herr Krause bedauert. ${UI.fmt(Rules.gear(s).bankLimit)} sind das Ende.`, tone: 'loss' });
+      if (!s.flags.bankLimit) { s.flags.bankLimit = true; State.save(); await Cutscene.play('bank.limit', { limit: UI.fmt(Rules.bankLimitFor(s, mods)) }); }
+      else UI.toast({ icon: '👔', title: 'Kreditlimit erreicht', text: `Herr Krause bedauert. ${UI.fmt(Rules.bankLimitFor(s, mods))} sind das Ende.`, tone: 'loss' });
       return;
     }
     s.bankDebt += amt;
     Game.applyDelta(amt, { quiet: true });
     SFX.play('cash');
     this.render();
-    if (!s.flags.bankLoan) { s.flags.bankLoan = true; State.save(); await Cutscene.play('bank.loan', { rate: Math.round(Rules.gear(s).bankRate * 100) }); }
+    if (!s.flags.bankLoan) { s.flags.bankLoan = true; State.save(); await Cutscene.play('bank.loan', { rate: Math.round(Rules.bankRateFor(s, mods) * 100) }); }
     else UI.toast({ icon: '🏦', title: `+${UI.fmt(amt)} Kredit`, text: `Schulden jetzt ${UI.fmt(s.bankDebt)}.`, tone: 'info' });
     this.render();
   },
@@ -2348,7 +2354,7 @@ const Finance = {
     const s = State.s;
     if (s.mafiaDebt > 0) { UI.toast({ icon: '🕶️', title: 'Erst zahlen', text: 'Vito gibt keinen zweiten Kredit.', tone: 'loss' }); return; }
     s.mafiaDebt = amt;
-    s.mafiaSpins = Rules.MAFIA_SPINS;
+    s.mafiaSpins = Rules.mafiaSpins(Perks.mods());
     Game.applyDelta(amt, { quiet: true });
     SFX.play('cash');
     this.render();
@@ -2799,8 +2805,9 @@ const Slots = {
       setTimeout(() => lever.classList.remove('pulled'), 500);
       qs('#slotStatus', this.root).textContent = 'Walzen laufen…';
       qsa('.reel-win', this.root).forEach((r) => r.classList.remove('locked', 'hit'));
+      const mods = Perks.mods();
       let res = Rules.slotRoll(Math.random);
-      res = Rules.slotLuckOverride(res, Rules.effectiveLuck(Rules.luck(State.s), bet), Math.random);
+      res = Rules.slotLuckOverride(res, Rules.effectiveLuck(Rules.luck(State.s, mods), bet), Math.random);
       qsa('.strip', this.root).forEach((s, k) => { s.style.transition = 'none'; s.style.transform = 'translateY(0)'; s.style.animationDelay = `${-k * 0.13}s`; void s.offsetHeight; s.classList.add('spinning'); });
       SFX.loop('reelSpin', 120);
       [800, 1400, 2000].forEach((ms, i) => setTimeout(() => {
@@ -2812,7 +2819,6 @@ const Slots = {
       }, ms));
       await wait(2450);
       SFX.stop('reelSpin');
-      const mods = Perks.mods();
       const m = Rules.slotMultiplier(...res, mods);
       const delta = Rules.slotDelta(bet, m);
       if (mods.slotHoldEvery > 0) { State.s.mechRespins++; State.save(); }
@@ -3180,13 +3186,13 @@ const Roulette = {
     qs('#btnSpin', this.root).disabled = !idle || this.bets.length === 0;
     qs('#btnUndo', this.root).disabled = !idle || this.bets.length === 0;
     qs('#btnClear', this.root).disabled = !idle || this.bets.length === 0;
-    qs('#btnRepeat', this.root).disabled = !idle || this.lastBets.length === 0 || !Rules.checkSpin(State.s, Rules.rouletteTotal(this.lastBets)).ok;
+    qs('#btnRepeat', this.root).disabled = !idle || this.lastBets.length === 0 || !Rules.checkSpin(State.s, Rules.rouletteTotal(this.lastBets), Perks.mods()).ok;
   },
   place(type, n, cell) {
     if (this.spinning || !this.root) return;
     if (type === 'number' && this.excluded().includes(n)) return;
     const amount = Game.readBet('rouletteBet');
-    const chk = Rules.checkSpin(State.s, this.total() + amount);
+    const chk = Rules.checkSpin(State.s, this.total() + amount, Perks.mods());
     if (!chk.ok) {
       if (chk.reason === 'invalid') UI.toast({ icon: '🚫', title: 'Ungültiger Chip', text: 'Mindestens 1 €.', tone: 'loss' });
       else UI.toast({ icon: '🚫', title: 'Zu wenig Geld', tone: 'loss', ms: 4500, text: `Auf dem Tisch wären ${UI.fmt(this.total() + amount)} (+ Zinsen ${UI.fmt(chk.interest)} + Meds ${UI.fmt(chk.meds)}).` });
@@ -3224,7 +3230,7 @@ const Roulette = {
       return;
     }
     const lastTotal = Rules.rouletteTotal(bets);
-    const chk = Rules.checkSpin(State.s, lastTotal);
+    const chk = Rules.checkSpin(State.s, lastTotal, Perks.mods());
     if (!chk.ok) {
       UI.toast({ icon: '🚫', title: 'Zu wenig Geld', tone: 'loss', ms: 4500, text: `Wie zuletzt wären ${UI.fmt(lastTotal)} (+ Zinsen ${UI.fmt(chk.interest)} + Meds ${UI.fmt(chk.meds)}).` });
       SFX.play('lose');
@@ -3255,7 +3261,7 @@ const Roulette = {
       qs('#resultNum', this.root).className = 'result-num';
       let rolled = Rules.rouletteRoll(Math.random, ex);
       const ti = Rules.rouletteLuckTarget(bets);
-      if (ti >= 0) rolled = Rules.rouletteLuckOverride(bets[ti].type, bets[ti].n, rolled, Rules.effectiveLuck(Rules.luck(State.s), bets[ti].amount), Math.random, ex);
+      if (ti >= 0) rolled = Rules.rouletteLuckOverride(bets[ti].type, bets[ti].n, rolled, Rules.effectiveLuck(Rules.luck(State.s, mods), bets[ti].amount), Math.random, ex);
       const targetIdx = Rules.WHEEL.indexOf(rolled);
       const sliceDeg = 360 / 37;
       const targetDeg = (360 - targetIdx * sliceDeg) % 360;
@@ -3306,7 +3312,7 @@ UI.register('roulette', {
     Roulette.buildTable();
     Roulette.drawWheel();
     qs('#wheelCanvas', root).style.transform = `rotate(${Roulette.wheelDeg}deg)`;
-    Game.bindBet(root, 'rouletteBet', () => Math.max(1, Rules.maxBet(State.s) - Roulette.total()));
+    Game.bindBet(root, 'rouletteBet', () => Math.max(1, Rules.maxBet(State.s, Perks.mods()) - Roulette.total()));
     Roulette.bets = [];
     qs('#btnSpin', root).addEventListener('click', () => Roulette.spin());
     qs('#btnUndo', root).addEventListener('click', () => Roulette.undo());
@@ -3391,7 +3397,7 @@ const Horses = {
       const track = qs('#track', this.root);
       const goal = track.clientWidth - 65;
       const pos = [0, 0, 0, 0];
-      const luck = Rules.effectiveLuck(Rules.luck(State.s), bet);
+      const luck = Rules.effectiveLuck(Rules.luck(State.s, mods), bet);
       const selected = State.s.selectedHorse;
       const runners = Rules.HORSES.map((hrs) => qs(`#h-${hrs.id}`, this.root));
       runners.forEach((r) => { r.style.transform = 'translateX(0)'; r.classList.add('running'); });
@@ -3679,9 +3685,10 @@ const Postman = {
   nextStep(gen) {
     clearInterval(this.timer);
     if (!this.alive(gen)) return;
-    if (this.streak >= 15) { this.endShift('Feierabend! 15 Briefe ausgetragen.'); return; }
+    const mods = Perks.mods();
+    if (this.streak >= mods.postLetters) { this.endShift(`Feierabend! ${mods.postLetters} Briefe ausgetragen.`); return; }
     const prevTier = this.tier;
-    this.tier = Rules.postmanTier(this.streak, State.s);
+    this.tier = Rules.postmanTier(this.streak, State.s, mods);
     if (prevTier && prevTier.t !== this.tier.t) this.stamp();
     this.timeLeft = this.tier.t;
     this.target = pick(Rules.POST_HOUSES);
@@ -3751,7 +3758,7 @@ const Postman = {
     qs('#btnShift', this.root).classList.remove('hidden');
     this.tier = null;
     if (State.mode === 'story') Jobs.finishGame('post');
-    if (Rules.isGameOver(State.s)) Bus.emit('gameover', {});
+    if (Rules.isGameOver(State.s, Perks.mods())) Bus.emit('gameover', {});
   },
   endShift(msg) {
     clearInterval(this.timer);
@@ -3962,7 +3969,7 @@ const Mugging = {
     if (this.blocked()) return false;
     const s = State.s;
     const forced = this.force;
-    const chance = forced ? 1 : Rules.mugChance(s, where);
+    const chance = forced ? 1 : Rules.mugChance(s, where, Perks.mods());
     if (Math.random() >= chance) return false;
     this.force = null;
     this.running = true;
@@ -3974,17 +3981,18 @@ const Mugging = {
   },
   async run(typeId) {
     const s = State.s;
+    const mods = Perks.mods();
     const T = this.TYPES[typeId];
     const loot = Rules.mugLoot(s.balance);
     const gear = Rules.gear(s);
-    const ctx = { loot: UI.fmt(loot), type: T, fight: Math.round(Rules.fightChance(s.strength) * 100), flee: Math.round(Rules.fleeChance(gear) * 100) };
+    const ctx = { loot: UI.fmt(loot), type: T, fight: Math.round(Rules.fightChance(s.strength, mods) * 100), flee: Math.round(Rules.fleeChance(gear) * 100) };
     const choice = await Cutscene.play('mug.intro', ctx);
     let outcome, delta = 0, wallet = 0;
     if (choice === 'fight') {
-      const won = Math.random() < Rules.fightChance(s.strength);
+      const won = Math.random() < Rules.fightChance(s.strength, mods);
       if (won) {
         outcome = 'fightWon';
-        if (s.strength >= Rules.MUG.STR_WALLET) wallet = Rules.mugWallet();
+        if (s.strength >= Rules.MUG.STR_WALLET) wallet = Rules.mugWallet(Math.random, mods);
         delta = wallet;
         s.stats.fightsWon++;
       } else { outcome = 'fightLost'; delta = -loot; }
@@ -4368,9 +4376,9 @@ const Modes = {
       if (typeof Story !== 'undefined') Story.renderDaybar();
       const showLoaded = Modes.freeLoaded; Modes.freeLoaded = false;
       await UI.show('hub');
-      if (Rules.isGameOver(State.s)) await Bus.emit('gameover', {});
+      if (Rules.isGameOver(State.s, Perks.mods())) await Bus.emit('gameover', {});
       else if (!State.s.flags.intro) { await Cutscene.play('intro'); State.s.flags.intro = true; State.save(); }
-      if (showLoaded && !Rules.isGameOver(State.s)) UI.toast({ icon: '💾', title: 'Spielstand geladen', text: `Willkommen zurück. ${UI.fmt(State.s.balance)} in der Tasche.` });
+      if (showLoaded && !Rules.isGameOver(State.s, Perks.mods())) UI.toast({ icon: '💾', title: 'Spielstand geladen', text: `Willkommen zurück. ${UI.fmt(State.s.balance)} in der Tasche.` });
       return;
     }
     if (typeof Story !== 'undefined') await Story.enter(choice);
@@ -4691,7 +4699,7 @@ Bus.on('loss', ({ amount }) => { if (State.mode === 'story' && Story.story) { St
 const Jobs = {
   POOL: {
     spueler: { id: 'spueler', name: 'Spüler', icon: '🍽️', kind: 'game', screen: 'job-spueler', desc: 'Teller im Takt vom Band. 5 € pro Teller, Bruch kostet 10 €.', pay: '0–50 €' },
-    post: { id: 'post', name: 'Postbote', icon: '📬', kind: 'game', screen: 'postman', desc: 'Briefe in den richtigen Kasten. Schicht endet nach 15 Briefen oder beim ersten Fehler.', pay: '5–50 € pro Brief' },
+    post: { id: 'post', name: 'Postbote', icon: '📬', kind: 'game', screen: 'postman', desc: 'Briefe in den richtigen Kasten. Schicht endet nach {{n}} Briefen oder beim ersten Fehler.', pay: '5–50 € pro Brief' },
     taxi: { id: 'taxi', name: 'Nachttaxi', icon: '🚕', kind: 'game', screen: 'job-taxi', desc: '60 Sekunden, drei Spuren. Fahrgäste einsammeln, bei Rot bremsen.', pay: 'bis 300 €', requires: { balance: { gte: 200 } }, requireText: 'Kaution 200 €' },
     tuersteher: { id: 'tuersteher', name: 'Türsteher', icon: '🚪', kind: 'shift', base: 100, desc: 'Wer kommt rein, wer nicht. Vito guckt zu.', pay: '100 € + Trinkgeld' },
     croupier: { id: 'croupier', name: 'Croupier', icon: '🃏', kind: 'shift', base: 150, requires: { jobDone: 'tuersteher', gte: 3 }, requireText: '3 Nächte als Türsteher', desc: 'Karten geben, Kessel drehen, Mund halten.', pay: '150 €' },
@@ -4704,11 +4712,13 @@ const Jobs = {
     const board = qs('#pinboard', root);
     board.innerHTML = '';
     const s = State.s;
+    const postLetters = Perks.mods().postLetters;
     for (const job of Object.values(this.POOL)) {
       if (!s.story.unlocked.jobs.includes(job.id)) continue;
       const av = StoryRules.jobAvailable(job, s);
+      const desc = job.id === 'post' ? job.desc.replace('{{n}}', postLetters) : job.desc;
       const note = h('div', { class: 'jobnote' + (av.ok ? '' : av.reason === 'done' ? ' done' : ' locked') },
-        h('h4', {}, job.icon, job.name), h('p', {}, job.desc), h('div', { class: 'pay' }, job.pay));
+        h('h4', {}, job.icon, job.name), h('p', {}, desc), h('div', { class: 'pay' }, job.pay));
       if (!av.ok && av.reason !== 'done') note.append(h('div', { class: 'why' }, av.reason === 'locked' ? 'Gesperrt' : av.reason));
       if (av.reason === 'done') note.append(h('div', { class: 'done-stamp' }, 'Heute erledigt'));
       if (av.ok) note.addEventListener('click', () => { SFX.play('stamp'); Jobs.take(job.id); });
@@ -6390,7 +6400,7 @@ if (typeof Perks !== 'undefined') T.test('Perks.refreshExcluded: ohne force blei
   if (params.has('shop') && typeof Stadt !== 'undefined') Stadt.shop = Stadt.SHOPS[params.get('shop')] ? params.get('shop') : null;
   await UI.show(params.get('screen') || 'hub');
   let gameOverAtBoot = false;
-  if (Rules.isGameOver(State.s)) { gameOverAtBoot = true; await Bus.emit('gameover', {}); }
+  if (Rules.isGameOver(State.s, Perks.mods())) { gameOverAtBoot = true; await Bus.emit('gameover', {}); }
   if (params.has('scene')) {
     await Cutscene.play(params.get('scene'), { bill: 900, before: 1000, after: 500, price: '1.000 €', debt: 300, stats: { Spins: 12, 'Höchster Kontostand': '1.234 €' } });
   } else if (!State.s.flags.intro && !params.has('screen')) {
