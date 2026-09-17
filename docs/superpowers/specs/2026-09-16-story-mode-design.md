@@ -78,6 +78,7 @@ Stories.define({
   disabled: ['tinder', 'house', 'dealer'],   // Sandbox-Räume/Käufe, die diese Story sperrt
   hud: [ { var: 'schuld', label: 'Vito', fmt: 'money', tone: 'danger' }, { var: 'vertrauen', label: (s) => s.story.vars.ruf > 5 ? '🤝 (Ruf!)' : '🤝', max: 10 } ],
   goalText: (s) => `Ziel: Vito ${UI.fmt(s.story.vars.schuld)}`,
+  copy: { therapy: 'Der Doc hat ein Programm …' },   // Text der Therapie-Karte (Leben-Raum), wenn die Story Therapie freigibt; fehlt er, gilt der Standardtext
   intro: 'schuld.intro',                    // Szene beim Start
   chapters: [ { id, title, when: cond, intro: sceneId, unlock: { jobs, doors, rooms } } ],
   events: [ { id, when: cond, once: true, at: 'night'|'morning'|'sleep'|'spin:after'|'buy:beer'|'buy:brownie'|'buy:kidney'|'buy:therapy'|'royal:enter', scene: sceneId, effects: [ … ] } ],

@@ -61,7 +61,7 @@ varMax: { pegel: 3 }   // Bier 4+ erhöht den Pegel nicht mehr, gibt Glück wie 
 - Pegel wird jede Nacht auf 0 gesetzt.
 
 **Zitter-Tag** (`flag: zitter`, endet mit dem ersten Bier bzw. Brownie des Tages):
-- Story-Glücksmodifikator −15 an allen Tischen.
+- Story-Glücksmodifikator −15 an allen Tischen. Der Modifikator wird in `Rules.luck` addiert und das Ergebnis auf ≥ 0 geklemmt – er neutralisiert Bier-/Brownie-/Auto-Glück, macht Tische aber nicht schlechter als nüchtern.
 - Minispiele schwerer: Spüler-Trefferzone −30 %, Taxi-Bremse reagiert 150 ms verzögert, Postbote-Zeit −25 %. Umsetzung über einen Story-Job-Modifikator, den die drei Spiele abfragen (`Story.jobMod()` → `{ spuelerZone: 0.7, taxiBrakeDelay: 150, postTime: 0.75 }`, Standard `{}`).
 - Schicht-Jobs zahlen −50 % („Du hast die Gläser fallen lassen").
 - Casino Royal verweigert den Einlass (Abschnitt 7).
@@ -169,7 +169,7 @@ Alle generisch, keine Story-2-Sonderfälle in der Engine.
 
 **Effekte**: neu `{ luckMod: -15 }` (setzt `story.luckMod`; `Rules.luck(s)` addiert `s.story?.luckMod || 0`), `{ jobMod: {...} }` / `{ jobMod: null }`, `{ price: { brownie: 300 } }`, `{ disable: ['tinder', 'house', 'dealer'] }` / `{ enable: [...] }`.
 
-**Story-Definition**: neue Felder `requires`, `prices` (Startpreise, überschreiben `Rules.PRICES` nur im Story-Modus dieser Story), `disabled` (Käufe, die in dieser Story nicht angeboten werden), `hud[].icon` als Funktion `(s) => '💊'|'🍺'`.
+**Story-Definition**: neue Felder `requires`, `prices` (Startpreise, überschreiben `Rules.PRICES` nur im Story-Modus dieser Story), `disabled` (Käufe, die in dieser Story nicht angeboten werden), `hud[].label` als String oder Funktion `(s) => '💊 Bedarf'|'🍺 Bedarf'` (umgesetzt statt eines separaten `hud[].icon`-Felds; die Funktion bekommt den ganzen Spielzustand `s`).
 
 **Enden**: `immediate: true` → wird nach jeder Effektanwendung und nach jedem `buy:*`-Hook geprüft, nicht nur nachts.
 

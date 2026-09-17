@@ -55,7 +55,7 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
 | `?prev=doc` | zusammen mit `?fresh&story=…`: setzt das „vorige Ende" der vorausgesetzten Story (für Fortsetzungen) |
 | `?mug=1\|junkie\|jugend\|cousin` | erzwingt den nächsten Überfall (`1` bzw. leer: zufälliger Räubertyp; sonst gezielt `junkie`, `jugend` oder `cousin`) |
 
-`story`, `day`, `job`, `ending` und `fresh` gelten genau einmal: die Engine entfernt sie nach dem Einstieg
+`story`, `day`, `job`, `ending`, `fresh` und `prev` gelten genau einmal: die Engine entfernt sie nach dem Einstieg
 aus der URL, damit „Nächste Story" oder ein Reload nicht wieder dieselbe erzwungene Story starten.
 
 ## Tests
