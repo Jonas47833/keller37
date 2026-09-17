@@ -5583,8 +5583,38 @@ const STORY_KATER = {
   gates: { royal: [{ when: { flag: 'zitter' }, text: 'Sie zittern. Wir haben eine Hausordnung.', scene: 'kater.royal.zitter' }] },
   intro: 'kater.intro',
   scenes: {
-    /* ---- Platzhalter (Task 3–8 ersetzen jede Szene) ---- */
-    'kater.intro': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    /* ---- Platzhalter (Task 4–8 ersetzen jede Szene) ---- */
+    'kater.intro': (ctx) => {
+      const prev = (ctx.prev || {}).schuld || 'ehrlich';
+      const start = {
+        ehrlich: [
+          { bg: 'bank', who: 'krause', mood: 'happy', text: 'Fünfzigtausend zurückgezahlt, auf den Cent. Ein Mann, der das kann, kann eine Filiale führen. Willkommen im Team.' },
+          { bg: 'strasse', who: 'chantal', mood: 'happy', text: 'Ich hab vor der Bank gewartet. Zwei Stunden. Für dich wäre ich auch drei geblieben. Fast.' },
+        ],
+        sturz: [
+          { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Der Keller läuft. Igor an der Tür, du am Kessel. Vito? Irgendwo, wo es keine Auslieferung gibt.' },
+          { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Krause sucht einen Filialleiter. Ich hab dich empfohlen. Heirate, kauf ein Auto, werd langweilig. Ich hab\'s auch überlebt.' },
+        ],
+        taxi: [
+          { bg: 'hafen-morgen', who: 'du', mood: 'calm', text: 'Ein Jahr. Neuer Name, Zahnarztpapiere, kein Zahnarzt. Die Fähre legt an. Das Handy vibriert: „Ich habe Zeit. – V."' },
+          { bg: 'strasse', who: 'chantal', mood: 'happy', text: 'Rutsch rüber. Ich bin dieselbe Fähre gefahren, du hast nur nicht nach hinten geguckt. Krause hat einen Job für dich.' },
+        ],
+        doc: [
+          { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Wach? Eine Niere weniger, ein Zettel weniger. Vito ist zufrieden. Die Naht hält, meistens.' },
+          { bg: 'klinik', who: 'chantal', mood: 'calm', text: 'Sie ist die ganze Nacht geblieben. Das hat noch keine. Krause war auch da – er hat einen Job für dich.' },
+        ],
+      }[prev];
+      return start.concat([
+        { bg: 'standesamt', who: 'chantal', mood: 'happy', text: 'Ja. Natürlich ja. Ich hab die Vollmacht schon vorbereitet – für die Flitterwochen, Schatz. Man muss ja an alles denken.' },
+        { bg: 'villa', who: 'du', mood: 'happy', text: 'Villa mit Hafenblick, Mercedes vor der Tür, Filialleiter bei Krause. Dreißig Tage. Was soll schon passieren.' },
+        { bg: 'standesamt', who: 'schmalz', mood: 'calm', text: 'Kraft des mir verliehenen Amtes. Gütertrennung? Nein? Wie Sie meinen. Unterschreiben Sie da, da und da.' },
+      ]);
+    },
+    'kater.absturz': [
+      { bg: 'villa', who: 'du', mood: 'shock', text: 'Der Wecker ist weg. Das Bett ist weg. Der Zettel auf dem Boden: „Danke für alles. Wirklich alles. – C.-M."' },
+      { bg: 'bank', who: 'krause', mood: 'calm', text: 'Ihre Frau hat die Vollmacht genutzt. Konto, Wagen, Villa – alles rechtens. Und die Filiale… Sie verstehen, das Vertrauen.' },
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Setz dich. Das erste geht aufs Haus. Das zweite auch, ich schreib\'s an. Du siehst aus, als bräuchtest du drei.' },
+    ],
     'kater.k2': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
     'kater.k3': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
     'kater.k4': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
@@ -5602,7 +5632,13 @@ const STORY_KATER = {
     { id: 'k3', title: 'Der Wagen', when: { day: { gte: 11 } }, intro: 'kater.k3', unlock: { jobs: ['tuersteher', 'croupier'], rooms: ['royal'] } },
     { id: 'k4', title: 'Letzte Runde', when: { day: { gte: 21 } }, intro: 'kater.k4' },
   ],
-  events: [ /* Task 4–8 */ ],
+  events: [
+    { id: 'einrichten', when: { day: { eq: 1 } }, once: true, at: 'morning', effects: [{ set: { car: 'mercC', hasHouse: true } }] },
+    { id: 'niereWeg', when: { all: [{ day: { eq: 1 } }, { prevEnding: { story: 'schuld', id: 'doc' } }] }, once: true, at: 'morning', effects: [{ var: 'leber', set: 70 }, { set: { kidneySold: true } }] },
+    { id: 'absturz', when: { day: { eq: 3 } }, once: true, at: 'night', scene: 'kater.absturz',
+      effects: [{ balancePct: -100, min: 0 }, { set: { car: null, hasHouse: false } }, { lock: { jobs: ['filialleiter'], rooms: ['royal'] } }, { flag: 'abgestuerzt' }, { price: { beer: 0 } }] },
+    /* Task 5–8 */
+  ],
   actions: [ /* Task 7 */ ],
   jobScenes: { /* Task 6 */ },
   jobEffects: { /* Task 6 */ },
@@ -6631,6 +6667,33 @@ T.test('STORY_KATER: Kapitelgrenzen 4/11/21', () => {
 });
 T.test('Jobs: filialleiter im Pool', () => {
   T.eq(typeof Jobs === 'undefined' || (Jobs.POOL.filialleiter && Jobs.POOL.filialleiter.base), typeof Jobs === 'undefined' ? true : 400);
+});
+T.test('STORY_KATER: Tag-1-Morgen richtet Villa, Auto ein; Doc-Ende startet mit Leber 70', () => {
+  const s = katerState({ car: null, hasHouse: false });
+  T.eq(runHook(s, 'morning'), ['einrichten']);
+  T.eq([s.car, s.hasHouse, s.story.vars.leber], ['mercC', true, 100]);
+  const d = katerState({ car: null, hasHouse: false }, { schuld: 'doc' });
+  T.eq(runHook(d, 'morning'), ['einrichten', 'niereWeg']);
+  T.eq(d.story.vars.leber, 70);
+});
+T.test('STORY_KATER: Absturz in Nacht 3', () => {
+  const s = katerState({ balance: 3500 });
+  s.story.day = 3; s.story.seen.push('einrichten');
+  T.eq(runHook(s, 'night'), ['absturz']);
+  T.eq([s.balance, s.car, s.hasHouse], [0, null, false]);
+  T.eq(s.story.flags.abgestuerzt, true);
+  T.eq(s.story.unlocked.jobs, []);
+  T.eq(s.story.unlocked.rooms, ['bar', 'doc', 'bank', 'invest', 'life', 'stadt'], 'Royal gesperrt bis Kapitel 3');
+  s.story.day = 4;
+  T.eq(runHook(s, 'night').includes('absturz'), false, 'einmalig');
+});
+T.test('STORY_KATER: Intro-Szene je vorigem Ende', () => {
+  for (const prev of ['ehrlich', 'sturz', 'taxi', 'doc']) {
+    const s = katerState({}, { schuld: prev });
+    const panels = STORY_KATER.scenes['kater.intro']({ raw: { flags: {}, vars: {} }, prev: s.story.prev });
+    T.ok(panels.length >= 4, `${prev}: Variante + Hochzeit`);
+    T.eq(panels[panels.length - 1].bg, 'standesamt', `${prev}: endet im Standesamt`);
+  }
 });
 
 /* ---- Gear: Katalog, Boni, Kauf ---- */
