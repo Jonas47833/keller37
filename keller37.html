@@ -5723,12 +5723,36 @@ const STORY_KATER = {
     'kater.royal.zitter': [
       { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Der Türsteher hebt die Hand. Sie zittern. Wir haben eine Hausordnung – kommen Sie wieder, wenn die Hände still sind.' },
     ],
-    'kater.ende.bett': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
-    'kater.ende.wirt': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
-    'kater.ende.nuechtern': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
-    'kater.ende.brownie': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
-    'kater.ende.taxi': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
-    'kater.ende.stammgast': [{ bg: 'bar', who: 'wirt', mood: 'calm', text: 'TODO' }],
+    'kater.ende.bett': [
+      { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'blackout', text: 'Zähl rückwärts von zehn. Du kommst nicht bis sieben. Das ist in Ordnung. Die Niere war ein Vorschuss – das hier ist die Rate.' },
+      { bg: 'klinik', who: 'wirt', mood: 'calm', text: 'Der Wirt bringt Blumen. Er stellt sie neben das Bett, in dem niemand mehr liegt. Der Deckel? „Ich hab ihn zerrissen. Er hätte eh nicht gezahlt."' },
+    ],
+    'kater.ende.wirt': (ctx) => {
+      const panels = [
+        { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Der Schlüssel. Unter dem Tresen, wo er immer lag. Ich bleib Gast – der Hocker am Ende ist meiner, das steht im Vertrag, den du nicht gelesen hast.' },
+        { bg: 'keller', who: 'igor', mood: 'calm', text: 'Igor nickt. Einmal. Das ist bei Igor ein Handschlag.' },
+      ];
+      if (ctx.raw.flags.chantalZurueck) panels.push({ bg: 'bar', who: 'chantal', mood: 'happy', text: 'Sie steht hinter dem Tresen. Sie hat die Kasse schon geöffnet. „Nur gucken, Schatz. Vorerst."' });
+      panels.push({ bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Blumen von Madame Sylvie. Karte: „Herzlichen Glückwunsch. Ich habe Zeit." Dieselbe Handschrift wie auf einem anderen Zettel.' });
+      panels.push({ bg: 'bar', who: 'du', mood: 'happy', text: 'Der Ort, an dem ich alles verloren habe. Er gehört mir. Der Kessel läuft, wie er läuft. Erstes Bier geht aufs Haus. Mein Haus.' });
+      return panels;
+    },
+    'kater.ende.nuechtern': [
+      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Tag dreißig. Ich gehe am Keller vorbei. Die Tür steht offen, der Wirt winkt. Ich winke zurück. Ich bleibe nicht stehen.' },
+      { bg: 'hafen-morgen', who: 'du', mood: 'happy', text: 'Kein Keller, kein Bier, kein Glück im Glas. Nur Hände, die nicht zittern. Es ist weniger, als ich wollte. Es ist mehr, als ich hatte.' },
+    ],
+    'kater.ende.brownie': [
+      { bg: 'bar', who: 'doc', mood: 'happy', text: 'Partner. Du sitzt an der Bar und wartest. Auf den Nächsten, der gerade seine Frau verloren hat. Du erkennst sie am Zettel in der Hand.' },
+      { bg: 'bar', who: 'du', mood: 'calm', text: 'Dreihundert das Stück. Für ihn. Die Leber bezahlt den Rest, das weiß ich besser als jeder. Ich sage es ihm nicht.' },
+    ],
+    'kater.ende.taxi': [
+      { bg: 'strasse', who: 'chantal', mood: 'happy', text: 'Vier Uhr. Das Taxi wartet. Sie hat die Kasse, den Deckel-Zettel und die Vollmacht – die alte gilt noch, hat Dr. Schmalz gesagt.' },
+      { bg: 'hafen', who: 'du', mood: 'shock', text: 'Die Fähre legt ab. Das Handy vibriert. Unbekannte Nummer: „Danke für alles. Wirklich alles. Wieder. – C.-M."' },
+    ],
+    'kater.ende.stammgast': [
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Verkauft. An Sylvie. Sie lässt alles, wie es ist – nur die Preise nicht. Dein Hocker bleibt, sagt sie. Sie mag Stammgäste. Die sind berechenbar.' },
+      { bg: 'bar', who: 'du', mood: 'calm', text: 'Das erste Bier geht aufs Haus. Es ist nicht mehr mein Haus. Es war nie meins. Der Kessel läuft, wie er läuft.' },
+    ],
   },
   chapters: [
     { id: 'k1', title: 'Flitterwochen', when: { day: { gte: 1 } } },
@@ -6986,6 +7010,26 @@ T.test('STORY_KATER: Chantal kommt ab Tag 21 mit 15.000 zurück, nicht mit Sucht
   T.ok(!ids.includes('chantal') && ids.includes('chantalSucht'));
   const u = katerDay(21); u.balance = 14999;
   T.ok(!runHook(u, 'night').includes('chantal'));
+});
+T.test('STORY_KATER: sechs Enden per Zustand, Prioritäten', () => {
+  const at = (setup) => { const s = katerDay(30); setup(s); return StoryRules.ending(STORY_KATER, s); };
+  T.eq(at((s) => { s.story.vars.leber = 0; }).id, 'bett');
+  T.eq(at((s) => { s.story.flags.gekauft = true; s.story.vars.leber = 0; }).id, 'bett', 'Bett vor Wirt');
+  T.eq(at((s) => { s.story.flags.gekauft = true; }).id, 'wirt');
+  T.eq(at((s) => { s.story.flags.nuechtern = true; }).id, 'nuechtern');
+  T.eq(at((s) => { s.story.flags.sucht = true; s.story.vars.leber = 15; }).id, 'brownie');
+  T.eq(at((s) => { s.story.flags.sucht = true; s.story.vars.leber = 16; }), null, 'Leber 16 → kein Brownie-Ende');
+  T.eq(at((s) => { s.story.flags.chantalZurueck = true; s.balance = 15000; }).id, 'taxi');
+  T.eq(at((s) => { s.story.flags.chantalZurueck = true; s.balance = 14999; }), null);
+  const fb = katerDay(31); T.eq(StoryRules.ending(STORY_KATER, fb).id, 'stammgast');
+  const early = katerDay(12); early.story.flags.nuechtern = true; T.eq(StoryRules.ending(STORY_KATER, early), null, 'Nüchtern erst an Tag 30');
+  const wirt = katerDay(22); wirt.story.flags.gekauft = true; T.eq(StoryRules.ending(STORY_KATER, wirt, { immediateOnly: true }).id, 'wirt', 'Kauf beendet sofort');
+});
+T.test('STORY_KATER: Ende Wirt mit Chantal-Variante', () => {
+  const p1 = STORY_KATER.scenes['kater.ende.wirt']({ raw: { flags: { chantalZurueck: true }, vars: {} } });
+  const p2 = STORY_KATER.scenes['kater.ende.wirt']({ raw: { flags: {}, vars: {} } });
+  T.eq(p1.length, p2.length + 1);
+  T.eq(p1.some((p) => p.who === 'chantal'), true); T.eq(p2.some((p) => p.who === 'chantal'), false);
 });
 
 /* ---- Gear: Katalog, Boni, Kauf ---- */
