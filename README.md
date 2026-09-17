@@ -6,8 +6,8 @@ Ein satirisches Casino-Lebenssimulations-Spiel in einer einzigen HTML-Datei. Fü
 
 ## Was drin ist
 
-- **Sechs Spiele:** Roulette mit Setztisch und laufender Kugel, Slots mit echten Walzen, Pferderennen mit Live-Kommentar, Russisches Roulette gegen Igor, Blackjack am Filztisch, Post austragen als ehrlicher Ausweg. Beim Roulette Chips mit dem gewählten Wert auf Zahlen und Außenfelder legen (mehrere gleichzeitig), „Chip zurück", „Tisch leeren" oder „Wie zuletzt" nutzen; ein Dreh wertet alle liegenden Chips auf einmal aus.
-- **Leben:** Villa kaufen, auf Tinder Chantal-Monique heiraten, geschieden werden, Therapie zahlen, einen Dealer anheuern. Bier und Brownies an der Bar. Eine Niere fürs Hinterzimmer.
+- **Sechs Spiele:** Roulette mit Setztisch und laufender Kugel, Slots mit echten Walzen, Pferderennen mit Live-Kommentar, Russisches Roulette gegen Igor, Blackjack am Filztisch, Post austragen als ehrlicher Ausweg (eine Schicht endet nach 15 Briefen oder beim ersten Fehler). Beim Roulette Chips mit dem gewählten Wert auf Zahlen und Außenfelder legen (mehrere gleichzeitig), „Chip zurück", „Tisch leeren" oder „Wie zuletzt" nutzen; ein Dreh wertet alle liegenden Chips auf einmal aus.
+- **Leben:** Villa kaufen, auf Tinder Chantal-Monique heiraten, geschieden werden, Therapie zahlen, einen Dealer anheuern. Bier und Brownies an der Bar geben Glück – es wirkt voll bis 100 € Einsatz, darüber anteilig, und nie auf Roulette-Zahlen (ein Trinkgeld, keine Geldmaschine). Eine Niere fürs Hinterzimmer.
 - **Kredite:** Bank (8 % Zinsen pro Spin, Limit 3.000 €, nur ein Kredit auf einmal) oder Don Vito (5 Spins Frist, danach der Doc).
 - **Anlagen:** Festgeld +8 % nach 6 Spins (10 % Risiko), Aktien +100 % nach 2 Spins (85 %), Trickbetrug +50 % nach 10 Spins (55 %) – je Sorte eine laufende Anlage.
 - **Stadt:** Autohaus (Audi-Linie senkt das Überfallrisiko und erhöht die Fluchtchance, Mercedes-Linie hebt Bank-Limit und senkt die Zinsen) und INTERSPORT (Laufschuhe verbessern die Flucht, bringen mehr Zeit/Lohn beim Postboten und helfen bei den Job-Minispielen). Ein neues Auto nimmt das alte mit 50 % seines Preises in Zahlung, Schuhe gibt es nur zum vollen Preis.

@@ -600,7 +600,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 <template id="tpl-hub">
   <div class="hub">
     <div class="door" data-screen="roulette" style="--neon: var(--neon-red)"><div class="sign">Roulette</div><div class="glyph">🎡</div><div class="chalk-tag">Plein 35:1</div><div class="knob"></div></div>
-    <div class="door" data-screen="slots" style="--neon: var(--neon-amber)"><div class="sign">Slots</div><div class="glyph">🎰</div><div class="chalk-tag">bis 50×</div><div class="knob"></div></div>
+    <div class="door" data-screen="slots" style="--neon: var(--neon-amber)"><div class="sign">Slots</div><div class="glyph">🎰</div><div class="chalk-tag">bis 40×</div><div class="knob"></div></div>
     <div class="door" data-screen="horses" style="--neon: var(--neon-green)"><div class="sign">Rennbahn</div><div class="glyph">🏇</div><div class="chalk-tag">Quote 4.0</div><div class="knob"></div></div>
     <div class="door" data-screen="russian" style="--neon: var(--neon-blue)"><div class="sign">Igor</div><div class="glyph">🔫</div><div class="chalk-tag">Duell · 1 Kugel</div><div class="knob"></div></div>
     <div class="door" data-screen="blackjack" style="--neon: var(--neon-green)"><div class="sign">Black Jack</div><div class="glyph">🃏</div><div class="chalk-tag">bis 21</div><div class="knob"></div></div>
@@ -699,11 +699,11 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
       <div class="chalk paytable">
         <h4>Auszahlung</h4>
         <table>
-          <tr><td>7️⃣ 7️⃣ 7️⃣</td><td>50×</td></tr>
+          <tr><td>7️⃣ 7️⃣ 7️⃣</td><td>40×</td></tr>
           <tr><td>💎 💎 💎</td><td>25×</td></tr>
           <tr><td>🔔 🔔 🔔</td><td>15×</td></tr>
           <tr><td>Drilling</td><td>5×</td></tr>
-          <tr><td>Paar</td><td>1,5×</td></tr>
+          <tr><td>Paar</td><td>1,2×</td></tr>
         </table>
       </div>
     </div>
@@ -943,6 +943,7 @@ const Rules = {
   MARRIAGE_SPINS: 2,
   MAFIA_SPINS: 5,
   MAX_BEERS: 3,
+  LUCK_CAP: 100,   // Glück wirkt voll bis zu diesem Einsatz, darüber proportional weniger
 
   luck(s) {
     let l = 0;
@@ -950,6 +951,12 @@ const Rules = {
     if (s.brownieTimer > 0) l += Rules.BROWNIE_LUCK;
     l += Rules.gear(s).luck;
     return l;
+  },
+  /* Glück ist ein Trinkgeld, keine Geldmaschine: voll bis LUCK_CAP, darüber im Verhältnis kleiner */
+  effectiveLuck(luck, bet) {
+    if (!luck) return 0;
+    if (!bet || bet <= Rules.LUCK_CAP) return luck;
+    return luck * Rules.LUCK_CAP / bet;
   },
   bankInterest(debt, s) {
     const rate = s ? Rules.gear(s).bankRate : Rules.BANK_RATE;
@@ -990,12 +997,14 @@ const Rules = {
   RED: [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36],
   isRed(n) { return Rules.RED.includes(n); },
   rouletteRoll(rng) { return Math.floor(rng() * 37); },
+  /* Glück hilft bei Farben und Gerade/Ungerade – nie bei Zahlen (der Kessel kennt keine Freunde) */
   rouletteLuckOverride(type, chosen, rolled, luck, rng) {
     const r = rng() * 100;
     if (r < luck && rolled !== 0) {
       if (type === 'red') return 7;
       if (type === 'black') return 8;
-      if (type === 'number') return chosen;
+      if (type === 'even') return 8;
+      if (type === 'odd') return 7;
     }
     return rolled;
   },
@@ -1018,13 +1027,12 @@ const Rules = {
     });
     return { payout: hits.reduce((sum, x) => sum + x.payout, 0), hits };
   },
-  /* Der Chip, auf den das Glück wirkt: höchster Einsatz; bei Gleichstand Zahl vor Außenfeld; dann der zuerst gelegte */
+  /* Der Chip, auf den das Glück wirkt: höchster Außenfeld-Chip (Zahlen nie); bei Gleichstand der zuerst gelegte */
   rouletteLuckTarget(bets) {
     let best = -1;
     bets.forEach((b, i) => {
-      if (best < 0) { best = i; return; }
-      const cur = bets[best];
-      if (b.amount > cur.amount || (b.amount === cur.amount && b.type === 'number' && cur.type !== 'number')) best = i;
+      if (b.type === 'number') return;
+      if (best < 0 || b.amount > bets[best].amount) best = i;
     });
     return best;
   },
@@ -1032,17 +1040,15 @@ const Rules = {
   /* ---- Slots ---- */
   SYMBOLS: ['🍒', '🍋', '🍇', '🔔', '💎', '7️⃣'],
   slotRoll(rng) { return [0, 1, 2].map(() => Rules.SYMBOLS[Math.floor(rng() * Rules.SYMBOLS.length)]); },
+  /* Glück erzwingt höchstens ein Paar – Jackpots bleiben Glückssache */
   slotLuckOverride(res, luck, rng) {
     const [a, b, c] = res;
-    if (rng() * 100 < luck) {
-      if (rng() < 0.3) { const j = rng() < 0.5 ? '7️⃣' : '💎'; return [j, j, j]; }
-      return [a, a, c];
-    }
+    if (rng() * 100 < luck) return [a, a, c];
     return [a, b, c];
   },
   slotMultiplier(a, b, c) {
-    if (a === b && b === c) return a === '7️⃣' ? 50 : a === '💎' ? 25 : a === '🔔' ? 15 : 5;
-    if (a === b || b === c || a === c) return 1.5;
+    if (a === b && b === c) return a === '7️⃣' ? 40 : a === '💎' ? 25 : a === '🔔' ? 15 : 5;
+    if (a === b || b === c || a === c) return 1.2;
     return 0;
   },
   slotDelta(bet, m) { return m > 0 ? Math.round(bet * m) - bet : -bet; },
@@ -1056,7 +1062,7 @@ const Rules = {
   ],
   horseStep(isSelected, luck, rng) {
     let step = rng() * 3 + 1;
-    if (isSelected && luck > 0) step += luck * 0.02;
+    if (isSelected && luck > 0) step += luck * 0.001; // pro Tick, summiert sich über das ganze Rennen
     return step * 1.5;
   },
   horseDelta(won, bet) { return won ? bet * 3 : -bet; },
@@ -1102,7 +1108,9 @@ const Rules = {
   postmanTier(streak, s) {
     const g = s ? Rules.gear(s) : { postTime: 0, postPay: 0 };
     const t = streak < 2 ? { t: 5, r: 5 } : streak < 6 ? { t: 3, r: 10 } : streak < 11 ? { t: 1.5, r: 25 } : { t: 0.5, r: 50 };
-    return { t: t.t + g.postTime, r: t.r + g.postPay };
+    /* Schuhe geben Zeit – die schnellste Stufe wird aber nie langsamer als 1,5 s */
+    const time = t.t < 1.5 ? Math.min(t.t + g.postTime, 1.5) : t.t + g.postTime;
+    return { t: time, r: t.r + g.postPay };
   },
 
   /* ---- Anlagen ---- */
@@ -1624,7 +1632,7 @@ const UI = {
     if (room('bar')) secs.push(sec('Die Bar',
       btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/3)` : ''}`, '50 €', 'beer', !Rules.canBeer(s).ok),
       btn('🍪 Brownie', s.brownieCost >= 10000 ? '10.000 €' : '1.000 €', 'brownie', !Rules.canBrownie(s).ok),
-      h('p', { class: 'side-hint' }, 'Bier hält 2 Spins, Brownie 1 Spin.')));
+      h('p', { class: 'side-hint' }, 'Bier hält 2 Spins, Brownie 1 Spin. Glück wirkt voll bis 100 € Einsatz, nie auf Zahlen.')));
     const hz = [];
     if (room('doc') || !inStory) hz.push(btn(s.kidneySold ? '🫁 Niere verkauft' : '🫁 Niere verkaufen', s.kidneySold ? '' : '+2.000 €', 'kidney', s.kidneySold));
     if (room('bank') || room('mafia')) hz.push(btn('🏦 Kredite', s.bankDebt + s.mafiaDebt > 0 ? `−${this.fmt(s.bankDebt + s.mafiaDebt)}` : '', 'finance'));
@@ -2582,7 +2590,7 @@ const Slots = {
       qs('#slotStatus', this.root).textContent = 'Walzen laufen…';
       qsa('.reel-win', this.root).forEach((r) => r.classList.remove('locked', 'hit'));
       let res = Rules.slotRoll(Math.random);
-      res = Rules.slotLuckOverride(res, Rules.luck(State.s), Math.random);
+      res = Rules.slotLuckOverride(res, Rules.effectiveLuck(Rules.luck(State.s), bet), Math.random);
       qsa('.strip', this.root).forEach((s, k) => { s.style.transition = 'none'; s.style.transform = 'translateY(0)'; s.style.animationDelay = `${-k * 0.13}s`; void s.offsetHeight; s.classList.add('spinning'); });
       SFX.loop('reelSpin', 120);
       [800, 1400, 2000].forEach((ms, i) => setTimeout(() => {
@@ -2951,7 +2959,7 @@ const Roulette = {
       qs('#resultNum', this.root).className = 'result-num';
       let rolled = Rules.rouletteRoll(Math.random);
       const ti = Rules.rouletteLuckTarget(bets);
-      if (ti >= 0) rolled = Rules.rouletteLuckOverride(bets[ti].type, bets[ti].n, rolled, Rules.luck(State.s), Math.random);
+      if (ti >= 0) rolled = Rules.rouletteLuckOverride(bets[ti].type, bets[ti].n, rolled, Rules.effectiveLuck(Rules.luck(State.s), bets[ti].amount), Math.random);
       const targetIdx = Rules.WHEEL.indexOf(rolled);
       const sliceDeg = 360 / 37;
       const targetDeg = (360 - targetIdx * sliceDeg) % 360;
@@ -3077,7 +3085,7 @@ const Horses = {
       const track = qs('#track', this.root);
       const goal = track.clientWidth - 65;
       const pos = [0, 0, 0, 0];
-      const luck = Rules.luck(State.s);
+      const luck = Rules.effectiveLuck(Rules.luck(State.s), bet);
       const selected = State.s.selectedHorse;
       const runners = Rules.HORSES.map((hrs) => qs(`#h-${hrs.id}`, this.root));
       runners.forEach((r) => { r.style.transform = 'translateX(0)'; r.classList.add('running'); });
@@ -3363,7 +3371,7 @@ const Postman = {
   nextStep(gen) {
     clearInterval(this.timer);
     if (!this.alive(gen)) return;
-    if (State.mode === 'story' && this.streak >= 15) { this.endShift('Feierabend! 15 Briefe ausgetragen.'); return; }
+    if (this.streak >= 15) { this.endShift('Feierabend! 15 Briefe ausgetragen.'); return; }
     const prevTier = this.tier;
     this.tier = Rules.postmanTier(this.streak, State.s);
     if (prevTier && prevTier.t !== this.tier.t) this.stamp();
@@ -5011,8 +5019,9 @@ T.test('rouletteRoll: floor(rng*37)', () => {
 T.test('rouletteLuckOverride: greift bei Glück, nicht bei 0', () => {
   T.eq(Rules.rouletteLuckOverride('red', null, 20, 40, seq(0.1)), 7);
   T.eq(Rules.rouletteLuckOverride('black', null, 20, 40, seq(0.1)), 8);
-  T.eq(Rules.rouletteLuckOverride('number', 17, 20, 40, seq(0.1)), 17);
-  T.eq(Rules.rouletteLuckOverride('even', null, 21, 40, seq(0.1)), 21, 'even unbeeinflusst');
+  T.eq(Rules.rouletteLuckOverride('number', 17, 20, 40, seq(0.1)), 20, 'Zahlen nie beeinflusst');
+  T.eq(Rules.rouletteLuckOverride('even', null, 21, 40, seq(0.1)), 8, 'Gerade wird 8');
+  T.eq(Rules.rouletteLuckOverride('odd', null, 20, 40, seq(0.1)), 7, 'Ungerade wird 7');
   T.eq(Rules.rouletteLuckOverride('red', null, 0, 40, seq(0.1)), 0, 'Null bleibt');
   T.eq(Rules.rouletteLuckOverride('red', null, 20, 40, seq(0.5)), 20, 'rng 50 >= luck 40');
   T.eq(Rules.rouletteLuckOverride('red', null, 20, 0, seq(0)), 20, 'kein Glück');
@@ -5039,11 +5048,8 @@ T.test('roulettePayout: Zahl 35:1', () => {
 /* ---- Rules: Slots ---- */
 T.test('SYMBOLS', () => T.eq(Rules.SYMBOLS, ['🍒', '🍋', '🍇', '🔔', '💎', '7️⃣']));
 T.test('slotRoll: drei Züge', () => T.eq(Rules.slotRoll(seq(0, 0.5, 0.99)), ['🍒', '🔔', '7️⃣']));
-T.test('slotLuckOverride: Jackpot-Zweig', () => {
-  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.2, 0.4)), ['7️⃣', '7️⃣', '7️⃣']);
-  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.2, 0.6)), ['💎', '💎', '💎']);
-});
-T.test('slotLuckOverride: Paar-Zweig', () => {
+T.test('slotLuckOverride: nur Paar, nie Jackpot', () => {
+  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.2, 0.4)), ['🍒', '🍒', '🍇']);
   T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.5)), ['🍒', '🍒', '🍇']);
 });
 T.test('slotLuckOverride: kein Glück', () => {
@@ -5051,19 +5057,19 @@ T.test('slotLuckOverride: kein Glück', () => {
   T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 0, seq(0)), ['🍒', '🍋', '🍇']);
 });
 T.test('slotMultiplier', () => {
-  T.eq(Rules.slotMultiplier('7️⃣', '7️⃣', '7️⃣'), 50);
+  T.eq(Rules.slotMultiplier('7️⃣', '7️⃣', '7️⃣'), 40);
   T.eq(Rules.slotMultiplier('💎', '💎', '💎'), 25);
   T.eq(Rules.slotMultiplier('🔔', '🔔', '🔔'), 15);
   T.eq(Rules.slotMultiplier('🍒', '🍒', '🍒'), 5);
-  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍋'), 1.5);
-  T.eq(Rules.slotMultiplier('🍒', '🍋', '🍒'), 1.5);
-  T.eq(Rules.slotMultiplier('🍋', '🍒', '🍒'), 1.5);
+  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍋'), 1.2);
+  T.eq(Rules.slotMultiplier('🍒', '🍋', '🍒'), 1.2);
+  T.eq(Rules.slotMultiplier('🍋', '🍒', '🍒'), 1.2);
   T.eq(Rules.slotMultiplier('🍒', '🍋', '🍇'), 0);
 });
 T.test('slotDelta', () => {
   T.eq(Rules.slotDelta(10, 50), 490);
-  T.eq(Rules.slotDelta(10, 1.5), 5);
-  T.eq(Rules.slotDelta(15, 1.5), 8, 'round(22.5)-15');
+  T.eq(Rules.slotDelta(10, 1.2), 2);
+  T.eq(Rules.slotDelta(15, 1.2), 3, 'round(18)-15');
   T.eq(Rules.slotDelta(10, 0), -10);
 });
 
@@ -5072,7 +5078,7 @@ T.test('HORSES', () => T.eq(Rules.HORSES.map((x) => x.name), ['Blitz', 'Donner',
 T.test('horseStep: (rng*3+1)*1.5, Glück nur für gewähltes Pferd', () => {
   T.eq(Rules.horseStep(false, 40, seq(0)), 1.5);
   T.eq(Rules.horseStep(true, 0, seq(0)), 1.5);
-  T.eq(Rules.horseStep(true, 40, seq(0)), 2.7);
+  T.eq(Rules.horseStep(true, 40, seq(0)), 1.56);
   T.eq(Rules.horseStep(false, 0, seq(1)), 6);
 });
 T.test('horseDelta', () => { T.eq(Rules.horseDelta(true, 10), 30); T.eq(Rules.horseDelta(false, 10), -10); });
@@ -5632,7 +5638,8 @@ T.test('bankLoanAllowed / isGameOver: Mercedes-Limit, beide Quellen zu', () => {
 T.test('postmanTier: Schuhe geben Zeit und Lohn', () => {
   T.eq(Rules.postmanTier(0), { t: 5, r: 5 });
   T.eq(Rules.postmanTier(0, base({ shoes: 'basic' })), { t: 6, r: 5 });
-  T.eq(Rules.postmanTier(11, base({ shoes: 'carbon' })), { t: 2.5, r: 60 });
+  T.eq(Rules.postmanTier(11, base({ shoes: 'carbon' })), { t: 1.5, r: 60 }, 'schnellste Stufe max 1,5 s');
+  T.eq(Rules.postmanTier(6, base({ shoes: 'carbon' })), { t: 3.5, r: 35 });
   T.eq(Rules.postmanTier(2, base({ shoes: 'trail' })), { t: 4, r: 15 });
 });
 
@@ -5723,11 +5730,23 @@ T.test('rouletteTotal / rouletteSettle: Zahl + Rot + Gerade', () => {
   T.eq(r0.payout, 0);
   T.eq(Rules.rouletteSettle([], 5), { payout: 0, hits: [] });
 });
-T.test('rouletteLuckTarget: höchster Einsatz, Zahl vor Außenfeld, dann Reihenfolge', () => {
+T.test('rouletteLuckTarget: höchster Außenfeld-Chip, Zahlen nie, dann Reihenfolge', () => {
   T.eq(Rules.rouletteLuckTarget([]), -1);
+  T.eq(Rules.rouletteLuckTarget([{ type: 'number', n: 3, amount: 500 }]), -1, 'nur Zahlen → kein Ziel');
   T.eq(Rules.rouletteLuckTarget([{ type: 'red', n: null, amount: 50 }, { type: 'number', n: 3, amount: 10 }]), 0);
-  T.eq(Rules.rouletteLuckTarget([{ type: 'red', n: null, amount: 50 }, { type: 'number', n: 3, amount: 50 }]), 1);
+  T.eq(Rules.rouletteLuckTarget([{ type: 'number', n: 3, amount: 500 }, { type: 'red', n: null, amount: 50 }]), 1);
+  T.eq(Rules.rouletteLuckTarget([{ type: 'red', n: null, amount: 50 }, { type: 'even', n: null, amount: 80 }]), 1);
   T.eq(Rules.rouletteLuckTarget([{ type: 'red', n: null, amount: 50 }, { type: 'black', n: null, amount: 50 }]), 0);
+});
+/* ---- Glück: Einsatzdeckel ---- */
+T.test('effectiveLuck: voll bis 100 €, darüber proportional weniger', () => {
+  T.eq(Rules.LUCK_CAP, 100);
+  T.eq(Rules.effectiveLuck(60, 10), 60);
+  T.eq(Rules.effectiveLuck(60, 100), 60);
+  T.eq(Rules.effectiveLuck(60, 200), 30);
+  T.eq(Rules.effectiveLuck(60, 400), 15);
+  T.eq(Rules.effectiveLuck(0, 10), 0);
+  T.eq(Rules.effectiveLuck(20, 0), 20);
 });
 
 /* --- SELFTEST CASES END --- */
