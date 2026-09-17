@@ -18,11 +18,11 @@ const storage = {
 };
 const ctx = { console, localStorage: storage, setTimeout, clearTimeout };
 vm.createContext(ctx);
-for (const id of ['rules', 'gear-rules', 'perk-rules', 'util', 'state', 'bus', 'story-rules', 'story-probe', 'story-schuld', 'selftest']) {
+for (const id of ['rules', 'gear-rules', 'perk-rules', 'util', 'state', 'bus', 'story-rules', 'royal-rules', 'story-probe', 'story-schuld', 'story-kater', 'selftest']) {
   if (!html.includes(`<script id="${id}">`)) continue; // state/bus kommen erst in Task 4
   vm.runInContext(block(id), ctx, { filename: `${id}.js` });
 }
-const r = vm.runInContext('SelfTest.run()', ctx);
+const r = await vm.runInContext('SelfTest.run()', ctx); // run() ist async (Browser-Tests dürfen awaiten)
 for (const f of r.failures) console.error('FAIL', f);
 console.log(`${r.passed} bestanden, ${r.failed} fehlgeschlagen`);
 process.exit(r.failed ? 1 : 0);

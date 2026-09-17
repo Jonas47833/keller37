@@ -7,7 +7,9 @@ fährt die in Task-9-Brief/Spec §13 beschriebene Sequenz (Titel -> Story -> Int
 Pinnwand -> Spüler -> Abend-Hub mit Sperren -> Vitos Tisch -> Schlafen -> Tag 2 ->
 Post-Schicht -> Nacht-Ereignisse -> Kapitel -> Taxi -> Kontrolle/Duell -> alle vier
 Enden -> Titel -> freies Spiel, dazu Ein-Job-pro-Tag ohne Feierabend-Klick) und sammelt dabei
-Konsolenfehler/Exceptions.
+Konsolenfehler/Exceptions. Story 2 „Der Kater" (scenario_kater): Sperre ohne Story-1-Ende,
+Intro-Variante, Absturz, Freibier/Deckel, Zitter-Tag samt Royal-Sperre, Bett-Ende aus dem
+sleep-Hook mit sauberem Start der Folgestory, Kauf-Ende aus einer Szenen-Wahl.
 
 Wo die Spec ausdrücklich "mit gesetzten Variablen" (§13) vorschreibt, werden
 Story-Felder direkt über Runtime.evaluate gesetzt und dann echte Engine-Methoden
@@ -893,10 +895,13 @@ async def scenario_stadt_shop(cdp):
     await asyncio.sleep(1.0)
     await cdp.inject_helpers()
     await cdp.eval("State.meta.insider = []; State.meta.insiderClaimed = {}; State.saveMeta(); 0", await_promise=False)
-    # Strasse: drei Schaufenster, Laden noch zu
+    # Strasse: vier Schaufenster (Autohaus, INTERSPORT, Casino Royal ohne Auto gesperrt), Laden noch zu
     n_fronts = await cdp.eval("document.querySelectorAll('#strasse .storefront').length", await_promise=False)
+    royal_locked = await cdp.eval("document.querySelector('#strasse .storefront.royal').classList.contains('locked')", await_promise=False)
     laden_hidden = await cdp.eval("document.querySelector('#laden').classList.contains('hidden')", await_promise=False)
-    record("stadt: Strasse zeigt drei Schaufenster, Laden zu", n_fronts == 3 and laden_hidden is True, "fronts=%s laden_hidden=%s" % (n_fronts, laden_hidden))
+    record("stadt: Strasse zeigt vier Schaufenster (Casino Royal ohne Auto gesperrt), Laden zu",
+           n_fronts == 4 and royal_locked is True and laden_hidden is True,
+           "fronts=%s royal_locked=%s laden_hidden=%s" % (n_fronts, royal_locked, laden_hidden))
     await cdp.screenshot("stadt-strasse.png")
     await cdp.click(".storefront.audi")
     await asyncio.sleep(0.3)
@@ -946,6 +951,74 @@ async def scenario_stadt_shop(cdp):
     record("stadt: Seitenleiste zeigt Besitz", line is not None and "Mercedes C-Klasse" in line and "Trail-Runner" in line and "💪 0" in line, "line=%s" % line)
     terms = await cdp.eval("UI.show('finance').then(()=>document.querySelector('#bankTerms').textContent)")
     record("stadt: Bank zeigt Mercedes-Konditionen", terms is not None and "7 %" in terms and "4.000" in terms, "terms=%s" % terms)
+
+
+async def scenario_royal_free(cdp):
+    """Casino Royal im freien Spiel: kein zweiter Eintritt ueber die Seitenleiste, Eintritts-Toast erst
+    nach der Erstbesuch-Szene, Freispiele/Craps-Tisch haengen am Spielstand, Craps rechnet den
+    Schnappschuss der Einsaetze ab (Remount waehrend des Wurfs erzeugt kein Geld)."""
+    await cdp.navigate(URL_BASE + "?fresh&mode=free")
+    await asyncio.sleep(0.8)
+    await cdp.inject_helpers()
+    await cdp.advance_cutscene(max_steps=10)
+    await cdp.eval("State.s.car = 'audiA3'; State.s.balance = 1000; State.save(); UI.renderWallet(); UI.renderSide();", await_promise=False)
+    # Erster Eintritt: 100 EUR, royal.first-Szene laeuft, der Toast darf erst danach kommen (#5)
+    await cdp.click("#side [data-action='royal']")
+    await cdp.wait_for("__pt.cutsceneActive()", timeout=2.0)
+    toast_during = await cdp.eval("document.querySelector('#toasts').textContent.includes('Eintritt')", await_promise=False)
+    await cdp.advance_cutscene(max_steps=10)
+    await cdp.wait_for("UI.current && UI.current.id === 'royal' && !UI.busy", timeout=3.0)
+    toast_after = await cdp.eval("document.querySelector('#toasts').textContent.includes('Eintritt')", await_promise=False)
+    balance = await cdp.eval("State.s.balance", await_promise=False)
+    record("royal: erster Eintritt kostet 100 EUR, Toast erst nach der Erstbesuch-Szene",
+           balance == 900 and toast_during is False and toast_after is True,
+           "balance=%s toast_waehrend=%s toast_danach=%s" % (balance, toast_during, toast_after))
+    # Seitenleiste erneut: kein zweiter Eintritt, Screen bleibt Lobby (#1)
+    await cdp.click("#side [data-action='royal']")
+    await asyncio.sleep(0.6)
+    balance2 = await cdp.eval("State.s.balance", await_promise=False)
+    screen2 = await cdp.eval("UI.current.id", await_promise=False)
+    record("royal: Seitenleisten-Klick in der Lobby kassiert nicht erneut", balance2 == 900 and screen2 == "royal",
+           "balance=%s screen=%s" % (balance2, screen2))
+    # Vom Tisch aus: zurueck in die Lobby, ohne Gebuehr (#1)
+    await cdp.eval("UI.show('megaslots')")
+    await cdp.click("#side [data-action='royal']")
+    await cdp.wait_for("UI.current && UI.current.id === 'royal' && !UI.busy", timeout=3.0)
+    balance3 = await cdp.eval("State.s.balance", await_promise=False)
+    screen3 = await cdp.eval("UI.current.id", await_promise=False)
+    record("royal: Seitenleisten-Klick am Tisch fuehrt gebuehrenfrei in die Lobby", balance3 == 900 and screen3 == "royal",
+           "balance=%s screen=%s" % (balance3, screen3))
+    # Craps: Einsatz platziert, Remount waehrend des Wurfs gibt place() wieder frei -- abgerechnet wird trotzdem nur der Schnappschuss (#4)
+    await cdp.eval("UI.show('craps')")
+    craps = await cdp.eval("""(async function(){
+      RoyalRules.crapsRoll = function(){ return [3, 4]; };  // 7 im Come-out: Pass gewinnt 1:1
+      document.querySelector('#crapsBet').value = '100';
+      Craps.place('pass');
+      var before = State.s.balance, placed = Craps.bets.pass;
+      var p = Craps.roll();
+      UI.current.def.unmount(); UI.current.def.mount(document.querySelector('#stage'));  // Remount: rolling=false, place() wieder moeglich
+      Craps.place('pass');
+      var live = Craps.bets.pass;
+      await p;
+      return { before: before, placed: placed, live: live, after: State.s.balance, pass: Craps.bets.pass, field: Craps.bets.field };
+    })()""")
+    craps_ok = bool(craps) and craps.get("placed") == 100 and craps.get("live") == 200 and craps.get("after") == craps.get("before") + 100 and craps.get("pass") == 0 and craps.get("field") == 0
+    record("royal: Craps rechnet den Einsatz-Schnappschuss ab (Remount waehrend des Wurfs erzeugt kein Geld)", craps_ok, "%s" % (craps,))
+    # Freispiele und Craps-Tisch haengen am Spielstand: neuer State.s -> verfallen (#2)
+    await cdp.eval("MegaSlots.freeLeft = 3; MegaSlots.lastBet = 100; MegaSlots.freeRun = State.s; Craps.point = 6; Craps.bets.pass = 100; Craps.run = State.s;", await_promise=False)
+    await cdp.eval("State.reset(); Modes.enter('free')", await_promise=False)
+    await asyncio.sleep(0.6)
+    await cdp.advance_cutscene(max_steps=10)
+    await cdp.wait_for("UI.current && UI.current.id === 'hub' && !UI.busy", timeout=3.0)
+    await cdp.eval("UI.show('megaslots')")
+    free_left = await cdp.eval("MegaSlots.freeLeft", await_promise=False)
+    mega_btn = await cdp.eval("document.querySelector('#btnMega').textContent", await_promise=False)
+    await cdp.eval("UI.show('craps')")
+    craps_point = await cdp.eval("Craps.point", await_promise=False)
+    craps_pass = await cdp.eval("Craps.bets.pass", await_promise=False)
+    record("royal: Freispiele und Craps-Tisch verfallen mit neuem Spielstand",
+           free_left == 0 and mega_btn == "Drehen" and craps_point is None and craps_pass == 0,
+           "freeLeft=%s btn=%s point=%s pass=%s" % (free_left, mega_btn, craps_point, craps_pass))
 
 
 async def scenario_mugging(cdp):
@@ -1100,6 +1173,253 @@ async def scenario_free_sandbox_unchanged(cdp):
         pct, detail = compare_screenshots(ref, path)
         record("freie sandbox: ?screen=%s unveraendert (Pixel-Diff < %.0f%%)" % (screen, DIFF_THRESHOLD_PCT),
                pct < DIFF_THRESHOLD_PCT, detail)
+
+
+async def scenario_kater(cdp):
+    """Story 2: Sperre ohne Story-1-Ende, Intro-Variante, Absturz, Zitter-Tag, Bett-Ende aus dem
+    sleep-Hook heraus samt sauberem Start der Folgestory, Kauf-Ende aus einer Szenen-Wahl."""
+
+    async def settle(max_rounds=60, label_hint=None):
+        """Story.night()/enter() laufen fire-and-forget weiter (Blenden, Kapitel-Intro, Morgen-Events).
+        Cutscenes durchklicken, bis kein Schlaf und keine Cutscene mehr offen ist -- sonst kehrt der
+        naechste Story.night()-Aufruf an seinem sleeping/Cutscene-Guard lautlos zurueck."""
+        for _ in range(max_rounds):
+            if await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+                await cdp.advance_cutscene(max_steps=4, label_hint=label_hint)
+            sleeping = await cdp.eval("Story.sleeping", await_promise=False)
+            cs = await cdp.eval("__pt.cutsceneActive()", await_promise=False)
+            busy = await cdp.eval("UI.busy", await_promise=False)
+            if not sleeping and not cs and not busy:
+                return True
+            await asyncio.sleep(0.15)
+        return False
+
+    async def click_choice(hint, max_steps=8):
+        """Vorklicken, bis ein Choice-Button mit diesem Text da ist, dann genau den klicken."""
+        for _ in range(max_steps):
+            if not await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+                return False
+            found = await cdp.eval(
+                "(function(){var b=[...document.querySelectorAll('.cs-choices button')].find(function(x){return x.textContent.includes(%s)}); if(!b) return false; b.click(); return true;})()" % json.dumps(hint),
+                await_promise=False)
+            if found:
+                return True
+            await cdp.eval("__pt.advance(null)", await_promise=False)
+            await asyncio.sleep(0.15)
+        return False
+
+    # Ohne Story-1-Ende ist Der Kater gesperrt: Titel zeigt Die Schuld als naechste Story.
+    # ?fresh loescht nur die Spielstaende, nicht State.meta (storyRuns) -- die vorigen Szenarien haben
+    # Die Schuld bereits zu Ende gespielt, also die Enden-Historie erst leeren und dann neu booten.
+    await cdp.navigate(URL_BASE + "?fresh")
+    await asyncio.sleep(0.5)
+    await cdp.eval("State.meta.storyRuns = {}; State.saveMeta(); 0", await_promise=False)
+    await cdp.navigate(URL_BASE + "?fresh")
+    await asyncio.sleep(0.7)
+    tag = await cdp.eval("document.querySelector('#titleStoryTag').textContent", await_promise=False)
+    record("kater: ohne Story-1-Ende startet Die Schuld", "Die Schuld" in (tag or ""), tag)
+    lock = await cdp.eval("document.querySelector('#titleStoryLock').textContent", await_promise=False)
+    record("kater: Titel nennt die Sperre", "Der Kater" in (lock or ""), lock)
+    # Erzwungen mit vorigem Ende doc: Intro-Variante Doc (Klinik), Hochzeit, Villa
+    await cdp.navigate(URL_BASE + "?fresh&story=kater&prev=doc")
+    await asyncio.sleep(0.7)
+    await cdp.inject_helpers()
+    await cdp.wait_for("__pt.cutsceneActive() && document.querySelector('#cutscene .cs-name')", timeout=2.0)
+    first_bg = await cdp.eval("(document.querySelector('#cutscene .cs-bg')||{}).className || ''", await_promise=False)
+    first_who = await cdp.eval("(document.querySelector('#cutscene .cs-name')||{}).textContent", await_promise=False)
+    await cdp.advance_cutscene(max_steps=20)
+    # Tag-1-Morgen (einrichten/niereWeg) laeuft nach dem Intro fire-and-forget bis zur Pinnwand
+    await cdp.wait_for("UI.current && UI.current.id === 'jobs' && !UI.busy && State.s.story.seen.includes('einrichten')", timeout=4.0)
+    record("kater: Intro-Variante Doc (erstes Panel beim Doc in der Klinik)", first_who == "Der Doc" and "klinik" in (first_bg or ""), "who=%s bg=%s" % (first_who, first_bg))
+    leber = await cdp.eval("State.s.story.vars.leber", await_promise=False)
+    record("kater: Doc-Ende → Leber 70", leber == 70, "leber=%s" % leber)
+    car = await cdp.eval("State.s.car", await_promise=False)
+    house = await cdp.eval("State.s.hasHouse", await_promise=False)
+    record("kater: Mercedes am Tag 1", car == "mercC" and house is True, "car=%s hasHouse=%s" % (car, house))
+    gear = await cdp.eval("(document.querySelector('#gearLine')||{}).textContent", await_promise=False)
+    notes = await cdp.eval("document.querySelector('#notes').textContent", await_promise=False)
+    record("kater: HUD zeigt Mercedes, Villa-Ertrag und Leber/Pegel/Deckel",
+           gear is not None and "Mercedes" in gear and notes is not None and "💸" in notes and "🫀 Leber 70/100" in notes and "🍺 Pegel 0/3" in notes and "🧾 Deckel 0 €" in notes,
+           "gear=%s notes=%s" % (gear, notes))
+    pin = await cdp.eval("[...document.querySelectorAll('#pinboard .jobnote')].map(n => n.textContent.includes('Filialleiter') ? 'fil' : '').filter(Boolean).length", await_promise=False)
+    record("kater: Filialleiter an der Pinnwand", pin == 1, "filialleiter-zettel=%s" % pin)
+    royal_ok = await cdp.eval("Story.roomUnlocked('royal') && !Story.isLocked('royal') && !!document.querySelector('#side [data-action=royal]:not([disabled])')", await_promise=False)
+    record("kater: Casino Royal am Tag 1 erreichbar (Auto da)", royal_ok is True, "royal_ok=%s" % royal_ok)
+    await cdp.screenshot("kater-tag1.png")
+    # Drei Naechte schlafen (Job ueberspringen: 'Kein Job heute' = Story.evening())
+    await cdp.eval("State.s.mugCooldown = 999; State.save();", await_promise=False)
+    for d in (1, 2, 3):
+        await cdp.eval("Story.evening()", await_promise=False)
+        await cdp.wait_for("UI.current && UI.current.id === 'hub' && !UI.busy", timeout=3.0)
+        await cdp.eval("Story.night()", await_promise=False)
+        await cdp.wait_for("Story.sleeping === true", timeout=1.0)
+        if d == 3:
+            # Absturz-Szene (Nacht 3) real sehen
+            await cdp.wait_for("__pt.cutsceneActive()", timeout=3.0)
+            await cdp.screenshot("kater-absturz.png")
+        for _ in range(40):
+            if await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+                await cdp.advance_cutscene(max_steps=4)
+            if await cdp.eval("State.s.story.day", await_promise=False) == d + 1 and not await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+                break
+            await asyncio.sleep(0.15)
+        await settle()
+    bal = await cdp.eval("State.s.balance", await_promise=False)
+    flag = await cdp.eval("State.s.story.flags.abgestuerzt", await_promise=False)
+    record("kater: Absturz Nacht 3", bal == 0 and flag is True, "balance=%s abgestuerzt=%s" % (bal, flag))
+    car = await cdp.eval("State.s.car", await_promise=False)
+    house = await cdp.eval("State.s.hasHouse", await_promise=False)
+    chapter = await cdp.eval("State.s.story.chapter", await_promise=False)
+    jobs = await cdp.eval("State.s.story.unlocked.jobs.slice()", await_promise=False)
+    royal_room = await cdp.eval("Story.roomUnlocked('royal')", await_promise=False)
+    record("kater: nach dem Absturz kein Auto, keine Villa, Kapitel 2, Filialleiter/Royal gesperrt",
+           car is None and house is False and chapter == "k2" and "filialleiter" not in (jobs or []) and "spueler" in (jobs or []) and royal_room is False,
+           "car=%s house=%s chapter=%s jobs=%s royal=%s" % (car, house, chapter, jobs, royal_room))
+    price = await cdp.eval("StoryRules.price(State.s, 'beer')", await_promise=False)
+    record("kater: erstes Bier umsonst", price == 0, "price=%s" % price)
+    side_price = await cdp.eval("(document.querySelector('#side [data-action=beer] .price')||{}).textContent", await_promise=False)
+    record("kater: Seitenleiste zeigt Bier 0 €", side_price == "0 €", "side=%s" % side_price)
+    await cdp.eval("Story.evening()", await_promise=False)
+    await cdp.wait_for("UI.current && UI.current.id === 'hub' && !UI.busy", timeout=3.0)
+    await cdp.eval("Actions.beer()")
+    deckel = await cdp.eval("State.s.story.vars.deckel", await_promise=False)
+    record("kater: Deckel 50 nach Freibier", deckel == 50, "deckel=%s" % deckel)
+    side_price = await cdp.eval("(document.querySelector('#side [data-action=beer] .price')||{}).textContent", await_promise=False)
+    notes = await cdp.eval("document.querySelector('#notes').textContent", await_promise=False)
+    record("kater: danach Bier 50 €, Deckel im HUD", side_price == "50 €" and notes is not None and "🧾 Deckel 50 €" in notes and "🍺 Pegel 1/3" in notes,
+           "side=%s notes=%s" % (side_price, notes))
+    await cdp.eval("Story.night()", await_promise=False)
+    await cdp.wait_for("Story.sleeping === true", timeout=1.0)
+    for _ in range(40):
+        if await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+            await cdp.advance_cutscene(max_steps=4)
+        if await cdp.eval("State.s.story.flags.zitter", await_promise=False):
+            break
+        await asyncio.sleep(0.15)
+    zitter = await cdp.eval("State.s.story.flags.zitter", await_promise=False)
+    entzug_seen = await cdp.eval("State.s.story.seen.includes('entzugSzene')", await_promise=False)
+    record("kater: Zitter-Tag nach Entzugsnacht", zitter is True and entzug_seen is True, "zitter=%s entzugSzene=%s" % (zitter, entzug_seen))
+    await settle()
+    toast = await cdp.eval("document.querySelector('#toasts').textContent", await_promise=False)
+    record("kater: Entzugs-Toast", toast is not None and "Entzugsnacht" in toast, "toasts=%s" % (toast or "")[:120])
+    await cdp.screenshot("kater-zitter.png")
+    # Zitter-Sperre am Casino Royal: Raum ist bis Kapitel 3 zu -- Auto und Raum setzen, Schaufenster und Eintritt pruefen
+    await cdp.eval("State.s.car = 'audiA3'; State.s.story.unlocked.rooms.push('royal'); State.save(); UI.renderSide();", await_promise=False)
+    await cdp.eval("UI.show('stadt')")
+    await cdp.wait_for("UI.current && UI.current.id === 'stadt' && !UI.busy", timeout=3.0)
+    front = await cdp.eval("(document.querySelector('#strasse .storefront.royal .seller')||{}).textContent", await_promise=False)
+    front_locked = await cdp.eval("!!document.querySelector('#strasse .storefront.royal.locked')", await_promise=False)
+    record("kater: Royal-Schaufenster zeigt die Zitter-Sperre", front is not None and "Sie zittern" in front and front_locked is True, "seller=%s locked=%s" % (front, front_locked))
+    await cdp.eval("Royal.enter()", await_promise=False)
+    await cdp.wait_for("__pt.cutsceneActive()", timeout=2.0)
+    scene_who = await cdp.eval("(document.querySelector('#cutscene .cs-name')||{}).textContent", await_promise=False)
+    scene_txt = await cdp.eval("(document.querySelector('#cutscene .cs-text')||{}).textContent", await_promise=False)
+    await cdp.advance_cutscene(max_steps=6)
+    screen = await cdp.eval("UI.current && UI.current.id", await_promise=False)
+    record("kater: Royal.enter() am Zitter-Tag spielt kater.royal.zitter (Erzaehlung: Du), kein Eintritt", scene_who == "Du" and screen == "stadt", "who=%s screen=%s text=%s" % (scene_who, screen, (scene_txt or "")[:60]))
+    # erstes Bier hebt den Zitter-Tag auf
+    await cdp.eval("Story.evening()", await_promise=False)
+    await cdp.wait_for("UI.current && UI.current.id === 'hub' && !UI.busy", timeout=3.0)
+    await cdp.eval("Actions.beer()")
+    zitter = await cdp.eval("State.s.story.flags.zitter", await_promise=False)
+    front = await cdp.eval("StoryRules.gate(Story.story, State.s, 'royal')", await_promise=False)
+    record("kater: erstes Bier hebt den Zitter-Tag auf", zitter is not True and front is None, "zitter=%s gate=%s" % (zitter, front))
+    # Sofortiges Ende aus dem sleep-Hook heraus (Plan-1-Review, Critical #1): Leber 1 → Entzugsnacht −2 → „Bett" mitten in Story.night();
+    # danach „Nächste Story" → Die Schuld muss unberührt an Tag 1/morning starten (kein Tag-2-Sprung, keine fremden seen-IDs).
+    await cdp.eval("State.s.story.vars.leber = 1; State.s.story.vars.pegel = 0; State.s.story.phase = 'evening'; State.save();")
+    sleeping = await cdp.eval("Story.sleeping", await_promise=False)
+    cs = await cdp.eval("__pt.cutsceneActive()", await_promise=False)
+    record("kater: kein Schlaf/keine Cutscene vor der Bett-Nacht", not sleeping and not cs, "sleeping=%s cutscene=%s" % (sleeping, cs))
+    await cdp.eval("Story.night()", await_promise=False)
+    ended = None
+    shot_done = False
+    for _ in range(80):
+        if await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+            if not shot_done and await cdp.eval("(State.meta.storyRuns.kater || {}).last", await_promise=False) == "bett":
+                await cdp.screenshot("kater-ende-bett.png"); shot_done = True
+            await cdp.advance_cutscene(max_steps=3, label_hint="Nächste Story")
+        ended = await cdp.eval("(State.meta.storyRuns.kater || {}).last", await_promise=False)
+        nxt = await cdp.eval("State.s.story && State.s.story.id", await_promise=False)
+        if ended == "bett" and nxt == "schuld" and not await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+            break
+        await asyncio.sleep(0.15)
+    record("kater: Ende Bett aus der Entzugsnacht", ended == "bett", "last=%s" % ended)
+    trophy = await cdp.eval("Achievements.has('endeBett')", await_promise=False)
+    record("kater: Trophaee endeBett vergeben", trophy is True, "trophy=%s" % trophy)
+    # Nach „Nächste Story" laeuft das Intro von Die Schuld und deren Tag-1-Morgen -- erst abwarten
+    await settle()
+    await cdp.wait_for("UI.current && UI.current.id === 'jobs' && !UI.busy", timeout=4.0)
+    nxt_state = await cdp.eval("State.s.story ? [State.s.story.id, State.s.story.day, State.s.story.phase, State.s.story.seen.length, Story.finishing, Story.sleeping] : null", await_promise=False)
+    record("kater: Folgestory startet sauber an Tag 1", nxt_state == ["schuld", 1, "morning", 0, False, False], "state=%s" % nxt_state)
+    # Story-Therapie (Review-Fix #1): Life.therapy() darf im Kater NICHT die Anwalt-Szene therapy.done (Dr. Schmalz)
+    # spielen, sondern nur die Doc-Szene kater.therapie aus dem buy:therapy-Hook. Dazu Story-Zustand direkt setzen.
+    await cdp.navigate(URL_BASE + "?fresh&story=kater&prev=doc&day=12")
+    await asyncio.sleep(0.7)
+    await cdp.inject_helpers()
+    await cdp.advance_cutscene(max_steps=10)  # Kapitel-3-Intro (kater.k3)
+    await cdp.wait_for("UI.current && UI.current.id === 'jobs' && !UI.busy", timeout=4.0)
+    await settle()
+    await cdp.eval("State.s.story.flags.abgestuerzt = true; State.s.balance = 6000; StoryRules.applyEffect(State.s, { enable: ['therapy'] }, Story.story); State.save(); UI.renderSide();")
+    await cdp.eval("Life.therapy()", await_promise=False)
+    await cdp.wait_for("__pt.cutsceneActive() && document.querySelector('#cutscene .cs-name')", timeout=2.0)
+    th_who = await cdp.eval("(document.querySelector('#cutscene .cs-name')||{}).textContent", await_promise=False)
+    th_txt = await cdp.eval("(document.querySelector('#cutscene .cs-text')||{}).textContent", await_promise=False)
+    await cdp.advance_cutscene(max_steps=6)
+    await settle()
+    nuechtern = await cdp.eval("State.s.story.flags.nuechtern", await_promise=False)
+    bal = await cdp.eval("State.s.balance", await_promise=False)
+    record("kater: Story-Therapie spielt die Doc-Szene, nicht Dr. Schmalz", th_who == "Der Doc" and "Schmalz" not in (th_txt or "") and nuechtern is True and bal == 1000,
+           "who=%s nuechtern=%s balance=%s text=%s" % (th_who, nuechtern, bal, (th_txt or "")[:50]))
+    # Seitenleiste: Royal-Eintritt zeigt 100 EUR, nach bezahltem Eintritt am selben Tag „heute frei" (Review-Fix #12)
+    await cdp.eval("State.s.car = 'audiA3'; if (!State.s.story.unlocked.rooms.includes('royal')) State.s.story.unlocked.rooms.push('royal'); State.save(); UI.renderSide();", await_promise=False)
+    fee_txt = await cdp.eval("(document.querySelector('#side [data-action=royal] .price')||{}).textContent", await_promise=False)
+    await cdp.eval("State.s.story.royalPaidDay = State.s.story.day; State.save(); UI.renderSide();", await_promise=False)
+    free_txt = await cdp.eval("(document.querySelector('#side [data-action=royal] .price')||{}).textContent", await_promise=False)
+    record("kater: Seitenleiste Royal 100 EUR, nach Eintritt heute frei", fee_txt == "100 €" and free_txt == "heute frei", "vorher=%s nachher=%s" % (fee_txt, free_txt))
+    # zurueck in eine frische Kater-Story fuer den Kauf-Test
+    await cdp.navigate(URL_BASE + "?fresh&story=kater&prev=doc&day=22")
+    await asyncio.sleep(0.7)
+    await cdp.inject_helpers()
+    await cdp.advance_cutscene(max_steps=10)  # Kapitel-4-Intro (kater.k4)
+    await cdp.wait_for("UI.current && UI.current.id === 'jobs' && !UI.busy", timeout=4.0)
+    # ?day=22 überspringt Intro und Absturz-Nacht – das Flag setzen, sonst bleibt die Kauf-Aktion gesperrt
+    await cdp.eval("State.s.story.flags.abgestuerzt = true; State.s.story.phase = 'evening'; State.s.balance = 60000; State.save(); UI.renderSide(); Story.renderDaybar();")
+    await asyncio.sleep(0.3)
+    has_action = await cdp.eval("!!document.querySelector('[data-story-action=\"kauf\"]')", await_promise=False)
+    label = await cdp.eval("(document.querySelector('[data-story-action=\"kauf\"]')||{}).textContent", await_promise=False)
+    record("kater: Kauf-Aktion in der Seitenleiste", has_action is True and label == "🔑 Über den Keller reden", "label=%s" % label)
+    goal = await cdp.eval("document.querySelector('#dayGoal').textContent", await_promise=False)
+    record("kater: Tagesziel nennt den Kaufpreis", goal is not None and "40.000" in goal, "goal=%s" % goal)
+    await cdp.eval("Story.action('kauf')", await_promise=False)
+    await cdp.wait_for("__pt.cutsceneActive()", timeout=2.0)
+    clicked = await click_choice("Kaufen")
+    record("kater: Kaufgespraech bietet Kaufen · 40.000 EUR", clicked is True, "clicked=%s" % clicked)
+    ended = None
+    shot_done = False
+    for _ in range(80):
+        if await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+            if not shot_done and await cdp.eval("State.s.story.ended", await_promise=False) == "wirt":
+                await cdp.screenshot("kater-ende-wirt.png"); shot_done = True
+            await cdp.advance_cutscene(max_steps=3, label_hint="Zum Titel")
+        ended = await cdp.eval("State.s.story.ended", await_promise=False)
+        if ended and not await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+            break
+        await asyncio.sleep(0.15)
+    record("kater: Ende Wirt sofort nach Kauf", ended == "wirt", "ended=%s" % ended)
+    bal = await cdp.eval("State.s.balance", await_promise=False)
+    record("kater: Kaufpreis abgebucht", bal == 20000, "balance=%s" % bal)
+    # Reentrancy-/Guard-Abdeckung fuer Story.checkImmediate (Plan 1, Task 6): das Ende kam aus einer
+    # Szenen-Wahl (Story.action -> playScene -> applyEffects -> checkImmediate), nicht aus Story.night().
+    finishing = await cdp.eval("Story.finishing", await_promise=False)
+    record("kater: finishing-Flag nach dem Ende zurueckgesetzt", finishing is False, "finishing=%s" % finishing)
+    phase = await cdp.eval("State.s.story && State.s.story.phase", await_promise=False)
+    record("kater: keine Phasenaenderung nach sofortigem Ende", phase == "evening", "phase=%s" % phase)
+    # „Zum Titel": Titel zeigt Die Schuld als naechste Story (kater gerade gespielt, schuld aelter), Trophaee Hausherr
+    await cdp.wait_for("document.querySelector('#title').hidden === false", timeout=3.0)
+    tag = await cdp.eval("(document.querySelector('#titleStoryTag')||{}).textContent", await_promise=False)
+    record("kater: Titel nach dem Wirt-Ende zeigt Neue Story · Die Schuld", tag is not None and "Die Schuld" in tag, "tag=%s" % tag)
+    trophy = await cdp.eval("Achievements.has('endeWirt')", await_promise=False)
+    record("kater: Trophaee Hausherr (endeWirt) vergeben", trophy is True, "trophy=%s" % trophy)
 
 
 async def scenario_roulette_chips(cdp):
@@ -1295,6 +1615,8 @@ async def main():
         await scenario_all_scenes(cdp)
         await scenario_free_sandbox_unchanged(cdp)
         await scenario_stadt_shop(cdp)
+        await scenario_royal_free(cdp)
+        await scenario_kater(cdp)
         await scenario_mugging(cdp)
         await scenario_story_stadt(cdp)
         await scenario_roulette_chips(cdp)

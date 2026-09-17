@@ -478,7 +478,7 @@ body.cs-open .toast { max-width: 300px; }
 }
 /* -- Reduced Motion -- */
 @media (prefers-reduced-motion: reduce) {
-  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running, .plate.hit, .plate.broken, .taxi-road.running, .brake-flash.on, .ticket-pop, .lv-badge.point { animation: none !important; }
+  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running, .plate.hit, .plate.broken, .taxi-road.running, .brake-flash.on, .ticket-pop, .mega-grid .cell.spin, .die.rolling, .lv-badge.point { animation: none !important; }
   .strip.spinning { animation: none !important; filter: none; }
   .stage, .stage.leaving, .stage.entering { transition: none; animation: none; }
   #wheelCanvas { transition-duration: .3s; }
@@ -490,6 +490,7 @@ div#title[hidden] { display: none; }
 .title-inner { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 24px 16px; width: 100%; max-width: 760px; }
 .title-neon { font-size: 4.5rem; line-height: 1; }
 .title-sub { color: var(--dim); font-family: var(--font-mono); font-size: .95rem; }
+.title-hint { color: var(--dim); font-size: .85rem; margin: 4px 0 0; }
 .title-doors { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; width: 100%; }
 .title-door { height: 240px; }
 .title-foot { display: flex; gap: 8px; align-items: center; }
@@ -592,7 +593,61 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .gear-line { font-family: var(--font-mono); font-size: .78rem; color: var(--gold-2); }
 .cs-bg.autohaus { background: linear-gradient(180deg, #e8eef3 0%, #b9c4cf 45%, #3c4249 46%, #1b1f23 100%); }
 .cs-bg.intersport { background: linear-gradient(180deg, #1a1a1a 0%, #2b2b2b 50%, #ff6a3d 51%, #b03d1c 100%); }
+.cs-bg.royal { background: radial-gradient(ellipse at 50% 0%, #6b1f2a 0%, #2a0a12 45%, #0d0508 100%); }
+.cs-bg.royal::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 60px, rgba(232,213,163,.05) 60px 62px); pointer-events: none; }
+/* Casino Royal – Lobby und Schaufenster */
+.royal { background: radial-gradient(ellipse at 50% 0%, rgba(107,31,42,.6), transparent 60%); }
+.royal-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; justify-content: space-between; }
+.royal-head h2 { font-family: var(--font-display); color: var(--gold-2); letter-spacing: .1em; margin: 0; }
+.royal-sylvie { font-family: var(--font-mono); font-style: italic; color: var(--dim); margin: 0; }
+.royal-hub { grid-template-columns: repeat(3, 1fr); }
+.storefront.royal { --neon: var(--gold-2); border-color: #5a3a12; background: linear-gradient(180deg, #3a1a22, #14080b); }
+.storefront.royal.locked { opacity: .7; }
+.storefront.royal.locked .sign { text-shadow: none; color: var(--dim); }
+.strasse .storefront.royal { grid-column: 1 / -1; min-height: 200px; }
 @media (max-width: 760px) { .strasse, .laden { grid-template-columns: 1fr; } .storefront { min-height: 180px; } }
+/* Casino Royal – Mega Seven */
+.mega-panel { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; }
+.mega-panel .status, .mega-panel .bet-bar { grid-column: 1 / -1; }
+.mega-machine { --cell: 64px; position: relative; background: linear-gradient(180deg, #3a1020, #150409); border: 4px solid var(--gold-2); border-radius: 18px; padding: 14px 18px 18px; box-shadow: var(--shadow), inset 0 0 40px rgba(0,0,0,.6); }
+.mega-grid { display: grid; grid-template-columns: repeat(5, var(--cell)); gap: 6px; background: #0a0a0a; padding: 10px; border-radius: 10px; border: 3px solid #5a3a12; justify-content: center; }
+.mega-grid .cell { width: var(--cell); height: var(--cell); display: flex; align-items: center; justify-content: center; font-size: calc(var(--cell) * .5); background: linear-gradient(180deg, #fff, #e0d8c0); border-radius: 6px; font-family: var(--font-display); color: #222; }
+.mega-grid .cell.bar { font-size: calc(var(--cell) * .3); letter-spacing: .05em; }
+.mega-grid .cell.spin { filter: blur(2px); animation: megaFlicker .12s linear infinite; }
+.mega-grid .cell.hit { box-shadow: 0 0 0 3px var(--gold-2), 0 0 18px var(--gold-2); animation: hitGlow .6s ease 3; }
+.mega-lines { font-family: var(--font-mono); font-size: .8rem; color: var(--gold-2); min-height: 1.2em; margin-top: 8px; text-align: center; }
+.mega-free { margin-top: 6px; text-align: center; font-family: var(--font-display); color: var(--neon-amber); letter-spacing: .15em; }
+@keyframes megaFlicker { 0% { opacity: .6; } 100% { opacity: 1; } }
+@media (max-width: 760px) { .mega-panel { grid-template-columns: 1fr; } .mega-panel .paytable { justify-self: center; } .mega-machine { --cell: 50px; } }
+/* Casino Royal – Craps */
+.craps-panel { align-items: stretch; }
+.craps-table { background: radial-gradient(ellipse at 50% 30%, #1f6b3a, #0d3a20 70%, #082414); border: 6px solid #4a2a12; border-radius: 120px / 40px; padding: 18px 26px; box-shadow: var(--shadow), inset 0 0 60px rgba(0,0,0,.5); }
+.craps-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-display); font-size: 1.4rem; }
+.craps-point { font-family: var(--font-mono); font-size: .9rem; background: #fff; color: #222; border-radius: 50%; padding: 6px 10px; }
+.craps-point.on { background: var(--gold); }
+.craps-dice { display: flex; gap: 18px; justify-content: center; margin: 16px 0; }
+.die { width: 70px; height: 70px; border-radius: 12px; background: #fff; color: #222; font-size: 3.2rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px rgba(0,0,0,.6); }
+.die.rolling { animation: dieRoll .5s linear infinite; }
+@keyframes dieRoll { 0% { transform: rotate(0) translateY(0); } 50% { transform: rotate(180deg) translateY(-14px); } 100% { transform: rotate(360deg) translateY(0); } }
+.craps-bets { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.craps-bet { border: 2px dashed rgba(255,255,255,.5); border-radius: 10px; padding: 10px; text-align: center; color: #fff; }
+.craps-bet h4 { margin: 0; font-family: var(--font-display); letter-spacing: .15em; }
+.craps-bet .amt { font-family: var(--font-mono); font-size: 1.2rem; color: var(--gold-2); }
+.craps-bet p { font-size: .75rem; color: rgba(255,255,255,.7); margin: 4px 0 0; }
+.craps-bet.won { box-shadow: 0 0 0 3px var(--neon-green); } .craps-bet.lost { opacity: .5; }
+.craps-history { font-family: var(--font-mono); font-size: .8rem; color: rgba(255,255,255,.7); text-align: center; margin-top: 10px; min-height: 1.2em; }
+@media (max-width: 760px) { .craps-table { border-radius: 60px / 30px; padding: 14px 16px; } .craps-bets { grid-template-columns: 1fr; } }
+/* Casino Royal – Glücksrad */
+.wheel-panel { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
+.wheel-panel .status, .wheel-panel .bet-bar { grid-column: 1 / -1; }
+.wheel-stage { position: relative; width: min(360px, 80vw); aspect-ratio: 1; margin: 0 auto; }
+.wheel { position: absolute; inset: 0; border-radius: 50%; border: 8px solid var(--gold); box-shadow: var(--shadow), inset 0 0 30px rgba(0,0,0,.6); transition: transform 4.5s cubic-bezier(.15,.85,.25,1); }
+.wheel.snap { transition: none; }
+.wheel .seg { position: absolute; left: 50%; top: 50%; width: 50%; height: 1.2em; line-height: 1.2em; margin-top: -.6em; transform-origin: 0 50%; font-family: var(--font-mono); font-size: .8rem; color: #fff; text-align: right; padding-right: 12px; box-sizing: border-box; white-space: nowrap; pointer-events: none; }
+.wheel-pointer { position: absolute; left: 50%; top: -18px; transform: translateX(-50%); font-size: 1.6rem; color: var(--gold-2); z-index: 2; text-shadow: 0 0 8px var(--gold-2); }
+.wheel-hub { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 64px; height: 64px; border-radius: 50%; background: #1a0a0d; border: 4px solid var(--gold); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; z-index: 1; }
+.wheel.hit { animation: hitGlow .6s ease 3; }
+@media (max-width: 760px) { .wheel-panel { grid-template-columns: 1fr; } .wheel-panel .paytable { justify-self: center; } .wheel .seg { font-size: .7rem; } }
 .cs-bg.gasse { background: linear-gradient(180deg, #05060a 0%, #14161e 55%, #2a2418 56%, #0d0b07 100%); }
 /* ==== Perks – Level-Badge, Skill-Screen ==== */
 .lv-badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: .8rem; color: var(--gold-2); border: 1px solid rgba(201,162,39,.35); border-radius: 6px; padding: 2px 8px; background: rgba(0,0,0,.3); cursor: pointer; }
@@ -935,6 +990,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
       <div class="door title-door" data-choice="free" style="--neon: var(--neon-green)"><div class="sign">Freies Spiel</div><div class="glyph">🎰</div><div class="chalk-tag" id="titleFreeTag">Der Keller wie er ist</div><div class="knob"></div></div>
     </div>
     <button class="btn ghost sm hidden" id="titleNewStory">Neue Story beginnen</button>
+    <p class="title-hint hidden" id="titleStoryLock"></p>
     <div class="title-foot">
       <button class="icon-btn" id="titleMute">🔊</button>
       <button class="btn ghost sm" id="titleTrophiesBtn" title="Trophäen">🏆 Trophäen</button>
@@ -1016,6 +1072,101 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
     <div class="laden hidden" id="laden"></div>
   </div>
 </template>
+<template id="tpl-royal">
+  <div class="panel stretch royal">
+    <div class="royal-head"><h2>🎩 Casino Royal</h2><p class="royal-sylvie" id="royalLine"></p></div>
+    <div class="hub royal-hub">
+      <div class="door" data-screen="megaslots" style="--neon: var(--gold-2)"><div class="sign">Mega Seven</div><div class="glyph">🎰</div><div class="chalk-tag">5 Walzen · Freispiele</div><div class="knob"></div></div>
+      <div class="door" data-screen="craps" style="--neon: var(--neon-green)"><div class="sign">Craps</div><div class="glyph">🎲</div><div class="chalk-tag">Pass Line · Field</div><div class="knob"></div></div>
+      <div class="door" data-screen="wheel" style="--neon: var(--neon-red)"><div class="sign">Glücksrad</div><div class="glyph">🎡</div><div class="chalk-tag">bis 10×</div><div class="knob"></div></div>
+    </div>
+    <div class="bet-bar"><button class="btn ghost sm" id="royalLeave">← Zurück in die Stadt</button></div>
+  </div>
+</template>
+<template id="tpl-megaslots">
+  <div class="panel mega-panel">
+    <div class="mega-machine">
+      <div class="slot-head neon" style="--neon: var(--gold-2)">Mega Seven</div>
+      <div class="mega-grid" id="megaGrid"></div>
+      <div class="mega-lines" id="megaLines"></div>
+      <div class="mega-free hidden" id="megaFree">FREISPIELE <span id="megaFreeLeft">0</span> · ×2</div>
+    </div>
+    <div class="chalk paytable">
+      <h4>Auszahlung × Linieneinsatz</h4>
+      <table>
+        <tr><td>7️⃣</td><td>20 / 100 / 500</td></tr>
+        <tr><td>💎</td><td>10 / 40 / 100</td></tr>
+        <tr><td>BAR</td><td>5 / 20 / 50</td></tr>
+        <tr><td>🔔</td><td>3 / 10 / 25</td></tr>
+        <tr><td>🍒</td><td>2 / 5 / 10</td></tr>
+        <tr><td>⭐ ×3+</td><td>5 Freispiele, ×2</td></tr>
+      </table>
+      <p class="side-hint">5 Linien · Linieneinsatz = Einsatz ÷ 5</p>
+    </div>
+    <div class="status" id="megaStatus">Einsatz wählen und drehen</div>
+    <div class="bet-bar">
+      <input type="number" id="megaBet" value="100" min="100" hidden>
+      <button class="chip" data-chip="100" data-v="100">100</button>
+      <button class="chip" data-chip="250" data-v="25">250</button>
+      <button class="chip" data-chip="500" data-v="50">500</button>
+      <button class="chip" data-chip="1000" data-v="max">1000</button>
+      <button class="btn solid" id="btnMega">Drehen</button>
+      <button class="btn ghost sm" id="megaBack">← Lobby</button>
+    </div>
+  </div>
+</template>
+<template id="tpl-craps">
+  <div class="panel craps-panel">
+    <div class="craps-table">
+      <div class="craps-head"><span class="neon" style="--neon: var(--neon-green)">CRAPS</span><span class="craps-point" id="crapsPoint">Come-out</span></div>
+      <div class="craps-dice"><div class="die" id="die1">⚄</div><div class="die" id="die2">⚂</div></div>
+      <div class="craps-bets">
+        <div class="craps-bet" id="passBox"><h4>PASS LINE</h4><div class="amt" id="passAmt">0 €</div><p>7/11 gewinnt · 2/3/12 verliert · sonst Punkt</p></div>
+        <div class="craps-bet" id="fieldBox"><h4>FIELD</h4><div class="amt" id="fieldAmt">0 €</div><p>3 4 9 10 11 zahlen 1:1 · 2 und 12 zahlen 2:1</p></div>
+      </div>
+      <div class="craps-history" id="crapsHistory"></div>
+    </div>
+    <div class="status" id="crapsStatus">Einsatz wählen, auf Pass Line oder Field legen, würfeln</div>
+    <div class="bet-bar">
+      <input type="number" id="crapsBet" value="50" min="50" hidden>
+      <button class="chip" data-chip="50" data-v="50">50</button>
+      <button class="chip" data-chip="200" data-v="25">200</button>
+      <button class="chip" data-chip="500" data-v="100">500</button>
+      <button class="chip" data-chip="2000" data-v="max">2000</button>
+      <button class="btn green sm" id="btnPass">auf Pass</button>
+      <button class="btn blue sm" id="btnField">auf Field</button>
+      <button class="btn ghost sm" id="btnClearCraps">Leeren</button>
+      <button class="btn solid" id="btnRoll">Würfeln</button>
+      <button class="btn ghost sm" id="crapsBack">← Lobby</button>
+    </div>
+  </div>
+</template>
+<template id="tpl-wheel">
+  <div class="panel wheel-panel">
+    <div class="wheel-stage">
+      <div class="wheel-pointer">▼</div>
+      <div class="wheel" id="wheel"></div>
+      <div class="wheel-hub">🎩</div>
+    </div>
+    <div class="chalk paytable">
+      <h4>24 Felder</h4>
+      <table>
+        <tr><td>×10</td><td>1 Feld</td></tr><tr><td>×5</td><td>1 Feld</td></tr><tr><td>×2</td><td>1 Feld</td></tr>
+        <tr><td>×1</td><td>3 Felder</td></tr><tr><td>Hälfte</td><td>5 Felder</td></tr><tr><td>Bankrott</td><td>13 Felder</td></tr>
+      </table>
+    </div>
+    <div class="status" id="wheelStatus">Einsatz wählen und drehen</div>
+    <div class="bet-bar">
+      <input type="number" id="wheelBet" value="100" min="100" hidden>
+      <button class="chip" data-chip="100" data-v="100">100</button>
+      <button class="chip" data-chip="500" data-v="50">500</button>
+      <button class="chip" data-chip="1000" data-v="25">1000</button>
+      <button class="chip" data-chip="5000" data-v="max">5000</button>
+      <button class="btn solid" id="btnWheel">Drehen</button>
+      <button class="btn ghost sm" id="wheelBack">← Lobby</button>
+    </div>
+  </div>
+</template>
 <template id="tpl-skills">
   <div class="panel stretch">
     <h2>🧠 Kopf</h2>
@@ -1055,14 +1206,17 @@ const Rules = {
     if (s.beerTimer > 0) l += Rules.BEER_LUCK[Math.min(s.beers, Rules.BEER_LUCK.length - 1)] * mods.beerLuckMult;
     if (s.brownieTimer > 0) l += Rules.BROWNIE_LUCK * mods.brownieLuckMult;
     l += Rules.gear(s).luck;
+    if (s.story && s.story.luckMod) l += s.story.luckMod; // Story-Modifikator (z. B. Zitter-Tag); negativ = Pech
     return l;
   },
-  /* Glück ist ein Trinkgeld, keine Geldmaschine: voll bis LUCK_CAP, darüber im Verhältnis kleiner */
+  /* Glück ist ein Trinkgeld, keine Geldmaschine: voll bis LUCK_CAP, darüber im Verhältnis kleiner (Pech genauso) */
   effectiveLuck(luck, bet) {
     if (!luck) return 0;
     if (!bet || bet <= Rules.LUCK_CAP) return luck;
     return luck * Rules.LUCK_CAP / bet;
   },
+  /* Pech (negatives Glück): mit |luck| % wird ein Gewinn einmal neu ausgewürfelt – ein rng-Aufruf, nur wenn luck < 0 */
+  pech(luck, rng) { return luck < 0 && rng() * 100 < -luck; },
   bankRateFor(s, mods = Rules.NEUTRAL_MODS) { return Math.max(0.01, Rules.gear(s).bankRate + mods.bankRateAdd); },
   bankLimitFor(s, mods = Rules.NEUTRAL_MODS) { return Math.max(500, Rules.gear(s).bankLimit + mods.bankLimitAdd); },
   bankInterest(debt, s, mods = Rules.NEUTRAL_MODS) {
@@ -1111,8 +1265,13 @@ const Rules = {
     return 0;
   },
   /* Glück hilft bei Farben und Gerade/Ungerade – nie bei Zahlen (der Kessel kennt keine Freunde).
-     Croupier-Auge kann die übliche Glückszahl ausschließen; dann die erste freie Zahl der Art. */
+     Croupier-Auge kann die übliche Glückszahl ausschließen; dann die erste freie Zahl der Art.
+     Pech (luck < 0): ein gewinnender Außenfeld-Chip wird mit |luck| % einmal neu ausgewürfelt. */
   rouletteLuckOverride(type, chosen, rolled, luck, rng, excluded = []) {
+    if (luck < 0) {
+      if (type !== 'number' && Rules.roulettePayout(type, chosen, rolled, 1) > 0 && Rules.pech(luck, rng)) return Rules.rouletteRoll(rng, excluded);
+      return rolled;
+    }
     const r = rng() * 100;
     if (r < luck && rolled !== 0) {
       const firstFree = (fallback, list) => (!excluded.includes(fallback) ? fallback : list.find((n) => !excluded.includes(n)));
@@ -1157,8 +1316,9 @@ const Rules = {
   /* ---- Slots ---- */
   SYMBOLS: ['🍒', '🍋', '🍇', '🔔', '💎', '7️⃣'],
   slotRoll(rng) { return [0, 1, 2].map(() => Rules.SYMBOLS[Math.floor(rng() * Rules.SYMBOLS.length)]); },
-  /* Glück erzwingt höchstens ein Paar – Jackpots bleiben Glückssache */
+  /* Glück erzwingt höchstens ein Paar – Jackpots bleiben Glückssache; Pech würfelt einen Gewinn einmal neu */
   slotLuckOverride(res, luck, rng) {
+    if (luck < 0) return Rules.slotMultiplier(...res) > 0 && Rules.pech(luck, rng) ? Rules.slotRoll(rng) : res;
     const [a, b, c] = res;
     if (rng() * 100 < luck) return [a, a, c];
     return [a, b, c];
@@ -1179,7 +1339,7 @@ const Rules = {
   ],
   horseStep(isSelected, luck, rng, handicap = 1) {
     let step = rng() * 3 + 1;
-    if (isSelected && luck > 0) step += luck * 0.001; // pro Tick, summiert sich über das ganze Rennen
+    if (isSelected && luck !== 0) step = Math.max(0.2, step + luck * 0.001); // pro Tick, summiert sich über das ganze Rennen; Pech bremst
     return step * 1.5 * handicap;
   },
   horseDelta(won, bet, mods = Rules.NEUTRAL_MODS) { return won ? Math.round(bet * mods.horsePayout) : -bet; },
@@ -1235,10 +1395,11 @@ const Rules = {
   POST_HOUSES: [{ n: 12, c: '#ffb432' }, { n: 45, c: '#4cc9f0' }, { n: 88, c: '#3ddc84' }, { n: 99, c: '#ff3b3b' }],
   postmanTier(streak, s, mods = Rules.NEUTRAL_MODS) {
     const g = s ? Rules.gear(s) : { postTime: 0, postPay: 0 };
+    const jm = s && s.story && s.story.jobMod ? s.story.jobMod : {};
     const t = streak < 2 ? { t: 5, r: 5 } : streak < 6 ? { t: 3, r: 10 } : streak < 11 ? { t: 1.5, r: 25 } : { t: 0.5, r: 50 };
-    /* Schuhe und Skills geben Zeit – die schnellste Stufe wird aber nie langsamer als 1,5 s; Untergrenze 0,5 s */
+    /* Schuhe und Skills geben Zeit – die schnellste Stufe wird aber nie langsamer als 1,5 s; danach der Story-Faktor (jobMod.postTime); Untergrenze 0,5 s */
     const raw = t.t + g.postTime + mods.postTimeAdd;
-    const time = t.t < 1.5 ? Math.min(raw, 1.5) : raw;
+    const time = (t.t < 1.5 ? Math.min(raw, 1.5) : raw) * (jm.postTime != null ? jm.postTime : 1);
     return { t: Math.max(0.5, time), r: t.r + g.postPay + mods.postPayAdd };
   },
 
@@ -1281,9 +1442,9 @@ const Rules = {
     if (s.balance < Rules.PRICES.tinder) return { ok: false, reason: 'funds' };
     return { ok: true };
   },
-  canTherapy(s) {
-    if (!s.isHeartbroken) return { ok: false, reason: 'notNeeded' };
-    if (s.balance < Rules.PRICES.therapy) return { ok: false, reason: 'funds' };
+  canTherapy(s, price = Rules.PRICES.therapy) {
+    if (!s.isHeartbroken && !(s.story && s.story.enabled && s.story.enabled.therapy)) return { ok: false, reason: 'notNeeded' };
+    if (s.balance < price) return { ok: false, reason: 'funds' };
     return { ok: true };
   },
   canDealer(s) {
@@ -1291,9 +1452,9 @@ const Rules = {
     if (s.balance < Rules.PRICES.dealer) return { ok: false, reason: 'funds' };
     return { ok: true };
   },
-  canBeer(s, mods = Rules.NEUTRAL_MODS) {
+  canBeer(s, price = Rules.PRICES.beer, mods = Rules.NEUTRAL_MODS) {
     if (s.beers >= mods.maxBeers) return { ok: false, reason: 'max' };
-    if (s.balance < Rules.PRICES.beer) return { ok: false, reason: 'funds' };
+    if (s.balance < price) return { ok: false, reason: 'funds' };
     return { ok: true };
   },
   canBrownie(s) {
@@ -1620,7 +1781,8 @@ const State = {
     const s = this.fresh();
     s.balance = story.start.balance;
     s.flags.intro = true;
-    s.story = StoryRules.freshStoryPart(story);
+    s.story = StoryRules.freshStoryPart(story, this.meta.storyRuns);
+    if (s.story.prices.brownie != null) s.brownieCost = s.story.prices.brownie;
     return s;
   },
   startStory(story) {
@@ -1854,11 +2016,12 @@ const UI = {
     const s = State.s;
     const mods = Perks.mods();
     const luck = Rules.luck(s, mods);
-    const segs = luck >= 60 ? 5 : luck >= 40 ? 4 : luck >= 20 ? 3 : luck >= 15 ? 2 : luck >= 10 ? 1 : 0;
+    const segs = luck >= 60 ? 5 : luck >= 40 ? 4 : luck >= 20 ? 3 : luck >= 15 ? 2 : luck >= 10 ? 1 : 0; // Pech (< 0): keine Segmente, nur Vorzeichen
+    const luckTxt = (luck < 0 ? '−' : '+') + Math.abs(luck);
     const luckEl = qs('#luck');
-    luckEl.title = `Glück +${luck} %`;
+    luckEl.title = `Glück ${luckTxt} %`;
     luckEl.innerHTML = '';
-    luckEl.append('🍀', ...[0, 1, 2, 3, 4].map((i) => h('span', { class: 'seg' + (i < segs ? ' on' : '') })), h('span', { class: 'luck-val' }, `+${luck}%`));
+    luckEl.append('🍀', ...[0, 1, 2, 3, 4].map((i) => h('span', { class: 'seg' + (i < segs ? ' on' : '') })), h('span', { class: 'luck-val' }, `${luckTxt}%`));
     const notes = qs('#notes');
     notes.innerHTML = '';
     if (s.isHeartbroken) notes.append(h('span', { class: 'note pink' }, `💔 Liebeskummer · ${s.beers}/2 🍺`));
@@ -1882,22 +2045,29 @@ const UI = {
       h('button', { class: 'side-btn', 'data-action': action, disabled: disabled ? '' : null }, h('span', {}, label), h('span', { class: 'price' }, price));
     const inStory = State.mode === 'story' && typeof Story !== 'undefined' && Story.story;
     const room = (r) => !inStory || Story.roomUnlocked(r);
+    const acts = (r) => inStory ? StoryRules.actionsFor(Story.story, s, r).map((a) => h('button', { class: 'side-btn story-action', 'data-story-action': a.id }, h('span', {}, a.label))) : [];
     const secs = [];
     if (room('bar')) secs.push(sec('Die Bar',
-      btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/${mods.maxBeers})` : ''}`, '50 €', 'beer', !Rules.canBeer(s, mods).ok),
-      btn('🍪 Brownie', s.brownieCost >= 10000 ? '10.000 €' : '1.000 €', 'brownie', !Rules.canBrownie(s).ok),
+      btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/${mods.maxBeers})` : ''}`, this.fmt(StoryRules.price(s, 'beer')), 'beer', !Rules.canBeer(s, StoryRules.price(s, 'beer'), mods).ok || StoryRules.purchaseAllowed(s, 'beer') === false),
+      btn('🍪 Brownie', this.fmt(s.brownieCost), 'brownie', !Rules.canBrownie(s).ok || StoryRules.purchaseAllowed(s, 'brownie') === false),
+      ...acts('bar'),
       h('p', { class: 'side-hint' }, `Bier hält 2 Spins, Brownie ${mods.brownieSpins} Spin${mods.brownieSpins === 1 ? '' : 's'}. Glück wirkt voll bis 100 € Einsatz, nie auf Zahlen.`)));
     const hz = [];
     if (room('doc') || !inStory) hz.push(btn(s.kidneySold ? '🫁 Niere verkauft' : '🫁 Niere verkaufen', s.kidneySold ? '' : '+2.000 €', 'kidney', s.kidneySold));
     if (room('bank') || room('mafia')) hz.push(btn('🏦 Kredite', s.bankDebt + s.mafiaDebt > 0 ? `−${this.fmt(s.bankDebt + s.mafiaDebt)}` : '', 'finance'));
     if (room('invest')) hz.push(btn('📈 Anlagen', s.investments.length ? `${s.investments.length} aktiv` : '', 'invest'));
     if (inStory && room('vito')) hz.push(btn('🕶️ Vitos Tisch', s.story.vars.schuld != null ? this.fmt(s.story.vars.schuld) : '', 'vito'));
+    hz.push(...acts('doc'), ...acts('bank'));
     if (hz.length) secs.push(sec('Hinterzimmer', ...hz));
-    if (room('life')) secs.push(sec('Zuhause', btn('🏡 Leben', s.hasHouse ? '🏰' : '', 'life')));
+    if (room('life')) secs.push(sec('Zuhause', btn('🏡 Leben', s.hasHouse ? '🏰' : '', 'life'), ...acts('life')));
     secs.push(sec('Kopf', btn('🧠 Skills', Rules.skillPointsFree(s) > 0 ? `${Rules.skillPointsFree(s)} Punkt frei` : `Lv ${Rules.xpLevel(s.xp || 0).level}`, 'skills')));
     if (room('stadt')) secs.push(sec('Stadt',
       btn('🏙️ Autohaus · INTERSPORT', s.car || s.shoes ? '✓' : '', 'stadt'),
-      h('p', { class: 'side-hint gear-line', id: 'gearLine' }, Stadt.line(s))));
+      h('p', { class: 'side-hint gear-line', id: 'gearLine' }, Stadt.line(s)),
+      ...acts('stadt')));
+    if (room('royal') && typeof Royal !== 'undefined') secs.push(sec('Casino Royal',
+      btn('🎩 Casino Royal', !s.car ? '🚗 nötig' : s.flags.royalGuest ? 'Gast' : RoyalRules.entryFee(s) === 0 ? 'heute frei' : this.fmt(RoyalRules.entryFee(s)), 'royal', !s.car),
+      ...acts('royal')));
     side.append(...secs);
     const tabs = h('div', { class: 'side-tabs' });
     const TAB_ICONS = { 'Die Bar': '🍺', 'Hinterzimmer': '🚪', 'Zuhause': '🏠', 'Kopf': '🧠', 'Stadt': '🏙️' };
@@ -1913,6 +2083,8 @@ const UI = {
     });
     side.append(tabs);
     side.onclick = (e) => {
+      const sa = e.target.closest('[data-story-action]');
+      if (sa) { SFX.play('click'); return Story.action(sa.dataset.storyAction); }
       const b = e.target.closest('[data-action]');
       if (!b || b.disabled) return;
       SFX.play('click');
@@ -1990,6 +2162,7 @@ const Cutscene = {
     verkaeufer: { name: 'Der Verkäufer', emoji: '🤵', color: '#cfd8e3' },
     du: { name: 'Du', emoji: '🤠', color: '#ffffff' },
     raeuber: { name: 'Der Räuber', emoji: '🥷', color: 'var(--neon-red)' },
+    sylvie: { name: 'Madame Sylvie', emoji: '🎩', color: '#e8d5a3' },
     insider: { name: 'Der Insider', emoji: '🕵️', color: 'var(--neon-blue)' },
   },
   PROPS: {
@@ -2304,25 +2477,35 @@ setInterval(() => {
 /* ---- Die Bar (Seitenleiste) ---- */
 Actions.beer = async () => {
   const s = State.s;
-  const mods = Perks.mods();
-  const c = Rules.canBeer(s, mods);
-  if (!c.ok) {
-    UI.toast({ icon: '🍺', title: c.reason === 'max' ? `Maximal ${mods.maxBeers} Bier` : 'Bier kostet 50 €', text: c.reason === 'max' ? 'Der Wirt schüttelt den Kopf.' : 'Zu wenig Geld.', tone: 'loss' });
+  if (StoryRules.purchaseAllowed(s, 'beer') === false) {
+    UI.toast({ icon: '🍺', title: 'Kein Bier mehr', text: 'Der Wirt schenkt dir nichts mehr ein.', tone: 'loss' });
     return;
   }
-  Game.applyDelta(-Rules.PRICES.beer, { quiet: true });
+  const mods = Perks.mods();
+  const c = Rules.canBeer(s, StoryRules.price(s, 'beer'), mods);
+  if (!c.ok) {
+    UI.toast({ icon: '🍺', title: c.reason === 'max' ? `Maximal ${mods.maxBeers} Bier` : `Bier kostet ${UI.fmt(StoryRules.price(s, 'beer'))}`, text: c.reason === 'max' ? 'Der Wirt schüttelt den Kopf.' : 'Zu wenig Geld.', tone: 'loss' });
+    return;
+  }
+  Game.applyDelta(-StoryRules.price(s, 'beer'), { quiet: true });
   s.beers++;
   s.beerTimer = Rules.BEER_SPINS;
+  if (State.mode === 'story' && State.s.story) State.s.story.stats.beers++;
   State.save();
   UI.renderWallet(); UI.renderSide();
   SFX.play('coin');
   const luckGain = Rules.BEER_LUCK[s.beers] * mods.beerLuckMult;
   UI.toast({ icon: '🍺', title: `Prost! Bier #${s.beers}`, text: luckGain > 0 ? `+${luckGain} % Glück für 2 Spins.` : 'Bier schmeckt, wirkt aber nicht – Pokerface.', tone: 'gold' });
   await Bus.emit('beer', { beers: s.beers });
+  if (typeof Story !== 'undefined') await Story.hook('buy:beer');
 };
 
 Actions.brownie = async () => {
   const s = State.s;
+  if (StoryRules.purchaseAllowed(s, 'brownie') === false) {
+    UI.toast({ icon: '🍪', title: 'Kein Brownie mehr', text: 'Nichts mehr da.', tone: 'loss' });
+    return;
+  }
   const c = Rules.canBrownie(s);
   if (!c.ok) {
     UI.toast({ icon: '🍪', title: c.reason === 'active' ? 'Brownie wirkt bereits' : `Kostet ${UI.fmt(s.brownieCost)}`, text: c.reason === 'active' ? 'Einer reicht. Wirklich.' : 'Zu wenig Geld.', tone: 'loss' });
@@ -2332,10 +2515,13 @@ Actions.brownie = async () => {
   const price = s.brownieCost;
   Game.applyDelta(-price, { quiet: true });
   s.brownieTimer = mods.brownieSpins;
-  s.brownieCost = Rules.PRICES.brownieNext;
+  s.brownieCost = s.story && s.story.prices && s.story.prices.brownie != null ? s.story.prices.brownie : Rules.PRICES.brownieNext;
+  if (State.mode === 'story' && State.s.story) State.s.story.stats.brownies++;
   State.save();
   UI.renderWallet(); UI.renderSide();
-  if (!s.flags.brownie) {
+  /* Die Wirt-Szene („der nächste kostet zehntausend") gilt nur für die freie Preisleiter – setzt die Story den Brownie-Preis, nur der Toast */
+  const storyPrice = s.story && s.story.prices && s.story.prices.brownie != null;
+  if (!s.flags.brownie && !storyPrice) {
     s.flags.brownie = true; State.save();
     await Cutscene.play('brownie.first', { price: UI.fmt(price) });
   } else {
@@ -2343,6 +2529,7 @@ Actions.brownie = async () => {
     UI.toast({ icon: '🍪', title: 'Brownie', text: `+${pct} % Glück für ${mods.brownieSpins} Spin${mods.brownieSpins === 1 ? '' : 's'}. Frag nicht.`, tone: 'gold' });
   }
   await Bus.emit('brownie', {});
+  if (typeof Story !== 'undefined') await Story.hook('buy:brownie');
 };
 
 Actions.kidney = async () => {
@@ -2358,6 +2545,7 @@ Actions.kidney = async () => {
   await Cutscene.play('kidney.sold', {});
   UI.renderWallet(); UI.renderSide();
   await Bus.emit('kidney.sold', {});
+  if (typeof Story !== 'undefined') await Story.hook('buy:kidney');
 };
 
 Cutscene.define('brownie.first', [
@@ -2564,21 +2752,27 @@ const Life = {
     if (check.ok) el.append(h('button', { class: `btn ${cls || ''}`, onclick: action }, label));
     else el.append(h('span', { class: 'reason' + (check.reason === 'funds' ? '' : ' warn') }, this.REASON[check.reason] || check.reason));
   },
+  notToday() { return { pic: '🚫', empty: true, title: 'Nicht heute', text: 'Gibt es in dieser Geschichte nicht.' }; },
   render() {
     if (!this.root) return;
     const s = State.s;
-    this.card(qs('#lifeHouse', this.root), s.hasHouse
-      ? { pic: '🏰', title: 'Penthouse-Villa', text: 'Blick auf den Hafen. +30 €/min von Untermietern, nach denen du nicht fragst.' }
-      : { pic: '🏚️', empty: true, title: 'Kein Haus', text: 'Penthouse für 2.500 €. Nur ohne Schulden, nüchtern im Herzen und ledig.', action: () => Life.buyHouse(), label: 'Kaufen · 2.500 €', check: Rules.canBuyHouse(s) });
+    this.card(qs('#lifeHouse', this.root), StoryRules.purchaseAllowed(s, 'house') === false ? this.notToday()
+      : s.hasHouse
+        ? { pic: '🏰', title: 'Penthouse-Villa', text: 'Blick auf den Hafen. +30 €/min von Untermietern, nach denen du nicht fragst.' }
+        : { pic: '🏚️', empty: true, title: 'Kein Haus', text: 'Penthouse für 2.500 €. Nur ohne Schulden, nüchtern im Herzen und ledig.', action: () => Life.buyHouse(), label: 'Kaufen · 2.500 €', check: Rules.canBuyHouse(s) });
     const love = s.isHeartbroken
-      ? { pic: '💔', title: 'Liebeskummer', text: 'Chantal ist weg, das Haus auch. Ohne 2 Bier pro Spin klappst du zusammen (−250 €).', action: () => Life.therapy(), label: 'Therapie & Anwalt · 5.000 €', cls: 'pink', check: Rules.canTherapy(s) }
+      ? { pic: '💔', title: 'Liebeskummer', text: 'Chantal ist weg, das Haus auch. Ohne 2 Bier pro Spin klappst du zusammen (−250 €).', action: () => Life.therapy(), label: `Therapie & Anwalt · ${UI.fmt(StoryRules.price(s, 'therapy'))}`, cls: 'pink', check: Rules.canTherapy(s, StoryRules.price(s, 'therapy')) }
       : s.isMarried
         ? { pic: '💍', title: 'Verheiratet', text: `Mit Chantal-Monique. Noch ${Rules.MARRIAGE_SPINS - s.marriageSpins} Spin${Rules.MARRIAGE_SPINS - s.marriageSpins === 1 ? '' : 's'} bis… irgendwas.` }
-        : { pic: '🔥', empty: !s.hasHouse, title: 'Tinder Gold', text: 'Chantal-Monique steht auf Penthouses. 50 €, und ihr heiratet sofort.', action: () => Life.tinder(), label: 'Matchen · 50 €', cls: 'pink', check: Rules.canTinder(s) };
+        : StoryRules.purchaseAllowed(s, 'therapy') === true
+          ? { pic: '🩺', title: 'Therapie', text: (Story.story && Story.story.copy && Story.story.copy.therapy) || 'Der Doc hat ein Programm. Kein Bier mehr – und kein Glück daraus.', action: () => Life.therapy(), label: `Therapie · ${UI.fmt(StoryRules.price(s, 'therapy'))}`, cls: 'pink', check: Rules.canTherapy(s, StoryRules.price(s, 'therapy')) }
+          : StoryRules.purchaseAllowed(s, 'tinder') === false ? this.notToday()
+            : { pic: '🔥', empty: !s.hasHouse, title: 'Tinder Gold', text: 'Chantal-Monique steht auf Penthouses. 50 €, und ihr heiratet sofort.', action: () => Life.tinder(), label: 'Matchen · 50 €', cls: 'pink', check: Rules.canTinder(s) };
     this.card(qs('#lifeLove', this.root), love);
-    this.card(qs('#lifeDealer', this.root), s.hasDealer
-      ? { pic: '🧢', title: 'Kevin arbeitet', text: '+50 €/min. Pünktlich wie die Bahn. Also pünktlicher.' }
-      : { pic: '🧢', empty: true, title: 'Drogendealer', text: 'Kevin will 5.000 € Startkapital. Dafür +50 €/min, dauerhaft.', action: () => Life.dealer(), label: 'Anheuern · 5.000 €', cls: 'blue', check: Rules.canDealer(s) });
+    this.card(qs('#lifeDealer', this.root), StoryRules.purchaseAllowed(s, 'dealer') === false ? this.notToday()
+      : s.hasDealer
+        ? { pic: '🧢', title: 'Kevin arbeitet', text: '+50 €/min. Pünktlich wie die Bahn. Also pünktlicher.' }
+        : { pic: '🧢', empty: true, title: 'Drogendealer', text: 'Kevin will 5.000 € Startkapital. Dafür +50 €/min, dauerhaft.', action: () => Life.dealer(), label: 'Anheuern · 5.000 €', cls: 'blue', check: Rules.canDealer(s) });
   },
   async buyHouse() {
     const s = State.s;
@@ -2600,11 +2794,15 @@ const Life = {
   },
   async therapy() {
     const s = State.s;
-    if (!Rules.canTherapy(s).ok) return;
-    Game.applyDelta(-Rules.PRICES.therapy, { from: qs('#lifeLove') });
+    if (!Rules.canTherapy(s, StoryRules.price(s, 'therapy')).ok) return;
+    /* Liebeskummer-Therapie (freies Spiel): Anwalt-Szene über therapy.done. Hat die Story die Therapie freigegeben,
+       spielt ihr buy:therapy-Hook die eigene Szene – Dr. Schmalz hat dort nichts verloren. */
+    const heartbreak = s.isHeartbroken && StoryRules.purchaseAllowed(s, 'therapy') !== true;
+    Game.applyDelta(-StoryRules.price(s, 'therapy'), { from: qs('#lifeLove') });
     s.isHeartbroken = false; State.save();
     this.render(); UI.renderWallet();
-    await Bus.emit('therapy.done', {});
+    if (heartbreak) await Bus.emit('therapy.done', {});
+    if (typeof Story !== 'undefined') await Story.hook('buy:therapy');
     this.render();
   },
   async dealer() {
@@ -2735,6 +2933,14 @@ const Stadt = {
           h('p', { class: 'seller' }, this.seller(id)),
           h('div', { class: 'owned' }, this.ownedLine(id))));
       }
+      const chk = RoyalRules.canEnter(State.s);
+      const gate = Royal.inStory() ? StoryRules.gate(Story.story, State.s, 'royal') : null;
+      const roomOpen = !Royal.inStory() || Story.roomUnlocked('royal');
+      if (roomOpen) street.append(h('div', { class: 'storefront royal' + (chk.ok && !gate ? '' : ' locked'), 'data-shop': 'royal', onclick: () => Royal.enter() },
+        h('div', { class: 'sign' }, 'Casino Royal'),
+        h('div', { class: 'glyph' }, '🎩'),
+        h('p', { class: 'seller' }, gate || (chk.ok ? 'Der Parkservice nimmt den Schlüssel.' : chk.text)),
+        h('div', { class: 'owned' }, State.s.flags.royalGuest ? 'Gast des Hauses' : `Eintritt ${UI.fmt(RoyalRules.ENTRY_FEE)}`)));
       return;
     }
     qs('#ladenSeller', this.root).textContent = this.seller(this.shop);
@@ -2825,6 +3031,330 @@ Cutscene.define('stadt.shoes', [
 ]);
 Bus.on('gear:car', () => Stadt.checkFullSet());
 Bus.on('gear:shoes', () => Stadt.checkFullSet());
+</script>
+
+<script id="casino-royal">
+/* ================= CASINO ROYAL – Lobby, Eintritt, Madame Sylvie ================= */
+const Royal = {
+  GAMES: ['megaslots', 'craps', 'wheel'],
+  SYLVIE: {
+    first: 'Madame Sylvie sieht kurz von ihren Zahlen auf. Sie sieht alles. Sie sagt nichts.',
+    guest: 'Madame Sylvie nickt. „Gast des Hauses. Der Eintritt entfällt. Das Haus behält sich alles andere vor.“',
+    paid: 'Hundert Euro. Die Garderobe ist links, die Ausgänge sind egal.',
+  },
+  inStory() { return State.mode === 'story' && typeof Story !== 'undefined' && Story.story; },
+  async enter() {
+    const s = State.s;
+    if (Cutscene.active || Game.inFlight > 0 || UI.busy) return;
+    /* Schon drin (Lobby oder Tisch): kein zweiter Eintritt – nur zurück in die Lobby */
+    if (UI.current && ['royal', ...this.GAMES].includes(UI.current.id)) { if (UI.current.id !== 'royal') await UI.show('royal'); return; }
+    const chk = RoyalRules.canEnter(s);
+    if (!chk.ok) { UI.toast({ icon: '🎩', title: 'Casino Royal', text: chk.text, tone: 'loss' }); SFX.play('lose'); return; }
+    if (this.inStory() && Story.isLocked('royal')) {
+      const g = StoryRules.gateEntry(Story.story, State.s, 'royal');
+      if (g && g.scene) { await Story.playScene(g.scene); return; }
+      UI.toast({ icon: '🔒', title: Story.lockReason('royal'), tone: 'loss' }); SFX.play('lose'); return;
+    }
+    const fee = RoyalRules.entryFee(s);
+    if (fee > 0 && s.balance < fee) { UI.toast({ icon: '🎩', title: 'Eintritt 100 €', text: 'So viel hast du nicht dabei.', tone: 'loss' }); SFX.play('lose'); return; }
+    if (fee > 0) {
+      Game.applyDelta(-fee, { quiet: true });
+      if (this.inStory()) s.story.royalPaidDay = s.story.day;
+    }
+    if (this.inStory()) s.story.stats.royalVisits++;
+    if (!s.flags.royalSeen) { s.flags.royalSeen = true; State.save(); await Cutscene.play('royal.first', {}); }
+    /* Toast erst nach der Erstbesuch-Szene, sonst verschwindet er hinter dem Cutscene-Overlay */
+    if (fee > 0) UI.toast({ icon: '🎩', title: 'Eintritt −100 €', text: this.SYLVIE.paid, tone: 'info' });
+    State.save(); UI.renderWallet(); UI.renderSide();
+    await UI.show('royal');
+    if (typeof Story !== 'undefined') await Story.hook('royal:enter');
+  },
+  async onWin(amount, game) {
+    if (!this.GAMES.includes(game) || amount < RoyalRules.GUEST_WIN) return;
+    Achievements.unlock('royalHigh');
+    const s = State.s;
+    if (s.flags.royalGuest) return;
+    s.flags.royalGuest = true; State.save();
+    await Cutscene.play('royal.guest', { amount: UI.fmt(amount) });
+    if (typeof Story !== 'undefined') await Story.hook('royal:guest');
+  },
+  line() { return State.s.flags.royalGuest ? this.SYLVIE.guest : this.SYLVIE.first; },
+};
+Actions.royal = () => Royal.enter();
+UI.register('royal', {
+  template: 'tpl-royal',
+  mount(root) {
+    qs('#royalLine', root).textContent = Royal.line();
+    qsa('.door', root).forEach((d) => d.addEventListener('click', () => { SFX.play('click'); UI.show(d.dataset.screen); }));
+    qs('#royalLeave', root).addEventListener('click', () => { SFX.play('click'); UI.show('stadt'); });
+    if (typeof Story !== 'undefined') Story.decorateHub(root);
+  },
+});
+Cutscene.define('royal.first', [
+  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Willkommen. Sie sind neu. Man sieht es an den Schuhen, nicht am Auto.' },
+  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Drei Tische. Höhere Einsätze, bessere Beleuchtung, dieselbe Mathematik. Viel Vergnügen.' },
+]);
+Cutscene.define('royal.guest', [
+  { bg: 'royal', who: 'sylvie', mood: 'happy', text: '{{amount}} in einer Runde. Sie sind ab jetzt Gast des Hauses – der Eintritt entfällt.' },
+  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Das Haus schenkt nichts. Es investiert.' },
+]);
+Bus.on('win', ({ amount, game }) => Royal.onWin(amount, game));
+
+/* ---- Mega Seven ---- */
+const MegaSlots = {
+  root: null, spinning: false, gen: 0, freeLeft: 0, lastBet: 0, freeRun: null,
+  alive(gen) { return !!this.root && this.gen === gen; },
+  /* Freispiele gehören zum Spielstand, in dem sie gewonnen wurden: anderer State.s (Moduswechsel, Neues Spiel) → verfallen */
+  checkFreeRun() { if (this.freeRun !== State.s) { this.freeLeft = 0; this.freeRun = null; } },
+  cellText(sym) { return sym === 'BAR' ? 'BAR' : sym; },
+  render(grid, opts = {}) {
+    const g = qs('#megaGrid', this.root); if (!g) return;
+    g.innerHTML = '';
+    for (let row = 0; row < 3; row++) for (let reel = 0; reel < 5; reel++) {
+      const sym = grid[reel][row];
+      g.append(h('div', { class: 'cell' + (sym === 'BAR' ? ' bar' : '') + (opts.spin && opts.spin.includes(reel) ? ' spin' : ''), 'data-reel': reel, 'data-row': row }, this.cellText(sym)));
+    }
+  },
+  markHits(lines) {
+    for (const w of lines) for (let r = 0; r < w.count; r++) {
+      const row = RoyalRules.MEGA.LINES[w.line][r];
+      const el = qs(`.cell[data-reel="${r}"][data-row="${row}"]`, this.root); if (el) el.classList.add('hit');
+    }
+  },
+  syncFree() {
+    this.checkFreeRun();
+    if (!this.root) return;
+    qs('#megaFree', this.root).classList.toggle('hidden', this.freeLeft === 0);
+    qs('#megaFreeLeft', this.root).textContent = this.freeLeft;
+    const b = qs('#btnMega', this.root); if (b) b.textContent = this.freeLeft > 0 ? `Freispiel (${this.freeLeft})` : 'Drehen';
+  },
+  async spin() {
+    if (this.spinning || !this.root) return;
+    this.checkFreeRun();
+    const free = this.freeLeft > 0;
+    const bet = free ? this.lastBet : Game.readBet('megaBet');
+    if (!free && !RoyalRules.MEGA.BETS.includes(bet)) { UI.toast({ icon: '🎰', title: 'Einsatz', text: 'Hier gilt 100, 250, 500 oder 1.000 €.', tone: 'loss' }); return; }
+    /* Freispiel: kein Einsatz, kein beginSpin (checkSpin verlangt bet > 0) – nur die Runde als laufend markieren; settle() räumt sie wieder ab */
+    if (free) { if (Game.settling) return; Game.inFlight++; }
+    else if (!Game.beginSpin(bet)) return;
+    const run = State.s, gen = this.gen;
+    this.spinning = true;
+    try {
+      qs('#btnMega', this.root).disabled = true;
+      if (free) this.freeLeft--;
+      this.lastBet = bet;
+      qs('#megaStatus', this.root).textContent = free ? 'Freispiel läuft…' : 'Walzen laufen…';
+      qs('#megaLines', this.root).textContent = '';
+      let grid = RoyalRules.megaRoll(Math.random);
+      const mods = Perks.mods();
+      grid = RoyalRules.megaLuckOverride(grid, Rules.effectiveLuck(Rules.luck(State.s, mods), bet), Math.random);
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const shown = RoyalRules.megaRoll(Math.random);
+      this.render(shown, { spin: [0, 1, 2, 3, 4] });
+      SFX.loop('reelSpin', 120);
+      const stops = reduced ? [100, 150, 200, 250, 300] : [700, 1050, 1400, 1750, 2100];
+      for (let i = 0; i < 5; i++) {
+        await wait(stops[i] - (i ? stops[i - 1] : 0));
+        if (!this.alive(gen)) break;
+        shown[i] = grid[i];
+        this.render(shown, { spin: [1, 2, 3, 4].filter((k) => k > i) });
+        SFX.play('reelStop');
+      }
+      SFX.stop('reelSpin');
+      const w = RoyalRules.megaWin(grid, bet, free);
+      const delta = RoyalRules.megaDelta(bet, w.payout, free);
+      if (w.freeSpins) { this.freeLeft = Math.min(RoyalRules.MEGA.FREE_MAX, this.freeLeft + w.freeSpins); this.freeRun = run; }
+      if (this.alive(gen)) {
+        this.markHits(w.lines);
+        qs('#megaLines', this.root).textContent = w.lines.map((l) => `Linie ${l.line + 1}: ${this.cellText(l.sym)} ×${l.count} → ${l.mult}×`).join(' · ') + (w.scatters >= 3 ? `${w.lines.length ? ' · ' : ''}⭐×${w.scatters}: +${w.freeSpins} Freispiele` : '');
+        const st = qs('#megaStatus', this.root);
+        st.innerHTML = w.payout > 0 ? `<span class="win">Auszahlung ${UI.fmt(w.payout)}${free ? ' (Freispiel ×2)' : ''}</span>` : `<span class="loss">${free ? 'Freispiel · nichts' : `Niete · −${UI.fmt(bet)}`}</span>`;
+        this.syncFree();
+      }
+      if (w.lines.some((l) => l.sym === '7️⃣' && l.count === 5)) Achievements.unlock('fuenfSiebener');
+      await Bus.emit('megaslots:result', { delta, bet: free ? 0 : bet, detail: { grid, lines: w.lines, scatters: w.scatters, free, freeLeft: this.freeLeft } });
+      await Game.settle(delta, { from: this.alive(gen) ? qs('.mega-machine', this.root) : null, game: 'megaslots', bet: free ? 0 : bet, run });
+    } finally {
+      SFX.stop('reelSpin');
+      if (this.gen === gen) { this.spinning = false; const b = qs('#btnMega', this.root); if (b) b.disabled = false; this.syncFree(); }
+    }
+  },
+  onKey(e) { if (e.code === 'Space' && qs('#cutscene').hidden && !e.repeat) { e.preventDefault(); MegaSlots.spin(); } },
+};
+UI.register('megaslots', {
+  template: 'tpl-megaslots',
+  mount(root) {
+    MegaSlots.gen++; MegaSlots.root = root;
+    MegaSlots.render([['🍒', '7️⃣', '💎'], ['🔔', '7️⃣', 'BAR'], ['💎', '7️⃣', '🍒'], ['BAR', '7️⃣', '🔔'], ['🍒', '7️⃣', '💎']]);
+    Game.bindBet(root, 'megaBet');
+    qs('#btnMega', root).addEventListener('click', () => MegaSlots.spin());
+    qs('#megaBack', root).addEventListener('click', () => { SFX.play('click'); UI.show('royal'); });
+    document.addEventListener('keydown', MegaSlots.onKey);
+    MegaSlots.syncFree();
+  },
+  unmount() { MegaSlots.gen++; document.removeEventListener('keydown', MegaSlots.onKey); SFX.stop('reelSpin'); MegaSlots.root = null; MegaSlots.spinning = false; },
+});
+/* ---- Craps ---- */
+const Craps = {
+  root: null, rolling: false, gen: 0, point: null, bets: { pass: 0, field: 0 }, history: [], run: null,
+  FACES: ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'],
+  alive(gen) { return !!this.root && this.gen === gen; },
+  /* Tischzustand gehört zum Spielstand: anderer State.s (Moduswechsel, Neues Spiel) → Tisch räumen */
+  checkRun() { if (this.run !== State.s) { this.reset(); this.render(); } },
+  place(kind) {
+    if (this.rolling || !this.root) return;
+    this.checkRun();
+    const v = Game.readBet('crapsBet');
+    if (!(v >= RoyalRules.CRAPS.MIN && v <= RoyalRules.CRAPS.MAX)) { UI.toast({ icon: '🎲', title: 'Einsatz', text: `Zwischen ${UI.fmt(RoyalRules.CRAPS.MIN)} und ${UI.fmt(RoyalRules.CRAPS.MAX)}.`, tone: 'loss' }); return; }
+    if (kind === 'pass' && this.point != null) { UI.toast({ icon: '🎲', title: 'Punkt läuft', text: 'Pass Line erst nach der Entscheidung.', tone: 'loss' }); return; }
+    this.bets[kind] = Math.min(RoyalRules.CRAPS.MAX, this.bets[kind] + v);
+    this.run = State.s;
+    SFX.play('chip'); this.render();
+  },
+  /* Leeren: während ein Punkt läuft, bleibt der Pass-Einsatz auf dem Tisch (nur Field wird zurückgenommen) */
+  clear() { if (this.rolling || !this.root) return; if (this.point != null) this.bets.field = 0; else this.bets = { pass: 0, field: 0 }; SFX.play('click'); this.render(); },
+  reset() { this.point = null; this.bets = { pass: 0, field: 0 }; this.history = []; this.run = null; },
+  render() {
+    if (!this.root) return;
+    qs('#passAmt', this.root).textContent = UI.fmt(this.bets.pass);
+    qs('#fieldAmt', this.root).textContent = UI.fmt(this.bets.field);
+    const p = qs('#crapsPoint', this.root); p.textContent = this.point == null ? 'Come-out' : `Punkt ${this.point}`; p.classList.toggle('on', this.point != null);
+    qs('#crapsHistory', this.root).textContent = this.history.slice(-10).join(' · ');
+    qs('#btnPass', this.root).disabled = this.point != null;
+    qs('#btnRoll', this.root).disabled = this.rolling || (this.bets.pass + this.bets.field) === 0;
+  },
+  async roll() {
+    if (this.rolling || !this.root) return;
+    this.checkRun();
+    /* Schnappschuss der Einsätze: abgerechnet wird genau das, was treuhänderisch abgezogen wurde – auch wenn place() nach einem Remount währenddessen wieder freigegeben ist */
+    const bets = { ...this.bets }, point = this.point;
+    const risk = bets.pass + bets.field;
+    if (risk === 0) return;
+    /* Jeder Wurf ist ein Spin: Pass + Field werden treuhänderisch abgezogen; settle() zahlt delta + risk zurück (bei „none“ kommt der Pass-Einsatz zurück und wird beim nächsten Wurf erneut riskiert) */
+    if (!Game.beginSpin(risk)) return;
+    const run = Game.run, gen = this.gen;
+    this.rolling = true; this.render();
+    try {
+      qsa('.craps-bet', this.root).forEach((b) => b.classList.remove('won', 'lost'));
+      qsa('.die', this.root).forEach((d) => d.classList.add('rolling'));
+      qs('#crapsStatus', this.root).textContent = 'Die Würfel rollen…';
+      SFX.loop('reelSpin', 100);
+      let dice = RoyalRules.crapsRoll(Math.random);
+      const mods = Perks.mods();
+      dice = RoyalRules.crapsLuckOverride(dice, point, bets.pass > 0, Rules.effectiveLuck(Rules.luck(State.s, mods), risk), Math.random, bets.field > 0);
+      await wait(matchMedia('(prefers-reduced-motion: reduce)').matches ? 150 : 900);
+      SFX.stop('reelSpin');
+      const r = RoyalRules.crapsSettle(bets, point, dice);
+      this.history.push(`${dice[0]}+${dice[1]}=${r.sum}`);
+      this.point = r.point;
+      /* Rest-Einsatz aus dem Schnappschuss, nicht aus dem Live-Objekt (zwischenzeitlich Gesetztes wurde nie abgezogen und verfällt) */
+      this.bets.pass = (r.pass === 'win' || r.pass === 'lose') ? 0 : bets.pass;
+      this.bets.field = 0;
+      if (this.alive(gen)) {
+        qsa('.die', this.root).forEach((d) => d.classList.remove('rolling'));
+        qs('#die1', this.root).textContent = this.FACES[dice[0]]; qs('#die2', this.root).textContent = this.FACES[dice[1]];
+        SFX.play('reelStop');
+        if (r.pass === 'win') qs('#passBox', this.root).classList.add('won'); if (r.pass === 'lose') qs('#passBox', this.root).classList.add('lost');
+        if (r.field === 'win') qs('#fieldBox', this.root).classList.add('won'); if (r.field === 'lose') qs('#fieldBox', this.root).classList.add('lost');
+        const txt = [];
+        if (r.pass === 'point') txt.push(`Punkt ist ${r.point}`); if (r.pass === 'win') txt.push('Pass gewinnt'); if (r.pass === 'lose') txt.push(r.sum === 7 ? 'Seven out' : 'Craps');
+        if (r.field === 'win') txt.push(`Field ${RoyalRules.crapsField(r.sum) === 2 ? 'doppelt' : 'gewinnt'}`); if (r.field === 'lose') txt.push('Field verliert');
+        qs('#crapsStatus', this.root).innerHTML = `<span class="${r.delta > 0 ? 'win' : r.delta < 0 ? 'loss' : ''}">${txt.join(' · ') || 'Weiter'} (${r.delta >= 0 ? '+' : '−'}${UI.fmt(Math.abs(r.delta))})</span>`;
+        this.render();
+      }
+      await Bus.emit('craps:result', { delta: r.delta, bet: risk, detail: { dice, sum: r.sum, pass: r.pass, field: r.field, point: r.point, bets } });
+      await Game.settle(r.delta, { from: this.alive(gen) ? qs('.craps-table', this.root) : null, game: 'craps', bet: risk, run });
+    } finally {
+      SFX.stop('reelSpin');
+      if (this.gen === gen) { this.rolling = false; this.render(); }
+    }
+  },
+  onKey(e) { if (e.code === 'Space' && qs('#cutscene').hidden && !e.repeat) { e.preventDefault(); Craps.roll(); } },
+};
+UI.register('craps', {
+  template: 'tpl-craps',
+  mount(root) {
+    Craps.gen++; Craps.root = root;
+    if (Craps.run !== State.s) Craps.reset();
+    Game.bindBet(root, 'crapsBet');
+    qs('#btnPass', root).addEventListener('click', () => Craps.place('pass'));
+    qs('#btnField', root).addEventListener('click', () => Craps.place('field'));
+    qs('#btnClearCraps', root).addEventListener('click', () => Craps.clear());
+    qs('#btnRoll', root).addEventListener('click', () => Craps.roll());
+    qs('#crapsBack', root).addEventListener('click', () => { SFX.play('click'); UI.show('royal'); });
+    document.addEventListener('keydown', Craps.onKey);
+    Craps.render();
+  },
+  unmount() { Craps.gen++; document.removeEventListener('keydown', Craps.onKey); SFX.stop('reelSpin'); Craps.root = null; Craps.rolling = false; },
+});
+/* ---- Glücksrad ---- */
+const Wheel = {
+  root: null, spinning: false, gen: 0, turns: 0,
+  COLORS: { 0: '#2a2a2e', 0.5: '#5a3a12', 1: '#1f8a4c', 2: '#1e6fb3', 5: '#b066ff', 10: '#b3261e' },
+  alive(gen) { return !!this.root && this.gen === gen; },
+  label(m) { return m === 0 ? 'BANKROTT' : m === 0.5 ? 'HÄLFTE' : `×${m}`; },
+  build() {
+    const el = qs('#wheel', this.root); if (!el) return;
+    const S = RoyalRules.WHEEL.SEGMENTS, n = S.length, step = 360 / n;
+    el.style.background = `conic-gradient(${S.map((m, i) => `${this.COLORS[m]} ${i * step}deg ${(i + 1) * step}deg`).join(', ')})`;
+    el.innerHTML = '';
+    /* Beschriftung: unrotiert zeigt .seg nach rechts (90° im Uhrzeigersinn von oben), daher −90 */
+    S.forEach((m, i) => el.append(h('div', { class: 'seg', style: `transform: rotate(${i * step + step / 2 - 90}deg)` }, this.label(m))));
+  },
+  /* Zeiger steht oben (0°). Segment i liegt im conic-gradient bei i*step … (i+1)*step im Uhrzeigersinn ab oben, Mitte bei i*step + step/2.
+     rotate(R) dreht das Rad im Uhrzeigersinn, ein Punkt bei Winkel a landet bei a + R. Damit die Segmentmitte unter dem Zeiger liegt: R = −(i*step + step/2). */
+  angleFor(index) { const step = 360 / RoyalRules.WHEEL.SEGMENTS.length; return -(index * step + step / 2); },
+  async spin() {
+    if (this.spinning || !this.root) return;
+    const bet = Game.readBet('wheelBet');
+    if (!RoyalRules.WHEEL.BETS.includes(bet)) { UI.toast({ icon: '🎡', title: 'Einsatz', text: 'Hier gilt 100, 500, 1.000 oder 5.000 €.', tone: 'loss' }); return; }
+    if (!Game.beginSpin(bet)) return;
+    const run = Game.run, gen = this.gen;
+    this.spinning = true;
+    try {
+      qs('#btnWheel', this.root).disabled = true;
+      qs('#wheelStatus', this.root).textContent = 'Das Rad dreht…';
+      let index = RoyalRules.wheelSpin(Math.random);
+      const mods = Perks.mods();
+      index = RoyalRules.wheelLuckOverride(index, Rules.effectiveLuck(Rules.luck(State.s, mods), bet), Math.random);
+      const el = qs('#wheel', this.root);
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      this.turns += reduced ? 1 : 5;
+      el.classList.remove('hit');
+      el.classList.toggle('snap', reduced);
+      el.style.transform = `rotate(${this.turns * 360 + this.angleFor(index)}deg)`;
+      if (!reduced) { let n = 0; const t = setInterval(() => { if (!this.alive(gen) || ++n > 28) return clearInterval(t); SFX.play('click'); }, 150); }
+      await wait(reduced ? 200 : 4600);
+      const mult = RoyalRules.WHEEL.SEGMENTS[index];
+      const delta = RoyalRules.wheelDelta(index, bet);
+      if (this.alive(gen)) {
+        void el.offsetWidth; if (mult >= 1) el.classList.add('hit');
+        qs('#wheelStatus', this.root).innerHTML = mult === 0 ? `<span class="loss">BANKROTT · −${UI.fmt(bet)}</span>` : mult === 0.5 ? `<span class="loss">Hälfte zurück · −${UI.fmt(bet - RoyalRules.wheelPayout(index, bet))}</span>` : mult === 1 ? 'Einsatz zurück' : `<span class="win">×${mult} · +${UI.fmt(delta)}</span>`;
+        SFX.play(mult >= 2 ? 'cash' : mult === 0 ? 'lose' : 'reelStop');
+      }
+      if (mult === 0 && bet === 5000) Achievements.unlock('gegenDieWand');
+      await Bus.emit('wheel:result', { delta, bet, detail: { index, mult } });
+      await Game.settle(delta, { from: this.alive(gen) ? qs('.wheel-stage', this.root) : null, game: 'wheel', bet, run });
+    } finally {
+      if (this.gen === gen) { this.spinning = false; const b = qs('#btnWheel', this.root); if (b) b.disabled = false; }
+    }
+  },
+  onKey(e) { if (e.code === 'Space' && qs('#cutscene').hidden && !e.repeat) { e.preventDefault(); Wheel.spin(); } },
+};
+UI.register('wheel', {
+  template: 'tpl-wheel',
+  mount(root) {
+    Wheel.gen++; Wheel.root = root; Wheel.turns = 0; Wheel.build();
+    Game.bindBet(root, 'wheelBet');
+    qs('#btnWheel', root).addEventListener('click', () => Wheel.spin());
+    qs('#wheelBack', root).addEventListener('click', () => { SFX.play('click'); UI.show('royal'); });
+    document.addEventListener('keydown', Wheel.onKey);
+  },
+  unmount() { Wheel.gen++; document.removeEventListener('keydown', Wheel.onKey); Wheel.root = null; Wheel.spinning = false; },
+});
+/* Neustart / Tagesende: Freispiele verfallen, die Tische werden geräumt */
+Bus.on('gameover:restart', () => { MegaSlots.freeLeft = 0; MegaSlots.freeRun = null; Craps.reset(); });
+Bus.on('story:day', () => { MegaSlots.freeLeft = 0; MegaSlots.freeRun = null; Craps.reset(); });
 </script>
 
 <script id="game-slots">
@@ -3892,13 +4422,21 @@ const Achievements = {
     { id: 'phoenix', title: 'Auferstanden', icon: '🔥', desc: 'Nach dem Game Over weitergespielt.' },
     { id: 'strassenkaempfer', title: 'Straßenkämpfer', icon: '🥊', desc: 'Fünf Räuber verprügelt.' },
     { id: 'vollausgestattet', title: 'Vollausgestattet', icon: '🏁', desc: 'Top-Auto und Carbon-Sprinter.' },
+    { id: 'royalHigh', title: 'High Roller', icon: '🎩', desc: 'Einzelgewinn von 5.000 € im Casino Royal.' },
+    { id: 'fuenfSiebener', title: 'Fünf Siebener', icon: '7️⃣', desc: 'Fünf 7️⃣ auf einer Linie bei Mega Seven.' },
+    { id: 'gegenDieWand', title: 'Gegen die Wand', icon: '🎡', desc: 'Bankrott am Glücksrad mit 5.000 € Einsatz.' },
     { id: 'jobFirst', title: 'Erster Arbeitstag', icon: '🧾', desc: 'Einen Job in der Story beendet.', group: 'story' },
     { id: 'teller10', title: 'Tellerwäscher', icon: '🍽️', desc: '10 von 10 Tellern sauber.', group: 'story' },
     { id: 'nachtschicht', title: 'Nachtschicht', icon: '🚕', desc: 'Taxi-Schicht mit mindestens 200 €.', group: 'story' },
     { id: 'endeEhrlich', title: 'Der Ehrliche', icon: '🤝', desc: 'Vito bis auf den Cent bezahlt.', group: 'story' },
     { id: 'endeTaxi', title: 'Das Taxi', icon: '⛴️', desc: 'Mit der Fähre um vier verschwunden.', group: 'story' },
     { id: 'endeSturz', title: 'Der Sturz', icon: '📕', desc: 'Vito durch die Hintertür geschickt.', group: 'story' },
-    { id: 'alleEnden', title: 'Alle Wege', icon: '🗺️', desc: 'Alle vier Enden einer Story gesehen.', group: 'story' },
+    { id: 'alleEnden', title: 'Alle Wege', icon: '🗺️', desc: 'Alle Enden einer Story gesehen.', group: 'story' },
+    { id: 'endeWirt', title: 'Hausherr', icon: '🔑', desc: 'Den Keller vom Wirt gekauft.', group: 'story' },
+    { id: 'endeNuechtern', title: 'Nüchtern', icon: '🌅', desc: 'Am Keller vorbeigegangen.', group: 'story' },
+    { id: 'endeBrownie', title: 'Der Brownie', icon: '💊', desc: 'Der Doc hat einen Partner.', group: 'story' },
+    { id: 'endeBett', title: 'Das Bett beim Doc', icon: '🛏️', desc: 'Die Niere war ein Vorschuss.', group: 'story' },
+    { id: 'standhaft', title: 'Standhaft', icon: '🙅', desc: 'Dem Doc dreimal Nein gesagt.', group: 'story' },
   ],
   has(id) { return State.meta.achievements.includes(id); },
   unlock(id) {
@@ -3938,10 +4476,12 @@ Bus.on('job:done', () => Achievements.unlock('jobFirst'));
 Bus.on('spueler:result', ({ hits }) => { if (hits >= 10) Achievements.unlock('teller10'); });
 Bus.on('taxi:result', ({ pay }) => { if (pay >= 200) Achievements.unlock('nachtschicht'); });
 Bus.on('story:ended', ({ id, ending }) => {
-  const map = { ehrlich: 'endeEhrlich', taxi: 'endeTaxi', sturz: 'endeSturz' };
+  const st = typeof Stories !== 'undefined' ? Stories.get(id) : null;
+  const map = Object.assign({ ehrlich: 'endeEhrlich', taxi: 'endeTaxi', sturz: 'endeSturz' }, st && st.trophies);
   if (map[ending]) Achievements.unlock(map[ending]);
   const run = State.meta.storyRuns[id];
-  if (run && run.endings.length >= 4) Achievements.unlock('alleEnden');
+  const total = st ? st.endings.length : 4;
+  if (run && run.endings.length >= total) Achievements.unlock('alleEnden');
 });
 </script>
 
@@ -4292,6 +4832,7 @@ const StoryRules = {
     if ('notFlag' in cond) return !st.flags[cond.notFlag];
     if ('unlocked' in cond) return ['jobs', 'doors', 'rooms'].some((k) => st.unlocked[k].includes(cond.unlocked));
     if ('strength' in cond) return StoryRules._ops(cond.strength, s.strength || 0);
+    if ('prevEnding' in cond) return (st.prev || {})[cond.prevEnding.story] === cond.prevEnding.id;
     throw new Error(`Ungültige Bedingung: ${JSON.stringify(cond)}`);
   },
   applyEffect(s, eff, story = {}, rng = Math.random) {
@@ -4325,34 +4866,72 @@ const StoryRules = {
       for (const k of ['jobs', 'doors', 'rooms']) for (const id of eff.unlock[k] || []) if (!st.unlocked[k].includes(id)) st.unlocked[k].push(id);
       return {};
     }
+    if ('luckMod' in eff) { st.luckMod = eff.luckMod || 0; return {}; }
+    if ('jobMod' in eff) { st.jobMod = eff.jobMod ? Object.assign({}, eff.jobMod) : {}; return {}; }
+    if ('price' in eff) {
+      st.prices = Object.assign(st.prices || {}, eff.price);
+      /* Brownie-Preis lebt zusätzlich in s.brownieCost (Rules.canBrownie, Seitenleiste, Kauf) – sonst greift der Story-Preis erst nach dem nächsten Kauf */
+      if (eff.price.brownie != null) s.brownieCost = eff.price.brownie;
+      return {};
+    }
+    if ('enable' in eff) { st.enabled = st.enabled || {}; st.disabled = (st.disabled || []).filter((k) => !eff.enable.includes(k)); for (const k of eff.enable) st.enabled[k] = true; return {}; }
+    if ('disable' in eff) { st.disabled = Array.from(new Set([...(st.disabled || []), ...eff.disable])); st.enabled = st.enabled || {}; for (const k of eff.disable) delete st.enabled[k]; return {}; }
+    if ('set' in eff) { for (const [k, v] of Object.entries(eff.set)) { if (!StoryRules.SET_KEYS.includes(k)) throw new Error(`set-Key "${k}" nicht erlaubt`); s[k] = v; } return {}; }
+    if ('lock' in eff) { for (const k of ['jobs', 'doors', 'rooms']) if (eff.lock[k]) st.unlocked[k] = st.unlocked[k].filter((x) => !eff.lock[k].includes(x)); return {}; }
+    if ('achievement' in eff) return { achievement: eff.achievement };
+    if ('toast' in eff) return { toast: eff.toast };
     const out = {};
     if ('force' in eff) out.force = eff.force;
     if ('loseDay' in eff) out.loseDay = true;
     if ('scene' in eff) out.scene = eff.scene;
     return out;
   },
+  requirementMet(story, storyRuns) {
+    if (!story.requires) return true;
+    const run = storyRuns[story.requires];
+    return !!(run && run.endings && run.endings.length);
+  },
   pickStory(stories, storyRuns, rng) {
-    const cands = stories.filter((st) => !st.dev);
+    const cands = stories.filter((st) => !st.dev && StoryRules.requirementMet(st, storyRuns));
+    if (!cands.length) throw new Error('Keine wählbare Story');
     const last = (st) => (storyRuns[st.id] && storyRuns[st.id].lastPlayed) || 0;
     const min = Math.min(...cands.map(last));
     const oldest = cands.filter((st) => last(st) === min);
     return oldest[Math.floor(rng() * oldest.length)].id;
+  },
+  /* „Nächste Story“ nach einem Ende: die nächste in Definitionsreihenfolge mit erfüllter Voraussetzung, sonst pickStory */
+  nextStory(stories, storyRuns, currentId) {
+    const list = stories.filter((st) => !st.dev);
+    const idx = list.findIndex((st) => st.id === currentId);
+    for (let i = idx + 1; i < list.length; i++) if (StoryRules.requirementMet(list[i], storyRuns)) return list[i].id;
+    return StoryRules.pickStory(list, storyRuns, Math.random);
+  },
+  prevEndings(storyRuns) {
+    const out = {};
+    for (const [id, run] of Object.entries(storyRuns || {})) {
+      const last = run.last || (run.endings && run.endings[run.endings.length - 1]);
+      if (last) out[id] = last;
+    }
+    return out;
   },
   chapterFor(story, s) {
     let found = null;
     for (const ch of story.chapters) if (StoryRules.check(ch.when, s)) found = ch;
     return found;
   },
+  /* once: nie wieder (seen); daily: heute nicht mehr (seenDay[id] === day – Reload am Morgen wiederholt das Event sonst) */
   dueEvents(story, s, at) {
-    return story.events.filter((e) => e.at === at && !(e.once && s.story.seen.includes(e.id)) && StoryRules.check(e.when, s));
+    const seenDay = s.story.seenDay || {};
+    return story.events.filter((e) => e.at === at && !(e.once && s.story.seen.includes(e.id)) && !(e.daily && seenDay[e.id] === s.story.day) && StoryRules.check(e.when, s));
   },
-  ending(story, s) {
-    const sorted = story.endings.filter((e) => !e.fallback).slice().sort((a, b) => b.priority - a.priority);
+  ending(story, s, { immediateOnly = false } = {}) {
+    const cands = story.endings.filter((e) => !e.fallback && (!immediateOnly || e.immediate));
+    const sorted = cands.slice().sort((a, b) => b.priority - a.priority);
     for (const e of sorted) if (StoryRules.check(e.when, s)) return e;
-    if (s.story.day > story.days) return story.endings.find((e) => e.fallback) || null;
+    if (!immediateOnly && s.story.day > story.days) return story.endings.find((e) => e.fallback) || null;
     return null;
   },
-  advanceDay(s) { s.story.day++; s.story.phase = 'morning'; s.story.jobToday = null; if ((s.mugCooldown || 0) > 0) s.mugCooldown--; },
+  advanceDay(s) { s.story.day++; s.story.phase = 'morning'; s.story.jobToday = null; s.beers = 0; s.beerTimer = 0; s.brownieTimer = 0; if ((s.mugCooldown || 0) > 0) s.mugCooldown--; },
   jobAvailable(job, s) {
     const st = s.story;
     if (!st.unlocked.jobs.includes(job.id)) return { ok: false, reason: 'locked' };
@@ -4360,11 +4939,35 @@ const StoryRules = {
     if (job.requires && !StoryRules.check(job.requires, s)) return { ok: false, reason: job.requireText || 'Voraussetzung fehlt' };
     return { ok: true };
   },
-  ROOMS: ['bar', 'doc', 'bank', 'mafia', 'invest', 'life', 'vito', 'stadt'],
+  ROOMS: ['bar', 'doc', 'bank', 'mafia', 'invest', 'life', 'vito', 'stadt', 'royal'],
+  HOOKS: ['morning', 'night', 'sleep', 'spin:after', 'buy:beer', 'buy:brownie', 'buy:kidney', 'buy:therapy', 'royal:enter', 'royal:guest'],
+  SET_KEYS: ['car', 'shoes', 'hasHouse', 'hasDealer', 'kidneySold'],
+  actionsFor(story, s, room) { return (story.actions || []).filter((a) => a.room === room && StoryRules.check(a.when, s)); },
+  /* Bedingte Sperre eines Screens: erster zutreffender Eintrag (oder null); gate() ist die Text-Variante darauf */
+  gateEntry(story, s, screen) {
+    for (const g of ((story.gates || {})[screen] || [])) if (StoryRules.check(g.when, s)) return g;
+    return null;
+  },
+  gate(story, s, screen) {
+    const g = StoryRules.gateEntry(story, s, screen);
+    return g ? g.text : null;
+  },
   spuelerPay(hits, breaks) { return hits * 5 - breaks * 10; },
   taxiPay(passengers, tickets, tip = 0) { return passengers * (15 + tip) - tickets * 50; },
   tuerBonus(strength) { return Math.min(50, 10 * (strength || 0)); },
-  validate(story, sceneIds, jobIds) {
+  price(s, key) {
+    const p = s.story && s.story.prices && s.story.prices[key];
+    return p != null ? p : Rules.PRICES[key];
+  },
+  purchaseAllowed(s, key) {
+    if (!s.story) return null;
+    if ((s.story.disabled || []).includes(key)) return false;
+    if (s.story.enabled && s.story.enabled[key]) return true;
+    return null;
+  },
+  jobMod(s) { return (s.story && s.story.jobMod) || {}; },
+  shiftPay(base, bonus, jobMod) { return Math.round((base + bonus) * (jobMod.shiftPay != null ? jobMod.shiftPay : 1)); },
+  validate(story, sceneIds, jobIds, storyIds = null) {
     const errs = [];
     const scene = (id, where) => { if (id && !sceneIds.includes(id)) errs.push(`${story.id}: Szene "${id}" fehlt (${where})`); };
     const jobs = (list, where) => (list || []).forEach((j) => { if (!jobIds.includes(j)) errs.push(`${story.id}: Job "${j}" unbekannt (${where})`); });
@@ -4373,20 +4976,182 @@ const StoryRules = {
     jobs(story.start && story.start.unlocked && story.start.unlocked.jobs, 'start');
     rooms(story.start && story.start.unlocked && story.start.unlocked.rooms, 'start');
     for (const ch of story.chapters || []) { scene(ch.intro, ch.id); jobs(ch.unlock && ch.unlock.jobs, ch.id); rooms(ch.unlock && ch.unlock.rooms, ch.id); }
-    for (const e of story.events || []) { scene(e.scene, e.id); for (const eff of e.effects || []) { scene(eff.scene, e.id); jobs(eff.unlock && eff.unlock.jobs, e.id); rooms(eff.unlock && eff.unlock.rooms, e.id); } }
+    for (const e of story.events || []) {
+      if (!StoryRules.HOOKS.includes(e.at)) errs.push(`${story.id}: Hook "${e.at}" in Event ${e.id}`);
+      scene(e.scene, e.id); for (const eff of e.effects || []) { scene(eff.scene, e.id); jobs(eff.unlock && eff.unlock.jobs, e.id); rooms(eff.unlock && eff.unlock.rooms, e.id); }
+    }
+    for (const a of story.actions || []) { scene(a.scene, `action ${a.id}`); if (!StoryRules.ROOMS.includes(a.room)) errs.push(`${story.id}: Raum "${a.room}" unbekannt (action ${a.id})`); }
+    const setKeys = (list, where) => (list || []).forEach((eff) => { if (eff.set) for (const k of Object.keys(eff.set)) if (!StoryRules.SET_KEYS.includes(k)) errs.push(`${story.id}: set-Key "${k}" nicht erlaubt (${where})`); });
+    for (const e of story.events || []) setKeys(e.effects, e.id);
     for (const [job, list] of Object.entries(story.jobScenes || {})) { jobs([job], 'jobScenes'); list.forEach((id) => scene(id, `jobScenes.${job}`)); }
-    for (const e of story.endings || []) scene(e.scene, e.id);
+    for (const e of story.endings || []) { scene(e.scene, e.id); if (e.immediate && e.fallback) errs.push(`${story.id}: Ende ${e.id} – immediate und fallback schließen sich aus`); }
     if ((story.endings || []).filter((e) => e.fallback).length !== 1) errs.push(`${story.id}: genau ein Fallback-Ende nötig`);
+    if (story.requires && storyIds && !storyIds.includes(story.requires)) errs.push(`${story.id}: requires "${story.requires}" unbekannt`);
+    for (const k of Object.keys(story.prices || {})) if (!(k in Rules.PRICES)) errs.push(`${story.id}: Preis "${k}" unbekannt`);
+    for (const [screen, list] of Object.entries(story.gates || {})) list.forEach((g, i) => { scene(g.scene, `gate ${screen}[${i}]`); if (!g.when || !g.text) errs.push(`${story.id}: Gate ${screen}[${i}] braucht when und text`); });
+    for (const [end] of Object.entries(story.trophies || {})) if (!(story.endings || []).some((e) => e.id === end)) errs.push(`${story.id}: Trophäe für unbekanntes Ende "${end}"`);
     return errs;
   },
-  freshStoryPart(story) {
+  freshStoryPart(story, storyRuns = {}) {
     return {
       id: story.id, day: 1, phase: 'morning',
       vars: Object.assign({}, story.start.vars), flags: {},
       unlocked: { jobs: [...story.start.unlocked.jobs], doors: [...story.start.unlocked.doors], rooms: [...story.start.unlocked.rooms] },
-      jobsDone: {}, jobToday: null, seen: [], seenJobScenes: {}, ended: null,
-      stats: { earned: 0, gambled: 0, jobs: 0 },
+      jobsDone: {}, jobToday: null, seen: [], seenDay: {}, seenJobScenes: {}, ended: null,
+      stats: { earned: 0, gambled: 0, jobs: 0, wins: 0, streak: 0, bestStreak: 0, biggestWin: 0, beers: 0, brownies: 0, royalVisits: 0 },
+      prev: StoryRules.prevEndings(storyRuns),
+      prices: Object.assign({}, story.prices || {}), enabled: {}, disabled: [...(story.disabled || [])], luckMod: 0, jobMod: {},
     };
+  },
+  recordSpin(stats, delta) {
+    if (delta > 0) { stats.wins++; stats.streak++; stats.bestStreak = Math.max(stats.bestStreak, stats.streak); stats.biggestWin = Math.max(stats.biggestWin, delta); }
+    else if (delta < 0) stats.streak = 0;
+  },
+  fmtMoney(n) { return `${Math.round(n).toLocaleString('de-DE')} €`; },
+};
+</script>
+
+<script id="royal-rules">
+/* ================= CASINO ROYAL – reine Spielregeln (Mega Seven, Craps, Glücksrad) ================= */
+const RoyalRules = {
+  ENTRY_FEE: 100,
+  GUEST_WIN: 5000,
+  /* ---- Eintritt ---- */
+  canEnter(s) {
+    if (!s.car) return { ok: false, reason: 'car', text: 'Parkservice only – zu Fuß kommt hier keiner rein.' };
+    return { ok: true };
+  },
+  entryFee(s) {
+    if (s.flags && s.flags.royalGuest) return 0;
+    if (s.story && s.story.royalPaidDay != null && s.story.royalPaidDay === s.story.day) return 0;
+    return RoyalRules.ENTRY_FEE;
+  },
+  /* ---- Mega Seven: 5 Walzen × 3 Reihen, 5 feste Linien ---- */
+  MEGA: {
+    SYMBOLS: ['🍒', '🔔', 'BAR', '💎', '7️⃣', '⭐'],
+    WEIGHTS: [30, 25, 18, 12, 7, 8],
+    LINES: [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [2, 2, 2, 2, 2], [0, 1, 2, 1, 0], [2, 1, 0, 1, 2]], // Reihe je Walze
+    PAY: { '🍒': [0, 0, 0, 2, 5, 10], '🔔': [0, 0, 0, 3, 10, 25], BAR: [0, 0, 0, 5, 20, 50], '💎': [0, 0, 0, 10, 40, 100], '7️⃣': [0, 0, 0, 20, 100, 500] },
+    BETS: [100, 250, 500, 1000],
+    FREE_SPINS: 5, FREE_MULT: 2, FREE_MAX: 15, SCATTER: '⭐',
+  },
+  megaSymbol(rng) {
+    const M = RoyalRules.MEGA;
+    const total = M.WEIGHTS.reduce((a, b) => a + b, 0);
+    let r = rng() * total;
+    for (let i = 0; i < M.SYMBOLS.length; i++) { r -= M.WEIGHTS[i]; if (r < 0) return M.SYMBOLS[i]; }
+    return M.SYMBOLS[M.SYMBOLS.length - 1];
+  },
+  megaRoll(rng) { return [0, 1, 2, 3, 4].map(() => [0, 1, 2].map(() => RoyalRules.megaSymbol(rng))); },
+  megaLineWins(grid) {
+    const M = RoyalRules.MEGA, out = [];
+    M.LINES.forEach((rows, line) => {
+      const sym = grid[0][rows[0]];
+      if (sym === M.SCATTER || !M.PAY[sym]) return;
+      let count = 1;
+      for (let r = 1; r < 5; r++) { if (grid[r][rows[r]] === sym) count++; else break; }
+      if (count >= 3) out.push({ line, sym, count, mult: M.PAY[sym][count] });
+    });
+    return out;
+  },
+  megaScatters(grid) { return grid.flat().filter((s) => s === RoyalRules.MEGA.SCATTER).length; },
+  megaWin(grid, bet, free) {
+    const M = RoyalRules.MEGA;
+    const lines = RoyalRules.megaLineWins(grid);
+    const lineBet = bet / M.LINES.length;
+    const payout = Math.round(lines.reduce((a, w) => a + w.mult * lineBet, 0) * (free ? M.FREE_MULT : 1));
+    const scatters = RoyalRules.megaScatters(grid);
+    return { lines, scatters, payout, freeSpins: scatters >= 3 ? M.FREE_SPINS : 0 };
+  },
+  megaShift(grid, reel, dir) {
+    const g = grid.map((c) => c.slice());
+    const c = g[reel];
+    g[reel] = dir > 0 ? [c[1], c[2], c[0]] : [c[2], c[0], c[1]];
+    return g;
+  },
+  /* Glück: gewinnt keine Linie, wird die Walze/Richtung gewählt, deren Ein-Schritt-Verschiebung am meisten zahlt.
+     Pech: ein gewinnendes Gitter wird mit |luck| % einmal neu gewürfelt. */
+  megaLuckOverride(grid, luck, rng) {
+    if (luck < 0) return RoyalRules.megaLineWins(grid).length && Rules.pech(luck, rng) ? RoyalRules.megaRoll(rng) : grid;
+    if (RoyalRules.megaLineWins(grid).length) return grid;
+    if (!(rng() * 100 < luck)) return grid;
+    let best = null, bestPay = 0;
+    for (let reel = 0; reel < 5; reel++) for (const dir of [1, -1]) {
+      const g = RoyalRules.megaShift(grid, reel, dir);
+      const pay = RoyalRules.megaLineWins(g).reduce((a, w) => a + w.mult, 0);
+      if (pay > bestPay) { best = g; bestPay = pay; }
+    }
+    return best || grid;
+  },
+  megaDelta(bet, payout, free) { return free ? payout : payout - bet; },
+  /* ---- Craps: Pass Line + Field ---- */
+  CRAPS: { MIN: 50, MAX: 2000, FIELD: { 2: 2, 3: 1, 4: 1, 9: 1, 10: 1, 11: 1, 12: 2 } },
+  crapsRoll(rng) { return [Math.floor(rng() * 6) + 1, Math.floor(rng() * 6) + 1]; },
+  crapsPass(point, sum) {
+    if (point == null) {
+      if (sum === 7 || sum === 11) return { result: 'win', point: null };
+      if (sum === 2 || sum === 3 || sum === 12) return { result: 'lose', point: null };
+      return { result: 'point', point: sum };
+    }
+    if (sum === point) return { result: 'win', point: null };
+    if (sum === 7) return { result: 'lose', point: null };
+    return { result: 'none', point };
+  },
+  crapsField(sum) { return RoyalRules.CRAPS.FIELD[sum] || 0; },
+  crapsSettle(bets, point, dice) {
+    const sum = dice[0] + dice[1];
+    let delta = 0, pass = null, field = null, newPoint = point;
+    if (bets.pass > 0 || point != null) {
+      const p = RoyalRules.crapsPass(point, sum);
+      newPoint = p.point;
+      if (bets.pass > 0) {
+        pass = p.result;
+        if (p.result === 'win') delta += bets.pass; else if (p.result === 'lose') delta -= bets.pass;
+      }
+    }
+    if (bets.field > 0) {
+      const m = RoyalRules.crapsField(sum);
+      field = m ? 'win' : 'lose';
+      delta += m ? bets.field * m : -bets.field;
+    }
+    return { delta, pass, field, point: newPoint, sum };
+  },
+  /* Glück: ein verlierender Pass-Wurf (7 in der Punktphase, 2/3/12 im Come-out) wird um ±1 auf einem Würfel verschoben.
+     Pech: ein gewinnender Wurf (Pass oder Field) wird mit |luck| % einmal neu gewürfelt. */
+  crapsLuckOverride(dice, point, hasPass, luck, rng, hasField = false) {
+    if (luck < 0) {
+      const s = dice[0] + dice[1];
+      const wins = (hasPass && RoyalRules.crapsPass(point, s).result === 'win') || (hasField && RoyalRules.crapsField(s) > 0);
+      return wins && Rules.pech(luck, rng) ? RoyalRules.crapsRoll(rng) : dice;
+    }
+    if (!hasPass) return dice;
+    const losing = (d) => { const s = d[0] + d[1]; return point != null ? s === 7 : (s === 2 || s === 3 || s === 12); };
+    if (!losing(dice) || !(rng() * 100 < luck)) return dice;
+    for (const [i, dir] of [[0, 1], [0, -1], [1, 1], [1, -1]]) {
+      const d = dice.slice(); d[i] += dir;
+      if (d[i] >= 1 && d[i] <= 6 && !losing(d)) return d;
+    }
+    return dice;
+  },
+  /* ---- Glücksrad: 24 Segmente, Multiplikator auf den Einsatz (0 = Bankrott, 0,5 = Hälfte zurück) ---- */
+  WHEEL: {
+    SEGMENTS: [0, 0, 0.5, 0, 0, 1, 0, 1, 0, 2, 0, 0.5, 0, 1, 0, 5, 0, 0.5, 0, 10, 0, 0.5, 0, 0.5],
+    BETS: [100, 500, 1000, 5000],
+  },
+  wheelSpin(rng) { return Math.floor(rng() * RoyalRules.WHEEL.SEGMENTS.length); },
+  wheelPayout(index, bet) { return Math.round(bet * RoyalRules.WHEEL.SEGMENTS[index]); },
+  wheelDelta(index, bet) { return RoyalRules.wheelPayout(index, bet) - bet; },
+  /* Glück: Bankrott rückt auf das nächste Nicht-Bankrott-Segment; Pech: ein Gewinn rückt auf das nächste Bankrott-Segment */
+  wheelLuckOverride(index, luck, rng) {
+    const S = RoyalRules.WHEEL.SEGMENTS;
+    if (luck < 0) {
+      if (S[index] === 0 || !Rules.pech(luck, rng)) return index;
+      for (let k = 1; k <= 2; k++) { const j = (index + k) % S.length; if (S[j] === 0) return j; }
+      return index;
+    }
+    if (S[index] !== 0 || !(rng() * 100 < luck)) return index;
+    for (let k = 1; k <= 2; k++) { const j = (index + k) % S.length; if (S[j] !== 0) return j; }
+    return index;
   },
 };
 </script>
@@ -4410,8 +5175,12 @@ const Title = {
         tag.textContent = `Fortsetzen · ${info.title} · Tag ${info.day}/${info.days}`;
         qs('#titleNewStory', root).classList.remove('hidden');
       } else {
-        tag.textContent = 'Neue Story';
+        const nx = typeof Stories !== 'undefined' ? Stories.next() : null;
+        tag.textContent = nx ? `Neue Story · ${nx.title}` : 'Neue Story';
       }
+      const locked = typeof Stories !== 'undefined' ? Stories.locked() : [];
+      const lockEl = qs('#titleStoryLock', root);
+      if (locked.length) { lockEl.textContent = locked.map((l) => `🔒 ${l.title} – erst „${l.requires}“ beenden`).join(' · '); lockEl.classList.remove('hidden'); }
       qs('#titleMute', root).textContent = State.meta.muted ? '🔇' : '🔊';
       qs('#titleMute', root).addEventListener('click', (e) => { SFX.setMuted(!State.meta.muted); e.currentTarget.textContent = State.meta.muted ? '🔇' : '🔊'; });
       qs('#titleTrophiesBtn', root).addEventListener('click', () => {
@@ -4444,7 +5213,7 @@ const Title = {
     await Modes.enter(choice);
   },
 };
-/* Modus betreten – Story-Teil kommt in Task 3 (Story.enter); hier nur das freie Spiel */
+/* Modus betreten: freies Spiel direkt, Story über Story.enter */
 const Modes = {
   async enter(choice) {
     if (choice === 'free') {
@@ -4477,6 +5246,12 @@ const Stories = {
   },
   get(id) { return this.all[id]; },
   list() { return Object.values(this.all).filter((s) => !s.dev); },
+  next() {
+    try { const id = StoryRules.pickStory(this.list(), State.meta.storyRuns, Math.random); const st = this.get(id); return { id, title: st.title }; } catch (e) { return null; }
+  },
+  locked() {
+    return this.list().filter((st) => !StoryRules.requirementMet(st, State.meta.storyRuns)).map((st) => ({ id: st.id, title: st.title, requires: this.get(st.requires) ? this.get(st.requires).title : st.requires }));
+  },
   runInfo() {
     const p = State.peekStory();
     if (!p) return null;
@@ -4487,7 +5262,8 @@ const Stories = {
     const sceneIds = Object.keys(Cutscene.SCENES);
     const jobIds = typeof Jobs !== 'undefined' ? Object.keys(Jobs.POOL) : null;
     const errs = [];
-    for (const st of Object.values(this.all)) errs.push(...StoryRules.validate(st, sceneIds, jobIds || (st.start.unlocked.jobs)));
+    const storyIds = Object.keys(this.all);
+    for (const st of Object.values(this.all)) errs.push(...StoryRules.validate(st, sceneIds, jobIds || (st.start.unlocked.jobs), storyIds));
     if (errs.length) { errs.forEach((e) => console.error('[story]', e)); UI.toast({ icon: '🐛', title: 'Story-Daten fehlerhaft', text: errs[0], tone: 'loss', ms: 8000 }); }
     return errs;
   },
@@ -4495,12 +5271,18 @@ const Stories = {
 
 const Story = {
   DOORS: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'postman'],
-  ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'] },
+  ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'], royal: ['royal'], megaslots: ['royal'], craps: ['royal'], wheel: ['royal'] },
   story: null,
   allowOnce: null,
+  forcedNext: null,
   lostDay: false,
   sleeping: false,
+  finishing: false,
   get s() { return State.s.story; },
+  /* Nach jedem await, das die Story beenden kann: ist der beim Einstieg gefangene Story-Zustand noch aktuell?
+     finish() → „Nächste Story" tauscht State.s gegen die nächste Story aus (this.s zeigt dann auf die NEUE, ended null),
+     „Zum Titel" → freies Spiel lässt this.s undefined – Prüfungen über this.s nach dem await sind deshalb tot. */
+  stale(st) { return !st || !!st.ended || State.s.story !== st; },
 
   /* ---- Einstieg ---- */
   async enter(choice) {
@@ -4516,17 +5298,21 @@ const Story = {
     }
     if (choice === 'newstory' || !State.hasStoryRun()) {
       const forced = params.get('story');
-      const id = forced && Stories.get(forced) ? forced : StoryRules.pickStory(Stories.list(), State.meta.storyRuns, Math.random);
+      const forcedNext = this.forcedNext; this.forcedNext = null;
+      const id = forced && Stories.get(forced) ? forced : (forcedNext || StoryRules.pickStory(Stories.list(), State.meta.storyRuns, Math.random));
       const story = Stories.get(id);
       State.startStory(story);
+      if (params.has('prev') && params.has('fresh') && story.requires) State.s.story.prev[story.requires] = params.get('prev');
       if (typeof Perks !== 'undefined') Perks.refreshExcluded(true);
       if (typeof Roulette !== 'undefined') Roulette.lastBets = [];
       if (params.has('day') && params.has('fresh')) State.s.story.day = Math.max(1, parseInt(params.get('day'), 10) || 1);
       this.story = story;
       this.setup();
       State.save();
-      if (!params.has('day')) await this.playScene(story.intro);
+      const st = this.s;
+      if (!params.has('day')) { await this.playScene(story.intro); if (this.stale(st)) return; }
       await this.applyChapter();
+      if (this.stale(st)) return;
       if (params.has('ending')) { const end = story.endings.find((e) => e.id === params.get('ending')); if (end) return this.finish(end); }
       await this.morning();
       if (params.has('job') && this.s.phase === 'morning') await Jobs.take(params.get('job'));
@@ -4536,8 +5322,11 @@ const Story = {
     this.story = Stories.get(State.s.story.id);
     if (!this.story) { UI.toast({ icon: '🐛', title: 'Story unbekannt', text: State.s.story.id, tone: 'loss' }); return Modes.enter('free'); }
     this.setup();
+    const st = this.s;
     await this.applyChapter();
-    if (this.s.phase === 'morning') await this.morning(); else await this.evening();
+    if (this.stale(st)) return;
+    if (st.phase === 'morning') await this.morning(); else await this.evening();
+    if (this.stale(st)) return; // ein sofortiges Ende im Morgen-Event darf Jobs.take/Toast nicht mehr auf einer toten Story ausführen
     if (params.has('job') && this.s.phase === 'morning') await Jobs.take(params.get('job'));
     UI.toast({ icon: '📖', title: this.story.title, text: `Tag ${this.s.day} von ${this.story.days}.` });
   },
@@ -4545,13 +5334,14 @@ const Story = {
      dieselbe Story mit ?fresh&day=… erzwingen. */
   consumeDevParams() {
     const params = new URLSearchParams(location.search);
-    const dev = ['story', 'day', 'job', 'ending', 'fresh'];
+    const dev = ['story', 'day', 'job', 'ending', 'fresh', 'prev'];
     if (!dev.some((k) => params.has(k))) return;
     dev.forEach((k) => params.delete(k));
     const q = params.toString();
     try { history.replaceState(null, '', location.pathname + (q ? `?${q}` : '') + location.hash); } catch (e) { /* file:// o. ä. – egal */ }
   },
   setup() {
+    if (this.s) this.s.stats = Object.assign({ wins: 0, streak: 0, bestStreak: 0, biggestWin: 0, beers: 0, brownies: 0, royalVisits: 0 }, this.s.stats);
     document.body.classList.remove('mode-free'); document.body.classList.add('mode-story');
     UI.mountShell();
     this.renderDaybar();
@@ -4566,50 +5356,94 @@ const Story = {
       const hud = (this.story.hud || []).find((h) => h.var === k);
       c[k] = hud && hud.fmt === 'money' ? UI.fmt(v) : String(v);
     }
+    c.raw = { balance: s.balance, day: this.s.day, vars: Object.assign({}, this.s.vars), flags: Object.assign({}, this.s.flags) };
+    c.prev = this.s.prev || {};
     return Object.assign(c, extra);
   },
   async playScene(id, extra = {}) {
     if (!id) return undefined;
+    const st = this.s;
     const result = await Cutscene.play(id, this.ctx(extra));
+    if (this.stale(st)) return result;
     const def = this.story.scenes[id]; const panels = typeof def === 'function' ? def(this.ctx(extra)) : (def || []);
     if (result !== undefined) {
-      for (const p of panels) for (const ch of p.choices || []) if (ch.value === result && ch.effects) await this.applyEffects(ch.effects);
+      for (const p of panels) for (const ch of p.choices || []) if (ch.value === result && ch.effects) { await this.applyEffects(ch.effects); if (this.stale(st)) return result; }
     }
     return result;
   },
   async applyEffects(list) {
+    const st = this.s;
+    if (this.stale(st)) return;
     for (const eff of list || []) {
       const out = StoryRules.applyEffect(State.s, eff, this.story);
-      if (out.scene) await this.playScene(out.scene);
-      if (out.force === 'duel') await this.forceDuel();
+      if (out.achievement && typeof Achievements !== 'undefined') Achievements.unlock(out.achievement);
+      if (out.toast) UI.toast(out.toast);
+      if (out.scene) { await this.playScene(out.scene); if (this.stale(st)) return; }
+      if (out.force === 'duel') { await this.forceDuel(); if (this.stale(st)) return; }
       if (out.loseDay) this.lostDay = true;
     }
     State.save();
     UI.setBalance(State.s.balance);
     UI.renderWallet(); UI.renderSide();
     this.renderDaybar();
+    await this.checkImmediate();
   },
   async runEvents(at) {
+    const st = this.s;
+    if (this.stale(st)) return;
     for (const e of StoryRules.dueEvents(this.story, State.s, at)) {
-      if (e.scene) await this.playScene(e.scene);
+      if (e.scene) { await this.playScene(e.scene); if (this.stale(st)) return; }
       await this.applyEffects(e.effects || []);
-      /* erst nach Szene und Effekten als gesehen markieren – ein Reload mittendrin überspringt nichts */
-      if (e.once) { this.s.seen.push(e.id); State.save(); }
+      /* erst nach Szene und Effekten als gesehen markieren – ein Reload mittendrin überspringt nichts.
+         Hat ein Effekt die Story beendet (und ggf. die nächste gestartet), gehört nichts mehr in `seen`. */
+      if (this.stale(st)) return;
+      if (e.once) { st.seen.push(e.id); State.save(); }
+      if (e.daily) { (st.seenDay || (st.seenDay = {}))[e.id] = st.day; State.save(); } // alte Spielstände haben kein seenDay
     }
   },
+  /* Sofortiges Ende prüfen (nach Effekten/Käufen) – spielt es sofort, unabhängig von Nacht/Fallback */
+  async checkImmediate() {
+    if (this.finishing || !this.story || !this.s || this.s.ended) return false;
+    const end = StoryRules.ending(this.story, State.s, { immediateOnly: true });
+    if (!end) return false;
+    this.finishing = true;
+    try { await this.finish(end); } finally { this.finishing = false; }
+    return true;
+  },
+  /* Generischer Einstiegspunkt für Käufe/Zimmer: Events des Hooks abarbeiten, dann sofortige Enden prüfen */
+  async hook(at) {
+    const st = this.s;
+    if (State.mode !== 'story' || !this.story || this.stale(st)) return;
+    await this.runEvents(at);
+    /* Hat ein Event die Story schon beendet (runEvents → applyEffects → checkImmediate), nichts mehr prüfen */
+    if (this.stale(st)) return;
+    await this.checkImmediate();
+  },
+  /* Story-Aktion aus der Seitenleiste: spielt ihre Szene, wendet Choice-Effekte an, prüft sofortige Enden */
+  async action(id) {
+    const a = (this.story.actions || []).find((x) => x.id === id);
+    if (!a || !StoryRules.check(a.when, State.s) || Cutscene.active || Game.inFlight > 0 || this.sleeping || UI.busy) return;
+    const st = this.s;
+    await this.playScene(a.scene);
+    if (this.stale(st)) return; // Choice-Effekt hat die Story beendet (finish lief schon in applyEffects) – nichts mehr auf der toten Story rendern
+    await this.checkImmediate();
+    UI.renderSide(); this.renderDaybar();
+  },
   async applyChapter() {
+    const st = this.s;
+    if (this.stale(st)) return;
     const ch = StoryRules.chapterFor(this.story, State.s);
-    if (!ch || ch.id === this.s.chapter) return;
-    this.s.chapter = ch.id;
-    const before = { jobs: [...this.s.unlocked.jobs], doors: [...this.s.unlocked.doors], rooms: [...this.s.unlocked.rooms] };
+    if (!ch || ch.id === st.chapter) return;
+    st.chapter = ch.id;
+    const before = { jobs: [...st.unlocked.jobs], doors: [...st.unlocked.doors], rooms: [...st.unlocked.rooms] };
     if (ch.unlock) StoryRules.applyEffect(State.s, { unlock: (ch.unlock || {}) }, this.story);
     State.save();
     UI.toast({ icon: '📖', title: `Kapitel: ${ch.title}`, tone: 'gold', ms: 4000 });
-    if (ch.intro) await this.playScene(ch.intro);
+    if (ch.intro) { await this.playScene(ch.intro); if (this.stale(st)) return; }
     const added = {
-      jobs: this.s.unlocked.jobs.filter((j) => !before.jobs.includes(j)),
-      doors: this.s.unlocked.doors.filter((d) => !before.doors.includes(d)),
-      rooms: this.s.unlocked.rooms.filter((r) => !before.rooms.includes(r)),
+      jobs: st.unlocked.jobs.filter((j) => !before.jobs.includes(j)),
+      doors: st.unlocked.doors.filter((d) => !before.doors.includes(d)),
+      rooms: st.unlocked.rooms.filter((r) => !before.rooms.includes(r)),
     };
     if (added.jobs.length || added.doors.length || added.rooms.length) {
       const names = [...added.jobs.map((j) => (typeof Jobs !== 'undefined' && Jobs.POOL[j] ? Jobs.POOL[j].name : j)), ...added.doors, ...added.rooms];
@@ -4621,9 +5455,11 @@ const Story = {
   /* ---- Tagesphasen ---- */
   async morning() {
     if (this.s.jobToday) return this.evening(); // Job heute schon erledigt (z. B. Reload vor „Feierabend")
-    this.s.phase = 'morning'; this.lostDay = false;
+    const st = this.s;
+    st.phase = 'morning'; this.lostDay = false;
     State.save(); this.renderDaybar();
     await this.runEvents('morning');
+    if (this.stale(st)) return;
     if (this.lostDay) return this.evening();
     await UI.show(UI.screens.has('jobs') ? 'jobs' : 'hub');
   },
@@ -4639,18 +5475,24 @@ const Story = {
     if (this.s.phase !== 'evening' || Cutscene.active || Game.inFlight > 0) { if (Game.inFlight > 0) UI.toast({ icon: '⏳', title: 'Erst die Runde beenden' }); return; }
     this.sleeping = true;
     this.renderDaybar();
+    const st = this.s;
     try {
-      await this.fade(`Nacht ${this.s.day}`);
+      await this.fade(`Nacht ${st.day}`);
+      await this.runEvents('sleep');
+      if (this.stale(st)) return;
       await this.runEvents('night');
+      if (this.stale(st)) return;
       let end = StoryRules.ending(this.story, State.s);
       if (end) return this.finish(end);
       StoryRules.advanceDay(State.s);
       State.save();
-      await Bus.emit('story:day', { day: this.s.day });
+      await Bus.emit('story:day', { day: st.day });
+      if (this.stale(st)) return;
       end = StoryRules.ending(this.story, State.s);
       if (end) return this.finish(end);
-      await this.fade(`Tag ${this.s.day}`);
+      await this.fade(`Tag ${st.day}`);
       await this.applyChapter();
+      if (this.stale(st)) return;
       await this.morning();
     } finally {
       this.sleeping = false;
@@ -4660,6 +5502,7 @@ const Story = {
     this.s.ended = end.id;
     const run = State.meta.storyRuns[this.story.id] || (State.meta.storyRuns[this.story.id] = { lastPlayed: 0, endings: [] });
     if (!run.endings.includes(end.id)) run.endings.push(end.id);
+    run.last = end.id;
     run.lastPlayed = Date.now();
     State.saveMeta(); State.save();
     const st = this.s.stats;
@@ -4677,7 +5520,10 @@ const Story = {
     ]);
     const choice = await Cutscene.play('story.ending.choice', this.ctx({ stats }));
     await Bus.emit('story:ended', { id: this.story.id, ending: end.id });
-    if (choice === 'next') return this.enter('newstory');
+    /* Ab hier beginnt die nächste Story bzw. der Titel – deren sofortige Enden dürfen nicht mehr unterdrückt werden
+       (checkImmediate hält `finishing` sonst, bis enter('newstory') samt Intro/Morgen der NÄCHSTEN Story zurückkehrt). */
+    this.finishing = false;
+    if (choice === 'next') { this.forcedNext = StoryRules.nextStory(Stories.list(), State.meta.storyRuns, this.story.id); return this.enter('newstory'); }
     const c = await Title.show();
     if (c) await Modes.enter(c);
   },
@@ -4697,6 +5543,7 @@ const Story = {
     if (screen === this.allowOnce) { this.allowOnce = null; return false; }
     if (['jobs', 'vito', 'skills'].includes(screen)) return false;
     if (['job-spueler', 'job-taxi'].includes(screen)) return this.s.phase !== 'morning';
+    if (StoryRules.gate(this.story, State.s, screen)) return true;
     if (this.DOORS.includes(screen)) {
       if (screen === 'postman') return true; // Post ist ein Job (morgens)
       return !this.s.unlocked.doors.includes(screen);
@@ -4705,6 +5552,7 @@ const Story = {
     return false;
   },
   lockReason(screen) {
+    const g = StoryRules.gate(this.story, State.s, screen); if (g) return g;
     if (screen === 'postman') return 'Morgens, an der Pinnwand';
     return (this.story.lockReason || {})[screen] || 'Noch geschlossen';
   },
@@ -4724,7 +5572,8 @@ const Story = {
     return (this.story.hud || []).map((hd) => {
       const v = this.s.vars[hd.var] || 0;
       const txt = hd.fmt === 'money' ? UI.fmt(v) : (hd.max ? `${v}/${hd.max}` : String(v));
-      return h('span', { class: `note ${hd.tone || 'gold'}` }, `${hd.label} ${txt}`);
+      const label = typeof hd.label === 'function' ? hd.label(State.s) : hd.label;
+      return h('span', { class: `note ${hd.tone || 'gold'}` }, `${label} ${txt}`);
     });
   },
   renderDaybar() {
@@ -4754,6 +5603,7 @@ const Story = {
 
   /* ---- Erzwungenes Duell ---- */
   async forceDuel() {
+    const st = this.s;
     this.allowOnce = 'russian';
     await UI.show('russian');
     const victim = await new Promise((resolve) => {
@@ -4761,6 +5611,7 @@ const Story = {
       Russian.start({ forced: true });
       if (!Russian.inDuel) { off(); resolve('aborted'); } // Screen nicht bereit – nicht ewig warten
     });
+    if (this.stale(st)) return victim; // Story zwischenzeitlich beendet – keine Flags mehr auf eine tote Story schreiben
     this.s.flags[victim === 'igor' ? 'duelWon' : 'duelLost'] = true;
     State.save();
     await wait(800);
@@ -4774,8 +5625,13 @@ Cutscene.define('story.newConfirm', [
     choices: [{ label: 'Ja, neu anfangen', value: 'yes', cls: 'red' }, { label: 'Weiterspielen', value: 'no', cls: 'ghost' }] },
 ]);
 
-Bus.on('spin:after', () => { if (State.mode === 'story' && Story.story) return Story.runEvents('spin:after'); });
-Bus.on('loss', ({ amount }) => { if (State.mode === 'story' && Story.story) { Story.s.stats.gambled += amount; State.save(); } });
+Bus.on('spin:after', () => {
+  if (State.mode !== 'story' || !Story.story) return;
+  if (Story.s && Story.s.ended) return;
+  return Story.runEvents('spin:after');
+});
+Bus.on('win', ({ amount }) => { if (State.mode === 'story' && Story.story) { StoryRules.recordSpin(Story.s.stats, amount); State.save(); } });
+Bus.on('loss', ({ amount }) => { if (State.mode === 'story' && Story.story) { Story.s.stats.gambled += amount; StoryRules.recordSpin(Story.s.stats, -amount); State.save(); } });
 </script>
 
 <script id="jobs">
@@ -4791,6 +5647,7 @@ const Jobs = {
     kurier: { id: 'kurier', name: 'Kevins Kurier', icon: '💊', kind: 'shift', base: 300, desc: 'Päckchen von A nach B. Frag nicht, was drin ist.', pay: '300 €' },
     praktikant: { id: 'praktikant', name: 'Praktikant bei Krause', icon: '👔', kind: 'shift', base: 120, desc: 'Kaffee kochen, Akten lesen. Manche Akten sind interessant.', pay: '120 €' },
     docassi: { id: 'docassi', name: 'Assistent beim Doc', icon: '🩺', kind: 'shift', base: 250, desc: 'Handschuhe an. Nicht hinsehen.', pay: '250 €' },
+    filialleiter: { id: 'filialleiter', name: 'Filialleiter bei Krause', icon: '🏦', kind: 'shift', base: 400, desc: 'Anzug, Schlüssel, Unterschriftenmappe. Ihre Frau ruft öfter an.', pay: '400 €' },
   },
   render(root) {
     const board = qs('#pinboard', root);
@@ -4823,6 +5680,7 @@ const Jobs = {
     await this.runShift(job);
   },
   async runShift(job) {
+    const run = State.s; // Story-Teil dieses Laufs – falls ein sofortiges Ende die Story wechselt, gilt der Rest hier nicht mehr
     const list = (Story.story.jobScenes || {})[job.id] || [];
     const seen = Story.s.seenJobScenes[job.id] || (Story.s.seenJobScenes[job.id] = []);
     let cands = list.filter((sid) => !seen.includes(sid));
@@ -4831,11 +5689,16 @@ const Jobs = {
     if (sceneId) seen.push(sceneId);
     const before = State.s.balance;
     const bonus = job.id === 'tuersteher' ? StoryRules.tuerBonus(State.s.strength) : 0;
-    Game.applyDelta(job.base + bonus, { quiet: true });
-    UI.toast({ icon: job.icon, title: `${job.name}: Schicht`, text: bonus > 0 ? `+${UI.fmt(job.base)} Lohn, +${UI.fmt(bonus)} weil keiner mit dir diskutiert.` : `+${UI.fmt(job.base)} Lohn.`, tone: 'win' });
+    const jm = StoryRules.jobMod(State.s);
+    const pay = StoryRules.shiftPay(job.base, bonus, jm);
+    Game.applyDelta(pay, { quiet: true });
+    const cut = pay < job.base + bonus ? ' Du hast die Gläser fallen lassen – halber Lohn.' : '';
+    UI.toast({ icon: job.icon, title: `${job.name}: Schicht`, text: (bonus > 0 ? `+${UI.fmt(job.base)} Lohn, +${UI.fmt(bonus)} weil keiner mit dir diskutiert.` : `+${UI.fmt(job.base)} Lohn.`) + cut, tone: 'win' });
     if (sceneId) await Story.playScene(sceneId);
+    if (State.s !== run || run.story.ended) return; // Szene hat die Story sofort beendet/gewechselt
     const extra = (Story.story.jobEffects || {})[sceneId];
     if (extra) await Story.applyEffects(extra);
+    if (State.s !== run || run.story.ended) return; // Effekte haben die Story sofort beendet/gewechselt
     const earned = State.s.balance - before;
     Story.jobDone(job.id, earned);
     await Bus.emit('job:done', { id: job.id, earned });
@@ -4934,7 +5797,7 @@ const Spueler = {
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const k = (this.plate - 1) / (this.TOTAL - 1);
     this.dur = reduced ? 1800 : Math.round(1600 - k * 700);          // 1600 → 900 ms
-    const band = 1 + Rules.gear(State.s).spuelerBand; // Trail-Runner/Carbon: Band 20 % breiter
+    const band = (1 + Rules.gear(State.s).spuelerBand) * (StoryRules.jobMod(State.s).spuelerZone != null ? StoryRules.jobMod(State.s).spuelerZone : 1); // Trail-Runner/Carbon: Band 20 % breiter
     this.zone = { c: rand(0.35, 0.75), w: (reduced ? 0.3 : 0.3 - k * 0.18) * band }; // 30 % → 12 %
     this.resolved = false;
     const zone = qs('#dishZone', this.root), plate = qs('#dishPlate', this.root);
@@ -5068,7 +5931,13 @@ const Taxi = {
   },
   placeCar() { if (this.root) qs('#taxiCar', this.root).style.left = `${this.laneIdx * 33.3}%`; },
   lane(dir) { if (!this.running) return; this.laneIdx = Math.max(0, Math.min(2, this.laneIdx + dir)); this.placeCar(); SFX.play('click'); },
-  brake() { if (!this.running || !this.root) return; this.braking = true; this.brakeUntil = performance.now() + 600; qs('#taxiCar', this.root).classList.add('braking'); const f = qs('#brakeFlash', this.root); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); },
+  brake() {
+    if (!this.running || !this.root) return;
+    const gen = this.gen;
+    const delay = StoryRules.jobMod(State.s).taxiBrakeDelay || 0;
+    const apply = () => { if (!this.alive(gen) || !this.running) return; this.braking = true; this.brakeUntil = performance.now() + 600; qs('#taxiCar', this.root).classList.add('braking'); const f = qs('#brakeFlash', this.root); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); };
+    if (delay > 0) setTimeout(apply, delay); else apply();
+  },
   ticket() { if (!this.root) return; const p = h('div', { class: 'ticket-pop' }, 'STRAFZETTEL −50 €'); qs('#taxiRoad', this.root).append(p); UI.shake(qs('#taxiRoad', this.root)); setTimeout(() => p.remove(), 900); },
   floatText(txt, cls) { if (!this.root) return; const el = h('div', { class: 'ticket-pop', style: 'background:#2f7a1f' }, txt); qs('#taxiRoad', this.root).append(el); setTimeout(() => el.remove(), 600); },
   score() { if (this.root) qs('#taxiScore', this.root).textContent = `Fahrgäste ${this.passengers} · Strafzettel ${this.tickets}`; },
@@ -5459,6 +6328,270 @@ Bus.on('rr:result', ({ victim }) => {
 });
 </script>
 
+<script id="story-kater">
+/* ================= STORY 2: DER KATER – Fortsetzung von „Die Schuld" ================= */
+const STORY_KATER = {
+  id: 'kater', title: 'Der Kater', days: 30, requires: 'schuld',
+  start: {
+    balance: 2000,
+    unlocked: { jobs: ['filialleiter'], doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack'], rooms: ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal'] },
+    vars: { pegel: 0, leber: 100, deckel: 0, bierHeute: 0, brownieHeute: 0, docNein: 0 },
+  },
+  varMax: { pegel: 3, leber: 100 },
+  prices: { brownie: 1000, therapy: 5000 },
+  disabled: ['tinder', 'house', 'dealer'],
+  /* Kaufpreis – die Schleifen-Zahlen stehen an den Events */
+  N: { kaufpreis: 40000, buecherRabatt: 5000 },
+  hud: [
+    { var: 'leber', label: '🫀 Leber', max: 100, tone: 'danger' },
+    { var: 'pegel', label: (s) => (s.story.flags.sucht ? '💊 Pegel' : '🍺 Pegel'), max: 3 },
+    { var: 'deckel', label: '🧾 Deckel', fmt: 'money' },
+  ],
+  goal: (s) => (s.story.flags.gekauft ? 'Der Keller gehört dir.' : s.story.flags.abgestuerzt ? `Ziel: Keller ${UI.fmt(STORY_KATER.N.kaufpreis + (s.story.vars.deckel || 0) - (s.story.flags.buecher ? STORY_KATER.N.buecherRabatt : 0))} bis Tag 30` : 'Flitterwochen. Genieß es.'),
+  lockReason: { royal: 'Parkservice only' },
+  gates: { royal: [{ when: { flag: 'zitter' }, text: 'Sie zittern. Wir haben eine Hausordnung.', scene: 'kater.royal.zitter' }] },
+  intro: 'kater.intro',
+  scenes: {
+    'kater.intro': (ctx) => {
+      const prev = (ctx.prev || {}).schuld || 'ehrlich';
+      const start = {
+        ehrlich: [
+          { bg: 'bank', who: 'krause', mood: 'happy', text: 'Fünfzigtausend zurückgezahlt, auf den Cent. Ein Mann, der das kann, kann eine Filiale führen. Willkommen im Team.' },
+          { bg: 'strasse', who: 'chantal', mood: 'happy', text: 'Ich hab vor der Bank gewartet. Zwei Stunden. Für dich wäre ich auch drei geblieben. Fast.' },
+        ],
+        sturz: [
+          { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Der Keller läuft. Igor an der Tür, du am Kessel. Vito? Irgendwo, wo es keine Auslieferung gibt.' },
+          { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Krause sucht einen Filialleiter. Ich hab dich empfohlen. Heirate, kauf ein Auto, werd langweilig. Ich hab\'s auch überlebt.' },
+        ],
+        taxi: [
+          { bg: 'hafen-morgen', who: 'du', mood: 'calm', text: 'Ein Jahr. Neuer Name, Zahnarztpapiere, kein Zahnarzt. Die Fähre legt an. Das Handy vibriert: „Ich habe Zeit. – V."' },
+          { bg: 'strasse', who: 'chantal', mood: 'happy', text: 'Rutsch rüber. Ich bin dieselbe Fähre gefahren, du hast nur nicht nach hinten geguckt. Krause hat einen Job für dich.' },
+        ],
+        doc: [
+          { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Wach? Eine Niere weniger, ein Zettel weniger. Vito ist zufrieden. Die Naht hält, meistens.' },
+          { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Sie ist die ganze Nacht geblieben. Das hat noch keine. Krause war auch da – er hat einen Job für dich.' },
+        ],
+      }[prev];
+      return start.concat([
+        { bg: 'standesamt', who: 'chantal', mood: 'happy', text: 'Ja. Natürlich ja. Ich hab die Vollmacht schon vorbereitet – für die Flitterwochen, Schatz. Man muss ja an alles denken.' },
+        { bg: 'standesamt', who: 'schmalz', mood: 'calm', text: 'Kraft des mir verliehenen Amtes. Gütertrennung? Nein? Wie Sie meinen. Unterschreiben Sie da, da und da.' },
+        { bg: 'villa', who: 'du', mood: 'happy', text: 'Villa mit Hafenblick, Mercedes vor der Tür, Filialleiter bei Krause. Dreißig Tage. Was soll schon passieren.' },
+      ]);
+    },
+    'kater.absturz': [
+      { bg: 'villa', who: 'du', mood: 'shock', text: 'Der Wecker ist weg. Das Bett ist weg. Der Zettel auf dem Boden: „Danke für alles. Wirklich alles. – C.-M."' },
+      { bg: 'bank', who: 'krause', mood: 'calm', text: 'Ihre Frau hat die Vollmacht genutzt. Konto, Wagen, Villa – alles rechtens. Und die Filiale… Sie verstehen, das Vertrauen.' },
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Setz dich. Das erste schreib ich an. Das zweite zahlst du. Du siehst aus, als bräuchtest du drei.' },
+    ],
+    'kater.k2': [
+      { bg: 'strasse', who: 'du', mood: 'shock', text: 'Tag vier. Null auf dem Konto, kein Auto, kein Schlüssel. Der Wirt hat einen Deckel für mich angelegt. Ich hab ihn nicht drum gebeten.' },
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Pinnwand ist da hinten. Spülen, Post, Taxi. Und drei Bier am Tag – nicht meine Regel, deine Hände haben das entschieden.' },
+    ],
+    'kater.entzug': [
+      { bg: 'keller', who: 'wirt', mood: 'calm', text: 'Du hast heute keine drei gehabt. Ich seh das. Deine Hände sehen das auch.' },
+      { bg: 'keller', who: 'du', mood: 'shock', text: 'Das Glas klirrt, bevor ich es anfasse. Heute wird kein guter Tag. Bis zum ersten Bier.' },
+    ],
+    'kater.leber': [
+      { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Deine Leber und ich haben gesprochen. Sie war kurz angebunden. Dreißig Prozent, sagt sie. Ich sage: Ich hab ein Bett frei.' },
+    ],
+    'kater.k3': [
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Ich werd\'s verkaufen. Den Keller. Vierzigtausend, plus was auf deinem Deckel steht. Nicht an dich – an wen auch immer zuerst kommt.' },
+      { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Außer du kommst zuerst. Bis Tag dreißig. Und der Doc hat ein Programm, falls du die Hände brauchst. Kostet, hilft, macht nüchtern. Nüchtern spielt sich schlecht.' },
+    ],
+    'kater.doc.angebot': [
+      { bg: 'bar', who: 'doc', mood: 'calm', text: 'Drei Bier für zwanzig Prozent Glück. Ein Brownie für vierzig. Rechne selbst, du warst Filialleiter.' },
+      { bg: 'bar', who: 'doc', mood: 'calm', text: 'Dreihundert das Stück, für dich. Deine Leber bezahlt den Rest.',
+        choices: [{ label: 'Nein, danke', value: 'nein', cls: 'ghost', effects: [{ var: 'docNein', add: 1 }, { flag: 'docAbgelehnt' }] }, { label: 'Was kostet das?', value: 'ja', cls: 'red', effects: [{ flag: 'sucht' }, { price: { brownie: 300, therapy: 8000 } }] }] },
+    ],
+    'kater.doc.angebot2': [
+      { bg: 'bar', who: 'doc', mood: 'calm', text: 'Deine Leber weiß, was du gestern gemacht hast. Ich auch. Der Brownie wäre schneller gewesen.',
+        choices: [{ label: 'Nein', value: 'nein', cls: 'ghost', effects: [{ var: 'docNein', add: 1 }, { flag: 'docAbgelehnt' }] }, { label: 'Gib her', value: 'ja', cls: 'red', effects: [{ flag: 'sucht' }, { price: { brownie: 300, therapy: 8000 } }] }] },
+    ],
+    'kater.doc.angebot3': [
+      { bg: 'gasse', who: 'doc', mood: 'angry', text: 'Letztes Angebot. Danach frag ich nicht mehr, ich warte nur noch.',
+        choices: [{ label: 'Nein.', value: 'nein', cls: 'ghost', effects: [{ var: 'docNein', add: 1 }, { flag: 'docAbgelehnt' }, { achievement: 'standhaft' }] }, { label: 'Okay.', value: 'ja', cls: 'red', effects: [{ flag: 'sucht' }, { price: { brownie: 300, therapy: 8000 } }] }] },
+    ],
+    'kater.therapie': (ctx) => ctx.raw.flags.sucht ? [
+      { bg: 'klinik', who: 'doc', mood: 'angry', text: 'Achttausend. Du kaufst dich bei mir raus. Ich muss dich gehen lassen – das Programm ist echt, leider.' },
+      { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Kein Bier, kein Brownie, kein Glück aus der Flasche. Du wirst am Tisch merken, wie ehrlich der Kessel ist.' },
+    ] : [
+      { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Fünftausend. Vier Wochen Programm in drei Tagen, ich hab Beziehungen. Ab morgen zittert nichts mehr.' },
+      { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Der Wirt schenkt dir nichts mehr ein, ich hab\'s ihm gesagt. Und das Glück im Glas? Gibt\'s nicht mehr. Nüchtern spielt sich anders.' },
+    ],
+    /* Filialleiter (Kapitel 1) – keine Wahl, nur Vorahnung */
+    'kater.fil.anruf': [{ bg: 'bank', who: 'krause', mood: 'calm', text: 'Ihre Frau hat angerufen. Wollte die Kontonummer der Filiale wissen – für eine Überraschung, sagt sie. Reizend.' }],
+    'kater.fil.vollmacht': [{ bg: 'bank', who: 'chantal', mood: 'happy', text: 'Ich hol nur die Vollmacht ab, Schatz. Für die Flitterwochen. Herr Krause war so nett, sie gleich zu beglaubigen.' }],
+    'kater.fil.lob': [{ bg: 'bank', who: 'krause', mood: 'happy', text: 'Eine bemerkenswerte Frau. Sie fragt nach Dingen, die sonst niemand fragt. Sie können stolz sein.' }],
+    /* Türsteher (Kapitel 3) */
+    'kater.tuer.chantal': [
+      { bg: 'keller', who: 'du', mood: 'calm', text: 'Sie steht in der Schlange. Mit einem anderen. Er trägt meinen Mantel. Sie tut, als würde sie mich nicht kennen. Sie kann das gut.',
+        choices: [{ label: 'Reinlassen', value: 'rein', cls: 'ghost' }, { label: 'Nicht heute', value: 'raus', cls: 'red', effects: [{ flag: 'chantalAbgewiesen' }] }] },
+    ],
+    'kater.tuer.sylvie': [
+      { bg: 'keller', who: 'sylvie', mood: 'calm', text: 'Madame Sylvie, im Keller. Sie sieht sich um wie jemand, der Quadratmeter zählt. „Ihr Wirt will verkaufen. Ich kaufe gern."' },
+      { bg: 'keller', who: 'sylvie', mood: 'calm', text: '„Sie wollen auch? Dann beeilen Sie sich. Ich habe Zeit, Sie haben eine Leber."' },
+    ],
+    'kater.tuer.kevin': [
+      { bg: 'keller', who: 'du', mood: 'happy', text: 'Kevin drückt mir fünfzig in die Hand. „Für nichts. Du hast mich nicht gesehen." Ich hab ihn nicht gesehen.' },
+    ],
+    /* Croupier (Kapitel 3, 3 Türsteher-Nächte) */
+    'kater.croup.buecher': [
+      { bg: 'hinterzimmer', who: 'du', mood: 'shock', text: 'Der Wirt hat die Bücher offen liegen lassen. Der Keller macht das Doppelte von dem, was er sagt. Vierzigtausend ist ein Freundschaftspreis – oder ein Test.' },
+    ],
+    'kater.croup.wirt': [
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Du gibst gut Karten. Ruhige Hände heute. Wie viele waren\'s? Drei? Merkt man. Merken die Gäste auch.' },
+    ],
+    'kater.croup.hand': [
+      { bg: 'keller', who: 'du', mood: 'calm', text: 'Igor legt einen Chip auf den Tisch. „Für dich. Nicht setzen. Halten." Ich halte ihn. Er ist warm.' },
+    ],
+    /* Eintreiber (Kapitel 4, nur wenn Vito noch da ist) */
+    'kater.vito.zurueck': [
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Ich bin kein Unmensch. Aber du trinkst. Trinkende Männer haben Listen im Kopf, die sie vergessen. Ich habe eine auf Papier. Willst du sie abarbeiten?' },
+    ],
+    'kater.eintr.vito': [
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: '„Deine Frau steht auch drauf. Zeile vier." Er lässt mich die Zeile lesen. Ich lese sie zweimal.' },
+    ],
+    'kater.eintr.kiosk': [
+      { bg: 'gasse', who: 'du', mood: 'calm', text: 'Der Kioskbesitzer zahlt, bevor ich die Hand hebe. Hundert extra „für den Weg". Ich nehme sie. Meine Hände zittern nicht, wenn sie Geld halten.' },
+    ],
+    'kater.igor.partner': [
+      { bg: 'bar', who: 'du', mood: 'calm', text: 'Igor sitzt neben mir. „Der Wirt verkauft. Ich bleibe an der Tür, wer auch kauft. Kauf du. Ich mag deine Hände, wenn sie ruhig sind."' },
+    ],
+    /* Casino Royal */
+    'kater.sylvie': [
+      { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Gast des Hauses. Ich weiß, was Sie vorhaben. Vierzigtausend für einen Keller – ich zahle mehr, wenn Sie es nicht schaffen.' },
+    ],
+    'kater.k4': [
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Letzte Runde. Zehn Tage. Sylvie hat ein Angebot gemacht, ich hab noch nicht Ja gesagt. Ich hab auch noch nicht Nein gesagt.' },
+    ],
+    'kater.kauf': (ctx) => {
+      const fmt = typeof UI !== 'undefined' ? UI.fmt : StoryRules.fmtMoney;
+      const deckel = ctx.raw.vars.deckel || 0;
+      const rabatt = ctx.raw.flags.buecher ? STORY_KATER.N.buecherRabatt : 0;
+      const preis = STORY_KATER.N.kaufpreis + deckel - rabatt;
+      const kann = ctx.raw.balance >= preis;
+      const choices = [{ label: 'Noch nicht', value: 'nein', cls: 'ghost' }];
+      if (kann) choices.unshift({ label: `Kaufen · ${fmt(preis)}`, value: 'ja', cls: 'red', effects: [{ balance: -preis }, { flag: 'gekauft' }] });
+      return [
+        { bg: 'bar', who: 'wirt', mood: 'calm', text: `Vierzigtausend. Plus dein Deckel: ${fmt(deckel)}.${rabatt ? ' Du hast die Bücher gesehen, ich seh\'s dir an – fünftausend weniger, dafür hältst du den Mund.' : ''} Macht ${fmt(preis)}.` },
+        { bg: 'bar', who: 'wirt', mood: kann ? 'happy' : 'calm', text: kann ? 'Du hast es. Ich seh\'s. Schlüssel liegt unter dem Tresen, wo er immer lag.' : `Du hast ${fmt(ctx.raw.balance)}. Der Kessel läuft noch, die Tische auch. Beeil dich.`, choices },
+      ];
+    },
+    'kater.chantal': [
+      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Sie steht vor dem Keller. Ohne Mantel, ohne den anderen. „Ich hab gehört, du hast wieder Geld. Ich hab gehört, du kaufst was."' },
+      { bg: 'strasse', who: 'chantal', mood: 'happy', text: '„Lass mich rein. Ich kann Kasse. Ich kann alles, was mit Kasse zu tun hat, das weißt du."',
+        choices: [{ label: 'Reinlassen', value: 'rein', cls: 'pink', effects: [{ flag: 'chantalZurueck' }] }, { label: 'Rauswerfen', value: 'raus', cls: 'red', effects: [{ flag: 'chantalWeg' }] }] },
+    ],
+    'kater.chantal.sucht': [
+      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Sie hat mich an der Bar gesehen. Mit dem Doc. Sie hat nichts gesagt. Sie ist weitergegangen. Das war das Netteste, was sie je getan hat.' },
+    ],
+    'kater.royal.zitter': [
+      { bg: 'royal', who: 'du', mood: 'calm', text: 'Der Türsteher hebt die Hand. Sie zittern. Wir haben eine Hausordnung – kommen Sie wieder, wenn die Hände still sind.' },
+    ],
+    'kater.ende.bett': [
+      { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'blackout', text: 'Zähl rückwärts von zehn. Du kommst nicht bis sieben. Das ist in Ordnung. Die Niere war ein Vorschuss – das hier ist die Rate.' },
+      { bg: 'klinik', who: 'du', mood: 'calm', text: 'Der Wirt bringt Blumen. Er stellt sie neben das Bett, in dem niemand mehr liegt. Der Deckel? „Ich hab ihn zerrissen. Er hätte eh nicht gezahlt."' },
+    ],
+    'kater.ende.wirt': (ctx) => {
+      const panels = [
+        { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Der Schlüssel. Unter dem Tresen, wo er immer lag. Ich bleib Gast – der Hocker am Ende ist meiner, das steht im Vertrag, den du nicht gelesen hast.' },
+        { bg: 'keller', who: 'du', mood: 'calm', text: 'Igor nickt. Einmal. Das ist bei Igor ein Handschlag.' },
+      ];
+      if (ctx.raw.flags.chantalZurueck) panels.push({ bg: 'bar', who: 'chantal', mood: 'happy', text: 'Sie steht hinter dem Tresen. Sie hat die Kasse schon geöffnet. „Nur gucken, Schatz. Vorerst."' });
+      panels.push({ bg: 'royal', who: 'du', mood: 'calm', text: 'Blumen von Madame Sylvie. Karte: „Herzlichen Glückwunsch. Ich habe Zeit." Dieselbe Handschrift wie auf einem anderen Zettel.' });
+      panels.push({ bg: 'bar', who: 'du', mood: 'happy', text: 'Der Ort, an dem ich alles verloren habe. Er gehört mir. Der Kessel läuft, wie er läuft. Erstes Bier geht aufs Haus. Mein Haus.' });
+      return panels;
+    },
+    'kater.ende.nuechtern': [
+      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Tag dreißig. Ich gehe am Keller vorbei. Die Tür steht offen, der Wirt winkt. Ich winke zurück. Ich bleibe nicht stehen.' },
+      { bg: 'hafen-morgen', who: 'du', mood: 'happy', text: 'Kein Keller, kein Bier, kein Glück im Glas. Nur Hände, die nicht zittern. Es ist weniger, als ich wollte. Es ist mehr, als ich hatte.' },
+    ],
+    'kater.ende.brownie': [
+      { bg: 'bar', who: 'doc', mood: 'happy', text: 'Partner. Du sitzt an der Bar und wartest. Auf den Nächsten, der gerade seine Frau verloren hat. Du erkennst sie am Zettel in der Hand.' },
+      { bg: 'bar', who: 'du', mood: 'calm', text: 'Dreihundert das Stück. Für ihn. Die Leber bezahlt den Rest, das weiß ich besser als jeder. Ich sage es ihm nicht.' },
+    ],
+    'kater.ende.taxi': [
+      { bg: 'strasse', who: 'chantal', mood: 'happy', text: 'Vier Uhr. Das Taxi wartet. Sie hat die Kasse, den Deckel-Zettel und die Vollmacht – die alte gilt noch, hat Dr. Schmalz gesagt.' },
+      { bg: 'hafen', who: 'du', mood: 'shock', text: 'Die Fähre legt ab. Das Handy vibriert. Unbekannte Nummer: „Danke für alles. Wirklich alles. Wieder. – C.-M."' },
+    ],
+    'kater.ende.stammgast': [
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Verkauft. An Sylvie. Sie lässt alles, wie es ist – nur die Preise nicht. Dein Hocker bleibt, sagt sie. Sie mag Stammgäste. Die sind berechenbar.' },
+      { bg: 'bar', who: 'du', mood: 'calm', text: 'Das erste Bier geht aufs Haus. Es ist nicht mehr mein Haus. Es war nie meins. Der Kessel läuft, wie er läuft.' },
+    ],
+  },
+  chapters: [
+    { id: 'k1', title: 'Flitterwochen', when: { day: { gte: 1 } } },
+    { id: 'k2', title: 'Der Morgen danach', when: { day: { gte: 4 } }, intro: 'kater.k2', unlock: { jobs: ['spueler', 'post', 'taxi'] } },
+    { id: 'k3', title: 'Der Wagen', when: { day: { gte: 11 } }, intro: 'kater.k3', unlock: { jobs: ['tuersteher', 'croupier'], rooms: ['royal'] } },
+    { id: 'k4', title: 'Letzte Runde', when: { day: { gte: 21 } }, intro: 'kater.k4' },
+  ],
+  events: [
+    { id: 'einrichten', when: { day: { eq: 1 } }, once: true, at: 'morning', effects: [{ set: { car: 'mercC', hasHouse: true } }] },
+    { id: 'niereWeg', when: { all: [{ day: { eq: 1 } }, { prevEnding: { story: 'schuld', id: 'doc' } }] }, once: true, at: 'morning', effects: [{ var: 'leber', set: 70 }, { set: { kidneySold: true } }] },
+    { id: 'absturz', when: { day: { eq: 3 } }, once: true, at: 'night', scene: 'kater.absturz',
+      effects: [{ balancePct: -100, min: 0 }, { set: { car: null, hasHouse: false } }, { lock: { jobs: ['filialleiter'], rooms: ['royal'] } }, { flag: 'abgestuerzt' }, { price: { beer: 0 } }] },
+    /* ---- Tagesbeginn: erstes Bier umsonst ---- */
+    { id: 'freibier', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }] }, at: 'morning', daily: true, effects: [{ price: { beer: 0 } }, { var: 'bierHeute', set: 0 }, { var: 'brownieHeute', set: 0 }] },
+    /* ---- Bierkauf ---- */
+    { id: 'deckel', when: { all: [{ flag: 'abgestuerzt' }, { var: 'bierHeute', eq: 0 }] }, at: 'buy:beer', effects: [{ var: 'deckel', add: 50 }, { price: { beer: 50 } }] },
+    { id: 'bier', when: { flag: 'abgestuerzt' }, at: 'buy:beer', effects: [{ var: 'bierHeute', add: 1 }, { var: 'pegel', add: 1 }, { var: 'leber', add: -1 }] },
+    { id: 'leberToastBier', when: { all: [{ flag: 'abgestuerzt' }, { var: 'leber', lte: 30 }, { var: 'leber', gt: 0 }] }, at: 'buy:beer', effects: [{ toast: { icon: '🫀', title: 'Die Leber meldet sich', text: 'Der Doc hat ein Bett frei.', tone: 'loss' } }] },
+    { id: 'zitterEnde', when: { flag: 'zitter' }, at: 'buy:beer', effects: [{ unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }] },
+    /* ---- Niere ---- */
+    { id: 'niere', when: { flag: 'abgestuerzt' }, at: 'buy:kidney', effects: [{ var: 'leber', add: -20 }] },
+    /* ---- Nacht: Entzug, Pegel-Reset, Warnung ---- */
+    { id: 'entzugSzene', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }, { notFlag: 'entzugGesehen' }, { var: 'pegel', lt: 3 }, { not: { all: [{ flag: 'sucht' }, { var: 'brownieHeute', gte: 1 }] } }] }, once: true, at: 'sleep', scene: 'kater.entzug', effects: [{ flag: 'entzugGesehen' }] },
+    { id: 'entzug', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }, { notFlag: 'sucht' }, { var: 'pegel', lt: 3 }] }, at: 'sleep', effects: [{ var: 'leber', add: -2 }, { flag: 'zitter' }, { luckMod: -15 }, { jobMod: { spuelerZone: 0.7, taxiBrakeDelay: 150, postTime: 0.75, shiftPay: 0.5 } }, { toast: { icon: '🍺', title: 'Entzugsnacht', text: 'Die Hände zittern. Bis zum ersten Bier.', tone: 'loss' } }] },
+    { id: 'entzugSucht', when: { all: [{ flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }, { flag: 'sucht' }, { var: 'pegel', lt: 3 }, { var: 'brownieHeute', lt: 1 }] }, at: 'sleep', effects: [{ var: 'leber', add: -4 }, { flag: 'zitter' }, { luckMod: -15 }, { jobMod: { spuelerZone: 0.7, taxiBrakeDelay: 150, postTime: 0.75, shiftPay: 0.5 } }, { toast: { icon: '🍺', title: 'Entzugsnacht', text: 'Die Hände zittern. Bis zum ersten Bier.', tone: 'loss' } }] },
+    { id: 'pegelReset', when: { flag: 'abgestuerzt' }, at: 'sleep', effects: [{ var: 'pegel', set: 0 }, { var: 'bierHeute', set: 0 }] },
+    { id: 'leberWarnung', when: { all: [{ flag: 'abgestuerzt' }, { var: 'leber', lte: 30 }, { var: 'leber', gt: 0 }] }, once: true, at: 'night', scene: 'kater.leber' },
+    /* ---- Drogen ---- */
+    { id: 'docAngebot', when: { all: [{ day: { eq: 6 } }, { notFlag: 'sucht' }] }, once: true, at: 'night', scene: 'kater.doc.angebot' },
+    { id: 'docAngebot2', when: { all: [{ day: { eq: 12 } }, { notFlag: 'sucht' }, { notFlag: 'nuechtern' }] }, once: true, at: 'night', scene: 'kater.doc.angebot2' },
+    { id: 'docAngebot3', when: { all: [{ day: { eq: 18 } }, { notFlag: 'sucht' }, { notFlag: 'nuechtern' }] }, once: true, at: 'night', scene: 'kater.doc.angebot3' },
+    { id: 'brownie', when: { all: [{ flag: 'abgestuerzt' }] }, at: 'buy:brownie', effects: [{ var: 'brownieHeute', add: 1 }, { var: 'leber', add: -4 }] },
+    { id: 'brownieDeckt', when: { all: [{ flag: 'abgestuerzt' }, { flag: 'sucht' }] }, at: 'buy:brownie', effects: [{ var: 'pegel', set: 3 }] },
+    { id: 'leberToastBrownie', when: { all: [{ flag: 'abgestuerzt' }, { var: 'leber', lte: 30 }, { var: 'leber', gt: 0 }] }, at: 'buy:brownie', effects: [{ toast: { icon: '🫀', title: 'Die Leber meldet sich', text: 'Der Doc hat ein Bett frei.', tone: 'loss' } }] },
+    { id: 'zitterEndeBrownie', when: { flag: 'zitter' }, at: 'buy:brownie', effects: [{ unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }] },
+    /* ---- Therapie ---- */
+    { id: 'therapieFrei', when: { all: [{ day: { gte: 11 } }, { flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }] }, once: true, at: 'morning', effects: [{ enable: ['therapy'] }] },
+    { id: 'therapie', when: { flag: 'abgestuerzt' }, at: 'buy:therapy', scene: 'kater.therapie', effects: [{ flag: 'nuechtern' }, { disable: ['beer', 'brownie', 'therapy'] }, { unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }, { price: { beer: 50 } }] },
+    /* ---- Kapitel 4: Eintreiber nur, wenn Vito noch da ist ---- */
+    { id: 'eintreiberJob', when: { all: [{ day: { gte: 21 } }, { flag: 'abgestuerzt' }, { not: { prevEnding: { story: 'schuld', id: 'sturz' } } }] }, once: true, at: 'morning', scene: 'kater.vito.zurueck', effects: [{ unlock: { jobs: ['eintreiber'] } }] },
+    { id: 'igorPartner', when: { all: [{ day: { gte: 21 } }, { flag: 'abgestuerzt' }, { prevEnding: { story: 'schuld', id: 'sturz' } }] }, once: true, at: 'morning', scene: 'kater.igor.partner' },
+    /* ---- Casino Royal ---- */
+    { id: 'sylvieGast', when: { flag: 'abgestuerzt' }, once: true, at: 'royal:guest', scene: 'kater.sylvie' },
+    /* ---- Kapitel 4: Chantal ---- */
+    { id: 'chantal', when: { all: [{ day: { gte: 21 } }, { balance: { gte: 15000 } }, { notFlag: 'sucht' }, { notFlag: 'chantalZurueck' }, { notFlag: 'chantalWeg' }] }, once: true, at: 'night', scene: 'kater.chantal' },
+    { id: 'chantalSucht', when: { all: [{ day: { gte: 21 } }, { balance: { gte: 15000 } }, { flag: 'sucht' }] }, once: true, at: 'night', scene: 'kater.chantal.sucht' },
+  ],
+  actions: [
+    { id: 'kauf', room: 'bar', label: '🔑 Über den Keller reden', when: { all: [{ day: { gte: 20 } }, { flag: 'abgestuerzt' }, { notFlag: 'gekauft' }] }, scene: 'kater.kauf' },
+  ],
+  jobScenes: {
+    filialleiter: ['kater.fil.anruf', 'kater.fil.vollmacht', 'kater.fil.lob'],
+    tuersteher: ['kater.tuer.chantal', 'kater.tuer.sylvie', 'kater.tuer.kevin'],
+    croupier: ['kater.croup.buecher', 'kater.croup.wirt', 'kater.croup.hand'],
+    eintreiber: ['kater.eintr.vito', 'kater.eintr.kiosk'],
+  },
+  jobEffects: {
+    'kater.croup.buecher': [{ flag: 'buecher' }],
+    'kater.tuer.kevin': [{ balance: 50 }],
+    'kater.eintr.kiosk': [{ balance: 100 }],
+  },
+  endings: [
+    { id: 'bett', title: 'Das Bett beim Doc', priority: 60, immediate: true, when: { var: 'leber', lte: 0 }, scene: 'kater.ende.bett' },
+    { id: 'wirt', title: 'Der Wirt', priority: 50, immediate: true, when: { flag: 'gekauft' }, scene: 'kater.ende.wirt' },
+    { id: 'nuechtern', title: 'Nüchtern', priority: 40, when: { all: [{ flag: 'nuechtern' }, { day: { gte: 30 } }] }, scene: 'kater.ende.nuechtern' },
+    { id: 'brownie', title: 'Der Brownie', priority: 30, when: { all: [{ flag: 'sucht' }, { var: 'leber', lte: 15 }, { day: { gte: 30 } }] }, scene: 'kater.ende.brownie' },
+    { id: 'taxi', title: 'Chantals Taxi', priority: 20, when: { all: [{ flag: 'chantalZurueck' }, { balance: { gte: 15000 } }, { day: { gte: 30 } }] }, scene: 'kater.ende.taxi' },
+    { id: 'stammgast', title: 'Der Stammgast', priority: 0, scene: 'kater.ende.stammgast', fallback: true },
+  ],
+  trophies: { wirt: 'endeWirt', nuechtern: 'endeNuechtern', brownie: 'endeBrownie', bett: 'endeBett' },
+};
+if (typeof Stories !== 'undefined') Stories.define(STORY_KATER);
+</script>
+
 <script id="selftest">
 /* ================= SELFTEST – läuft mit ?selftest im Browser und via node tests/run-selftest.mjs ================= */
 const SelfTest = {
@@ -5469,16 +6602,20 @@ const SelfTest = {
     if (ja !== jb) throw new Error(`${msg} erwartet ${jb}, bekommen ${ja}`);
   },
   ok(v, msg = 'erwartet wahr') { if (!v) throw new Error(msg); },
-  run() {
+  throws(fn, msg = '') { let threw = false; try { fn(); } catch (e) { threw = true; } if (!threw) throw new Error(`${msg} – kein Fehler geworfen`); },
+  /* async: Tests dürfen ein Promise zurückgeben (Browser-Tests der Story-Engine); synchrone Tests laufen wie bisher */
+  async run() {
     let passed = 0, failed = 0; const failures = [];
     for (const c of this.cases) {
-      try { c.fn(); passed++; } catch (e) { failed++; failures.push(`${c.name}: ${e.message}`); }
+      try { await c.fn(); passed++; } catch (e) { failed++; failures.push(`${c.name}: ${e.message}`); }
     }
     return { passed, failed, failures };
   },
 };
 /* deterministischer rng: liefert die Werte der Reihe nach, dann von vorn */
 const seq = (...vals) => { let i = 0; return () => vals[i++ % vals.length]; };
+/* deterministischer rng mit Seed (Mulberry32) – für Simulationen */
+const seeded = (a) => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const T = SelfTest;
 
 /* ---- Rules: Wirtschaft ---- */
@@ -5498,6 +6635,23 @@ T.test('luck: Bier ohne Timer zählt nicht', () => T.eq(Rules.luck(base({ beers:
 T.test('luck: Brownie +40, mit 3 Bier 60', () => {
   T.eq(Rules.luck(base({ brownieTimer: 1 })), 40);
   T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, brownieTimer: 1 })), 60);
+});
+T.test('Rules.luck: Story-Modifikator, darf unter 0 fallen', () => {
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, story: { luckMod: -15 } })), 5);
+  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2, story: { luckMod: -15 } })), -5);
+  T.eq(Rules.luck(base({ story: { luckMod: 10 } })), 10);
+  T.eq(Rules.luck(base({ story: {} })), 0);
+});
+T.test('luck: Story-Modifikator kann negativ werden (Pech)', () => {
+  T.eq(Rules.luck(base({ story: { luckMod: -15 } })), -15);
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, story: { luckMod: -15 } })), 5);
+  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2, story: { luckMod: -15 } })), -5);
+});
+T.test('effectiveLuck: Pech wird wie Glück gedeckelt', () => { T.eq(Rules.effectiveLuck(-60, 200), -30); T.eq(Rules.effectiveLuck(-15, 50), -15); });
+T.test('pech: nur bei negativem Glück, Wahrscheinlichkeit |luck| %', () => {
+  let calls = 0; const counting = () => { calls++; return 0; };
+  T.eq(Rules.pech(20, counting), false); T.eq(Rules.pech(0, counting), false); T.eq(calls, 0, 'bei luck ≥ 0 kein rng-Aufruf');
+  T.eq(Rules.pech(-15, seq(0.14)), true); T.eq(Rules.pech(-15, seq(0.15)), false); T.eq(Rules.pech(-100, seq(0.999)), true);
 });
 T.test('bankInterest: 8 % gerundet', () => {
   T.eq(Rules.bankInterest(0), 0);
@@ -5579,6 +6733,14 @@ T.test('rouletteLuckOverride: meidet ausgeschlossene Zahlen (Croupier-Auge)', ()
   T.eq(Rules.rouletteLuckOverride('black', null, 20, 40, seq(0.1), [8, 2, 4, 6]), 10, 'erste freie Schwarz-Zahl');
   T.eq(Rules.rouletteLuckOverride('red', null, 20, 40, seq(0.1), []), 7, 'ohne Ausschluss unverändert');
 });
+T.test('rouletteLuckOverride: Pech würfelt einen Gewinn neu, Zahlen nie', () => {
+  T.eq(Rules.rouletteLuckOverride('red', null, 7, -100, seq(0, 0.5)), 18, 'Rot gewinnt → neu gewürfelt: floor(0.5·37)');
+  T.eq(Rules.rouletteLuckOverride('red', null, 8, -100, seq(0, 0.5)), 8, 'Schwarz verliert → bleibt');
+  T.eq(Rules.rouletteLuckOverride('red', null, 7, -15, seq(0.15, 0.5)), 7, 'rng 15 ≥ |luck| 15 → bleibt');
+  T.eq(Rules.rouletteLuckOverride('number', 7, 7, -100, seq(0, 0.5)), 7, 'Zahlen nie neu gewürfelt');
+  T.eq(Rules.rouletteLuckOverride('red', null, 7, 0, seq(0, 0.5)), 7, 'luck 0 unverändert');
+  T.eq(Rules.rouletteLuckOverride('red', null, 7, -100, seq(0, 0.5, 0.6), [18]), 22, 'Neuwurf meidet Croupier-Auge: 18 ausgeschlossen → floor(0.6·37)');
+});
 T.test('roulettePayout: Farben 1:1, Null verliert', () => {
   T.eq(Rules.roulettePayout('red', null, 7, 10), 10);
   T.eq(Rules.roulettePayout('red', null, 8, 10), -10);
@@ -5609,6 +6771,14 @@ T.test('slotLuckOverride: kein Glück', () => {
   T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.5)), ['🍒', '🍋', '🍇']);
   T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 0, seq(0)), ['🍒', '🍋', '🍇']);
 });
+T.test('slotLuckOverride: Pech würfelt einen Gewinn neu, Niete bleibt', () => {
+  T.eq(Rules.slotLuckOverride(['🍒', '🍒', '🔔'], -100, seq(0, 0, 0.5, 0.99)), ['🍒', '🔔', '7️⃣'], 'Paar → slotRoll(seq(0, 0.5, 0.99))');
+  T.eq(Rules.slotLuckOverride(['🍒', '🍒', '🔔'], -15, seq(0.15, 0, 0.5, 0.99)), ['🍒', '🍒', '🔔'], 'rng 15 ≥ |luck| 15 → bleibt');
+  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], -100, seq(0, 0, 0.5, 0.99)), ['🍒', '🍋', '🍇'], 'Niete bleibt');
+  let calls = 0; const counting = () => { calls++; return 0.5; };
+  T.eq(Rules.slotLuckOverride(['🍒', '🍒', '🔔'], 0, counting), ['🍒', '🍒', '🔔'], 'luck 0 unverändert');
+  T.eq(calls, 1, 'luck 0: nur der bisherige eine rng-Aufruf');
+});
 T.test('slotMultiplier', () => {
   T.eq(Rules.slotMultiplier('7️⃣', '7️⃣', '7️⃣'), 40);
   T.eq(Rules.slotMultiplier('💎', '💎', '💎'), 25);
@@ -5633,6 +6803,11 @@ T.test('horseStep: (rng*3+1)*1.5, Glück nur für gewähltes Pferd', () => {
   T.eq(Rules.horseStep(true, 0, seq(0)), 1.5);
   T.eq(Rules.horseStep(true, 40, seq(0)), 1.56);
   T.eq(Rules.horseStep(false, 0, seq(1)), 6);
+});
+T.test('horseStep: Pech bremst nur das gewählte Pferd', () => {
+  near(Rules.horseStep(true, -100, seq(0)), (1 - 0.1) * 1.5, 'gewählt, Pech −100');
+  T.eq(Rules.horseStep(false, -100, seq(0)), 1.5, 'nicht gewählt unverändert');
+  near(Rules.horseStep(true, -100, seq(0), 0.5), (1 - 0.1) * 1.5 * 0.5, 'Handicap multipliziert');
 });
 T.test('horseDelta', () => { T.eq(Rules.horseDelta(true, 10), 30); T.eq(Rules.horseDelta(false, 10), -10); });
 T.test('raceWinner: größte Position gewinnt, nicht der niedrigste Index', () => {
@@ -5736,6 +6911,15 @@ T.test('canTherapy / canDealer', () => {
   T.eq(Rules.canDealer(base({ balance: 5000, hasDealer: true })), { ok: false, reason: 'owned' });
   T.eq(Rules.canDealer(base({ balance: 4999 })), { ok: false, reason: 'funds' });
 });
+T.test('Rules.canTherapy: Story kann Therapie freigeben', () => {
+  T.eq(Rules.canTherapy(base({ balance: 5000, story: { enabled: { therapy: true } } })), { ok: true });
+  T.eq(Rules.canTherapy(base({ balance: 4999, story: { enabled: { therapy: true } } })), { ok: false, reason: 'funds' });
+  T.eq(Rules.canTherapy(base({ balance: 5000, story: { enabled: {} } })), { ok: false, reason: 'notNeeded' });
+});
+T.test('Rules.canTherapy: Story-Preis statt fixem Preis', () => {
+  T.eq(Rules.canTherapy(base({ balance: 6000, story: { enabled: { therapy: true } } }), 8000), { ok: false, reason: 'funds' });
+  T.eq(Rules.canTherapy(base({ balance: 8000, story: { enabled: { therapy: true } } }), 8000), { ok: true });
+});
 T.test('canBeer / canBrownie', () => {
   T.eq(Rules.canBeer(base()), { ok: true });
   T.eq(Rules.canBeer(base({ beers: 3 })), { ok: false, reason: 'max' });
@@ -5743,6 +6927,10 @@ T.test('canBeer / canBrownie', () => {
   T.eq(Rules.canBrownie(base({ balance: 1000, brownieCost: 1000 })), { ok: true });
   T.eq(Rules.canBrownie(base({ balance: 1000, brownieCost: 1000, brownieTimer: 1 })), { ok: false, reason: 'active' });
   T.eq(Rules.canBrownie(base({ balance: 999, brownieCost: 1000 })), { ok: false, reason: 'funds' });
+});
+T.test('Rules.canBeer: Story-Preis statt fixem Preis', () => {
+  T.eq(Rules.canBeer(base({ balance: 0 }), 0), { ok: true });
+  T.eq(Rules.canBeer(base({ balance: 49 })), { ok: false, reason: 'funds' });
 });
 
 /* ---- State ---- */
@@ -5821,6 +7009,227 @@ T.test('Bus.emit: werfender Handler stoppt andere Handler nicht, liefert Promise
   T.ok(r instanceof Promise);
 });
 
+/* ---- RoyalRules: Mega Seven ---- */
+const G = (cols) => cols.map((c) => c.split(' ')); // 'a b c' je Walze, oben→unten
+T.test('megaSymbol: gewichtete Ziehung', () => {
+  T.eq(RoyalRules.megaSymbol(seq(0)), '🍒');
+  T.eq(RoyalRules.megaSymbol(seq(0.299)), '🍒');
+  T.eq(RoyalRules.megaSymbol(seq(0.30)), '🔔');
+  T.eq(RoyalRules.megaSymbol(seq(0.92)), '⭐');
+  T.eq(RoyalRules.megaSymbol(seq(0.999)), '⭐');
+});
+T.test('megaRoll: 5 Walzen × 3 Reihen', () => {
+  const g = RoyalRules.megaRoll(seeded(1));
+  T.eq(g.length, 5); g.forEach((r) => T.eq(r.length, 3));
+  g.flat().forEach((s) => T.ok(RoyalRules.MEGA.SYMBOLS.includes(s)));
+});
+T.test('megaLineWins: Mitte, oben, unten, V, umgekehrtes V', () => {
+  T.eq(RoyalRules.megaLineWins(G(['🔔 🍒 🔔', '🔔 🍒 🔔', '🔔 🍒 🔔', '🔔 🔔 🔔', '🔔 🔔 🔔'])).map((w) => [w.line, w.sym, w.count, w.mult]),
+    [[0, '🍒', 3, 2], [1, '🔔', 5, 25], [2, '🔔', 5, 25]]);
+  T.eq(RoyalRules.megaLineWins(G(['BAR 🍒 🍒', '🍒 BAR 🍒', '🍒 🍒 BAR', '🍒 BAR 🍒', 'BAR 🍒 🍒'])).map((w) => [w.line, w.sym, w.count, w.mult]), [[3, 'BAR', 5, 50]]);
+  T.eq(RoyalRules.megaLineWins(G(['🍒 🍒 💎', '🍒 💎 🍒', '💎 🍒 🍒', '🍒 💎 🍒', '🍒 🍒 💎'])).map((w) => [w.line, w.sym, w.count, w.mult]), [[4, '💎', 5, 100]]);
+});
+T.test('megaLineWins: nur von links, zwei gleiche zählen nicht, Scatter bildet keine Linie', () => {
+  const g = G(['🍒 7️⃣ 🍒', '🍒 7️⃣ 🍒', '🍒 🍒 🍒', '🍒 7️⃣ 🍒', '🍒 7️⃣ 🍒']); // Mitte: 7️⃣ 7️⃣ 🍒 7️⃣ 7️⃣ → 2 von links → nichts; oben/unten 🍒×5; V und ΛV brechen nach 1
+  T.eq(RoyalRules.megaLineWins(g).map((w) => [w.line, w.sym, w.count]), [[1, '🍒', 5], [2, '🍒', 5]]);
+  T.eq(RoyalRules.megaLineWins(G(['⭐ 🍒 🍒', '⭐ 🍒 🍒', '⭐ 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒'])).filter((w) => w.sym === '⭐'), []);
+});
+T.test('megaScatters / megaWin / megaDelta', () => {
+  const g = G(['⭐ 🍒 🍒', '🍒 ⭐ 🍒', '🍒 🍒 ⭐', '🔔 🔔 🔔', '🔔 🔔 🔔']);
+  T.eq(RoyalRules.megaScatters(g), 3);
+  const w = RoyalRules.megaWin(g, 500, false);
+  T.eq(w.scatters, 3); T.eq(w.freeSpins, 5);
+  T.eq(w.payout, 0, 'keine Linie: Mitte 🍒 ⭐ 🍒 🔔 🔔 → 1 von links');
+  const g2 = G(['🍒 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒', '🔔 🔔 🔔', '🔔 🔔 🔔']);
+  const w2 = RoyalRules.megaWin(g2, 500, false);
+  T.eq(w2.payout, 1000, 'fünf Linien 🍒×3 → 5 × 2 × Linieneinsatz 100');
+  T.eq(RoyalRules.megaWin(g2, 500, true).payout, 2000, 'Freispiel ×2');
+  T.eq(RoyalRules.megaDelta(500, 600, false), 100);
+  T.eq(RoyalRules.megaDelta(500, 0, false), -500);
+  T.eq(RoyalRules.megaDelta(500, 1200, true), 1200, 'Freispiel kostet nichts');
+});
+T.test('megaShift: Spalte rotieren', () => {
+  const g = G(['a b c', 'd e f', 'g h i', 'j k l', 'm n o']);
+  T.eq(RoyalRules.megaShift(g, 1, 1)[1], ['e', 'f', 'd']);
+  T.eq(RoyalRules.megaShift(g, 1, -1)[1], ['f', 'd', 'e']);
+  T.eq(RoyalRules.megaShift(g, 1, 1)[0], ['a', 'b', 'c'], 'andere Walzen unverändert');
+  T.eq(g[1], ['d', 'e', 'f'], 'Original unverändert');
+});
+T.test('megaLuckOverride: kein Glück / Pech-Wurf / bester Ein-Schritt-Gewinn / bestehender Gewinn', () => {
+  // keine Linie trifft; Walze 1 um −1 → Mitte 7️⃣×5 (500) schlägt die beiden 💎×3-Alternativen (10)
+  const g = G(['🔔 7️⃣ 💎', '7️⃣ BAR 💎', '💎 7️⃣ 🔔', '🔔 7️⃣ BAR', 'BAR 7️⃣ 💎']);
+  T.eq(RoyalRules.megaLineWins(g), [], 'Ausgangsgitter gewinnt nichts');
+  T.eq(RoyalRules.megaLuckOverride(g, 0, seq(0.5)), g, 'ohne Glück unverändert');
+  T.eq(RoyalRules.megaLuckOverride(g, 50, seq(0.6)), g, 'rng ≥ luck/100 → unverändert');
+  const o = RoyalRules.megaLuckOverride(g, 100, seq(0));
+  T.eq(o[1], ['💎', '7️⃣', 'BAR'], 'Walze 1 um −1 rotiert');
+  T.eq(RoyalRules.megaLineWins(o).map((w) => [w.line, w.sym, w.count, w.mult]), [[0, '7️⃣', 5, 500]], 'Mittellinie 7️⃣×5');
+  T.eq(g[1], ['7️⃣', 'BAR', '💎'], 'Original unverändert');
+  const win = G(['🍒 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒', '🔔 🔔 🔔', '🔔 🔔 🔔']);
+  T.eq(RoyalRules.megaLuckOverride(win, 100, seq(0)), win, 'bestehender Gewinn bleibt');
+});
+T.test('megaLuckOverride: Pech würfelt ein gewinnendes Gitter neu, Niete bleibt', () => {
+  const win = G(['🍒 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒', '🔔 🔔 🔔', '🔔 🔔 🔔']);
+  // pech verbraucht den ersten Wert (0), megaRoll die folgenden 15 (alle 0,5) → wie megaRoll(seq(0.5))
+  const o = RoyalRules.megaLuckOverride(win, -100, seq(0, ...Array(15).fill(0.5)));
+  T.ok(JSON.stringify(o) !== JSON.stringify(win), 'Gewinn wurde neu gewürfelt');
+  T.eq(o, RoyalRules.megaRoll(seq(0.5)), 'neuer Wurf aus den Folgewerten');
+  T.eq(RoyalRules.megaLuckOverride(win, -15, seq(0.15, 0.5)), win, 'rng 15 ≥ |luck| 15 → bleibt');
+  const g = G(['🔔 7️⃣ 💎', '7️⃣ BAR 💎', '💎 7️⃣ 🔔', '🔔 7️⃣ BAR', 'BAR 7️⃣ 💎']);
+  T.eq(RoyalRules.megaLuckOverride(g, -100, seq(0, 0.5)), g, 'Niete bleibt');
+  T.eq(RoyalRules.megaLuckOverride(win, 0, seq(0, 0.5)), win, 'luck 0 unverändert');
+});
+T.test('Mega Seven: RTP-Korridor (60.000 Spins, Seed 7)', () => {
+  const rng = seeded(7); let paid = 0, ret = 0, free = 0;
+  for (let i = 0; i < 60000; i++) {
+    const isFree = free > 0; if (isFree) free--; else paid += 500;
+    const w = RoyalRules.megaWin(RoyalRules.megaRoll(rng), 500, isFree);
+    ret += w.payout; if (w.freeSpins) free = Math.min(RoyalRules.MEGA.FREE_MAX, free + w.freeSpins);
+  }
+  const rtp = ret / paid;
+  T.ok(rtp > 0.88 && rtp < 0.98, `RTP ${rtp.toFixed(3)} außerhalb 0,88–0,98`);
+});
+
+/* ---- RoyalRules: Craps ---- */
+T.test('crapsRoll: zwei Würfel 1–6', () => {
+  T.eq(RoyalRules.crapsRoll(seq(0, 0.99)), [1, 6]);
+  T.eq(RoyalRules.crapsRoll(seq(0.5, 0.17)), [4, 2]);
+});
+T.test('crapsPass: Come-out und Punktphase', () => {
+  T.eq(RoyalRules.crapsPass(null, 7), { result: 'win', point: null });
+  T.eq(RoyalRules.crapsPass(null, 11), { result: 'win', point: null });
+  for (const s of [2, 3, 12]) T.eq(RoyalRules.crapsPass(null, s), { result: 'lose', point: null }, `Craps ${s}`);
+  for (const s of [4, 5, 6, 8, 9, 10]) T.eq(RoyalRules.crapsPass(null, s), { result: 'point', point: s });
+  T.eq(RoyalRules.crapsPass(6, 6), { result: 'win', point: null });
+  T.eq(RoyalRules.crapsPass(6, 7), { result: 'lose', point: null });
+  T.eq(RoyalRules.crapsPass(6, 11), { result: 'none', point: 6 }, '11 in der Punktphase ist nichts');
+  T.eq(RoyalRules.crapsPass(6, 2), { result: 'none', point: 6 });
+});
+T.test('crapsField: Tabelle', () => {
+  const exp = { 2: 2, 3: 1, 4: 1, 5: 0, 6: 0, 7: 0, 8: 0, 9: 1, 10: 1, 11: 1, 12: 2 };
+  for (const [s, m] of Object.entries(exp)) T.eq(RoyalRules.crapsField(+s), m, `Summe ${s}`);
+});
+T.test('crapsSettle: alle 36 Kombinationen im Come-out mit Pass 100 + Field 50', () => {
+  for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) {
+    const sum = a + b;
+    const r = RoyalRules.crapsSettle({ pass: 100, field: 50 }, null, [a, b]);
+    const passDelta = [7, 11].includes(sum) ? 100 : [2, 3, 12].includes(sum) ? -100 : 0;
+    const fm = RoyalRules.crapsField(sum);
+    const fieldDelta = fm ? 50 * fm : -50;
+    T.eq(r.delta, passDelta + fieldDelta, `${a}+${b}`);
+    T.eq(r.sum, sum);
+    T.eq(r.point, [7, 11, 2, 3, 12].includes(sum) ? null : sum);
+  }
+});
+T.test('crapsSettle: Punktphase, nur Pass', () => {
+  T.eq(RoyalRules.crapsSettle({ pass: 100, field: 0 }, 8, [4, 4]), { delta: 100, pass: 'win', field: null, point: null, sum: 8 });
+  T.eq(RoyalRules.crapsSettle({ pass: 100, field: 0 }, 8, [3, 4]), { delta: -100, pass: 'lose', field: null, point: null, sum: 7 });
+  T.eq(RoyalRules.crapsSettle({ pass: 100, field: 0 }, 8, [1, 1]), { delta: 0, pass: 'none', field: null, point: 8, sum: 2 });
+  T.eq(RoyalRules.crapsSettle({ pass: 0, field: 100 }, null, [6, 6]), { delta: 200, pass: null, field: 'win', point: null, sum: 12 }, 'Field ohne Pass, 12 zahlt doppelt');
+  T.eq(RoyalRules.crapsSettle({ pass: 0, field: 100 }, 8, [3, 4]), { delta: -100, pass: null, field: 'lose', point: null, sum: 7 }, 'Seven-out löst den Punkt auch ohne Pass-Einsatz auf');
+  T.eq(RoyalRules.crapsSettle({ pass: 0, field: 100 }, 8, [4, 4]), { delta: -100, pass: null, field: 'lose', point: null, sum: 8 }, 'Punkt getroffen ohne Pass-Einsatz: Punkt endet, kein Geld');
+  T.eq(RoyalRules.crapsSettle({ pass: 0, field: 100 }, null, [3, 3]).point, null, 'ohne Pass-Einsatz entsteht kein Punkt');
+});
+T.test('crapsLuckOverride: verlierender Wurf wird verschoben, Gewinner nie', () => {
+  T.eq(RoyalRules.crapsLuckOverride([3, 4], 8, true, 0, seq(0)), [3, 4], 'ohne Glück');
+  const o = RoyalRules.crapsLuckOverride([3, 4], 8, true, 100, seq(0));
+  T.ok(o[0] + o[1] !== 7, 'Sieben in der Punktphase wird vermieden');
+  T.ok(Math.abs(o[0] - 3) + Math.abs(o[1] - 4) === 1, 'genau ein Würfel um 1');
+  const c = RoyalRules.crapsLuckOverride([1, 2], null, true, 100, seq(0));
+  T.eq(c, [2, 2], 'Craps 3 im Come-out → erster Würfel +1 → 4');
+  T.eq(RoyalRules.crapsLuckOverride([1, 1], null, true, 100, seq(0)), [1, 1], 'Craps 2: kein ±1-Schritt entkommt (3 bleibt Craps) → unverändert');
+  T.eq(RoyalRules.crapsLuckOverride([1, 2], null, false, 100, seq(0)), [1, 2], 'ohne Pass-Einsatz gibt es nichts zu retten');
+  T.eq(RoyalRules.crapsLuckOverride([4, 4], 8, true, 100, seq(0)), [4, 4], 'Gewinner bleibt');
+  T.eq(RoyalRules.crapsLuckOverride([6, 6], 6, true, 100, seq(0)), [6, 6], 'neutraler Wurf (12 in Punktphase) bleibt');
+});
+T.test('crapsLuckOverride: Pech würfelt einen Gewinn neu (Pass oder Field), Verlust bleibt', () => {
+  T.eq(RoyalRules.crapsLuckOverride([3, 4], null, true, -100, seq(0, 0.5, 0.17)), [4, 2], 'Natural 7 im Come-out → crapsRoll(seq(0.5, 0.17))');
+  T.eq(RoyalRules.crapsLuckOverride([4, 4], 8, true, -100, seq(0, 0.5, 0.17)), [4, 2], 'Punkt getroffen → neu');
+  T.eq(RoyalRules.crapsLuckOverride([3, 4], null, true, -15, seq(0.15, 0.5, 0.17)), [3, 4], 'rng 15 ≥ |luck| 15 → bleibt');
+  T.eq(RoyalRules.crapsLuckOverride([1, 1], null, true, -100, seq(0, 0.5, 0.17)), [1, 1], 'Craps 2 verliert → bleibt');
+  T.eq(RoyalRules.crapsLuckOverride([6, 6], null, false, -100, seq(0, 0.5, 0.17), true), [4, 2], 'Field-Gewinn 12 ohne Pass → neu');
+  T.eq(RoyalRules.crapsLuckOverride([6, 6], null, false, -100, seq(0, 0.5, 0.17)), [6, 6], 'ohne Pass und Field nichts zu verderben');
+  T.eq(RoyalRules.crapsLuckOverride([3, 4], null, true, 0, seq(0, 0.5, 0.17)), [3, 4], 'luck 0 unverändert');
+});
+
+/* ---- RoyalRules: Glücksrad ---- */
+T.test('WHEEL: 24 Segmente, Verteilung, Erwartungswert 93,75 %', () => {
+  const S = RoyalRules.WHEEL.SEGMENTS;
+  T.eq(S.length, 24);
+  const count = (v) => S.filter((x) => x === v).length;
+  T.eq([count(0), count(0.5), count(1), count(2), count(5), count(10)], [13, 5, 3, 1, 1, 1]);
+  T.eq(S.reduce((a, b) => a + b, 0) / 24, 0.9375);
+  S.forEach((v, i) => { if (v === 0) T.ok(S[(i + 1) % 24] !== 0 || S[(i + 2) % 24] !== 0, `Bankrott ${i} hat binnen 2 Schritten ein Nicht-Bankrott-Segment`); });
+});
+T.test('wheelSpin / wheelPayout / wheelDelta', () => {
+  T.eq(RoyalRules.wheelSpin(seq(0)), 0);
+  T.eq(RoyalRules.wheelSpin(seq(0.999)), 23);
+  T.eq(RoyalRules.wheelSpin(seq(0.5)), 12);
+  const S = RoyalRules.WHEEL.SEGMENTS;
+  const i10 = S.indexOf(10), iH = S.indexOf(0.5), i0 = S.indexOf(0);
+  T.eq(RoyalRules.wheelPayout(i10, 500), 5000);
+  T.eq(RoyalRules.wheelPayout(iH, 500), 250);
+  T.eq(RoyalRules.wheelPayout(i0, 500), 0);
+  T.eq(RoyalRules.wheelDelta(i10, 500), 4500);
+  T.eq(RoyalRules.wheelDelta(iH, 500), -250);
+  T.eq(RoyalRules.wheelDelta(S.indexOf(1), 500), 0);
+});
+T.test('wheelLuckOverride: Bankrott rückt auf das nächste Nicht-Bankrott-Segment', () => {
+  const S = RoyalRules.WHEEL.SEGMENTS;
+  const i0 = S.indexOf(0);
+  T.eq(RoyalRules.wheelLuckOverride(i0, 0, seq(0)), i0, 'ohne Glück');
+  const o = RoyalRules.wheelLuckOverride(i0, 100, seq(0));
+  T.ok(S[o] !== 0 && (o === (i0 + 1) % 24 || o === (i0 + 2) % 24), 'nächstes Nicht-Bankrott, 1–2 Schritte weiter');
+  T.eq(RoyalRules.wheelLuckOverride(S.indexOf(10), 100, seq(0)), S.indexOf(10), 'Gewinn bleibt');
+  T.eq(RoyalRules.wheelLuckOverride(i0, 50, seq(0.999)), i0, 'Glück greift nicht (rng ≥ luck/100)');
+});
+T.test('wheelLuckOverride: Pech rückt einen Gewinn auf das nächste Bankrott-Segment', () => {
+  const S = RoyalRules.WHEEL.SEGMENTS;
+  const i10 = S.indexOf(10), i0 = S.indexOf(0);
+  T.eq(i10, 19); T.eq(S[20], 0);
+  T.eq(RoyalRules.wheelLuckOverride(i10, -100, seq(0)), 20, '×10 (Index 19) → Nachbar 20 ist Bankrott');
+  T.eq(RoyalRules.wheelLuckOverride(i10, -15, seq(0.15)), i10, 'rng 15 ≥ |luck| 15 → bleibt');
+  T.eq(RoyalRules.wheelLuckOverride(i0, -100, seq(0)), i0, 'Bankrott bleibt');
+  T.eq(RoyalRules.wheelLuckOverride(i10, 0, seq(0)), i10, 'luck 0 unverändert');
+});
+
+/* ---- RoyalRules: Eintritt ---- */
+T.test('RoyalRules.canEnter / entryFee', () => {
+  T.eq(RoyalRules.canEnter(base()), { ok: false, reason: 'car', text: 'Parkservice only – zu Fuß kommt hier keiner rein.' });
+  T.eq(RoyalRules.canEnter(base({ car: 'audiA3' })), { ok: true });
+  T.eq(RoyalRules.entryFee(base({ car: 'audiA3' })), 100);
+  T.eq(RoyalRules.entryFee(base({ car: 'audiA3', flags: { royalGuest: true } })), 0);
+  const st = { day: 4, royalPaidDay: 4 };
+  T.eq(RoyalRules.entryFee(base({ car: 'audiA3', story: st })), 0, 'Story: heute schon bezahlt');
+  T.eq(RoyalRules.entryFee(base({ car: 'audiA3', story: { day: 5, royalPaidDay: 4 } })), 100);
+});
+T.test('StoryRules.gate: bedingte Sperre mit Text', () => {
+  const st = Object.assign({}, STORY_PROBE, { gates: { royal: [{ when: { flag: 'zitter' }, text: 'Sie zittern.' }, { when: { var: 'mut', lte: 0 }, text: 'Zu wenig Mut.' }] } });
+  const s = Object.assign(base(), { story: StoryRules.freshStoryPart(st) });
+  T.eq(StoryRules.gate(st, s, 'royal'), 'Zu wenig Mut.', 'erste zutreffende Sperre');
+  s.story.flags.zitter = true;
+  T.eq(StoryRules.gate(st, s, 'royal'), 'Sie zittern.');
+  s.story.flags.zitter = false; s.story.vars.mut = 1;
+  T.eq(StoryRules.gate(st, s, 'royal'), null);
+  T.eq(StoryRules.gate(st, s, 'slots'), null, 'ohne Gate offen');
+  T.eq(StoryRules.gate(STORY_PROBE, s, 'royal'), null, 'Story ohne gates');
+});
+T.test('StoryRules.gateEntry: liefert den ersten zutreffenden Eintrag inkl. Szene', () => {
+  const st = Object.assign({}, STORY_PROBE, { gates: { royal: [{ when: { var: 'mut', lte: 0 }, text: 'Zu wenig Mut.', scene: 'probe.n1' }] } });
+  const s = Object.assign(base(), { story: StoryRules.freshStoryPart(st) });
+  T.eq(StoryRules.gateEntry(st, s, 'royal'), { when: { var: 'mut', lte: 0 }, text: 'Zu wenig Mut.', scene: 'probe.n1' });
+  s.story.vars.mut = 1;
+  T.eq(StoryRules.gateEntry(st, s, 'royal'), null);
+});
+T.test('StoryRules.validate: gates brauchen when und text, Raum royal bekannt', () => {
+  const st = Object.assign({}, STORY_PROBE, { id: 'x', gates: { royal: [{ text: 'ohne when' }] }, start: Object.assign({}, STORY_PROBE.start, { unlocked: { jobs: ['spueler'], doors: [], rooms: ['royal'] } }) });
+  T.eq(StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), ['x: Gate royal[0] braucht when und text']);
+});
+T.test('StoryRules.validate: fehlende Gate-Szene', () => {
+  const st = Object.assign({}, STORY_PROBE, { id: 'x', gates: { royal: [{ when: { flag: 'a' }, text: 't', scene: 'x' }] } });
+  T.eq(StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), ['x: Szene "x" fehlt (gate royal[0])']);
+});
+
 /* ---- StoryRules ---- */
 const storyBase = (o = {}) => Object.assign(base({ balance: 500 }), {
   story: Object.assign({
@@ -5895,6 +7304,56 @@ T.test('StoryRules.applyEffect: nicht-pure Effekte werden gemeldet', () => {
   T.eq(StoryRules.applyEffect(s, { loseDay: true }, {}), { loseDay: true });
   T.eq(StoryRules.applyEffect(s, { scene: 'x.y' }, {}), { scene: 'x.y' });
 });
+T.test('StoryRules.applyEffect: set (Whitelist), lock, achievement', () => {
+  const s = Object.assign(base({ car: 'audiA3', hasHouse: true }), { story: StoryRules.freshStoryPart(STORY_PROBE) });
+  StoryRules.applyEffect(s, { set: { car: null, hasHouse: false } }, STORY_PROBE);
+  T.eq([s.car, s.hasHouse], [null, false]);
+  T.throws(() => StoryRules.applyEffect(s, { set: { balance: 9 } }, STORY_PROBE), 'balance ist nicht erlaubt');
+  s.story.unlocked = { jobs: ['spueler', 'post'], doors: ['slots'], rooms: ['bar', 'royal'] };
+  StoryRules.applyEffect(s, { lock: { jobs: ['post'], rooms: ['royal'] } }, STORY_PROBE);
+  T.eq(s.story.unlocked, { jobs: ['spueler'], doors: ['slots'], rooms: ['bar'] });
+  T.eq(StoryRules.applyEffect(s, { achievement: 'x' }, STORY_PROBE), { achievement: 'x' }, 'wird an die Engine gemeldet');
+  T.eq(StoryRules.applyEffect(s, { toast: { title: 'x' } }, STORY_PROBE), { toast: { title: 'x' } });
+});
+T.test('StoryRules.actionsFor: Aktionen je Raum mit Bedingung', () => {
+  const st = Object.assign({}, STORY_PROBE, { actions: [
+    { id: 'a', room: 'bar', label: 'A', when: { var: 'mut', gte: 1 }, scene: 'probe.n1' },
+    { id: 'b', room: 'bar', label: 'B', scene: 'probe.n1' },
+    { id: 'c', room: 'doc', label: 'C', scene: 'probe.n1' },
+  ] });
+  const s = Object.assign(base(), { story: StoryRules.freshStoryPart(st) });
+  T.eq(StoryRules.actionsFor(st, s, 'bar').map((a) => a.id), ['b']);
+  s.story.vars.mut = 1;
+  T.eq(StoryRules.actionsFor(st, s, 'bar').map((a) => a.id), ['a', 'b']);
+  T.eq(StoryRules.actionsFor(st, s, 'doc').map((a) => a.id), ['c']);
+  T.eq(StoryRules.actionsFor(STORY_PROBE, s, 'bar'), []);
+});
+T.test('StoryRules.validate: actions und trophies und set-Keys', () => {
+  const bad = Object.assign({}, STORY_PROBE, { id: 'x',
+    actions: [{ id: 'a', room: 'nirgends', label: 'A', scene: 'fehlt' }],
+    trophies: { gibtsnicht: 'endeX' },
+    events: [{ id: 'e', at: 'night', effects: [{ set: { balance: 1 } }] }] });
+  T.eq(StoryRules.validate(bad, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), [
+    'x: Szene "fehlt" fehlt (action a)', 'x: Raum "nirgends" unbekannt (action a)', 'x: set-Key "balance" nicht erlaubt (e)', 'x: Trophäe für unbekanntes Ende "gibtsnicht"',
+  ]);
+});
+T.test('StoryRules: Effekte luckMod/jobMod/price/enable/disable', () => {
+  const story = Object.assign({}, STORY_PROBE, { prices: { brownie: 300 }, disabled: ['tinder'] });
+  const s = Object.assign(base(), { story: StoryRules.freshStoryPart(story) });
+  T.eq(s.story.prices, { brownie: 300 }); T.eq(s.story.disabled, ['tinder']); T.eq(s.story.enabled, {}); T.eq(s.story.luckMod, 0); T.eq(s.story.jobMod, {});
+  StoryRules.applyEffect(s, { luckMod: -15 }, story); T.eq(s.story.luckMod, -15);
+  StoryRules.applyEffect(s, { luckMod: 0 }, story); T.eq(s.story.luckMod, 0);
+  StoryRules.applyEffect(s, { jobMod: { shiftPay: 0.5 } }, story); T.eq(StoryRules.jobMod(s), { shiftPay: 0.5 });
+  StoryRules.applyEffect(s, { jobMod: null }, story); T.eq(StoryRules.jobMod(s), {});
+  T.eq(StoryRules.jobMod(base()), {}, 'ohne Story leer');
+  StoryRules.applyEffect(s, { price: { therapy: 8000 } }, story); T.eq(s.story.prices, { brownie: 300, therapy: 8000 });
+  StoryRules.applyEffect(s, { price: { brownie: 450 } }, story); T.eq(s.story.prices, { brownie: 450, therapy: 8000 }); T.eq(s.brownieCost, 450, 'price.brownie setzt s.brownieCost');
+  T.eq(StoryRules.price(s, 'therapy'), 8000); T.eq(StoryRules.price(s, 'beer'), Rules.PRICES.beer); T.eq(StoryRules.price(base(), 'brownie'), Rules.PRICES.brownie);
+  StoryRules.applyEffect(s, { enable: ['therapy'] }, story); T.eq(s.story.enabled, { therapy: true });
+  T.eq(StoryRules.purchaseAllowed(s, 'therapy'), true); T.eq(StoryRules.purchaseAllowed(s, 'tinder'), false); T.eq(StoryRules.purchaseAllowed(s, 'house'), null); T.eq(StoryRules.purchaseAllowed(base(), 'tinder'), null);
+  StoryRules.applyEffect(s, { disable: ['beer'] }, story); T.eq(StoryRules.purchaseAllowed(s, 'beer'), false);
+  StoryRules.applyEffect(s, { enable: ['beer'] }, story); T.eq(StoryRules.purchaseAllowed(s, 'beer'), true, 'enable hebt disable auf');
+});
 T.test('StoryRules.pickStory: am längsten nicht gespielt, dev nie', () => {
   const stories = [{ id: 'a' }, { id: 'b' }, { id: 'c', dev: true }];
   T.eq(StoryRules.pickStory(stories, { a: { lastPlayed: 5 }, b: { lastPlayed: 3 } }, seq(0)), 'b');
@@ -5902,6 +7361,66 @@ T.test('StoryRules.pickStory: am längsten nicht gespielt, dev nie', () => {
   T.eq(StoryRules.pickStory(stories, {}, seq(0)), 'a');
   T.eq(StoryRules.pickStory(stories, {}, seq(0.99)), 'b', 'Gleichstand → rng');
   T.eq(StoryRules.pickStory([{ id: 'a' }], {}, seq(0.99)), 'a');
+});
+T.test('StoryRules.requirementMet / pickStory: requires filtert', () => {
+  const a = { id: 'a' }, b = { id: 'b', requires: 'a' };
+  T.eq(StoryRules.requirementMet(a, {}), true);
+  T.eq(StoryRules.requirementMet(b, {}), false);
+  T.eq(StoryRules.requirementMet(b, { a: { lastPlayed: 1, endings: [] } }), false, 'gespielt ohne Ende reicht nicht');
+  T.eq(StoryRules.requirementMet(b, { a: { lastPlayed: 1, endings: ['x'] } }), true);
+  T.eq(StoryRules.pickStory([a, b], {}, seq(0.99)), 'a', 'b ist gesperrt');
+  T.eq(StoryRules.pickStory([a, b], { a: { lastPlayed: 5, endings: ['x'] } }, seq(0)), 'b', 'b nie gespielt = ältestes');
+  T.throws(() => StoryRules.pickStory([b], {}, seq(0)), 'keine wählbare Story wirft');
+});
+T.test('StoryRules.nextStory: Reihenfolge, Voraussetzung, sonst pickStory', () => {
+  const a = { id: 'a' }, b = { id: 'b', requires: 'a' }, c = { id: 'c' };
+  const runs = { a: { lastPlayed: 9, endings: ['x'] } };
+  T.eq(StoryRules.nextStory([a, b, c], runs, 'a'), 'b');
+  T.eq(StoryRules.nextStory([a, b, c], { a: { lastPlayed: 9, endings: [] } }, 'a'), 'c', 'b gesperrt → nächste in Reihenfolge');
+  T.eq(StoryRules.nextStory([a, b, c], Object.assign({ c: { lastPlayed: 1, endings: ['y'] } }, runs), 'c'), 'b', 'nach der letzten: pickStory (b nie gespielt)');
+  T.eq(StoryRules.nextStory([a], { a: { lastPlayed: 1, endings: ['x'] } }, 'a'), 'a', 'einzige Story wiederholt sich');
+});
+T.test('StoryRules.prevEndings: letztes Ende je Story', () => {
+  T.eq(StoryRules.prevEndings({}), {});
+  T.eq(StoryRules.prevEndings({ a: { lastPlayed: 1, endings: ['x', 'y'] } }), { a: 'y' });
+  T.eq(StoryRules.prevEndings({ a: { lastPlayed: 1, endings: ['x', 'y'], last: 'x' } }), { a: 'x' }, 'last hat Vorrang');
+  T.eq(StoryRules.prevEndings({ a: { lastPlayed: 1, endings: [] } }), {});
+});
+T.test('StoryRules.freshStoryPart: prev aus storyRuns', () => {
+  const p = StoryRules.freshStoryPart(probeStory(), { schuld: { lastPlayed: 1, endings: ['doc'] } });
+  T.eq(p.prev, { schuld: 'doc' });
+  T.eq(StoryRules.freshStoryPart(probeStory()).prev, {});
+});
+T.test('StoryRules.check: prevEnding', () => {
+  const s = Object.assign(base(), { story: Object.assign(StoryRules.freshStoryPart(probeStory()), { prev: { schuld: 'doc' } }) });
+  T.eq(StoryRules.check({ prevEnding: { story: 'schuld', id: 'doc' } }, s), true);
+  T.eq(StoryRules.check({ prevEnding: { story: 'schuld', id: 'taxi' } }, s), false);
+  T.eq(StoryRules.check({ prevEnding: { story: 'nie', id: 'doc' } }, s), false);
+  T.eq(StoryRules.check({ not: { prevEnding: { story: 'schuld', id: 'sturz' } } }, s), true);
+});
+T.test('StoryRules.validate: requires muss bekannte Story sein', () => {
+  const st = Object.assign({}, STORY_PROBE, { id: 'x', requires: 'gibtsnicht' });
+  const errs = StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post'], ['probe']);
+  T.eq(errs, ['x: requires "gibtsnicht" unbekannt']);
+  T.eq(StoryRules.validate(Object.assign({}, st, { requires: 'probe' }), Object.keys(STORY_PROBE.scenes), ['spueler', 'post'], ['probe']), []);
+});
+T.test('StoryRules.validate: unbekannter Hook', () => {
+  const st = Object.assign({}, STORY_PROBE, { id: 'x', events: [{ id: 'e', at: 'unbekannt', scene: 'probe.n1' }] });
+  T.eq(StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), ['x: Hook "unbekannt" in Event e']);
+  for (const at of StoryRules.HOOKS) {
+    const ok = Object.assign({}, STORY_PROBE, { id: 'y', events: [{ id: 'e', at, scene: 'probe.n1' }] });
+    T.eq(StoryRules.validate(ok, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), [], at);
+  }
+});
+T.test('StoryRules.validate: prices nur bekannte Schlüssel', () => {
+  const st = Object.assign({}, STORY_PROBE, { id: 'x', prices: { kaviar: 1 } });
+  T.eq(StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), ['x: Preis "kaviar" unbekannt']);
+});
+T.test('StoryRules.dueEvents: sleep-Hook', () => {
+  const st = Object.assign({}, STORY_PROBE, { events: [{ id: 'z', at: 'sleep', when: { var: 'mut', lte: 0 }, scene: 'probe.n1' }] });
+  const s = Object.assign(base(), { story: StoryRules.freshStoryPart(st) });
+  T.eq(StoryRules.dueEvents(st, s, 'sleep').map((e) => e.id), ['z']);
+  T.eq(StoryRules.dueEvents(st, s, 'night'), []);
 });
 const probeStory = () => ({
   id: 'p', title: 'P', days: 3,
@@ -5947,6 +7466,11 @@ T.test('StoryRules.advanceDay', () => {
   StoryRules.advanceDay(s);
   T.eq([s.story.day, s.story.phase, s.story.jobToday], [4, 'morning', null]);
 });
+T.test('StoryRules.advanceDay: ausgenüchtert', () => {
+  const s = Object.assign(base({ beers: 3, beerTimer: 2, brownieTimer: 1 }), { story: StoryRules.freshStoryPart(probeStory()) });
+  StoryRules.advanceDay(s);
+  T.eq([s.beers, s.beerTimer, s.brownieTimer, s.story.day], [0, 0, 0, 2]);
+});
 T.test('StoryRules.jobAvailable', () => {
   const s = storyBase({ jobToday: null });
   T.eq(StoryRules.jobAvailable({ id: 'spueler' }, s), { ok: true });
@@ -5971,7 +7495,19 @@ T.test('StoryRules.validate: Referenzen und Fallback', () => {
 T.test('StoryRules.freshStoryPart', () => {
   const p = StoryRules.freshStoryPart(probeStory());
   T.eq(p.day, 1); T.eq(p.phase, 'morning'); T.eq(p.vars, { x: 0 }); T.eq(p.unlocked, { jobs: [], doors: [], rooms: [] });
-  T.eq(p.stats, { earned: 0, gambled: 0, jobs: 0 });
+  T.eq(p.stats, { earned: 0, gambled: 0, jobs: 0, wins: 0, streak: 0, bestStreak: 0, biggestWin: 0, beers: 0, brownies: 0, royalVisits: 0 });
+});
+T.test('StoryRules.recordSpin: Serie, Siege, größter Gewinn', () => {
+  const st = StoryRules.freshStoryPart(probeStory()).stats;
+  T.eq([st.wins, st.streak, st.bestStreak, st.biggestWin, st.beers, st.brownies, st.royalVisits], [0, 0, 0, 0, 0, 0, 0]);
+  StoryRules.recordSpin(st, 100); StoryRules.recordSpin(st, 700);
+  T.eq([st.wins, st.streak, st.bestStreak, st.biggestWin], [2, 2, 2, 700]);
+  StoryRules.recordSpin(st, 0);
+  T.eq(st.streak, 2, 'Push ändert die Serie nicht');
+  StoryRules.recordSpin(st, -50);
+  T.eq([st.wins, st.streak, st.bestStreak], [2, 0, 2]);
+  StoryRules.recordSpin(st, 5);
+  T.eq([st.streak, st.bestStreak, st.biggestWin], [1, 2, 700]);
 });
 
 /* ---- State: Modi ---- */
@@ -6014,6 +7550,24 @@ T.test('STORY_PROBE: Tagesablauf mit StoryRules', () => {
   T.eq(StoryRules.ending(STORY_PROBE, s).id, 'mutig');
   s.story.vars.mut = 0; s.story.day = 4;
   T.eq(StoryRules.ending(STORY_PROBE, s).id, 'aus');
+});
+T.test('StoryRules.ending: immediate-Enden', () => {
+  const st = Object.assign({}, STORY_PROBE, { endings: [
+    { id: 'tot', title: 'Tot', priority: 60, immediate: true, when: { var: 'mut', gte: 3 }, scene: 'probe.aus' },
+    { id: 'mutig', title: 'Mutig', priority: 1, when: { var: 'mut', gte: 2 }, scene: 'probe.mutig' },
+    { id: 'aus', title: 'Aus', priority: 0, scene: 'probe.aus', fallback: true },
+  ] });
+  const s = Object.assign(base(), { story: StoryRules.freshStoryPart(st) });
+  s.story.vars.mut = 2;
+  T.eq(StoryRules.ending(st, s, { immediateOnly: true }), null, 'normales Ende nicht sofort');
+  T.eq(StoryRules.ending(st, s).id, 'mutig');
+  s.story.vars.mut = 3;
+  T.eq(StoryRules.ending(st, s, { immediateOnly: true }).id, 'tot');
+  T.eq(StoryRules.ending(st, s).id, 'tot', 'nachts greift es ebenfalls');
+});
+T.test('StoryRules.validate: immediate nicht mit fallback', () => {
+  const st = Object.assign({}, STORY_PROBE, { id: 'x', endings: [{ id: 'aus', title: 'Aus', priority: 0, scene: 'probe.aus', fallback: true, immediate: true }] });
+  T.eq(StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), ['x: Ende aus – immediate und fallback schließen sich aus']);
 });
 
 /* ---- Story-Schuld ---- */
@@ -6084,6 +7638,267 @@ T.test('STORY_SCHULD: Flucht braucht Ruf, Igor sieht sie nur nach einer Tür-Sch
   T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), []);
   s.story.jobToday = 'tuersteher';
   T.eq(night(), ['fluchtFrage', 'igorSah']);
+});
+
+/* ---- Story 2: Der Kater ---- */
+const KATER_JOBS = ['spueler', 'post', 'taxi', 'tuersteher', 'croupier', 'eintreiber', 'filialleiter'];
+const katerState = (o = {}, prev = { schuld: 'ehrlich' }) => {
+  const s = Object.assign(base({ balance: 2000, car: 'mercC', hasHouse: true, flags: {} }), { story: StoryRules.freshStoryPart(STORY_KATER, { schuld: { lastPlayed: 1, endings: [prev.schuld], last: prev.schuld } }) }, o);
+  return s;
+};
+/* Events eines Hooks wie die Engine anwenden (Szenen ohne Wahl), gibt die Event-IDs zurück */
+const runHook = (s, at) => {
+  const ids = [];
+  for (const e of StoryRules.dueEvents(STORY_KATER, s, at)) {
+    ids.push(e.id);
+    for (const eff of e.effects || []) StoryRules.applyEffect(s, eff, STORY_KATER);
+    if (e.once) s.story.seen.push(e.id);
+    if (e.daily) (s.story.seenDay || (s.story.seenDay = {}))[e.id] = s.story.day;
+  }
+  return ids;
+};
+T.test('STORY_KATER ist gültig und setzt Die Schuld voraus', () => {
+  T.eq(StoryRules.validate(STORY_KATER, Object.keys(STORY_KATER.scenes), KATER_JOBS, ['probe', 'schuld', 'kater']), []);
+  T.eq(STORY_KATER.requires, 'schuld'); T.eq(STORY_KATER.days, 30);
+  T.eq(STORY_KATER.endings.length, 6);
+  T.eq(STORY_KATER.endings.filter((e) => e.fallback).map((e) => e.id), ['stammgast']);
+  T.eq(STORY_KATER.endings.find((e) => e.id === 'bett').immediate, true);
+  T.eq(STORY_KATER.endings.find((e) => e.id === 'wirt').immediate, true);
+  T.eq(Object.keys(STORY_KATER.trophies).sort(), ['bett', 'brownie', 'nuechtern', 'wirt']);
+});
+T.test('STORY_KATER: Start – Flitterwochen', () => {
+  const s = katerState();
+  T.eq(s.story.vars, { pegel: 0, leber: 100, deckel: 0, bierHeute: 0, brownieHeute: 0, docNein: 0 });
+  T.eq(s.story.unlocked.jobs, ['filialleiter']);
+  T.eq(s.story.unlocked.doors, ['roulette', 'slots', 'horses', 'russian', 'blackjack']);
+  T.eq(s.story.unlocked.rooms, ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal']);
+  T.eq(s.story.prices, { brownie: 1000, therapy: 5000 });
+  T.eq(s.story.disabled, ['tinder', 'house', 'dealer']);
+  T.eq(StoryRules.chapterFor(STORY_KATER, s).id, 'k1');
+});
+T.test('STORY_KATER: Kapitelgrenzen 4/11/21', () => {
+  const s = katerState();
+  for (const [day, id] of [[3, 'k1'], [4, 'k2'], [10, 'k2'], [11, 'k3'], [20, 'k3'], [21, 'k4'], [30, 'k4']]) { s.story.day = day; T.eq(StoryRules.chapterFor(STORY_KATER, s).id, id, `Tag ${day}`); }
+});
+T.test('Jobs: filialleiter im Pool', () => {
+  T.eq(typeof Jobs === 'undefined' || (Jobs.POOL.filialleiter && Jobs.POOL.filialleiter.base), typeof Jobs === 'undefined' ? true : 400);
+});
+T.test('STORY_KATER: Tag-1-Morgen richtet Villa, Auto ein; Doc-Ende startet mit Leber 70', () => {
+  const s = katerState({ car: null, hasHouse: false });
+  T.eq(runHook(s, 'morning'), ['einrichten']);
+  T.eq([s.car, s.hasHouse, s.story.vars.leber], ['mercC', true, 100]);
+  const d = katerState({ car: null, hasHouse: false }, { schuld: 'doc' });
+  T.eq(runHook(d, 'morning'), ['einrichten', 'niereWeg']);
+  T.eq(d.story.vars.leber, 70);
+});
+T.test('STORY_KATER: Absturz in Nacht 3', () => {
+  const s = katerState({ balance: 3500 });
+  s.story.day = 3; s.story.seen.push('einrichten');
+  T.eq(runHook(s, 'night'), ['absturz']);
+  T.eq([s.balance, s.car, s.hasHouse], [0, null, false]);
+  T.eq(s.story.flags.abgestuerzt, true);
+  T.eq(s.story.unlocked.jobs, []);
+  T.eq(s.story.unlocked.rooms, ['bar', 'doc', 'bank', 'invest', 'life', 'stadt'], 'Royal gesperrt bis Kapitel 3');
+  s.story.day = 4;
+  T.eq(runHook(s, 'night').includes('absturz'), false, 'einmalig');
+});
+T.test('STORY_KATER: Intro-Szene je vorigem Ende', () => {
+  for (const prev of ['ehrlich', 'sturz', 'taxi', 'doc']) {
+    const s = katerState({}, { schuld: prev });
+    const panels = STORY_KATER.scenes['kater.intro']({ raw: { flags: {}, vars: {} }, prev: s.story.prev });
+    T.ok(panels.length >= 4, `${prev}: Variante + Hochzeit`);
+    T.eq(panels[panels.length - 1].bg, 'villa', `${prev}: endet in der Villa`);
+  }
+});
+const katerDay = (day, extra = {}) => { const s = katerState({ balance: 200, car: null, hasHouse: false }); s.story.day = day; s.story.flags.abgestuerzt = true; s.story.seen.push('einrichten', 'absturz'); s.story.unlocked.rooms = ['bar', 'doc', 'bank', 'invest', 'life', 'stadt']; Object.assign(s.story.flags, extra); return s; };
+T.test('STORY_KATER: Freibier morgens, Deckel beim ersten Bier, danach 50 €', () => {
+  const s = katerDay(5);
+  runHook(s, 'morning');
+  T.eq(StoryRules.price(s, 'beer'), 0, 'erstes Bier des Tages umsonst');
+  runHook(s, 'buy:beer');
+  T.eq([s.story.vars.deckel, s.story.vars.bierHeute, s.story.vars.pegel, s.story.vars.leber], [50, 1, 1, 99]);
+  T.eq(StoryRules.price(s, 'beer'), 50);
+  runHook(s, 'buy:beer'); runHook(s, 'buy:beer'); runHook(s, 'buy:beer');
+  T.eq([s.story.vars.deckel, s.story.vars.bierHeute, s.story.vars.pegel, s.story.vars.leber], [50, 4, 3, 96], 'Bier 4: Pegel bleibt 3, Leber zahlt');
+});
+T.test('StoryRules.dueEvents: daily-Event einmal pro Tag, nach advanceDay wieder fällig', () => {
+  const st = Object.assign({}, STORY_PROBE, { events: [{ id: 'taeglich', at: 'morning', daily: true, effects: [{ var: 'mut', add: 1 }] }, { id: 'immer', at: 'morning', effects: [] }] });
+  const s = Object.assign(base(), { story: StoryRules.freshStoryPart(st) });
+  T.eq(s.story.seenDay, {}, 'frischer Story-Teil hat seenDay');
+  const run = () => StoryRules.dueEvents(st, s, 'morning').map((e) => { if (e.daily) s.story.seenDay[e.id] = s.story.day; return e.id; });
+  T.eq(run(), ['taeglich', 'immer']);
+  T.eq(run(), ['immer'], 'am selben Tag (Reload) nicht noch einmal');
+  StoryRules.advanceDay(s);
+  T.eq(run(), ['taeglich', 'immer'], 'nächster Tag: wieder fällig');
+  delete s.story.seenDay;
+  T.eq(StoryRules.dueEvents(st, s, 'morning').map((e) => e.id), ['taeglich', 'immer'], 'alter Spielstand ohne seenDay läuft weiter');
+});
+T.test('STORY_KATER: Freibier ist daily – ein Reload am Morgen macht das bezahlte Bier nicht wieder umsonst', () => {
+  const s = katerDay(5);
+  T.eq(runHook(s, 'morning'), ['freibier']);
+  runHook(s, 'buy:beer');
+  T.eq([StoryRules.price(s, 'beer'), s.story.vars.bierHeute], [50, 1]);
+  T.eq(runHook(s, 'morning'), [], 'Morgen-Events erneut (Reload): Freibier bleibt aus');
+  T.eq([StoryRules.price(s, 'beer'), s.story.vars.bierHeute], [50, 1], 'Preis und Zähler unverändert');
+  s.story.day = 6; T.eq(runHook(s, 'morning'), ['freibier'], 'am nächsten Tag wieder');
+  T.eq(StoryRules.price(s, 'beer'), 0);
+});
+T.test('STORY_KATER: Entzugsnacht → Zitter-Tag → erstes Bier hebt ihn auf', () => {
+  const s = katerDay(5);
+  runHook(s, 'morning'); runHook(s, 'buy:beer'); runHook(s, 'buy:beer');
+  const ids = runHook(s, 'sleep');
+  T.ok(ids.includes('entzug') && ids.includes('entzugSzene'), ids.join());
+  T.eq(s.story.vars.leber, 96, '98 − 2 Entzug');
+  T.eq(s.story.flags.zitter, true); T.eq(s.story.luckMod, -15); T.eq(StoryRules.jobMod(s).shiftPay, 0.5);
+  T.eq(s.story.vars.pegel, 0, 'Pegel nachts zurückgesetzt'); T.eq(s.story.vars.bierHeute, 0);
+  T.eq(StoryRules.gate(STORY_KATER, s, 'royal'), 'Sie zittern. Wir haben eine Hausordnung.');
+  s.story.day = 6; runHook(s, 'morning');
+  T.eq(runHook(s, 'buy:beer').includes('zitterEnde'), true);
+  T.eq([s.story.flags.zitter, s.story.luckMod, StoryRules.jobMod(s)], [false, 0, {}]);
+  T.eq(StoryRules.gate(STORY_KATER, s, 'royal'), null);
+  runHook(s, 'buy:beer'); runHook(s, 'buy:beer');
+  const n2 = runHook(s, 'sleep');
+  T.ok(!n2.includes('entzug'), 'drei Bier → kein Entzug');
+  T.ok(!n2.includes('entzugSzene'), 'Szene nur beim ersten Mal');
+});
+T.test('STORY_KATER: Leber-Rechnung 27 Tage Minimum = 19; Warnung bei ≤ 30; Niere −20', () => {
+  const s = katerDay(4);
+  for (let d = 4; d <= 30; d++) { s.story.day = d; runHook(s, 'morning'); runHook(s, 'buy:beer'); runHook(s, 'buy:beer'); runHook(s, 'buy:beer'); runHook(s, 'night'); runHook(s, 'sleep'); }
+  T.eq(s.story.vars.leber, 19);
+  T.ok(s.story.seen.includes('leberWarnung'), 'Warnszene kam');
+  const k = katerDay(5); runHook(k, 'buy:kidney'); T.eq(k.story.vars.leber, 80);
+});
+T.test('STORY_KATER: Ende „Bett" ist sofort, wenn Leber 0', () => {
+  const s = katerDay(12); s.story.vars.leber = 1; runHook(s, 'morning'); runHook(s, 'buy:beer');
+  T.eq(s.story.vars.leber, 0);
+  T.eq(StoryRules.ending(STORY_KATER, s, { immediateOnly: true }).id, 'bett');
+});
+T.test('STORY_KATER: Doc-Angebot Tag 6/12/18, dreimal Nein → Standhaft', () => {
+  const s = katerDay(6);
+  const nein = (id) => { const panels = STORY_KATER.scenes[id]; return panels[panels.length - 1].choices.find((c) => c.value === 'nein'); };
+  T.eq(runHook(s, 'night'), ['docAngebot']);
+  for (const eff of nein('kater.doc.angebot').effects) StoryRules.applyEffect(s, eff, STORY_KATER);
+  s.story.seen.push('docAngebot');
+  s.story.day = 12; T.eq(runHook(s, 'night'), ['docAngebot2']);
+  for (const eff of nein('kater.doc.angebot2').effects) StoryRules.applyEffect(s, eff, STORY_KATER);
+  s.story.day = 18; T.eq(runHook(s, 'night'), ['docAngebot3']);
+  let last;
+  for (const eff of nein('kater.doc.angebot3').effects) last = StoryRules.applyEffect(s, eff, STORY_KATER);
+  T.eq(s.story.vars.docNein, 3);
+  T.eq(s.story.flags.docAbgelehnt, true);
+  T.eq(last, { achievement: 'standhaft' }, 'dritter Nein-Abend: Trophäe');
+});
+T.test('STORY_KATER: Sucht – Brownie 300 €, Therapie 8.000 €, Brownie deckt den Pegel, Entzug −4', () => {
+  const s = katerDay(6);
+  const panels = STORY_KATER.scenes['kater.doc.angebot'];
+  const ja = panels[panels.length - 1].choices.find((c) => c.value === 'ja');
+  for (const eff of ja.effects) StoryRules.applyEffect(s, eff, STORY_KATER);
+  T.eq(s.story.flags.sucht, true);
+  T.eq(StoryRules.price(s, 'brownie'), 300); T.eq(StoryRules.price(s, 'therapy'), 8000);
+  s.story.day = 7; runHook(s, 'morning');
+  runHook(s, 'buy:brownie');
+  T.eq([s.story.vars.brownieHeute, s.story.vars.leber], [1, 96]);
+  T.eq(s.story.vars.pegel, 3, 'Brownie deckt den Pegel');
+  T.ok(!runHook(s, 'sleep').includes('entzugSucht'), 'Brownie deckt den Bedarf');
+  s.story.day = 8; runHook(s, 'morning');
+  const ids = runHook(s, 'sleep');
+  T.ok(ids.includes('entzugSucht') && !ids.includes('entzug'), ids.join());
+  T.eq(s.story.vars.leber, 92, '96 − 4');
+});
+T.test('STORY_KATER: ohne Sucht deckt ein Brownie den Pegel nicht – Entzug kommt trotzdem', () => {
+  const s = katerDay(7); s.balance = 5000;
+  runHook(s, 'morning');
+  const ids = runHook(s, 'buy:brownie');
+  T.ok(ids.includes('brownie') && !ids.includes('brownieDeckt'), ids.join());
+  T.eq([s.story.vars.brownieHeute, s.story.vars.pegel, s.story.vars.leber], [1, 0, 96], 'Pegel bleibt 0');
+  const nacht = runHook(s, 'sleep');
+  T.ok(nacht.includes('entzug') && nacht.includes('entzugSzene') && !nacht.includes('entzugSucht'), nacht.join());
+  T.eq(s.story.flags.zitter, true); T.eq(s.story.vars.leber, 94, '96 − 2 Entzug');
+});
+T.test('STORY_KATER: Therapie – ab Kapitel 3 erlaubt, danach kein Bier, kein Entzug, Leber stabil', () => {
+  const s = katerDay(11);
+  T.eq(StoryRules.purchaseAllowed(s, 'therapy'), null, 'vor dem Kapitel-3-Effekt nicht freigegeben');
+  StoryRules.applyEffect(s, { enable: ['therapy'] }, STORY_KATER); // macht Kapitel 3 per chapters[].unlock nicht – daher als Event, siehe Implementierung
+  runHook(s, 'buy:therapy');
+  T.eq(s.story.flags.nuechtern, true);
+  T.eq(StoryRules.purchaseAllowed(s, 'beer'), false); T.eq(StoryRules.purchaseAllowed(s, 'brownie'), false);
+  T.eq(StoryRules.purchaseAllowed(s, 'therapy'), false, 'Therapie ist einmalig – sperrt sich selbst');
+  T.eq(runHook(s, 'sleep').filter((id) => id.startsWith('entzug')), []);
+  s.story.day = 12; T.eq(runHook(s, 'morning').includes('freibier'), false);
+});
+T.test('STORY_KATER: Kapitel-3-Morgen gibt Therapie frei', () => {
+  const s = katerDay(11);
+  T.ok(runHook(s, 'morning').includes('therapieFrei'));
+  T.eq(StoryRules.purchaseAllowed(s, 'therapy'), true);
+});
+T.test('STORY_KATER: Schicht-Szenen vorhanden, Eintreiber nur ohne Sturz', () => {
+  T.eq(STORY_KATER.jobScenes.filialleiter.length, 3);
+  T.eq(STORY_KATER.jobScenes.tuersteher.length, 3);
+  T.eq(STORY_KATER.jobScenes.croupier.length, 3);
+  T.eq(STORY_KATER.jobScenes.eintreiber.length, 2);
+  const a = katerDay(21, {}); T.eq(runHook(a, 'morning').includes('eintreiberJob'), true);
+  T.eq(a.story.unlocked.jobs.includes('eintreiber'), true);
+  const b = katerState({}, { schuld: 'sturz' }); b.story.day = 21; b.story.flags.abgestuerzt = true;
+  T.eq(runHook(b, 'morning').includes('eintreiberJob'), false);
+  T.eq(runHook(b, 'morning').includes('igorPartner') || b.story.seen.includes('igorPartner'), true, 'nach Sturz stattdessen Igor-Szene');
+});
+T.test('STORY_KATER: Croupier sieht die Bücher → Rabatt-Flag', () => {
+  const s = katerDay(15);
+  T.eq(STORY_KATER.jobEffects['kater.croup.buecher'], [{ flag: 'buecher' }]);
+});
+T.test('STORY_KATER: Sylvie nach dem ersten großen Gewinn', () => {
+  const s = katerDay(15);
+  T.eq(runHook(s, 'royal:guest'), ['sylvieGast']);
+  T.eq(runHook(s, 'royal:guest'), [], 'einmalig');
+});
+const UI_FMT = (n) => typeof UI !== 'undefined' ? UI.fmt(n) : `${n} €`;
+T.test('STORY_KATER: Kaufgespräch ab Tag 20, Preis = 40.000 + Deckel, Bücher −5.000', () => {
+  const s = katerDay(19); s.story.vars.deckel = 1250;
+  T.eq(StoryRules.actionsFor(STORY_KATER, s, 'bar'), []);
+  s.story.day = 20;
+  T.eq(StoryRules.actionsFor(STORY_KATER, s, 'bar').map((a) => a.id), ['kauf']);
+  const ctx = (bal) => ({ raw: { balance: bal, day: 20, vars: s.story.vars, flags: s.story.flags }, balance: UI_FMT(bal) });
+  const panels = STORY_KATER.scenes['kater.kauf'](ctx(41000));
+  const last = panels[panels.length - 1];
+  T.eq(last.choices.map((c) => c.value), ['nein'], 'zu wenig Geld: nur Absage');
+  const p2 = STORY_KATER.scenes['kater.kauf'](ctx(41250));
+  const ja = p2[p2.length - 1].choices.find((c) => c.value === 'ja');
+  T.eq(ja.effects, [{ balance: -41250 }, { flag: 'gekauft' }]);
+  s.story.flags.buecher = true;
+  const p3 = STORY_KATER.scenes['kater.kauf'](ctx(36250));
+  const ja3 = p3[p3.length - 1].choices.find((c) => c.value === 'ja');
+  T.eq(ja3.effects, [{ balance: -36250 }, { flag: 'gekauft' }]);
+  s.story.flags.gekauft = true;
+  T.eq(StoryRules.actionsFor(STORY_KATER, s, 'bar'), [], 'nach dem Kauf keine Aktion mehr');
+});
+T.test('STORY_KATER: Chantal kommt ab Tag 21 mit 15.000 zurück, nicht mit Sucht', () => {
+  const s = katerDay(21); s.balance = 15000;
+  T.ok(runHook(s, 'night').includes('chantal'));
+  const t = katerDay(21, { sucht: true }); t.balance = 15000;
+  const ids = runHook(t, 'night');
+  T.ok(!ids.includes('chantal') && ids.includes('chantalSucht'));
+  const u = katerDay(21); u.balance = 14999;
+  T.ok(!runHook(u, 'night').includes('chantal'));
+});
+T.test('STORY_KATER: sechs Enden per Zustand, Prioritäten', () => {
+  const at = (setup) => { const s = katerDay(30); setup(s); return StoryRules.ending(STORY_KATER, s); };
+  T.eq(at((s) => { s.story.vars.leber = 0; }).id, 'bett');
+  T.eq(at((s) => { s.story.flags.gekauft = true; s.story.vars.leber = 0; }).id, 'bett', 'Bett vor Wirt');
+  T.eq(at((s) => { s.story.flags.gekauft = true; }).id, 'wirt');
+  T.eq(at((s) => { s.story.flags.nuechtern = true; }).id, 'nuechtern');
+  T.eq(at((s) => { s.story.flags.sucht = true; s.story.vars.leber = 15; }).id, 'brownie');
+  T.eq(at((s) => { s.story.flags.sucht = true; s.story.vars.leber = 16; }), null, 'Leber 16 → kein Brownie-Ende');
+  T.eq(at((s) => { s.story.flags.chantalZurueck = true; s.balance = 15000; }).id, 'taxi');
+  T.eq(at((s) => { s.story.flags.chantalZurueck = true; s.balance = 14999; }), null);
+  const fb = katerDay(31); T.eq(StoryRules.ending(STORY_KATER, fb).id, 'stammgast');
+  const early = katerDay(12); early.story.flags.nuechtern = true; T.eq(StoryRules.ending(STORY_KATER, early), null, 'Nüchtern erst an Tag 30');
+  const wirt = katerDay(22); wirt.story.flags.gekauft = true; T.eq(StoryRules.ending(STORY_KATER, wirt, { immediateOnly: true }).id, 'wirt', 'Kauf beendet sofort');
+});
+T.test('STORY_KATER: Ende Wirt mit Chantal-Variante', () => {
+  const p1 = STORY_KATER.scenes['kater.ende.wirt']({ raw: { flags: { chantalZurueck: true }, vars: {} } });
+  const p2 = STORY_KATER.scenes['kater.ende.wirt']({ raw: { flags: {}, vars: {} } });
+  T.eq(p1.length, p2.length + 1);
+  T.eq(p1.some((p) => p.who === 'chantal'), true); T.eq(p2.some((p) => p.who === 'chantal'), false);
 });
 
 /* ---- Gear: Katalog, Boni, Kauf ---- */
@@ -6200,6 +8015,18 @@ T.test('postmanTier: Schuhe geben Zeit und Lohn', () => {
   T.eq(Rules.postmanTier(6, base({ shoes: 'carbon' })), { t: 3.5, r: 35 });
   T.eq(Rules.postmanTier(2, base({ shoes: 'trail' })), { t: 4, r: 15 });
 });
+T.test('postmanTier: Story-Zeitfaktor', () => {
+  const s = base({ story: { jobMod: { postTime: 0.5 } } });
+  T.eq(Rules.postmanTier(0, s).t, 2.5);
+  T.eq(Rules.postmanTier(0, base({ story: { jobMod: {} } })).t, 5);
+  T.eq(Rules.postmanTier(0, base({ shoes: 'basic', story: { jobMod: { postTime: 0.5 } } })).t, 3, 'Schuh-Bonus vor dem Faktor');
+});
+T.test('StoryRules.shiftPay: Faktor auf Lohn + Bonus, gerundet', () => {
+  T.eq(StoryRules.shiftPay(100, 30, {}), 130);
+  T.eq(StoryRules.shiftPay(100, 30, { shiftPay: 0.5 }), 65);
+  T.eq(StoryRules.shiftPay(150, 0, { shiftPay: 0.5 }), 75);
+  T.eq(StoryRules.shiftPay(105, 0, { shiftPay: 0.5 }), 53);
+});
 
 /* ---- Story: Stärke, Räume, Cooldown ---- */
 T.test('StoryRules.check: strength', () => {
@@ -6254,6 +8081,100 @@ T.test('Story Schuld: stadtOffen ab Tag 4, Eintreiber mit Türsteher freigeschal
   T.eq(st.jobEffects['schuld.eintreiber.zahnarzt'], [{ var: 'ruf', add: 1 }]);
   for (const id of ['schuld.stadt', 'schuld.eintreiber.kiosk', 'schuld.eintreiber.zahnarzt']) T.ok(Array.isArray(st.scenes[id]) && st.scenes[id].length >= 2, id);
 });
+
+/* ---- Story-Engine (nur im Browser – Block story-engine wird in Node nicht geladen) ---- */
+if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
+  /* Sofortiges Ende mitten in der Nacht: finish() → „Nächste Story" tauscht State.s aus. Der Rest von runEvents/night
+     darf dann weder alte Events auf der neuen Story ausführen noch deren Tag weiterzählen. Hier ist finish() ein Stub,
+     der genau diesen Tausch macht (kein Cutscene, kein Titel); Speichern ist abgeklemmt, alles wird danach zurückgesetzt. */
+  T.test('Story.night: sofortiges Ende im sleep-Event lässt die nächste Story unberührt', async () => {
+    const mk = (id) => ({ id, title: id, days: 3, start: { balance: 100, vars: {}, unlocked: { jobs: [], doors: [], rooms: [] } }, chapters: [], events: [], scenes: {},
+      endings: [{ id: 'aus', title: 'Aus', scene: 'x', priority: 0, fallback: true }] });
+    const a = mk('t.alt'), b = mk('t.neu');
+    a.events = [
+      { id: 'kipp', at: 'sleep', once: true, effects: [{ flag: 'tot' }] },
+      { id: 'danach', at: 'sleep', once: true, effects: [{ var: 'x', add: 1 }] },
+      { id: 'nachts', at: 'night', once: true, effects: [{ var: 'y', add: 1 }] },
+    ];
+    a.endings.push({ id: 'tot', title: 'Tot', scene: 'x', priority: 10, immediate: true, when: { flag: 'tot' } });
+    const sA = State.freshStory(a); sA.story.phase = 'evening';
+    const sB = State.freshStory(b);
+    const keep = { mode: State.mode, s: State.s, save: State.save, saveMeta: State.saveMeta, story: Story.story, finish: Story.finish, fade: Story.fade };
+    let finished = null;
+    try {
+      State.save = () => {}; State.saveMeta = () => {};
+      Story.fade = async () => {};
+      Story.finish = async function (end) { this.s.ended = end.id; finished = end.id; State.s = sB; this.story = b; }; // wie enter('newstory')
+      State.s = sA; Story.story = a;
+      await Story.night();
+      T.eq(finished, 'tot', 'sofortiges Ende gespielt');
+      T.eq(sA.story.ended, 'tot');
+      T.ok(State.s === sB, 'State.s ist die neue Story');
+      T.eq(sA.story.vars, {}, 'Folge-Event der alten Story lief nicht');
+      T.eq(sB.story.seen, [], 'alte Event-Ids nicht in der neuen Story');
+      T.eq(sB.story.vars, {}, 'alte Events nicht auf der neuen Story ausgeführt');
+      T.eq(sB.story.day, 1, 'neue Story nicht weitergezählt');
+      T.eq(sB.story.phase, 'morning'); T.eq(sB.story.ended, null);
+      T.ok(!Story.sleeping && !Story.finishing, 'Flags zurückgesetzt');
+    } finally {
+      State.mode = keep.mode; State.s = keep.s; State.save = keep.save; State.saveMeta = keep.saveMeta;
+      Story.story = keep.story; Story.finish = keep.finish; Story.fade = keep.fade;
+      Story.sleeping = false; Story.finishing = false; Story.lostDay = false;
+      UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide(); Story.renderDaybar();
+    }
+  });
+  T.test('UI.renderWallet: Pech steht mit Vorzeichen im Glücks-Meter, Segmente bleiben aus', () => {
+    const keep = State.s;
+    try {
+      const k = State.freshStory(STORY_KATER); k.story.luckMod = -15;
+      State.s = k; UI.renderWallet();
+      T.eq(qs('#luck .luck-val').textContent, '−15%');
+      T.eq(qs('#luck').title, 'Glück −15 %');
+      T.eq(qsa('#luck .seg.on').length, 0, 'keine Segmente an');
+      k.story.luckMod = 0; UI.renderWallet();
+      T.eq(qs('#luck .luck-val').textContent, '+0%');
+      k.beers = 3; k.beerTimer = 2; UI.renderWallet();
+      T.eq(qs('#luck .luck-val').textContent, '+20%'); T.eq(qsa('#luck .seg.on').length, 3);
+    } finally { State.s = keep; UI.renderWallet(); }
+  });
+  T.test('STORY_KATER.goal: Tagesziel rechnet Deckel dazu und den Bücher-Rabatt ab', () => {
+    const s = State.freshStory(STORY_KATER);
+    T.eq(STORY_KATER.goal(s), 'Flitterwochen. Genieß es.');
+    s.story.flags.abgestuerzt = true; s.story.vars.deckel = 1250;
+    T.eq(STORY_KATER.goal(s), 'Ziel: Keller 41.250 € bis Tag 30');
+    s.story.flags.buecher = true;
+    T.eq(STORY_KATER.goal(s), 'Ziel: Keller 36.250 € bis Tag 30', 'wie das Kaufgespräch');
+    s.story.flags.gekauft = true;
+    T.eq(STORY_KATER.goal(s), 'Der Keller gehört dir.');
+  });
+  /* Therapie im Story-Modus (Der Kater, Kapitel 3): der Doc spielt seine Szene über buy:therapy – die Anwalt-Szene
+     therapy.done (Dr. Schmalz, „viertausendneunhundert an mich") gehört nur zur Liebeskummer-Therapie des freien Spiels. */
+  T.test('Life.therapy: Story-Therapie spielt kater.therapie, nicht therapy.done; Liebeskummer weiterhin therapy.done', async () => {
+    const keep = { mode: State.mode, s: State.s, save: State.save, saveMeta: State.saveMeta, story: Story.story, play: Cutscene.play };
+    const played = [];
+    try {
+      State.save = () => {}; State.saveMeta = () => {};
+      Cutscene.play = async (id) => { played.push(id); return undefined; };
+      const k = State.freshStory(STORY_KATER);
+      k.story.day = 12; k.story.flags.abgestuerzt = true; k.balance = 6000;
+      StoryRules.applyEffect(k, { enable: ['therapy'] }, STORY_KATER);
+      State.mode = 'story'; State.s = k; Story.story = STORY_KATER;
+      await Life.therapy();
+      T.eq(played, ['kater.therapie'], 'nur die Doc-Szene');
+      T.eq([k.balance, k.story.flags.nuechtern, StoryRules.purchaseAllowed(k, 'beer')], [1000, true, false]);
+      played.length = 0;
+      const f = State.fresh(); f.isHeartbroken = true; f.balance = 6000;
+      State.mode = 'free'; State.s = f; Story.story = null;
+      await Life.therapy();
+      T.eq(played, ['therapy.done'], 'freies Spiel: Anwalt-Szene');
+      T.eq([f.balance, f.isHeartbroken], [1000, false]);
+    } finally {
+      State.mode = keep.mode; State.s = keep.s; State.save = keep.save; State.saveMeta = keep.saveMeta;
+      Story.story = keep.story; Cutscene.play = keep.play;
+      UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide(); Story.renderDaybar();
+    }
+  });
+}
 
 /* ---- Tisch & Bank ---- */
 T.test('INVEST: neue Werte', () => {
@@ -6394,7 +8315,7 @@ T.test('luck mit mods: Bier/Brownie-Multiplikatoren, 4. Bier', () => {
   T.eq(Rules.luck(base({ beers: 4, beerTimer: 1 })), 25);
   T.eq(Rules.luck(base({ brownieTimer: 1 }), M({ brownieLuckMult: 0.5 })), 20);
   T.eq(Rules.canBeer(base({ beers: 3, balance: 100 })).reason, 'max');
-  T.eq(Rules.canBeer(base({ beers: 3, balance: 100 }), M({ maxBeers: 4})), { ok: true });
+  T.eq(Rules.canBeer(base({ beers: 3, balance: 100 }), Rules.PRICES.beer, M({ maxBeers: 4 })), { ok: true });
 });
 T.test('Bank/Vito mit mods', () => {
   near(Rules.bankRateFor(base(), M({ bankRateAdd: -0.03 })), 0.05);
@@ -6491,7 +8412,7 @@ if (typeof Perks !== 'undefined') T.test('Perks.refreshExcluded: ohne force blei
   UI.mountShell();
   if (discarded) UI.toast({ icon: '🗑️', title: 'Alter Spielstand verworfen', text: 'Unlesbar oder falsche Version – neues Spiel.', tone: 'loss', ms: 5000 });
   if (params.has('selftest')) {
-    const r = SelfTest.run();
+    const r = await SelfTest.run();
     document.documentElement.dataset.selftest = `passed=${r.passed} failed=${r.failed}`;
     console.log('[selftest]', r);
     r.failures.forEach((f) => console.error('[selftest] FAIL', f));
@@ -6504,7 +8425,8 @@ if (typeof Perks !== 'undefined') T.test('Perks.refreshExcluded: ohne force blei
   /* Dev-Pfad freies Spiel: wie bisher */
   document.body.classList.add('mode-free');
   if (params.has('shop') && typeof Stadt !== 'undefined') Stadt.shop = Stadt.SHOPS[params.get('shop')] ? params.get('shop') : null;
-  await UI.show(params.get('screen') || 'hub');
+  if (params.get('screen') === 'royal' && params.has('game') && ['megaslots', 'craps', 'wheel'].includes(params.get('game'))) { await UI.show(params.get('game')); }
+  else await UI.show(params.get('screen') || 'hub');
   let gameOverAtBoot = false;
   if (Rules.isGameOver(State.s, Perks.mods())) { gameOverAtBoot = true; await Bus.emit('gameover', {}); }
   if (params.has('scene')) {

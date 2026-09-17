@@ -7,12 +7,13 @@ Ein satirisches Casino-Lebenssimulations-Spiel in einer einzigen HTML-Datei. Fü
 ## Was drin ist
 
 - **Sechs Spiele:** Roulette mit Setztisch und laufender Kugel, Slots mit echten Walzen, Pferderennen mit Live-Kommentar, Russisches Roulette gegen Igor, Blackjack am Filztisch, Post austragen als ehrlicher Ausweg (eine Schicht endet nach 15 Briefen oder beim ersten Fehler). Beim Roulette Chips mit dem gewählten Wert auf Zahlen und Außenfelder legen (mehrere gleichzeitig), „Chip zurück", „Tisch leeren" oder „Wie zuletzt" nutzen; ein Dreh wertet alle liegenden Chips auf einmal aus.
-- **Leben:** Villa kaufen, auf Tinder Chantal-Monique heiraten, geschieden werden, Therapie zahlen, einen Dealer anheuern. Bier und Brownies an der Bar geben Glück – es wirkt voll bis 100 € Einsatz, darüber anteilig, und nie auf Roulette-Zahlen (ein Trinkgeld, keine Geldmaschine). Eine Niere fürs Hinterzimmer.
+- **Leben:** Villa kaufen, auf Tinder Chantal-Monique heiraten, geschieden werden, Therapie zahlen, einen Dealer anheuern. Bier und Brownies an der Bar geben Glück – es wirkt voll bis 100 € Einsatz, darüber anteilig, und nie auf Roulette-Zahlen (ein Trinkgeld, keine Geldmaschine); negatives Glück ist Pech (Zitter-Tag in Story 2): mit |x| % wird ein Gewinn einmal neu ausgewürfelt. Eine Niere fürs Hinterzimmer.
 - **Kredite:** Bank (8 % Zinsen pro Spin, Limit 3.000 €, nur ein Kredit auf einmal) oder Don Vito (5 Spins Frist, danach der Doc).
 - **Anlagen:** Festgeld +8 % nach 6 Spins (10 % Risiko), Aktien +100 % nach 2 Spins (85 %), Trickbetrug +50 % nach 10 Spins (55 %) – je Sorte eine laufende Anlage.
 - **Stadt:** Autohaus (Audi-Linie senkt das Überfallrisiko und erhöht die Fluchtchance, Mercedes-Linie hebt Bank-Limit und senkt die Zinsen) und INTERSPORT (Laufschuhe verbessern die Flucht, bringen mehr Zeit/Lohn beim Postboten und helfen bei den Job-Minispielen). Ein neues Auto nimmt das alte mit 50 % seines Preises in Zahlung, Schuhe gibt es nur zum vollen Preis.
+- **Casino Royal:** am Ende der Straße, nur mit Auto (Parkservice). Eintritt 100 € – bis zum ersten Einzelgewinn ab 5.000 €, dann bist du Gast des Hauses. Drei Tische mit höheren Einsätzen: **Mega Seven** (5 Walzen, 5 Linien, Freispiele ×2), **Craps** (Pass Line und Field, jeder Wurf ein Spin) und das **Glücksrad** (24 Felder, ×10 bis Bankrott). Madame Sylvie sieht alles.
 - **Überfälle & Stärke:** auf dem Weg in den Keller kann es einen Überfall geben – Kämpfen, Wegrennen oder Zahlen. Ein Kampf (gewonnen oder verloren) erhöht 💪 Stärke; Stärke verbessert die Kampfchance und den Türsteher-Bonus, schaltet den Job „Eintreiber" frei und macht ab 10 gefürchtet (seltener Ziel für Überfälle).
-- **Cutscenes:** 31 Visual-Novel-Szenen mit 13 Charakteren, Typewriter-Text, Entscheidungen und Effekten.
+- **Cutscenes:** 33 Visual-Novel-Szenen mit 14 Charakteren, Typewriter-Text, Entscheidungen und Effekten.
 - **Extras:** synthetisierter Sound (Web Audio, keine Dateien), Spielstand in `localStorage`, Game Over mit Statistik, Trophäen, Reduced-Motion.
 - **Handy (≤ 760 px):** Roulette-Tisch hochkant (Zero oben, 1-2-3 nebeneinander, Außenfelder unten), Einsatz-Leiste in drei festen Zeilen (Stepper / Chips / Hauptknopf), Tab-Leiste mit Icons, Header-Knöpfe in Touch-Größe, die Glück/Level-Zeile klappt beim Scrollen ein. Auf dem Handy entfallen Backdrop-Blur, Filmkorn und die Tür-Schatten, der Screen-Wechsel blendet nur über – das spart Mobile-Chrome das Ruckeln beim Wechsel zurück in den Keller. Am Desktop ändert sich nichts.
 
@@ -33,11 +34,17 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
   Nacht aus – Ereignisse, Kapitelwechsel, Freischaltungen, danach der nächste Tag.
 - **Jobs:** zwei Mini-Spiele (🍽️ Spüler – Teller im Timing-Fenster treffen; 🚕 Nachttaxi –
   Fahrgäste einsammeln und bei Rot bremsen) und mehrere Schicht-Karten-Jobs (🚪 Türsteher,
-  🃏 Croupier, 💊 Kurier, 👔 Praktikant, 🩺 Arzthelfer), die jeweils kurze Szenen mit echten
-  Entscheidungen zeigen und Geld sowie Story-Variablen verändern.
+  🃏 Croupier, 💊 Kurier, 👔 Praktikant, 🩺 Arzthelfer, 🏦 Filialleiter, 🥊 Eintreiber), die
+  jeweils kurze Szenen mit echten Entscheidungen zeigen und Geld sowie Story-Variablen verändern.
 - **Enden:** Story 1 „Die Schuld" hat vier unterschiedliche Enden, je nachdem wie die 30 Tage
   verlaufen – mehr wird hier nicht verraten. Erreichte Enden werden pro Story gemerkt; die
-  Trophäenwand bekommt einen eigenen Abschnitt für Story-Erfolge.
+  Trophäenwand bekommt einen eigenen Abschnitt für Story-Erfolge. Stories können eine
+  Voraussetzung haben (`requires`); der Titelscreen zeigt dann an, welche Story als Nächstes
+  startet und welche noch gesperrt ist.
+- **Story 2 „Der Kater":** Fortsetzung – erst spielbar, wenn „Die Schuld" ein Ende hat, und der
+  Einstieg hängt davon ab, welches. Hochzeit, Absturz, drei Bier am Tag als Pflicht und als
+  Glücksquelle, eine Leber als Countdown, der Doc mit einem Angebot, und der Keller, der zu
+  kaufen ist. Sechs Enden.
 
 ## Skills & Insider
 
@@ -76,17 +83,18 @@ leichter macht, aber keine Geldmaschine wird.
 | URL-Zusatz | Wirkung |
 |---|---|
 | `?fresh` | beide Spielstände (frei und Story) löschen und neu starten |
-| `?screen=slots` | nur freies Spiel: Titelscreen überspringen und direkt einen Screen öffnen (`roulette`, `slots`, `horses`, `russian`, `blackjack`, `postman`, `finance`, `invest`, `life`, `stadt`, `skills` – bei `stadt` öffnet `&shop=audi|merc|sport` direkt einen Laden). Story-Screens erreicht man stattdessen über `?story=…&job=…` (Mini-Spiele) bzw. nach dem Einstieg per `UI.show('jobs'|'vito'|'skills')` |
+| `?screen=slots` | nur freies Spiel: Titelscreen überspringen und direkt einen Screen öffnen (`roulette`, `slots`, `horses`, `russian`, `blackjack`, `postman`, `finance`, `invest`, `life`, `stadt`, `royal`, `skills` – bei `stadt` öffnet `&shop=audi|merc|sport` direkt einen Laden, bei `royal` öffnet `&game=megaslots|craps|wheel` direkt einen Tisch). Story-Screens erreicht man stattdessen über `?story=…&job=…` (Mini-Spiele) bzw. nach dem Einstieg per `UI.show('jobs'|'vito'|'skills')` |
 | `?scene=divorce` | nur freies Spiel: eine Szene abspielen |
 | `?selftest` | Regel-Selbsttest im Browser (Ergebnis als Toast und in der Konsole) |
 | `?mode=story` \| `?mode=free` | Titelscreen überspringen, direkt in den Modus |
-| `?story=schuld` | Story erzwingen (impliziert `mode=story`) |
-| `?day=12` | Story-Tag setzen (nur zusammen mit `?fresh`; überspringt das Intro) |
+| `?story=schuld` | Story erzwingen (`schuld`, `kater`; impliziert `mode=story`) |
+| `?day=12` | Story-Tag setzen (nur zusammen mit `?fresh`; überspringt das Intro). Bei `kater` überspringt ein Sprung hinter Tag 3 auch die Absturz-Nacht – das Flag dann per Konsole setzen, wie im Playtest: `State.s.story.flags.abgestuerzt = true` |
 | `?job=spueler` | Jobbörse überspringen, Job direkt starten (impliziert `mode=story`; der Job muss freigeschaltet und seine Voraussetzung erfüllt sein) |
-| `?ending=sturz` | ein Story-Ende direkt abspielen (nur beim Story-Neustart, z. B. `?fresh&story=schuld&ending=sturz`) |
+| `?ending=sturz` | ein Story-Ende direkt abspielen (nur beim Story-Neustart, z. B. `?fresh&story=schuld&ending=sturz` oder `?fresh&story=kater&prev=doc&ending=wirt`) |
+| `?prev=doc` | zusammen mit `?fresh&story=…`: setzt das „vorige Ende" der vorausgesetzten Story (für Fortsetzungen, z. B. `?fresh&story=kater&prev=doc` – Intro-Variante nach dem Doc-Ende) |
 | `?mug=1\|junkie\|jugend\|cousin` | erzwingt den nächsten Überfall (`1` bzw. leer: zufälliger Räubertyp; sonst gezielt `junkie`, `jugend` oder `cousin`) |
 
-`story`, `day`, `job`, `ending` und `fresh` gelten genau einmal: die Engine entfernt sie nach dem Einstieg
+`story`, `day`, `job`, `ending`, `fresh` und `prev` gelten genau einmal: die Engine entfernt sie nach dem Einstieg
 aus der URL, damit „Nächste Story" oder ein Reload nicht wieder dieselbe erzwungene Story starten.
 
 ## Tests
