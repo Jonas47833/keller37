@@ -42,7 +42,7 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
 | URL-Zusatz | Wirkung |
 |---|---|
 | `?fresh` | beide Spielstände (frei und Story) löschen und neu starten |
-| `?screen=slots` | nur freies Spiel: Titelscreen überspringen und direkt einen Screen öffnen (`roulette`, `slots`, `horses`, `russian`, `blackjack`, `postman`, `finance`, `invest`, `life`, `stadt`). Story-Screens erreicht man stattdessen über `?story=…&job=…` (Mini-Spiele) bzw. nach dem Einstieg per `UI.show('jobs'|'vito')` |
+| `?screen=slots` | nur freies Spiel: Titelscreen überspringen und direkt einen Screen öffnen (`roulette`, `slots`, `horses`, `russian`, `blackjack`, `postman`, `finance`, `invest`, `life`, `stadt` – bei `stadt` öffnet `&shop=audi|merc|sport` direkt einen Laden). Story-Screens erreicht man stattdessen über `?story=…&job=…` (Mini-Spiele) bzw. nach dem Einstieg per `UI.show('jobs'|'vito')` |
 | `?scene=divorce` | nur freies Spiel: eine Szene abspielen |
 | `?selftest` | Regel-Selbsttest im Browser (Ergebnis als Toast und in der Konsole) |
 | `?mode=story` \| `?mode=free` | Titelscreen überspringen, direkt in den Modus |
