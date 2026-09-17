@@ -32,8 +32,8 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
   Nacht aus – Ereignisse, Kapitelwechsel, Freischaltungen, danach der nächste Tag.
 - **Jobs:** zwei Mini-Spiele (🍽️ Spüler – Teller im Timing-Fenster treffen; 🚕 Nachttaxi –
   Fahrgäste einsammeln und bei Rot bremsen) und mehrere Schicht-Karten-Jobs (🚪 Türsteher,
-  🃏 Croupier, 💊 Kurier, 👔 Praktikant, 🩺 Arzthelfer), die jeweils kurze Szenen mit echten
-  Entscheidungen zeigen und Geld sowie Story-Variablen verändern.
+  🃏 Croupier, 💊 Kurier, 👔 Praktikant, 🩺 Arzthelfer, 🏦 Filialleiter, 🥊 Eintreiber), die
+  jeweils kurze Szenen mit echten Entscheidungen zeigen und Geld sowie Story-Variablen verändern.
 - **Enden:** Story 1 „Die Schuld" hat vier unterschiedliche Enden, je nachdem wie die 30 Tage
   verlaufen – mehr wird hier nicht verraten. Erreichte Enden werden pro Story gemerkt; die
   Trophäenwand bekommt einen eigenen Abschnitt für Story-Erfolge. Stories können eine
@@ -54,7 +54,7 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
 | `?selftest` | Regel-Selbsttest im Browser (Ergebnis als Toast und in der Konsole) |
 | `?mode=story` \| `?mode=free` | Titelscreen überspringen, direkt in den Modus |
 | `?story=schuld` | Story erzwingen (`schuld`, `kater`; impliziert `mode=story`) |
-| `?day=12` | Story-Tag setzen (nur zusammen mit `?fresh`; überspringt das Intro) |
+| `?day=12` | Story-Tag setzen (nur zusammen mit `?fresh`; überspringt das Intro). Bei `kater` überspringt ein Sprung hinter Tag 3 auch die Absturz-Nacht – das Flag dann per Konsole setzen, wie im Playtest: `State.s.story.flags.abgestuerzt = true` |
 | `?job=spueler` | Jobbörse überspringen, Job direkt starten (impliziert `mode=story`; der Job muss freigeschaltet und seine Voraussetzung erfüllt sein) |
 | `?ending=sturz` | ein Story-Ende direkt abspielen (nur beim Story-Neustart, z. B. `?fresh&story=schuld&ending=sturz` oder `?fresh&story=kater&prev=doc&ending=wirt`) |
 | `?prev=doc` | zusammen mit `?fresh&story=…`: setzt das „vorige Ende" der vorausgesetzten Story (für Fortsetzungen, z. B. `?fresh&story=kater&prev=doc` – Intro-Variante nach dem Doc-Ende) |
