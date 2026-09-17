@@ -405,6 +405,12 @@ async def scenario_spueler_and_hub(cdp):
 
 async def scenario_fast_forward(cdp):
     """Post-Schicht (mid), Tag 3 Chantal, Tag 6 Kapitel, Taxi (mid), Tag 10 Kontrolle+Duell."""
+    # Dieses Szenario testet Kapitel-/Ereignis-Fortschritt, keine Ueberfaelle: Story.evening()
+    # (ueber Jobs.finishGame('taxi') -> Feierabend) wuerfelt ab Tag 4 sonst mit 12 % einen
+    # Abend-Ueberfall, dessen offene Cutscene den spaeteren Story.night()-Aufruf fuer Tag 10
+    # (Cutscene.active-Guard) verschluckt -- Cooldown weit genug hochsetzen, dass advanceDay()
+    # ihn ueber die restlichen Tage dieses Laufs nicht auf 0 zaehlt.
+    await cdp.eval("State.s.mugCooldown = 999; State.save();", await_promise=False)
     # Tag 2: Postbote-Schicht anspielen (mid), dann abbrechen -> zurueck zum Hub, Job zaehlt nicht,
     # aber Screen+Timer wurden real gerendert.
     screen = await cdp.eval("UI.current && UI.current.id", await_promise=False)
@@ -445,6 +451,28 @@ async def scenario_fast_forward(cdp):
     day = await cdp.eval("State.s.story.day", await_promise=False)
     record("nacht: Tag-3-Ereignis (Chantal) ausgeloest", "chantal3" in (seen_events or []), "seen=%s day=%s" % (seen_events, day))
 
+    # Story.night() laeuft nach dem Phasenwechsel auf 'morning' noch fire-and-forget weiter
+    # (fade -> advanceDay -> fade -> applyChapter -> morning() -> runEvents('morning')), bevor
+    # es im finally-Block Story.sleeping wieder auf false setzt. Ab Tag 4 feuert dort das
+    # Morgen-Ereignis 'stadtOffen' (einmalig) und oeffnet Kevins Szene (schuld.stadt, 3 Panels)
+    # als echte Cutscene. Die obige Schleife bricht bereits beim blossen Phasenwechsel ab und
+    # liefe daher weiter, waehrend diese Cutscene noch offen ist -- ohne diese Abwarte-Schleife
+    # bleibt Story.sleeping/Cutscene.active haengen, und der spaetere Story.night()-Aufruf fuer
+    # Tag 10 kehrt an seinem eigenen sleeping/Cutscene-Guard sofort und lautlos zurueck (die
+    # eigentliche Ursache des vermeintlichen "kontrolle: Tag 10"-Flakes).
+    for _ in range(40):
+        await cdp.advance_cutscene(max_steps=10)
+        sleeping = await cdp.eval("Story.sleeping", await_promise=False)
+        cs = await cdp.eval("__pt.cutsceneActive()", await_promise=False)
+        if not sleeping and not cs:
+            break
+        await asyncio.sleep(0.15)
+    unlocked_rooms = await cdp.eval("State.s.story.unlocked.rooms.slice()", await_promise=False)
+    seen_events = await cdp.eval("State.s.story.seen.slice()", await_promise=False)
+    record("stadt: Morgen nach Tag-3-Nacht (Tag 4) feuert stadtOffen, stadt freigeschaltet",
+           "stadt" in (unlocked_rooms or []) and "stadtOffen" in (seen_events or []),
+           "rooms=%s seen=%s" % (unlocked_rooms, seen_events))
+
     # Tag 6 Kapitel-Szene: Tag direkt setzen und Kapitel-Wechsel real anwenden.
     await cdp.eval("State.s.story.day = 6; State.s.story.phase='evening'; State.save();")
     await cdp.eval("Story.applyChapter()", await_promise=False)
@@ -461,6 +489,8 @@ async def scenario_fast_forward(cdp):
     # nie den Job-Screen (das war die urspruengliche Ursache von "taxi: Job-Screen geladen").
     await cdp.eval("State.s.balance = 500; UI.setBalance(State.s.balance); State.save();")
     await cdp.eval("Story.morning()", await_promise=False)
+    # 'stadtOffen' ist bereits an Tag 4 (s.o.) und damit vor Tag 6 gesehen worden, feuert hier
+    # also nicht erneut -- keine Cutscene zu erwarten.
     await cdp.wait_for("UI.current && UI.current.id === 'jobs' && !UI.busy", timeout=3.0)
     await cdp.eval("Jobs.take('taxi')")
     await cdp.wait_for("UI.current && UI.current.id === 'job-taxi'", timeout=3.0)
@@ -481,6 +511,13 @@ async def scenario_fast_forward(cdp):
     # nicht 9 (Story.night() wuerde sonst die Nacht von Tag 9 auswerten, in der das Ereignis
     # noch nicht faellig ist, und den Tag nur auf 10 hochzaehlen, ohne das Duell auszuloesen).
     await cdp.eval("State.s.story.day = 10; State.s.balance = 10; State.s.story.vars.schuld = 49000; State.s.story.phase='evening'; State.save();")
+    # Defensive Kontrolle: Story.night() kehrt an seinem eigenen Guard sofort und lautlos zurueck,
+    # wenn Story.sleeping noch true ist oder eine Cutscene noch offen ist (siehe Kommentar oben zu
+    # Tag 3/4) -- das direkt vor dem Aufruf zu pruefen, macht eine kuenftige Regression dieser Art
+    # sofort sichtbar, statt sie erst am ausbleibenden Duell zu erraten.
+    sleeping = await cdp.eval("Story.sleeping", await_promise=False)
+    cs = await cdp.eval("__pt.cutsceneActive()", await_promise=False)
+    record("kontrolle: kein Schlaf/keine Cutscene vor Tag-10-Nacht", not sleeping and not cs, "sleeping=%s cutscene=%s" % (sleeping, cs))
     await cdp.eval("Story.night()", await_promise=False)
     ok = False
     duel_seen = False
