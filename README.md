@@ -14,6 +14,8 @@ Ein satirisches Casino-Lebenssimulations-Spiel in einer einzigen HTML-Datei. Fü
 - **Casino Royal:** am Ende der Straße, nur mit Auto (Parkservice). Eintritt 100 € – bis zum ersten Einzelgewinn ab 5.000 €, dann bist du Gast des Hauses. Drei Tische mit höheren Einsätzen: **Mega Seven** (5 Walzen, 5 Linien, Freispiele ×2), **Craps** (Pass Line und Field, jeder Wurf ein Spin) und das **Glücksrad** (24 Felder, ×10 bis Bankrott). Madame Sylvie sieht alles.
 - **Hinterzimmer:** 🂡 Baccarat (Punto Banco) · 500–10.000 € · Spieler 1:1, Bank 0,95:1, Unentschieden 8:1 · nur in Story 3.
 - **Überfälle & Stärke:** auf dem Weg in den Keller kann es einen Überfall geben – Kämpfen, Wegrennen oder Zahlen. Ein Kampf (gewonnen oder verloren) erhöht 💪 Stärke; Stärke verbessert die Kampfchance und den Türsteher-Bonus, schaltet den Job „Eintreiber" frei und macht ab 10 gefürchtet (seltener Ziel für Überfälle).
+- **Schießerei „Zieh!":** Reaktionsduell gegen einen oder mehrere Gegner (Story 3) – „Bereit", dann warten, bis ZIEH! aufblitzt, dann tippen oder Leertaste; wer vor dem Blitz schießt, hat einen Fehlschuss und verliert sofort.
+- **Pfandleihe Kowalski:** ab Story-Freigabe im Autohaus/INTERSPORT-Viertel – drei Waffen (15.000 €, 35.000 € und 75.000 €), die im Duell Vorsprung geben und nur aufgerüstet, nie zurückgetauscht werden können.
 - **Cutscenes:** 33 Visual-Novel-Szenen mit 14 Charakteren, Typewriter-Text, Entscheidungen und Effekten.
 - **Extras:** synthetisierter Sound (Web Audio, keine Dateien), Spielstand in `localStorage`, Game Over mit Statistik, Trophäen, Reduced-Motion.
 - **Handy (≤ 760 px):** Roulette-Tisch hochkant (Zero oben, 1-2-3 nebeneinander, Außenfelder unten), Einsatz-Leiste in festen Zeilen (Stepper / Chips / kleine Knöpfe zu dritt / Hauptknopf volle Breite – auch in Casino Royal), Tab-Leiste mit Icons, Header-Knöpfe in Touch-Größe, die Glück/Level-Zeile klappt beim Scrollen ein. Auf dem Handy entfallen Backdrop-Blur, Filmkorn und die Tür-Schatten, der Screen-Wechsel blendet nur über – das spart Mobile-Chrome das Ruckeln beim Wechsel zurück in den Keller. Am Desktop ändert sich nichts.
@@ -33,10 +35,13 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
   wahlweise „Kein Job heute") und einen Abend (der bekannte Hub, in dem Türen und Räume, die
   die Story noch nicht freigegeben hat, mit Brettern vernagelt sind). „Schlafen" löst die
   Nacht aus – Ereignisse, Kapitelwechsel, Freischaltungen, danach der nächste Tag.
-- **Jobs:** zwei Mini-Spiele (🍽️ Spüler – Teller im Timing-Fenster treffen; 🚕 Nachttaxi –
-  Fahrgäste einsammeln und bei Rot bremsen) und mehrere Schicht-Karten-Jobs (🚪 Türsteher,
-  🃏 Croupier, 💊 Kurier, 👔 Praktikant, 🩺 Arzthelfer, 🏦 Filialleiter, 🥊 Eintreiber), die
-  jeweils kurze Szenen mit echten Entscheidungen zeigen und Geld sowie Story-Variablen verändern.
+- **Jobs:** drei Mini-Spiele (🍽️ Spüler – Teller im Timing-Fenster treffen; 🚕 Nachttaxi –
+  Fahrgäste einsammeln und bei Rot bremsen; 💼 Kurierfahrt – dieselbe Fahrt als Taxi mit Anabis
+  Koffer im Kofferraum, Übergabepunkte statt Fahrgäste, Lohn nach Strafzetteln: 0 Strafzettel
+  3.000 €, 1 Strafzettel 1.500 €, ab 2 durchsucht die Polizei den Kofferraum – Kontrolle, kein
+  Lohn) und mehrere Schicht-Karten-Jobs (🚪 Türsteher, 🃏 Croupier, 💊 Kurier, 👔 Praktikant,
+  🩺 Arzthelfer, 🏦 Filialleiter, 🥊 Eintreiber), die jeweils kurze Szenen mit echten
+  Entscheidungen zeigen und Geld sowie Story-Variablen verändern.
 - **Enden:** Story 1 „Die Schuld" hat vier unterschiedliche Enden, je nachdem wie die 30 Tage
   verlaufen – mehr wird hier nicht verraten. Erreichte Enden werden pro Story gemerkt; die
   Trophäenwand bekommt einen eigenen Abschnitt für Story-Erfolge. Stories können eine
@@ -94,6 +99,8 @@ leichter macht, aber keine Geldmaschine wird.
 | `?ending=sturz` | ein Story-Ende direkt abspielen (nur beim Story-Neustart, z. B. `?fresh&story=schuld&ending=sturz` oder `?fresh&story=kater&prev=doc&ending=wirt`) |
 | `?prev=doc` | zusammen mit `?fresh&story=…`: setzt das „vorige Ende" der vorausgesetzten Story (für Fortsetzungen, z. B. `?fresh&story=kater&prev=doc` – Intro-Variante nach dem Doc-Ende) |
 | `?mug=1\|junkie\|jugend\|cousin` | erzwingt den nächsten Überfall (`1` bzw. leer: zufälliger Räubertyp; sonst gezielt `junkie`, `jugend` oder `cousin`) |
+| `?fresh&mode=free&screen=shootout&foe=junge\|kessler\|igor\|anabi&weapon=N` | Schießerei direkt öffnen, Gegner erzwingen, `weapon` (0–3) setzt die Waffenstufe fürs Duell |
+| `?fresh&story=…&weapon=N` | Story-Neustart mit gesetzter Waffenstufe (0–3, siehe Pfandleihe Kowalski) |
 
 `story`, `day`, `job`, `ending`, `fresh` und `prev` gelten genau einmal: die Engine entfernt sie nach dem Einstieg
 aus der URL, damit „Nächste Story" oder ein Reload nicht wieder dieselbe erzwungene Story starten.
