@@ -417,7 +417,7 @@ body.cs-open .toast { max-width: 300px; }
   .side-tabs .tab-ic { font-size: 1.25rem; line-height: 1; }
   .side-tabs .tab-lb { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Keller */
-  .hub, .hub.royal-hub { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .hub { grid-template-columns: 1fr 1fr; gap: 10px; }
   .door { height: 150px; padding-top: 14px; gap: 6px; }
   .door .sign { font-size: 1.2rem; padding: 2px 8px; white-space: nowrap; max-width: 94%; overflow: hidden; text-overflow: ellipsis; }
   .door .glyph { font-size: 2rem; }
@@ -700,11 +700,6 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 @keyframes confettiBurst { from { transform: translate(0, 0) scale(1); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) scale(.4); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .gold-drop, .confetti { animation: none; display: none; } .balance.gold-flash { animation: none; } }
 /* Casino Royal – Lobby und Schaufenster */
-.royal { background: radial-gradient(ellipse at 50% 0%, rgba(107,31,42,.6), transparent 60%); }
-.royal-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; justify-content: space-between; }
-.royal-head h2 { font-family: var(--font-display); color: var(--gold-2); letter-spacing: .1em; margin: 0; }
-.royal-sylvie { font-family: var(--font-mono); font-style: italic; color: var(--dim); margin: 0; }
-.royal-hub { grid-template-columns: repeat(3, 1fr); }
 /* Casino Royal – Fassade in der Stadt */
 .facade { position: relative; grid-column: 1 / -1; min-height: 240px; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 16px 18px; cursor: pointer; border: 2px solid #c9a961; border-radius: 4px; overflow: hidden;
   background: repeating-linear-gradient(180deg, #141216 0 22px, #0e0d10 22px 24px); box-shadow: inset 0 0 0 4px #141216, inset 0 0 0 5px #8a6a2e, var(--shadow); }
@@ -728,7 +723,9 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .mega-panel { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; }
 .mega-panel .status, .mega-panel .bet-bar { grid-column: 1 / -1; }
 .mega-machine { --cell: 64px; --gap: 6px; --pad: 10px; position: relative; background: #141216; border: 2px solid var(--gold); box-shadow: inset 0 0 0 4px #141216, inset 0 0 0 5px var(--bronze), var(--shadow); padding: 26px 18px 16px; overflow: hidden; }
-.mega-machine::before { content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 60%; height: 4px; background: var(--gold); box-shadow: 0 7px 0 -0px var(--gold); }
+.mega-machine::before { content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 60%; height: 4px; background: var(--gold); box-shadow: none; }
+.mega-machine::after { content: ""; position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 40%; height: 11px; pointer-events: none;
+  background: linear-gradient(var(--gold) 0 4px, transparent 4px) 0 0 / 100% 100% no-repeat, linear-gradient(90deg, transparent 25%, var(--gold) 25% 75%, transparent 75%) 0 7px / 100% 4px no-repeat; }
 .mega-machine .slot-head { font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; letter-spacing: .25em; text-align: center; color: var(--gold-2); margin-bottom: 12px; }
 .mega-reels { position: relative; }
 .mega-grid { display: grid; grid-template-columns: repeat(5, var(--cell)); gap: var(--gap); background: #0a0a0a; padding: var(--pad); border: 1px solid var(--bronze); }
@@ -785,7 +782,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .wheel-pointer { position: absolute; left: 50%; top: -20px; transform: translateX(-50%); width: 18px; height: 26px; background: var(--gold); clip-path: polygon(0 0, 100% 0, 50% 100%); z-index: 3; filter: drop-shadow(0 0 6px rgba(201,169,97,.7)); font-size: 0; }
 .wheel-hub { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 64px; height: 64px; border-radius: 50%; background: #141216; border: 3px solid var(--gold); box-shadow: inset 0 0 0 2px var(--bronze), 0 4px 10px rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; z-index: 2; }
 .wheel.hit { animation: hitGlow .6s ease 3; }
-@media (hover: hover) { .wheel.spinning ~ .wheel-lights, .wheel-stage:has(.wheel.spinning) .wheel-lights { animation: wheelLights .15s steps(2) infinite; } }
+@media (hover: hover) { .wheel.spinning ~ .wheel-lights { animation: wheelLights .15s steps(2) infinite; } }
 @keyframes wheelLights { to { opacity: 1; } }
 @media (max-width: 760px) { .wheel-panel { grid-template-columns: 1fr; } .wheel-panel .paytable { justify-self: center; } .wheel .seg { font-size: .6rem; } }
 @media (prefers-reduced-motion: reduce) { .wheel-panel { transition: none; } .wheel-lights { animation: none !important; } }
@@ -870,7 +867,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .hud-pegel.covered { border-bottom: 2px solid var(--neon-green); padding-bottom: 1px; }
 .hud-deckel .coaster { width: 34px; height: 34px; border-radius: 50%; background: #d9c7a3; color: #4a3a22; border: 2px solid #b8a27a; box-shadow: inset 0 0 0 4px #d9c7a3, inset 0 0 0 5px #b8a27a; display: inline-flex; align-items: center; justify-content: center; font-size: .6rem; line-height: 1; letter-spacing: -1px; }
 .hud-deckel.empty .coaster { opacity: .4; }
-body.zitter .balance, body.zitter .hud-pegel { animation: zitter 3s infinite; }
+body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zitter 3s infinite; }
 @keyframes zitter { 0%, 8%, 100% { transform: translateX(0); } 1% { transform: translateX(-1px); } 3% { transform: translateX(1px); } 5% { transform: translateX(-1px); } 7% { transform: translateX(1px); } }
 @media (max-width: 760px) { .hud-leber .bar { width: 70px; } }
 @media (prefers-reduced-motion: reduce) { body.zitter .balance, body.zitter .hud-pegel, .hud-leber.danger .fill { animation: none; } }
@@ -1246,7 +1243,7 @@ body.zitter .balance, body.zitter .hud-pegel { animation: zitter 3s infinite; }
   <div class="panel mega-panel">
     <div class="mega-machine">
       <div class="mega-free" id="megaFree">FREISPIELE ×2 · noch <span id="megaFreeLeft">0</span></div>
-      <div class="slot-head neon" style="--neon: var(--gold-2)">Mega Seven</div>
+      <div class="slot-head">Mega Seven</div>
       <div class="mega-reels"><div class="mega-grid" id="megaGrid"></div><svg class="mega-lines-svg" id="megaLinesSvg" aria-hidden="true"></svg></div>
       <div class="mega-lines" id="megaLines"></div>
     </div>
@@ -3423,6 +3420,7 @@ const Craps = {
     if (kind === 'pass' && this.point != null) { UI.toast({ icon: '🎲', title: 'Punkt läuft', text: 'Pass Line erst nach der Entscheidung.', tone: 'loss' }); return; }
     this.bets[kind] = Math.min(RoyalRules.CRAPS.MAX, this.bets[kind] + v);
     this.run = State.s;
+    qsa('.chip-stack', this.root).forEach((c) => c.classList.remove('won', 'lost'));
     SFX.play('chip'); this.render();
   },
   /* Leeren: während ein Punkt läuft, bleibt der Pass-Einsatz auf dem Tisch (nur Field wird zurückgenommen) */
@@ -5418,6 +5416,7 @@ const Title = {
   root: null,
   show() {
     if (!qs('#title').hidden) return Promise.resolve(null);
+    document.body.dataset.zone = 'keller';
     return new Promise((resolve) => {
       const root = qs('#title');
       root.innerHTML = '';

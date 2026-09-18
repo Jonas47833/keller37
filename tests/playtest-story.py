@@ -1679,7 +1679,7 @@ async def scenario_royal_look(cdp):
                marks: (document.querySelector('.hud-deckel .coaster') || {}).textContent, zitter: document.body.classList.contains('zitter'),
                note: document.querySelector('#notes').textContent.includes('Zittern') };
     })()""", await_promise=False) or {}
-    record("kater-hud: Leber 25 rot, 2 Kruege, 5 Striche, Zittern", hud.get("width") == "25%" and hud.get("danger") and hud.get("kruege") == 2 and hud.get("zitter") and hud.get("note") and len(hud.get("marks") or "") >= 1, hud)
+    record("kater-hud: Leber 25 rot, 2 Kruege, 5 Striche, Zittern", hud.get("width") == "25%" and hud.get("danger") and hud.get("kruege") == 2 and hud.get("zitter") and hud.get("note") and hud.get("marks") == "|||||", hud)
     # Nach dem Intro laeuft der Tag-1-Morgen (einrichten/niereWeg) noch fire-and-forget bis zur
     # Pinnwand (UI.busy bleibt bis dahin true) -- UI.show() ist ein No-Op solange busy, also erst warten
     await cdp.wait_for("!UI.busy && !__pt.cutsceneActive()", timeout=5.0)
