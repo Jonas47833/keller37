@@ -2153,7 +2153,7 @@ const UI = {
     if (room('life')) secs.push(sec('Zuhause', btn('🏡 Leben', s.hasHouse ? '🏰' : '', 'life'), ...acts('life')));
     secs.push(sec('Kopf', btn('🧠 Skills', Rules.skillPointsFree(s) > 0 ? `${Rules.skillPointsFree(s)} Punkt frei` : `Lv ${Rules.xpLevel(s.xp || 0).level}`, 'skills')));
     if (room('stadt')) secs.push(sec('Stadt',
-      btn('🏙️ Autohaus · INTERSPORT', s.car || s.shoes ? '✓' : '', 'stadt'),
+      btn(`🏙️ Autohaus · INTERSPORT${inStory && Story.s.enabled && Story.s.enabled.pfandleihe ? ' · Pfandleihe' : ''}`, s.car || s.shoes ? '✓' : '', 'stadt'),
       h('p', { class: 'side-hint gear-line', id: 'gearLine' }, Stadt.line(s)),
       ...acts('stadt')));
     if (room('royal') && typeof Royal !== 'undefined') secs.push(sec('Casino Royal',
@@ -2968,12 +2968,14 @@ const Stadt = {
     audi: { name: 'Audi Zentrum', icon: '🚗', kind: 'car', brand: 'audi' },
     merc: { name: 'Mercedes-Benz Niederlassung', icon: '🚘', kind: 'car', brand: 'merc' },
     sport: { name: 'INTERSPORT', icon: '👟', kind: 'shoes' },
+    pfandleihe: { name: 'Pfandleihe Kowalski', icon: '🔫', kind: 'weapon', story: true },
   },
   SELLER: {
     none: 'Zu Fuß gekommen? Mutig.',
     same: 'Schön, dass du wieder da bist.',
     other: 'Der Wechsel lohnt sich. Sagen alle.',
     sport: 'Für Leute, die es eilig haben.',
+    pfandleihe: 'Ich frag nicht, wofür. Du fragst nicht, woher.',
   },
   REASON: { funds: 'Zu wenig Bargeld', downgrade: 'Kein Rückschritt', owned: 'Deins' },
   carPerks(c) {
@@ -3005,16 +3007,20 @@ const Stadt = {
     return el;
   },
   seller(id) {
-    if (id === 'sport') return this.SELLER.sport;
+    if (id === 'sport' || id === 'pfandleihe') return this.SELLER[id];
     const cur = State.s.car ? Rules.GEAR.cars[State.s.car] : null;
     return !cur ? this.SELLER.none : cur.brand === id ? this.SELLER.same : this.SELLER.other;
   },
   ownedLine(id) {
     const s = State.s;
     if (id === 'sport') return `Deine Schuhe: ${s.shoes ? Rules.GEAR.shoes[s.shoes].name : '–'}`;
+    if (id === 'pfandleihe') return `Deine Waffe: ${s.weapon ? GangRules.WEAPONS[s.weapon].name : '–'}`;
     return `Dein Wagen: ${s.car ? Rules.GEAR.cars[s.car].name : '–'}`;
   },
-  open(id) { if (!this.SHOPS[id]) return; SFX.play('click'); this.shop = id; this.render(); },
+  /* Schaufenster, die nur eine Story öffnet (story: true) – sichtbar mit Story.s.enabled[id] */
+  storyShop(id) { return !this.SHOPS[id].story || (State.mode === 'story' && typeof Story !== 'undefined' && Story.s && Story.s.enabled && !!Story.s.enabled[id]); },
+  weaponPerks(w) { const out = [`Reaktion +${w.bonus} ms`]; if (w.ambushMult) out.push(`Hinterhalte −${Math.round((1 - w.ambushMult) * 100)} %`); out.push(w.desc); return out; },
+  open(id) { if (!this.SHOPS[id] || !this.storyShop(id)) return; SFX.play('click'); this.shop = id; this.render(); },
   close() { SFX.play('click'); this.shop = null; this.render(); },
   render() {
     if (!this.root) return;
@@ -3028,6 +3034,7 @@ const Stadt = {
     street.innerHTML = ''; laden.innerHTML = '';
     if (!shop) {
       for (const [id, sh] of Object.entries(this.SHOPS)) {
+        if (!this.storyShop(id)) continue;
         street.append(h('div', { class: `storefront ${id}`, 'data-shop': id, onclick: () => this.open(id) },
           h('div', { class: 'sign' }, sh.name),
           h('div', { class: 'glyph' }, sh.icon),
@@ -3046,6 +3053,13 @@ const Stadt = {
     }
     qs('#ladenSeller', this.root).textContent = this.seller(this.shop);
     const s = State.s;
+    if (shop.kind === 'weapon') {
+      GangRules.WEAPONS.filter((w) => w.tier > 0).forEach((w) => {
+        const check = GangRules.canBuyWeapon(s, w.tier);
+        laden.append(this.card(w, this.weaponPerks(w), check, `Kaufen · ${UI.fmt(w.price)}`, () => this.buyWeapon(w.tier)));
+      });
+      return;
+    }
     if (shop.kind === 'car') {
       const cur = s.car ? Rules.GEAR.cars[s.car] : null;
       Object.entries(Rules.GEAR.cars).filter(([, c]) => c.brand === shop.brand).sort((a, b) => a[1].tier - b[1].tier).forEach(([id, c]) => {
@@ -3098,11 +3112,26 @@ const Stadt = {
     UI.renderWallet(); UI.renderSide(); this.render();
     await Bus.emit('gear:shoes', { id });
   },
+  async buyWeapon(tier) {
+    const s = State.s;
+    if (this.busy()) return;
+    if (!GangRules.canBuyWeapon(s, tier).ok) return;
+    const w = GangRules.WEAPONS[tier];
+    SFX.play('cash');
+    Game.applyDelta(-w.price, { from: this.root ? qs('#laden', this.root) : null });
+    s.weapon = tier;
+    State.save();
+    await Cutscene.play('stadt.waffe', { name: w.name });
+    UI.toast({ icon: w.icon, title: w.name, text: 'Liegt im Handschuhfach. Deins.', tone: 'gold' });
+    UI.renderWallet(); UI.renderSide(); this.render();
+    await Bus.emit('gear:weapon', { tier });
+  },
   /* Kurze Zeile für Seitenleiste und Kopfzeile: „🚗 Audi RS 4 quattro · 👟 Trail-Runner Pro · 💪 3" */
   line(s) {
     const parts = [];
     if (s.car) parts.push(`${Rules.GEAR.cars[s.car].icon} ${Rules.GEAR.cars[s.car].name}`);
     if (s.shoes) parts.push(`${Rules.GEAR.shoes[s.shoes].icon} ${Rules.GEAR.shoes[s.shoes].name}`);
+    if (s.weapon) parts.push(`${GangRules.WEAPONS[s.weapon].icon} ${GangRules.WEAPONS[s.weapon].name}`);
     if (!parts.length) parts.push('Zu Fuß');
     parts.push(`💪 ${s.strength || 0}`);
     return parts.join(' · ');
@@ -3129,6 +3158,10 @@ Cutscene.define('stadt.car', [
 Cutscene.define('stadt.shoes', [
   { bg: 'intersport', who: 'verkaeufer', mood: 'happy', text: '{{name}}. Dämpfung, Grip, und man hört Sie nicht kommen. Oder gehen.' },
   { bg: 'intersport', who: 'verkaeufer', mood: 'calm', text: 'Karton bleibt hier. Sie sehen aus, als würden Sie ihn gleich brauchen.' },
+]);
+Cutscene.define('stadt.waffe', [
+  { bg: 'pfandleihe', who: 'kowalski', mood: 'calm', text: 'Bar, keine Quittung, kein Name. {{name}}. Läuft.' },
+  { bg: 'pfandleihe', who: 'kowalski', mood: 'calm', text: 'Ein Tipp umsonst: Wer zu früh zieht, hat schon verloren. Wer zu spät zieht, auch. Dazwischen ist wenig Platz.' },
 ]);
 Bus.on('gear:car', () => Stadt.checkFullSet());
 Bus.on('gear:shoes', () => Stadt.checkFullSet());
@@ -9191,6 +9224,29 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     } finally {
       GangRules.drawWait = keep.wait; State.save = keep.save; State.s = keep.s; State.mode = keep.mode; Story.story = keep.story;
       clearTimeout(Shootout.timer); clearTimeout(Shootout.nextTimer); Shootout.running = false; Shootout.forced = false; Shootout.pending = null;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
+    }
+  });
+  T.test('Stadt: Pfandleihe nur mit Story-Freigabe, Waffenkauf setzt weapon', async () => {
+    const keep = { s: State.s, mode: State.mode, story: Story.story, cur: UI.current, save: State.save, play: Cutscene.play };
+    State.save = () => {}; Cutscene.play = async () => undefined;
+    try {
+      State.mode = 'free'; State.s = State.fresh();
+      await UI.show('stadt');
+      T.eq(qs('.storefront.pfandleihe', qs('#stage')), null, 'freies Spiel: kein Schaufenster');
+      State.mode = 'story'; State.s = State.freshStory(STORY_PROBE); Story.story = STORY_PROBE; State.s.balance = 40000;
+      State.s.story.unlocked.rooms.push('stadt'); State.s.story.enabled.pfandleihe = true;
+      await UI.show('stadt');
+      T.ok(qs('.storefront.pfandleihe', qs('#stage')), 'Story mit enabled: Schaufenster da');
+      Stadt.open('pfandleihe');
+      const cards = qsa('#laden .gear-card', qs('#stage'));
+      T.eq(cards.length, 3, 'drei Waffen');
+      await Stadt.buyWeapon(2);
+      T.eq([State.s.weapon, State.s.balance], [2, 5000]);
+      T.eq(GangRules.canBuyWeapon(State.s, 1).reason, 'downgrade');
+      T.ok(Stadt.line(State.s).includes('Glock'), 'Gear-Zeile nennt die Waffe');
+    } finally {
+      Cutscene.play = keep.play; State.save = keep.save; State.s = keep.s; State.mode = keep.mode; Story.story = keep.story;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
     }
   });
