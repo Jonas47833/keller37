@@ -5436,6 +5436,49 @@ const BaccaratRules = {
 };
 </script>
 
+<script id="gang-rules">
+/* ================= GANG – Waffen, Duell, Kurier (rein, kein DOM); Wochen-/Wäsche-Logik der Story 3 folgt unten ================= */
+const GangRules = {
+  WEAPONS: [
+    { tier: 0, name: 'Keine Waffe', icon: '✋', price: 0, bonus: 0, desc: 'Nur Fäuste. Die reichen hier nicht.' },
+    { tier: 1, name: 'Gebrauchte Makarov', icon: '🔫', price: 15000, bonus: 100, desc: 'Ostblock, Seriennummer weggefeilt. Geht meistens los.' },
+    { tier: 2, name: 'Glock 17', icon: '🔫', price: 35000, bonus: 200, desc: 'Polizeiausführung. Frag nicht, welcher Polizist.' },
+    { tier: 3, name: '„Die Goldene“', icon: '✨', price: 75000, bonus: 300, ambushMult: 0.5, desc: 'Desert Eagle, vergoldet. Die Bahnhof-Jungs kennen das Ding – und gehen lieber woanders hin.' },
+  ],
+  FOES: {
+    laeufer: { name: 'Bahnhof-Läufer', emoji: '🏃', base: 380, spread: 60 },
+    junge: { name: 'Bahnhof-Junge', emoji: '🧢', base: 320, spread: 60 },
+    kessler: { name: 'Kessler', emoji: '🚬', base: 260, spread: 40 },
+    igor: { name: 'Igor', emoji: '🐻', base: 280, spread: 40 },
+    anabi: { name: 'Anabi Stash', emoji: '🕶️', base: 220, spread: 30 },
+  },
+  weapon(s) { const W = GangRules.WEAPONS; return W[Math.min(W.length - 1, Math.max(0, s.weapon || 0))]; },
+  canBuyWeapon(s, tier) {
+    const w = GangRules.WEAPONS[tier];
+    if (!w || tier === 0) return { ok: false, reason: 'unknown' };
+    const cur = s.weapon || 0;
+    if (cur === tier) return { ok: false, reason: 'owned' };
+    if (cur > tier) return { ok: false, reason: 'downgrade' };
+    if (s.balance < w.price) return { ok: false, reason: 'funds' };
+    return { ok: true };
+  },
+  DRAW_WAIT: [1500, 4000],
+  drawWait(rng) { const [a, b] = GangRules.DRAW_WAIT; return Math.round(a + rng() * (b - a)); },
+  /* reaction: ms nach dem Blitz, null = vor dem Blitz getippt (Fehlschuss). Gegnerzeit streut gleichverteilt ±spread. */
+  duelRound({ reaction, bonus = 0, foe, rng }) {
+    const foeTime = Math.round(foe.base + (rng() * 2 - 1) * foe.spread);
+    if (reaction == null) return { won: false, misfire: true, foeTime, you: null };
+    const you = Math.max(0, reaction - bonus);
+    return { won: you < foeTime, misfire: false, foeTime, you };
+  },
+  /* Kurierfahrt: Lohn nach Strafzetteln; ab zwei guckt die Polizei in den Kofferraum */
+  kurierPay(tickets) {
+    if (tickets >= 2) return { pay: 0, kontrolle: true };
+    return { pay: tickets === 0 ? 3000 : 1500, kontrolle: false };
+  },
+};
+</script>
+
 <script id="title">
 /* ================= TITELSCREEN – Modus-Wahl ================= */
 const Title = {
@@ -8155,6 +8198,47 @@ T.test('BaccaratRules: RTP-Simulation 200.000 Hände – Spieler ≈ 98,8 %, Ban
   T.ok(Math.abs(rtp(p) - 98.76) < 0.65, `Spieler ${rtp(p).toFixed(2)}`);
   T.ok(Math.abs(rtp(b) - 98.94) < 0.65, `Bank ${rtp(b).toFixed(2)}`);
   T.ok(Math.abs(rtp(t) - 85.6) < 2.0, `Unentschieden ${rtp(t).toFixed(2)}`);
+});
+
+/* ---- Gang: Waffen, Duell, Kurier ---- */
+T.test('GangRules.WEAPONS: vier Stufen, Preise und Boni laut Spec, Goldene halbiert Hinterhalte', () => {
+  const W = GangRules.WEAPONS;
+  T.eq(W.map((w) => [w.tier, w.price, w.bonus]), [[0, 0, 0], [1, 15000, 100], [2, 35000, 200], [3, 75000, 300]]);
+  T.eq(W[3].ambushMult, 0.5); T.eq(W[1].ambushMult, undefined);
+  T.eq(GangRules.weapon(base()).tier, 0); T.eq(GangRules.weapon(base({ weapon: 2 })).name, 'Glock 17');
+});
+T.test('GangRules.canBuyWeapon: nur Aufstieg, Sprung erlaubt, Geld nötig', () => {
+  T.eq(GangRules.canBuyWeapon(base({ balance: 15000 }), 1), { ok: true });
+  T.eq(GangRules.canBuyWeapon(base({ balance: 14999 }), 1), { ok: false, reason: 'funds' });
+  T.eq(GangRules.canBuyWeapon(base({ balance: 80000, weapon: 0 }), 3), { ok: true }, 'Sprung auf 3');
+  T.eq(GangRules.canBuyWeapon(base({ balance: 80000, weapon: 2 }), 2), { ok: false, reason: 'owned' });
+  T.eq(GangRules.canBuyWeapon(base({ balance: 80000, weapon: 2 }), 1), { ok: false, reason: 'downgrade' });
+  T.eq(GangRules.canBuyWeapon(base({ balance: 80000 }), 0), { ok: false, reason: 'unknown' });
+  T.eq(GangRules.canBuyWeapon(base({ balance: 80000 }), 7), { ok: false, reason: 'unknown' });
+});
+T.test('GangRules.FOES und drawWait', () => {
+  const F = GangRules.FOES;
+  T.eq([F.laeufer, F.junge, F.kessler, F.igor, F.anabi].map((f) => [f.base, f.spread]), [[380, 60], [320, 60], [260, 40], [280, 40], [220, 30]]);
+  T.eq(GangRules.drawWait(seq(0)), 1500); T.eq(GangRules.drawWait(seq(1)), 4000); T.eq(GangRules.drawWait(seq(0.5)), 2750);
+});
+T.test('GangRules.duelRound: Fehlschuss verliert, Bonus zieht ab, Streuung ±spread, ein rng-Aufruf', () => {
+  const foe = GangRules.FOES.junge;
+  let calls = 0; const counting = () => { calls++; return 0.5; };
+  T.eq(GangRules.duelRound({ reaction: null, bonus: 300, foe, rng: counting }), { won: false, misfire: true, foeTime: 320, you: null });
+  T.eq(calls, 1);
+  T.eq(GangRules.duelRound({ reaction: 300, bonus: 0, foe, rng: seq(0.5) }), { won: true, misfire: false, foeTime: 320, you: 300 });
+  T.eq(GangRules.duelRound({ reaction: 320, bonus: 0, foe, rng: seq(0.5) }).won, false, 'gleich schnell = verloren');
+  T.eq(GangRules.duelRound({ reaction: 400, bonus: 100, foe, rng: seq(0.5) }), { won: true, misfire: false, foeTime: 320, you: 300 });
+  T.eq(GangRules.duelRound({ reaction: 50, bonus: 100, foe, rng: seq(0.5) }).you, 0, 'nie negativ');
+  T.eq(GangRules.duelRound({ reaction: 300, bonus: 0, foe, rng: seq(0) }).foeTime, 260, 'rng 0 → base − spread');
+  T.eq(GangRules.duelRound({ reaction: 300, bonus: 0, foe, rng: seq(1) }).foeTime, 380, 'rng 1 → base + spread');
+  T.eq(GangRules.duelRound({ reaction: 250, bonus: 0, foe: GangRules.FOES.anabi, rng: seq(0.5) }).won, false, 'Anabi 220');
+});
+T.test('GangRules.kurierPay: 0 → 3.000, 1 → 1.500, ≥ 2 → Kontrolle', () => {
+  T.eq(GangRules.kurierPay(0), { pay: 3000, kontrolle: false });
+  T.eq(GangRules.kurierPay(1), { pay: 1500, kontrolle: false });
+  T.eq(GangRules.kurierPay(2), { pay: 0, kontrolle: true });
+  T.eq(GangRules.kurierPay(5), { pay: 0, kontrolle: true });
 });
 
 /* ---- Story 2: Der Kater ---- */
