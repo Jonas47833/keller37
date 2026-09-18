@@ -7268,7 +7268,7 @@ const STORY_STASH = {
   lockReason: { royal: 'Hausverbot', hinterzimmer: 'Anabis Tisch kommt morgen' },
   N: { abloese: GangRules.ABLOESE, fluchtMin: GangRules.FLUCHT_MIN, kreditSchritt: GangRules.KREDIT_SCHRITT },
   hud: [
-    { var: 'umsatz', label: '🧺 Umsatz', fmt: 'money', max: (s) => s.story.vars.ziel || 0 },
+    { var: 'umsatz', label: '🧺 Umsatz', fmt: 'money', max: (s) => s.story.vars.ziel || null },
     { var: 'zorn', label: '😡 Zorn', max: 3, tone: 'danger' },
     { var: 'kredit', label: '🧾 Kredit', fmt: 'money' },
   ],
@@ -7276,6 +7276,7 @@ const STORY_STASH = {
     const v = s.story.vars, f = s.story.flags, fmt = StoryRules.fmtMoney;
     if (f.frei) return 'Der Keller ist deiner. Wirklich.';
     if (!v.woche) return 'Der Keller gehört dir. Auf dem Papier.';
+    if (v.woche > 0 && s.story.day > v.woche * 7) return `Woche ${v.woche} abgerechnet. ${s.story.day >= 29 ? 'Woche 5 kommt – Zeit für einen Ausweg.' : 'Heute Nacht: neue Lieferung.'}`;
     const heute = [7, 14, 21, 28].includes(s.story.day);
     return `Woche ${v.woche}: Umsatz ${fmt(v.umsatz)} / ${fmt(v.ziel)} · ${heute ? 'HEUTE ABEND' : `Tag ${v.woche * 7}`}: ${fmt(v.rueckgabe)} fällig`;
   },
@@ -7376,12 +7377,12 @@ const STORY_STASH = {
     { id: 'hinterhalt', when: { day: { gte: 8 } }, daily: true, at: 'night', effects: [{ call: 'hinterhalt' }] },
     { id: 'angebot', when: { all: [{ day: { gte: 15 } }, { var: 'ruf', gte: 2 }, { notFlag: 'bahnhof' }, { notFlag: 'bahnhofNein' }] }, once: true, at: 'night', scene: 'stash.angebot' },
     /* ---- Morgen ---- */
-    { id: 'einrichten', when: { day: { eq: 1 } }, once: true, at: 'morning', effects: [{ set: { car: 'mercC', weapon: 0 } }, { enable: ['hinterzimmer'] }] },
-    { id: 'startKredit30', when: { all: [{ day: { eq: 1 } }, { any: [{ prevEnding: { story: 'kater', id: 'nuechtern' } }, { prevEnding: { story: 'kater', id: 'taxi' } }] }] }, once: true, at: 'morning', effects: [{ var: 'kredit', set: 30000 }] },
-    { id: 'startKredit50', when: { all: [{ day: { eq: 1 } }, { any: [{ prevEnding: { story: 'kater', id: 'stammgast' } }, { prevEnding: { story: 'kater', id: 'brownie' } }] }] }, once: true, at: 'morning', effects: [{ var: 'kredit', set: 50000 }] },
-    { id: 'startTrocken', when: { all: [{ day: { eq: 1 } }, { prevEnding: { story: 'kater', id: 'nuechtern' } }] }, once: true, at: 'morning', effects: [{ flag: 'trocken' }, { disable: ['beer'] }] },
-    { id: 'startBrownie', when: { all: [{ day: { eq: 1 } }, { prevEnding: { story: 'kater', id: 'brownie' } }] }, once: true, at: 'morning', effects: [{ enable: ['brownie'] }] },
-    { id: 'tisch', when: { day: { eq: 2 } }, once: true, at: 'morning', scene: 'stash.tisch', effects: [{ unlock: { doors: ['hinterzimmer'] } }] },
+    { id: 'einrichten', when: { day: { gte: 1 } }, once: true, at: 'morning', effects: [{ set: { car: 'mercC', weapon: 0 } }, { enable: ['hinterzimmer'] }] },
+    { id: 'startKredit30', when: { all: [{ day: { gte: 1 } }, { any: [{ prevEnding: { story: 'kater', id: 'nuechtern' } }, { prevEnding: { story: 'kater', id: 'taxi' } }] }] }, once: true, at: 'morning', effects: [{ var: 'kredit', set: 30000 }] },
+    { id: 'startKredit50', when: { all: [{ day: { gte: 1 } }, { any: [{ prevEnding: { story: 'kater', id: 'stammgast' } }, { prevEnding: { story: 'kater', id: 'brownie' } }] }] }, once: true, at: 'morning', effects: [{ var: 'kredit', set: 50000 }] },
+    { id: 'startTrocken', when: { all: [{ day: { gte: 1 } }, { prevEnding: { story: 'kater', id: 'nuechtern' } }] }, once: true, at: 'morning', effects: [{ flag: 'trocken' }, { disable: ['beer'] }] },
+    { id: 'startBrownie', when: { all: [{ day: { gte: 1 } }, { prevEnding: { story: 'kater', id: 'brownie' } }] }, once: true, at: 'morning', effects: [{ enable: ['brownie'] }] },
+    { id: 'tisch', when: { day: { gte: 2 } }, once: true, at: 'morning', scene: 'stash.tisch', effects: [{ unlock: { doors: ['hinterzimmer'] } }] },
     { id: 'tagesstart', when: { day: { gte: 1 } }, daily: true, at: 'morning', effects: [{ unflag: 'ueberfallHeute' }, { unflag: 'igorHeute' }] },
     { id: 'nachtkasse', when: { day: { gte: 2 } }, daily: true, at: 'morning', effects: [{ call: 'nachtkasse' }] },
     { id: 'pfandleihe', when: { day: { gte: 8 } }, once: true, at: 'morning', effects: [{ enable: ['pfandleihe'] }] },
@@ -7412,7 +7413,7 @@ const STORY_STASH = {
     { id: 'razzia', room: 'bar', label: '👮 Razzia auslösen', when: { all: [{ day: { gte: 26 } }, { var: 'uebergeben', gte: 3 }, { notFlag: 'razzia' }] }, scene: 'stash.razzia' },
     { id: 'anabiStellen', room: 'bar', label: '🔫 Anabi stellen', when: { all: [{ day: { gte: 25 } }, { flag: 'bahnhof' }, { weapon: { gte: 1 } }, { notFlag: 'anabiTot' }, { notFlag: 'kanal' }] }, scene: 'stash.finale' },
     { id: 'abloese', room: 'bank', label: '💰 Ablöse zahlen', when: { all: [{ day: { gte: 22 } }, { var: 'zorn', lte: 1 }, { notFlag: 'frei' }] }, scene: 'stash.abloese' },
-    { id: 'kredit', room: 'bank', label: '🧾 Kredit abzahlen · 5.000 €', when: { all: [{ var: 'kredit', gte: 1 }, { balance: { gte: 5000 } }] }, scene: 'stash.kredit' },
+    { id: 'kredit', room: 'bank', label: '🧾 Kredit abzahlen · 5.000 €', when: { all: [{ var: 'kredit', gte: 1 }, { balance: { gte: 1 } }] }, scene: 'stash.kredit' },
     { id: 'flucht', room: 'stadt', label: '🌍 Abhauen', when: { all: [{ day: { gte: 20 } }, { balance: { gte: 30000 } }, { notFlag: 'flucht' }] }, scene: 'stash.flucht' },
   ],
   jobScenes: { eintreiber: ['stash.eintr.kiosk', 'stash.eintr.friseur'] },
@@ -9502,6 +9503,22 @@ T.test('STORY_STASH: Hausmeister (alle fünf repariert) und Der Stumme nickt', (
   s.story.vars.umsatzHinterzimmer = 100000;
   T.ok(stashHook(s, 'spin:after')[1].some((o) => o.achievement === 'stummeNickt'));
   T.eq(stashHook(s, 'spin:after')[0].includes('stummeNickt'), false, 'einmal');
+});
+T.test('STORY_STASH: Dev-Start an Tag 9 richtet trotzdem ein (Auto, Hinterzimmer offen, Kredit)', () => {
+  const s = stashState({ car: null }, 'stammgast'); s.story.day = 9;
+  stashHook(s, 'morning');
+  T.eq(s.car, 'mercC'); T.eq(s.story.enabled.hinterzimmer, true);
+  T.ok(s.story.unlocked.doors.includes('hinterzimmer')); T.eq(s.story.vars.kredit, 50000);
+  T.eq(s.story.enabled.pfandleihe, true);
+});
+T.test('STORY_STASH: goal – vor der ersten Woche, während einer Woche, nach der Abrechnung', () => {
+  const s = stashState();
+  T.eq(STORY_STASH.goal(s), 'Der Keller gehört dir. Auf dem Papier.');
+  s.story.day = 5; Object.assign(s.story.vars, { woche: 1, ziel: 20000, rueckgabe: 11000 });
+  const mid = STORY_STASH.goal(s);
+  T.ok(mid.includes('Woche 1')); T.ok(mid.includes('Tag 7'));
+  s.story.day = 8;
+  T.ok(STORY_STASH.goal(s).includes('abgerechnet'));
 });
 
 /* ---- Story-Engine (nur im Browser – Block story-engine wird in Node nicht geladen) ---- */
