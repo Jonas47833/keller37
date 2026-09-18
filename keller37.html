@@ -8211,6 +8211,20 @@ T.test('StoryRules.validate: call auf unbekannte Funktion, neue Hooks erlaubt', 
   const errs = StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']);
   T.eq(errs.length, 1); T.ok(errs[0].includes('call "b"'));
 });
+T.test('StoryRules: Effekt force shootout trägt fight durch', () => {
+  const s = base({ story: StoryRules.freshStoryPart(STORY_PROBE) });
+  const fight = { kind: 'tutorial', foes: ['laeufer'], bonus: 100 };
+  T.eq(StoryRules.applyEffect(s, { force: 'shootout', fight }, STORY_PROBE), { force: 'shootout', fight });
+  T.eq(StoryRules.applyEffect(s, { force: 'duel' }, STORY_PROBE), { force: 'duel' });
+});
+T.test('StoryRules.validate: force shootout braucht gültige fight.foes', () => {
+  const mk = (eff) => Object.assign({}, STORY_PROBE, { events: [{ id: 'f', at: 'night', effects: [eff] }] });
+  const errs = (eff) => StoryRules.validate(mk(eff), Object.keys(STORY_PROBE.scenes), ['spueler', 'post']).filter((e) => e.includes('shootout'));
+  T.eq(errs({ force: 'shootout' }).length, 1);
+  T.eq(errs({ force: 'shootout', fight: { kind: 'x', foes: [] } }).length, 1);
+  T.eq(errs({ force: 'shootout', fight: { kind: 'x', foes: ['nix'] } }).length, 1);
+  T.eq(errs({ force: 'shootout', fight: { kind: 'x', foes: ['laeufer', 'anabi'] } }).length, 0);
+});
 
 /* ---- State: Modi ---- */
 T.test('State.setMode lädt getrennte Spielstände', () => {
