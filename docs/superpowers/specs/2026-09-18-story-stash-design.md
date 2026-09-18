@@ -133,7 +133,7 @@ Nur Aufstieg, kein Verkauf. `weapon` wandert wie `car` nicht in die nächste Sto
 
 **Igor** (ab Tag 8): Bar-Aktion **„Bier mit Igor"** (100 €, einmal pro Tag; `trocken` → „Cola mit Igor"). `igorBiere` +1; beim dritten Flag `igor`: Überfälle 15 %, halbe Reparatur, Belege sicher, Krieg-Finale ohne Igor. Trophäe *Igors Freund*. Bei der Razzia: „Ich hab gewusst, dass du's bist. Ich hab nichts gesagt."
 
-**Sylvie & das Royal:** `turnover.royal` zählt je Woche. `royal:enter`-Events: bei **≥ 10.000 €** einmalig pro Woche die Warnung („Sie spielen anders als sonst. Ich sehe so etwas."), bei **≥ 15.000 €** die Hausverbot-Szene: Flag `royalBann`, Raum `royal` gesperrt (`lockReason.royal` „Hausverbot") bis Story-Ende. Die Prüfung läuft auch in `spin:after` innerhalb des Royal, damit die Grenze nicht erst beim nächsten Betreten greift: Beim Überschreiten wird die aktuelle Sitzung mit der Szene beendet und zur Stadt zurückgeführt.
+**Sylvie & das Royal:** `vars.umsatzRoyal` zählt je Woche. `royal:enter`-Events: bei **≥ 10.000 €** einmalig pro Woche die Warnung („Sie spielen anders als sonst. Ich sehe so etwas."), bei **≥ 15.000 €** die Hausverbot-Szene: Flag `royalBann`, Raum `royal` gesperrt (`lockReason.royal` „Hausverbot") bis Story-Ende. Die Prüfung läuft auch in `spin:after` innerhalb des Royal, damit die Grenze nicht erst beim nächsten Betreten greift: Beim Überschreiten wird die aktuelle Sitzung mit der Szene beendet und zur Stadt zurückgeführt.
 
 ## 8. Baccarat – Das Hinterzimmer
 
