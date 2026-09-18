@@ -1238,9 +1238,14 @@ async def scenario_kater(cdp):
     record("kater: Mercedes am Tag 1", car == "mercC" and house is True, "car=%s hasHouse=%s" % (car, house))
     gear = await cdp.eval("(document.querySelector('#gearLine')||{}).textContent", await_promise=False)
     notes = await cdp.eval("document.querySelector('#notes').textContent", await_promise=False)
+    hud = await cdp.eval("""(function(){
+      return { leber: (document.querySelector('.hud-leber .val') || {}).textContent,
+               kruege: document.querySelectorAll('.hud-pegel .krug.on').length,
+               deckel: (document.querySelector('.hud-deckel .val') || {}).textContent };
+    })()""", await_promise=False) or {}
     record("kater: HUD zeigt Mercedes, Villa-Ertrag und Leber/Pegel/Deckel",
-           gear is not None and "Mercedes" in gear and notes is not None and "💸" in notes and "🫀 Leber 70/100" in notes and "🍺 Pegel 0/3" in notes and "🧾 Deckel 0 €" in notes,
-           "gear=%s notes=%s" % (gear, notes))
+           gear is not None and "Mercedes" in gear and notes is not None and "💸" in notes and hud.get("leber") == "70" and hud.get("kruege") == 0 and hud.get("deckel") == "0 €",
+           "gear=%s notes=%s hud=%s" % (gear, notes, hud))
     pin = await cdp.eval("[...document.querySelectorAll('#pinboard .jobnote')].map(n => n.textContent.includes('Filialleiter') ? 'fil' : '').filter(Boolean).length", await_promise=False)
     record("kater: Filialleiter an der Pinnwand", pin == 1, "filialleiter-zettel=%s" % pin)
     royal_ok = await cdp.eval("Story.roomUnlocked('royal') && !Story.isLocked('royal') && !!document.querySelector('#side [data-action=royal]:not([disabled])')", await_promise=False)
@@ -1285,9 +1290,12 @@ async def scenario_kater(cdp):
     deckel = await cdp.eval("State.s.story.vars.deckel", await_promise=False)
     record("kater: Deckel 50 nach Freibier", deckel == 50, "deckel=%s" % deckel)
     side_price = await cdp.eval("(document.querySelector('#side [data-action=beer] .price')||{}).textContent", await_promise=False)
-    notes = await cdp.eval("document.querySelector('#notes').textContent", await_promise=False)
-    record("kater: danach Bier 50 €, Deckel im HUD", side_price == "50 €" and notes is not None and "🧾 Deckel 50 €" in notes and "🍺 Pegel 1/3" in notes,
-           "side=%s notes=%s" % (side_price, notes))
+    hud = await cdp.eval("""(function(){
+      return { kruege: document.querySelectorAll('.hud-pegel .krug.on').length,
+               deckel: (document.querySelector('.hud-deckel .val') || {}).textContent };
+    })()""", await_promise=False) or {}
+    record("kater: danach Bier 50 €, Deckel im HUD", side_price == "50 €" and hud.get("deckel") == "50 €" and hud.get("kruege") == 1,
+           "side=%s hud=%s" % (side_price, hud))
     await cdp.eval("Story.night()", await_promise=False)
     await cdp.wait_for("Story.sleeping === true", timeout=1.0)
     for _ in range(40):
