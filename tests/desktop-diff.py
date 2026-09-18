@@ -10,7 +10,9 @@ import os, subprocess, sys, tempfile
 from PIL import Image, ImageChops
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+CHROME = next(c for c in [os.environ.get("K37_CHROME", ""), "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                          os.path.expanduser("~/.local/opt/chrome-linux64/chrome"), "/usr/bin/google-chrome", "/usr/bin/chromium"]
+              if c and os.path.exists(c))
 SCREENS = sys.argv[1:] or ["hub", "roulette", "slots", "finance"]
 MAX = int(os.environ.get("K37_DIFF_MAX", "0"))
 tmp = tempfile.mkdtemp(prefix="k37diff-")

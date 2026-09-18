@@ -46,8 +46,13 @@ HTML = os.path.join(ROOT, "keller37.html")
 URL_BASE = "file://" + HTML
 SHOT_DIR = os.environ.get("K37_SHOTS", "/tmp/k37story")
 CHROME_CANDIDATES = [
+    os.environ.get("K37_CHROME", ""),
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    os.path.expanduser("~/.local/opt/chrome-linux64/chrome"),
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
 ]
 
 MOBILE = "--mobile" in sys.argv
@@ -57,7 +62,7 @@ os.makedirs(SHOT_DIR, exist_ok=True)
 
 def find_chrome():
     for c in CHROME_CANDIDATES:
-        if os.path.exists(c):
+        if c and os.path.exists(c):
             return c
     raise SystemExit("Kein Chrome gefunden")
 
