@@ -52,7 +52,7 @@ Lieferungen Tag 1/8/15/22 und Abrechnungen Tag 7/14/21/28 sind `once`-Events `at
 
 ## 4. Die Wäsche-Woche
 
-**Lieferung** (Nacht, nicht ablehnbar): Bargeld → `balance`. `turnover.week` und `turnover.royal` werden auf 0 gesetzt, `woche` +1.
+**Lieferung** (Nacht, nicht ablehnbar): Bargeld → `balance`. `vars.umsatz` und `vars.umsatzRoyal` werden auf 0 gesetzt, `woche` +1.
 
 | Woche | Lieferung | Umsatzziel | Rückgabe (110 %) |
 |---|---|---|---|
@@ -137,7 +137,7 @@ Nur Aufstieg, kein Verkauf. `weapon` wandert wie `car` nicht in die nächste Sto
 
 ## 8. Baccarat – Das Hinterzimmer
 
-**Zugang:** Tür **„🂡 Hinterzimmer"** in der Keller-Lobby, existiert nur, wenn die Story sie `enabled` hat (Story 3 ab Tag 2). Nie in `broken`, keine Nachtkasse. Croupier **„Der Stumme"** (Figur, spricht nie – Szenen mit ihm sind Beschreibungen `who: 'du'`).
+**Zugang:** Tür **„🂡 Hinterzimmer"** (Screen-/Tür-ID `hinterzimmer`, Teil von `Story.DOORS` wie jede andere Keller-Tür) in der Keller-Lobby, gesperrt bis die Story sie per Effekt `unlock: { doors: ['hinterzimmer'] }` freischaltet (Story 3 ab Tag 2). Nie in `broken`, keine Nachtkasse. Croupier **„Der Stumme"** (Figur, spricht nie – Szenen mit ihm sind Beschreibungen `who: 'du'`).
 
 **Regeln (`BaccaratRules`, rein):** Punto Banco, unendlicher Schuh (jede Karte unabhängig gezogen, wie Blackjack). Wetten **Spieler** 1:1, **Bank** 0,95:1, **Unentschieden** 8:1; Spieler-/Bank-Wette bei Unentschieden zurück. Punktwert = Summe modulo 10, Bildkarten/10 = 0, Ass = 1. Natural (8/9 mit zwei Karten) beendet die Hand. Drittkarte: Spieler zieht bei ≤ 5, steht bei 6–7. Bank: zieht bei ≤ 2 immer; 3: außer Spieler-Drittkarte 8; 4: bei Spieler-Drittkarte 2–7; 5: bei 4–7; 6: bei 6–7; 7: steht; zieht ohne Spieler-Drittkarte bei ≤ 5. RTP: Spieler ≈ 98,8 %, Bank ≈ 98,9 %, Unentschieden ≈ 85,6 %.
 
@@ -163,7 +163,7 @@ Nur diese zwei Jobs sind in Story 3 freigeschaltet, beide von Anabi.
 Alle generisch, keine Story-3-Sonderfälle in der Engine.
 
 **Game / Story-Statistik**
-- `Game.settle` emittiert zusätzlich `Bus.emit('stake', { bet, game })` vor `win`/`loss`. `Story` hört darauf und ruft `StoryRules.recordStake(s.story, bet, game)`: `turnover.week += bet`, `turnover.royal += bet` für die Royal-Spiele (`megaslots`, `craps`, `wheel`; Liste als Konstante `StoryRules.ROYAL_GAMES`), `turnover.total += bet`. Story-Objekt kann `turnoverGroups` definieren (`{ hinterzimmer: ['baccarat'] }`) → zusätzliche Zähler.
+- `Game.settle` emittiert zusätzlich `Bus.emit('stake', { bet, game })` (nur bei `bet > 0`) vor `win`/`loss`. `Story` hört darauf und ruft `StoryRules.recordStake(Story.s, bet, game, Story.story)`: erhöht `st.vars.umsatz` und `st.vars.umsatzTotal` um `bet`, dazu `st.vars[name]` für jede Gruppe aus `story.turnoverGroups = { name: [gameIds] }` (z. B. `umsatzRoyal: ['megaslots', 'craps', 'wheel']`, `umsatzHinterzimmer: ['baccarat']`). Es gibt kein `turnover.week/royal/total`-Objekt und keine Konstante `StoryRules.ROYAL_GAMES` – das sind gewöhnliche `vars`, benannt über `turnoverGroups`; die Lieferung setzt `vars.umsatz`/`vars.umsatzRoyal` selbst zurück (Abschnitt 4).
 
 **Kaputte Türen**
 - `s.story.broken = { [door]: preis }`. Die bestehende Tür-Prüfung der Story (dieselbe Stelle, an der `unlocked.doors` und `gates` geprüft werden) liefert „gesperrt", solange `broken[door]` gesetzt ist; Sperrgrund „Zertrümmert". `StoryRules.repair(s, door)` → `{ ok, price }`. Lobby rendert für kaputte Türen den 🔧-Knopf.
@@ -173,17 +173,22 @@ Alle generisch, keine Story-3-Sonderfälle in der Engine.
 - `SET_KEYS` + `'weapon'`; `Rules.gear(s).weapon` (0–3). Stadt-Schaufenster `pfandleihe` registriert sich wie `royal` als Story-aktivierbares Element (`story.enabled` enthält `'pfandleihe'`).
 
 **Türen/Räume**
-- Keller-Tür `hinterzimmer` (Screen `baccarat`) wird in der Tür-Liste der Lobby definiert, aber nur gerendert/öffnbar, wenn `story.enabled` sie enthält (analog Raum `royal`). Im freien Spiel nicht vorhanden.
+- Keller-Tür `hinterzimmer` ist eine normale Tür in `Story.DOORS`: gesperrt, bis `s.unlocked.doors` sie enthält (Effekt `unlock: { doors: ['hinterzimmer'] }`, nicht `story.enabled` – das ist der Mechanismus der Stadt-Schaufenster, nicht der Keller-Türen). Die Spiel-ID, die an `Game.settle`/`Bus.emit('stake', …)` geht, heißt `baccarat` (darauf zielt `turnoverGroups`); Tür-ID und Spiel-ID sind bewusst unterschiedlich. Im freien Spiel nicht vorhanden (die Tür-Sperrprüfung greift nur im Story-Modus).
 
 **Story-Definition / Effekte / Hooks**
-- Neues Feld `fns: { name: (s, ctx) => {...} }` und Effekt `{ call: 'name' }`; die Funktion darf `vars`, `flags`, `balance`, `broken`, `luckMod` ändern und einen Ergebnis-String in `ctx.result` legen, den die folgende Szene liest. `validate` prüft, dass jedes `call` auf eine definierte Funktion zeigt.
-- Neuer Hook `fight:after` mit `ctx.fight = { kind, won }`.
+- Neues Feld `fns: { name: (s, rng) => out }` und Effekt `{ call: 'name' }`; `out` ist ein normales Effekt-Ergebnis (`scene`, `toast`, `achievement`, `force`, `fight`, `show`) – es gibt kein `ctx.result`. Eine Funktion reicht Informationen für die folgende Szene über `vars`/`flags` weiter: Szenen sind Funktionen von `ctx` und lesen `ctx.raw.vars`/`ctx.raw.flags`. `validate` prüft, dass jedes `call`-Ziel auf eine definierte Funktion zeigt.
+- Effekt `{ show: 'screen' }` ruft `UI.show(screen)`: einen Screen, den die Story noch nicht freigeschaltet hat, weist `UI.show` mit einem 🔒-Toast ab (No-op) – die Story muss vorher unlocken.
+- Neuer Hook `fight:after`: `Story.hook(at)` bekommt keinen Kontext übergeben. `Story.forceFight` (Plan 3) setzt vor dem Hook die Flags `fightWon`/`fightLost`/`fight_<kind>` und löscht `fight_<kind>` danach wieder – die Story liest das Ergebnis also aus `flags`, nicht aus einem Hook-Parameter.
+- Neuer Hook `job:after`: Minigames reichen Ergebnis-Flags über `Jobs.collect(id, flags)` durch (z. B. `{ kontrolle: true }`); die werden vor dem Hook in `story.flags` gemischt und bleiben gesetzt, bis die Story sie per `unflag` löscht.
 - `story.turnoverGroups` (s. o.), `story.varMax.zorn = 3`.
-- `prevEndings: [...]` zusätzlich zu `requires`: Story nur wählbar, wenn das zuletzt erreichte Ende der Voraussetzung in der Liste steht; Titel-Tür zeigt sonst den Sperrtext `lockText`.
+- `prevEndings: [...]` zusätzlich zu `requires`: Story nur wählbar, wenn das zuletzt erreichte Ende der Voraussetzung in der Liste steht; Titel-Tür zeigt sonst den Sperrtext `lockText` (ohne `lockText` den Fallback „🔒 … – nach diesem Ende von „…“ nicht erreichbar"). `validate` verlangt `requires` und ein nicht-leeres `lockText`, sobald `prevEndings` gesetzt ist.
+
+**HUD**
+- `hud[].max` darf eine Funktion `(s) => n` sein (z. B. das aktuelle Wochenziel); mit `fmt: 'money'` rendert `hudNotes()` „12.400 € / 20.000 €", numerische HUDs bleiben bei „0/3".
 
 **Jobs**
-- Story-Feld `jobOverrides: { [jobId]: { base, requires, pay } }` überlagert Job-Definitionen nur in dieser Story (`Jobs.def(id)` liest es).
-- Job-Definition darf `variant` tragen; `Jobs.start` reicht es an den Screen (`Taxi.start({ variant })`). Taxi-Screen: Variante `kurier` ändert Skin, Zähler-Text und Auszahlungsregel (`GangRules.kurierPay(tickets)` → `{ pay, kontrolle }`), und ruft danach `Story.hook('job:after', { job, tickets, kontrolle })`.
+- Story-Feld `jobOverrides: { [jobId]: { base, requires, pay } }` überlagert Job-Definitionen nur in dieser Story (`Jobs.def(id)` = `StoryRules.jobDef` liest es).
+- Job-Definition darf `variant` tragen; `Jobs.take` setzt beim Start eines Minigames `Story.jobStart = { id, balance, variant }`, der Screen liest `Story.jobStart.variant` (nicht `Taxi.start({ variant })`) – `Taxi.start()` selbst übernimmt nur `Story.jobStart.id` nach `Taxi.jobId`. Taxi-Screen: Variante `kurier` ändert Skin, Zähler-Text und Auszahlungsregel (`GangRules.kurierPay(tickets)` → `{ pay, kontrolle }`) und meldet das Ergebnis über `Jobs.collect(id, { kontrolle })`, das die Flags vor `job:after` in `story.flags` mischt.
 
 **Figuren:** `anabi` (🕶️), `stumme` (🃏), `kessler` (🚬), `brandt` (👮), `kowalski` (🔧). Vorhanden: `igor`, `sylvie`, `doc`, `wirt`, `chantal`.
 
@@ -215,13 +220,13 @@ Priorität von oben; erste erfüllte zählt.
 | `?day=N` | Starttag (mit `?fresh`) |
 | `?weapon=2` | Waffenstufe setzen (Story-Modus) |
 | `?ending=abloese` | Ende direkt abspielen |
-| `?screen=baccarat` | Hinterzimmer direkt öffnen (im Story-Modus) |
+| `?screen=hinterzimmer` | Hinterzimmer direkt öffnen (im Story-Modus); die Spiel-ID beim Settle ist trotzdem `baccarat` |
 | `?screen=shootout&foe=anabi` | Schießerei gegen einen Gegner (`laeufer`, `junge`, `kessler`, `igor`, `anabi`) |
 
 **Node-Selftest:**
 - `GangRules`: Wochenwerte für Woche 1–4 und mit `bahnhof` × 1,5; `abrechnung` alle vier Ausgänge inkl. Kredit × 1,5 und Zorn +2, Kappung 0–3; `nachtkasse` mit 0/2/5 kaputten Spielen; `ueberfall` 25/15/0 % mit festem rng, kein Überfall bei fünf kaputten, halber Preis mit `igor`; `hinterhalt` nur ohne Überfall, 15/7,5 %, Raub 20 % max 5.000; `duel` Fehlschuss vor Blitz, Waffenbonus, Streuung; `kurierPay` 0/1/2 Strafzettel; Royal-Schwellen 10.000/15.000; `WEAPONS` Preise/Boni.
 - `BaccaratRules`: Punktwert modulo 10, alle Zeilen der Bank-Drittkarten-Tabelle, Naturals, Auszahlung 1:1 / 0,95:1 / 8:1 und Rückgabe bei Unentschieden, RTP-Simulation 100.000 Hände in Toleranz ± 0,5 Punkte, Pech- und Glück-Redeal höchstens einmal.
-- `STORY_STASH`: `validate` leer (Szenen, Jobs, Enden, `call`-Ziele); Intro je Vorgängerende und Sperre nach `bett`; Enden-Priorität `kanal` > `krieg` > `kommissar` > `abloese` > `flucht`; `immediate` bei Zorn 3 mitten in der Nacht → nächste Story sauber; `recordStake` füllt `week/royal/total` und Gruppen; `broken` sperrt Tür, `repair` öffnet und zieht Geld ab; Eintreiber-Limit 2/Woche; Angebot nur mit `ruf ≥ 2`; Razzia-Aktion nur mit `uebergeben ≥ 3` und Tag ≥ 26; Ablöse-Aktion nur mit `zorn ≤ 1`.
+- `STORY_STASH`: `validate` leer (Szenen, Jobs, Enden, `call`-Ziele); Intro je Vorgängerende und Sperre nach `bett`; Enden-Priorität `kanal` > `krieg` > `kommissar` > `abloese` > `flucht`; `immediate` bei Zorn 3 mitten in der Nacht → nächste Story sauber; `recordStake` füllt `vars.umsatz`/`umsatzTotal` und die Gruppen aus `turnoverGroups`; `broken` sperrt Tür, `repair` öffnet und zieht Geld ab; Eintreiber-Limit 2/Woche; Angebot nur mit `ruf ≥ 2`; Razzia-Aktion nur mit `uebergeben ≥ 3` und Tag ≥ 26; Ablöse-Aktion nur mit `zorn ≤ 1`.
 
 **DOM-Selftest:** Hinterzimmer-Tür nur in Story 3; 🔧-Knopf statt Tür bei `broken`, ausgegraut ohne Geld; Stadt zeigt fünf Schaufenster in Story 3; Baccarat-Screen setzt und zahlt aus; Shootout Fehlschuss-Pfad; Taxi-Variante `kurier` zeigt Koffer-Skin.
 

@@ -5029,6 +5029,8 @@ const StoryRules = {
     for (const k of Object.keys(story.prices || {})) if (!(k in Rules.PRICES)) errs.push(`${story.id}: Preis "${k}" unbekannt`);
     for (const [screen, list] of Object.entries(story.gates || {})) list.forEach((g, i) => { scene(g.scene, `gate ${screen}[${i}]`); if (!g.when || !g.text) errs.push(`${story.id}: Gate ${screen}[${i}] braucht when und text`); });
     for (const [end] of Object.entries(story.trophies || {})) if (!(story.endings || []).some((e) => e.id === end)) errs.push(`${story.id}: Trophäe für unbekanntes Ende "${end}"`);
+    if (story.prevEndings && !story.requires) errs.push(`${story.id}: prevEndings ohne requires`);
+    if (story.prevEndings && !story.lockText) errs.push(`${story.id}: prevEndings ohne lockText`);
     if (story.prevEndings && stories[story.requires]) {
       const ids = (stories[story.requires].endings || []).map((e) => e.id);
       for (const p of story.prevEndings) if (!ids.includes(p)) errs.push(`${story.id}: prevEnding "${p}" ist kein Ende von ${story.requires}`);
@@ -5314,7 +5316,9 @@ const Stories = {
     return this.list().filter((st) => !StoryRules.requirementMet(st, State.meta.storyRuns)).map((st) => {
       const why = StoryRules.lockReasonFor(st, State.meta.storyRuns);
       const reqTitle = this.get(st.requires) ? this.get(st.requires).title : st.requires;
-      const text = why === 'prevEnding' && st.lockText ? `🔒 ${st.title} – ${st.lockText}` : `🔒 ${st.title} – erst „${reqTitle}“ beenden`;
+      const text = why === 'prevEnding'
+        ? (st.lockText ? `🔒 ${st.title} – ${st.lockText}` : `🔒 ${st.title} – nach diesem Ende von „${reqTitle}“ nicht erreichbar`)
+        : `🔒 ${st.title} – erst „${reqTitle}“ beenden`;
       return { id: st.id, title: st.title, requires: reqTitle, text };
     });
   },
@@ -7487,9 +7491,21 @@ T.test('StoryRules.prevEndings: Story nur nach erlaubtem letzten Ende der Voraus
 });
 T.test('StoryRules.validate: prevEndings müssen Enden der Voraussetzung sein', () => {
   const kater = { id: 'k', endings: [{ id: 'a', fallback: true }, { id: 'b' }] };
-  const st = Object.assign({}, STORY_PROBE, { id: 'x', requires: 'k', prevEndings: ['a', 'zzz'] });
+  const st = Object.assign({}, STORY_PROBE, { id: 'x', requires: 'k', lockText: 'x', prevEndings: ['a', 'zzz'] });
   const errs = StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post'], ['k', 'x'], { k: kater });
   T.eq(errs.length, 1); T.ok(errs[0].includes('zzz'));
+});
+T.test('StoryRules.validate: prevEndings ohne requires bzw. ohne lockText melden Fehler', () => {
+  const kater = { id: 'k', endings: [{ id: 'a', fallback: true }, { id: 'b' }] };
+  const noRequires = Object.assign({}, STORY_PROBE, { id: 'x', lockText: 'x', prevEndings: ['a'] });
+  T.eq(StoryRules.validate(noRequires, Object.keys(STORY_PROBE.scenes), ['spueler', 'post'], ['x']), ['x: prevEndings ohne requires']);
+  const noLockText = Object.assign({}, STORY_PROBE, { id: 'x', requires: 'k', prevEndings: ['a'] });
+  const errs = StoryRules.validate(noLockText, Object.keys(STORY_PROBE.scenes), ['spueler', 'post'], ['k', 'x'], { k: kater });
+  T.eq(errs, ['x: prevEndings ohne lockText']);
+  const emptyLockText = Object.assign({}, STORY_PROBE, { id: 'x', requires: 'k', lockText: '', prevEndings: ['a'] });
+  T.eq(StoryRules.validate(emptyLockText, Object.keys(STORY_PROBE.scenes), ['spueler', 'post'], ['k', 'x'], { k: kater }), ['x: prevEndings ohne lockText']);
+  const ok = Object.assign({}, STORY_PROBE, { id: 'x', requires: 'k', lockText: 'x', prevEndings: ['a'] });
+  T.eq(StoryRules.validate(ok, Object.keys(STORY_PROBE.scenes), ['spueler', 'post'], ['k', 'x'], { k: kater }), [], 'requires + prevEndings + lockText: keine dieser Fehler');
 });
 T.test('StoryRules.nextStory: Reihenfolge, Voraussetzung, sonst pickStory', () => {
   const a = { id: 'a' }, b = { id: 'b', requires: 'a' }, c = { id: 'c' };
@@ -8413,6 +8429,54 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.eq(qsa('.door.locked', root).length, 0, 'im freien Spiel keine Sperre');
     } finally {
       State.mode = keep.mode; State.s = keep.s; Story.story = keep.story;
+    }
+  });
+  /* 🔧-Zweig: kaputte Tür bekommt einen Reparatur-Knopf statt Bretter; Preis/Guthaben steuern disabled/ghost. */
+  T.test('Story.decorateHub: 🔧-Knopf bei kaputter Tür, ausgegraut ohne Geld', () => {
+    const keep = { mode: State.mode, s: State.s, story: Story.story, save: State.save };
+    const mkRoot = () => {
+      const root = document.createElement('div');
+      root.innerHTML =
+        '<div class="door" data-screen="slots"><div class="chalk-tag"></div></div>' +
+        '<div class="door" data-screen="roulette"><div class="chalk-tag"></div></div>';
+      return root;
+    };
+    try {
+      State.save = () => {};
+      State.mode = 'story';
+      State.s = State.freshStory(STORY_PROBE);
+      Story.story = STORY_PROBE;
+      State.s.story.unlocked.doors = ['slots'];
+      State.s.story.broken = { slots: 4000 };
+
+      State.s.balance = 3999;
+      let root = mkRoot();
+      Story.decorateHub(root);
+      const slots = qs('[data-screen="slots"]', root);
+      T.ok(slots.classList.contains('locked') && slots.classList.contains('broken'), 'slots: locked + broken');
+      T.eq(qs('.chalk-tag', slots).textContent, 'Zertrümmert');
+      const btn = qs('button.repair', slots);
+      T.ok(btn, 'Reparatur-Knopf vorhanden');
+      T.eq(btn.textContent, '🔧 4.000 €');
+      T.eq(btn.disabled, true, 'zu wenig Geld: disabled');
+      T.ok(btn.classList.contains('ghost'), 'zu wenig Geld: ghost');
+
+      State.s.balance = 4000;
+      root = mkRoot();
+      Story.decorateHub(root);
+      const btn2 = qs('[data-screen="slots"] button.repair', root);
+      T.eq(btn2.disabled, false, 'genug Geld: enabled');
+      T.eq(btn2.classList.contains('ghost'), false, 'genug Geld: kein ghost');
+
+      const roulette = qs('[data-screen="roulette"]', root);
+      T.ok(roulette.classList.contains('locked'), 'roulette: locked (nicht freigeschaltet, nicht kaputt)');
+      T.ok(qs('.boards', roulette), 'roulette: Bretter statt Knopf');
+      T.eq(qs('button.repair', roulette), null, 'roulette: kein Reparatur-Knopf');
+
+      T.eq(Story.isLocked('slots'), true);
+      T.eq(Story.lockReason('slots'), 'Zertrümmert');
+    } finally {
+      State.mode = keep.mode; State.s = keep.s; Story.story = keep.story; State.save = keep.save;
     }
   });
   if (typeof document !== 'undefined') T.test('Cutscene.CAST: Story-3-Figuren und Hintergründe', () => {
