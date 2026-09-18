@@ -16,7 +16,7 @@ Ein satirisches Casino-Lebenssimulations-Spiel in einer einzigen HTML-Datei. Fü
 - **Überfälle & Stärke:** auf dem Weg in den Keller kann es einen Überfall geben – Kämpfen, Wegrennen oder Zahlen. Ein Kampf (gewonnen oder verloren) erhöht 💪 Stärke; Stärke verbessert die Kampfchance und den Türsteher-Bonus, schaltet den Job „Eintreiber" frei und macht ab 10 gefürchtet (seltener Ziel für Überfälle).
 - **Schießerei „Zieh!":** Reaktionsduell gegen einen oder mehrere Gegner (Story 3) – „Bereit", dann warten, bis ZIEH! aufblitzt, dann tippen oder Leertaste; wer vor dem Blitz schießt, hat einen Fehlschuss und verliert sofort.
 - **Pfandleihe Kowalski:** ab Story-Freigabe im Autohaus/INTERSPORT-Viertel – drei Waffen (15.000 €, 35.000 € und 75.000 €), die im Duell Vorsprung geben und nur aufgerüstet, nie zurückgetauscht werden können.
-- **Cutscenes:** 33 Visual-Novel-Szenen mit 14 Charakteren, Typewriter-Text, Entscheidungen und Effekten.
+- **Cutscenes:** 161 Visual-Novel-Szenen mit 20 Charakteren, Typewriter-Text, Entscheidungen und Effekten.
 - **Extras:** synthetisierter Sound (Web Audio, keine Dateien), Spielstand in `localStorage`, Game Over mit Statistik, Trophäen, Reduced-Motion.
 - **Handy (≤ 760 px):** Roulette-Tisch hochkant (Zero oben, 1-2-3 nebeneinander, Außenfelder unten), Einsatz-Leiste in festen Zeilen (Stepper / Chips / kleine Knöpfe zu dritt / Hauptknopf volle Breite – auch in Casino Royal), Tab-Leiste mit Icons, Header-Knöpfe in Touch-Größe, die Glück/Level-Zeile klappt beim Scrollen ein. Auf dem Handy entfallen Backdrop-Blur, Filmkorn und die Tür-Schatten, der Screen-Wechsel blendet nur über – das spart Mobile-Chrome das Ruckeln beim Wechsel zurück in den Keller. Am Desktop ändert sich nichts.
 
@@ -50,7 +50,22 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
 - **Story 2 „Der Kater":** Fortsetzung – erst spielbar, wenn „Die Schuld" ein Ende hat, und der
   Einstieg hängt davon ab, welches. Hochzeit, Absturz, drei Bier am Tag als Pflicht und als
   Glücksquelle, eine Leber als Countdown, der Doc mit einem Angebot, und der Keller, der zu
-  kaufen ist. Sechs Enden. Story 3 bringt Umsatzzähler (`stake`), kaputte Türen (`broken`/🔧), Story-Funktionen (`call`), Waffen-Slot, `prevEndings` und Job-Overrides – alles generisch.
+  kaufen ist. Sechs Enden.
+- **Story 3 „Die Wäsche":** Fortsetzung – Voraussetzung ist ein Ende von „Der Kater", das nicht
+  „Bett" heißt (Tod beim Doc beendet die Reihe). Jeden Montag bringt Anabi eine Tasche Geld, die
+  Lieferung. Bis Sonntag muss das Geld durch die Tische gespielt werden – jeder Einsatz zählt als
+  Umsatz, getrennt nach Casino Royal und Hinterzimmer. Am Sonntagabend die Abrechnung: Umsatz und
+  Rückgabe werden getrennt geprüft und ergeben einen von vier Ausgängen zwischen „sauber" und
+  „beides falsch", die Kredit und Zorn (0–3) verschieben – bei Zorn 3 ist sofort Schluss. Ab Tag 8
+  zerschlagen die Bahnhof-Jungs nachts zufällig eine Kellertür (Reparatur kostet, mit Igor als
+  Partner halb so viel) oder lauern im Hinterhalt, wo eine Waffe aus der Pfandleihe Kowalski beim
+  Reaktionsduell Vorsprung gibt. Ab Tag 15 taucht Kommissar Brandt in der Bar auf: unbemerkt
+  übergebene Kassenbelege sammeln sich zum Beweismittel, das die Story als Kronzeuge beenden kann.
+  Sechs Enden: **Der Kanal** (Zorn 3), **Der Krieg** (Anabi im Finale erschossen), **Der Kommissar**
+  (Razzia nach drei Belegen), **Die Ablöse** (100.000 € plus Restkredit auf einmal), **Die Flucht**
+  (ab Tag 20 mit mindestens 30.000 €) und **Der Strohmann** als Fallback nach Tag 30. Story 3
+  bringt dafür Umsatzzähler (`stake`), kaputte Türen (`broken`/🔧), Story-Funktionen (`call`),
+  Waffen-Slot, `prevEndings` und Job-Overrides – alles generisch für spätere Stories nutzbar.
 
 ## Skills & Insider
 
@@ -93,11 +108,11 @@ leichter macht, aber keine Geldmaschine wird.
 | `?scene=divorce` | nur freies Spiel: eine Szene abspielen |
 | `?selftest` | Regel-Selbsttest im Browser (Ergebnis als Toast und in der Konsole) |
 | `?mode=story` \| `?mode=free` | Titelscreen überspringen, direkt in den Modus |
-| `?story=schuld` | Story erzwingen (`schuld`, `kater`; impliziert `mode=story`) |
+| `?story=schuld` | Story erzwingen (`schuld`, `kater`, `stash`; impliziert `mode=story`) |
 | `?day=12` | Story-Tag setzen (nur zusammen mit `?fresh`; überspringt das Intro). Bei `kater` überspringt ein Sprung hinter Tag 3 auch die Absturz-Nacht – das Flag dann per Konsole setzen, wie im Playtest: `State.s.story.flags.abgestuerzt = true` |
 | `?job=spueler` | Jobbörse überspringen, Job direkt starten (impliziert `mode=story`; der Job muss freigeschaltet und seine Voraussetzung erfüllt sein) |
-| `?ending=sturz` | ein Story-Ende direkt abspielen (nur beim Story-Neustart, z. B. `?fresh&story=schuld&ending=sturz` oder `?fresh&story=kater&prev=doc&ending=wirt`) |
-| `?prev=doc` | zusammen mit `?fresh&story=…`: setzt das „vorige Ende" der vorausgesetzten Story (für Fortsetzungen, z. B. `?fresh&story=kater&prev=doc` – Intro-Variante nach dem Doc-Ende) |
+| `?ending=sturz` | ein Story-Ende direkt abspielen (nur beim Story-Neustart, z. B. `?fresh&story=schuld&ending=sturz`, `?fresh&story=kater&prev=doc&ending=wirt` oder `?fresh&story=stash&prev=wirt&ending=abloese`) |
+| `?prev=doc` | zusammen mit `?fresh&story=…`: setzt das „vorige Ende" der vorausgesetzten Story (für Fortsetzungen, z. B. `?fresh&story=kater&prev=doc` – Intro-Variante nach dem Doc-Ende; bei `stash` steuert `prev` (`wirt`, `nuechtern`, `taxi`, `stammgast`, `brownie` – die Kater-Enden) zusätzlich den Startkredit und Flags wie `trocken`/`brownie`, z. B. `?fresh&story=stash&prev=wirt`) |
 | `?mug=1\|junkie\|jugend\|cousin` | erzwingt den nächsten Überfall (`1` bzw. leer: zufälliger Räubertyp; sonst gezielt `junkie`, `jugend` oder `cousin`) |
 | `?fresh&mode=free&screen=shootout&foe=junge\|kessler\|igor\|anabi&weapon=N` | Schießerei direkt öffnen, Gegner erzwingen, `weapon` (0–3) setzt die Waffenstufe fürs Duell |
 | `?fresh&story=…&weapon=N` | Story-Neustart mit gesetzter Waffenstufe (0–3, siehe Pfandleihe Kowalski) |

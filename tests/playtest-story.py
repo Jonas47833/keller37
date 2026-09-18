@@ -1414,12 +1414,154 @@ async def scenario_kater(cdp):
     record("kater: finishing-Flag nach dem Ende zurueckgesetzt", finishing is False, "finishing=%s" % finishing)
     phase = await cdp.eval("State.s.story && State.s.story.phase", await_promise=False)
     record("kater: keine Phasenaenderung nach sofortigem Ende", phase == "evening", "phase=%s" % phase)
-    # „Zum Titel": Titel zeigt Die Schuld als naechste Story (kater gerade gespielt, schuld aelter), Trophaee Hausherr
+    # „Zum Titel": Titel zeigt die am laengsten nicht gespielte zulaessige Story. Kater endete gerade mit „wirt“,
+    # das schaltet Die Waesche neu frei (requires: kater, prevEndings enthaelt wirt) -- nie gespielt zaehlt als
+    # aeltestes und sticht damit Die Schuld, die in diesem Lauf schon mehrfach mit frischem Zeitstempel lief.
     await cdp.wait_for("document.querySelector('#title').hidden === false", timeout=3.0)
     tag = await cdp.eval("(document.querySelector('#titleStoryTag')||{}).textContent", await_promise=False)
-    record("kater: Titel nach dem Wirt-Ende zeigt Neue Story · Die Schuld", tag is not None and "Die Schuld" in tag, "tag=%s" % tag)
+    record("kater: Titel nach dem Wirt-Ende zeigt Neue Story · Die Wäsche", tag is not None and "Die Wäsche" in tag, "tag=%s" % tag)
     trophy = await cdp.eval("Achievements.has('endeWirt')", await_promise=False)
     record("kater: Trophaee Hausherr (endeWirt) vergeben", trophy is True, "trophy=%s" % trophy)
+
+
+async def scenario_stash(cdp):
+    """Story 3 „Die Wäsche": Sperre nach Bett, Intro je Vorgängerende, Lieferung, Umsatz per Baccarat,
+    Abrechnung ok, Überfall + Reparatur, Waffe, Schießerei, Brandt/Belege, Razzia-Ende; zweiter Lauf Kanal."""
+
+    async def settle(max_rounds=60):
+        """Story.night() laeuft fire-and-forget weiter und spielt dabei mehrere Cutscenes hintereinander
+        (z. B. Lieferung -> Tisch-Szene, oder Abrechnung -> Kapitel-2-Intro). Ein reines wait_for() ohne
+        Klicks kann in der Luecke zwischen zwei Szenen faelschlich "fertig" melden, obwohl die naechste
+        Szene gleich darauf startet und unbeklickt haengen bleibt -- das faengt jede darauffolgende, direkt
+        aufgerufene Engine-Methode (Story.evening/Story.action) im sleeping/busy-Guard lautlos ab (siehe
+        scenario_kater.settle). Deshalb hier wie dort: klicken, bis sleeping/Cutscene/busy wirklich weg sind."""
+        for _ in range(max_rounds):
+            if await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+                await cdp.advance_cutscene(max_steps=4)
+            sleeping = await cdp.eval("Story.sleeping", await_promise=False)
+            cs = await cdp.eval("__pt.cutsceneActive()", await_promise=False)
+            busy = await cdp.eval("UI.busy", await_promise=False)
+            if not sleeping and not cs and not busy:
+                return True
+            await asyncio.sleep(0.15)
+        return False
+
+    # Sperre: Kater endete im Bett
+    await cdp.navigate(URL_BASE + "?fresh&mode=free")
+    await asyncio.sleep(0.8)
+    await cdp.inject_helpers()
+    await cdp.advance_cutscene(max_steps=10)
+    await cdp.eval("State.meta.storyRuns = { schuld: { lastPlayed: 1, endings: ['ehrlich'], last: 'ehrlich' }, kater: { lastPlayed: 2, endings: ['bett'], last: 'bett' } }; State.saveMeta();", await_promise=False)
+    locked = await cdp.eval("Stories.locked().map(l => l.id + ':' + l.text)", await_promise=False)
+    record("stash: nach Bett gesperrt mit eigenem Text", any(l.startswith("stash:") and "Bett" in l for l in locked), str(locked))
+    # Start nach Wirt
+    await cdp.navigate(URL_BASE + "?fresh&story=stash&prev=wirt")
+    await asyncio.sleep(0.8)
+    await cdp.inject_helpers()
+    await cdp.advance_cutscene(max_steps=20)
+    await cdp.wait_for("State.mode === 'story' && Story.s && Story.s.day === 1 && UI.current && !UI.busy", timeout=5.0)
+    st = await cdp.eval("({ kredit: Story.s.vars.kredit, car: State.s.car, hz: !!Story.s.enabled.hinterzimmer, doorHidden: document.querySelector('[data-screen=\"hinterzimmer\"]') ? document.querySelector('[data-screen=\"hinterzimmer\"]').hidden : null })", await_promise=False)
+    record("stash: Tag 1 – Kredit 0, Mercedes, Hinterzimmer sichtbar", st["kredit"] == 0 and st["car"] == "mercC" and st["hz"] is True, str(st))
+    # Nacht 1: Lieferung
+    await cdp.eval("Story.evening()")
+    await asyncio.sleep(0.4)
+    await cdp.eval("Story.night()", await_promise=False)
+    await cdp.wait_for("__pt.cutsceneActive()", timeout=4.0)
+    await settle()  # Lieferung- und Tisch-Szene laufen als zwei Cutscenes direkt hintereinander
+    v = await cdp.eval("({ balance: State.s.balance, woche: Story.s.vars.woche, ziel: Story.s.vars.ziel, hzOpen: Story.s.unlocked.doors.includes('hinterzimmer') })", await_promise=False)
+    record("stash: Lieferung Woche 1 – +10.000, Ziel 20.000, Hinterzimmer offen", v["balance"] == 16250 and v["woche"] == 1 and v["ziel"] == 20000 and v["hzOpen"], str(v))
+    # Umsatz per Baccarat (Hand gestubbt: Push, damit das Geld bleibt)
+    await cdp.eval("Story.evening()")
+    await cdp.eval("UI.show('hinterzimmer')")
+    await cdp.wait_for("UI.current && UI.current.id === 'hinterzimmer' && !UI.busy", timeout=3.0)
+    umsatz = await cdp.eval("""(async function(){
+      BaccaratRules.deal = function(){ return { player: [{val:'5',suit:'♠'},{val:'K',suit:'♥'}], banker: [{val:'2',suit:'♦'},{val:'3',suit:'♣'}], p: 5, b: 5, natural: false, winner: 'tie' }; };
+      for (let i = 0; i < 2; i++) { document.querySelector('#bacBet').value = '10000'; Baccarat.place('player'); await Baccarat.deal(); }
+      return { umsatz: Story.s.vars.umsatz, hz: Story.s.vars.umsatzHinterzimmer, balance: State.s.balance };
+    })()""")
+    record("stash: zwei Push-Hände à 10.000 → Umsatz 20.000, Geld bleibt", umsatz["umsatz"] == 20000 and umsatz["hz"] == 20000 and umsatz["balance"] == 16250, str(umsatz))
+    # Tag 7 Abrechnung ok
+    await cdp.eval("Story.s.day = 7; Story.s.phase = 'evening'; State.save(); Story.renderDaybar();", await_promise=False)
+    await cdp.eval("Story.night()", await_promise=False)
+    await cdp.wait_for("__pt.cutsceneActive()", timeout=4.0)
+    await settle()  # Abrechnung-Szene, danach Kapitel-2-Intro laufen direkt hintereinander
+    a = await cdp.eval("({ balance: State.s.balance, zorn: Story.s.vars.zorn, belege: Story.s.vars.belege, ok: Story.s.vars.abrechnungenOk, pf: !!Story.s.enabled.pfandleihe })", await_promise=False)
+    record("stash: Abrechnung ok – 11.000 weg, Zorn 0, Beleg 1, Pfandleihe offen", a["balance"] == 16250 - 11000 + 1250 and a["zorn"] == 0 and a["belege"] == 1 and a["ok"] == 1 and a["pf"], str(a))
+    # Überfall erzwingen: Tür kaputt → 🔧 in der Lobby → reparieren
+    await cdp.eval("Story.s.broken = { slots: 4000 }; State.save(); UI.show('hub');", await_promise=False)
+    await cdp.wait_for("UI.current && UI.current.id === 'hub' && !UI.busy", timeout=3.0)
+    b = await cdp.eval("({ btn: !!document.querySelector('[data-screen=\"slots\"] .repair'), locked: Story.isLocked('slots'), reason: Story.lockReason('slots') })", await_promise=False)
+    record("stash: kaputte Slots – 🔧-Knopf, gesperrt, Grund Zertrümmert", b["btn"] and b["locked"] and b["reason"] == "Zertrümmert", str(b))
+    await cdp.eval("Story.repair('slots')")
+    await asyncio.sleep(0.6)
+    r = await cdp.eval("({ broken: Story.s.broken, rep: Story.s.vars.repariert_slots, locked: Story.isLocked('slots') })", await_promise=False)
+    record("stash: Reparatur – Eintrag weg, Zähler 1, Tür offen", r["broken"] == {} and r["rep"] == 1 and not r["locked"], str(r))
+    # Waffe kaufen
+    await cdp.eval("State.s.balance = 40000; State.save(); UI.show('stadt');", await_promise=False)
+    await cdp.wait_for("UI.current && UI.current.id === 'stadt' && !UI.busy", timeout=3.0)
+    n = await cdp.eval("document.querySelectorAll('#strasse .storefront').length", await_promise=False)
+    record("stash: Stadt zeigt fünf Schaufenster (mit Pfandleihe)", n == 5, "n=%s" % n)
+    await cdp.eval("Stadt.open('pfandleihe'); Stadt.buyWeapon(1)", await_promise=False)
+    await cdp.wait_for("__pt.cutsceneActive()", timeout=3.0)
+    await cdp.advance_cutscene(max_steps=6)
+    w = await cdp.eval("({ weapon: State.s.weapon, balance: State.s.balance })", await_promise=False)
+    record("stash: Makarov gekauft", w["weapon"] == 1 and w["balance"] == 25000, str(w))
+    # Schießerei (Hinterhalt) erzwingen: Nacht 9 mit gestubbtem rng über GangRules
+    await cdp.eval("GangRules.raid = () => null; GangRules.ambushChance = () => 1; GangRules.ambushCount = () => 1; GangRules.drawWait = () => 40; Story.s.day = 9; Story.s.phase = 'evening'; State.save(); Story.renderDaybar();", await_promise=False)
+    await cdp.eval("Story.night()", await_promise=False)
+    await cdp.wait_for("__pt.cutsceneActive()", timeout=4.0)
+    await cdp.advance_cutscene(max_steps=6)
+    # !UI.busy zusaetzlich abwarten: UI.current/Shootout.running kippen schon waehrend des Mount-Uebergangs,
+    # bevor UI.show('shootout') selbst zurueckkehrt. Story.forceFight() prueft "Shootout.running" aber erst
+    # NACH diesem Uebergang (Sicherheitsnetz fuer "Screen nicht bereit") -- tippt das Skript schneller, als
+    # dieser Uebergang dauert, sieht die Pruefung faelschlich running=false (Duell laengst gewonnen) und
+    # loest den Erzwingen-Aufruf mit einem synthetischen "aborted, won:false" auf, das den echten Sieg
+    # verschluckt (kein Spieler ist so schnell -- drawWait ist real 1,5-4 s, hier nur zum Testen auf 40 ms
+    # gestellt). Deshalb hier zusaetzlich auf busy=false warten, statt die Pruefung zu unterlaufen.
+    await cdp.wait_for("UI.current && UI.current.id === 'shootout' && Shootout.running && !UI.busy", timeout=5.0)
+    await cdp.eval("Shootout.ready()", await_promise=False)
+    await cdp.wait_for("Shootout.phase === 'draw'", timeout=3.0)
+    await cdp.eval("Shootout.tap()", await_promise=False)
+    await asyncio.sleep(0.3)
+    won = await cdp.eval("({ running: Shootout.running, won: Shootout.results[0] && Shootout.results[0].won })", await_promise=False)
+    record("stash: Hinterhalt – Duell gewonnen", won["running"] is False and won["won"] is True, str(won))
+    await cdp.click("#btnDuelDone")
+    await cdp.wait_for("Story.s.day === 10 && !Story.sleeping", timeout=8.0)
+    await cdp.advance_cutscene(max_steps=8)
+    ruf = await cdp.eval("Story.s.vars.ruf", await_promise=False)
+    record("stash: Ruf +1 nach gewonnenem Hinterhalt", ruf == 1, "ruf=%s" % ruf)
+    # Brandt, Belege, Razzia → Ende Kommissar
+    await cdp.eval("Story.s.day = 26; Story.s.phase = 'evening'; Story.s.vars.belege = 3; Story.s.vars.belegeOffen = 3; Story.s.flags.igor = true; State.save(); UI.renderSide(); Story.renderDaybar();", await_promise=False)
+    await cdp.eval("Story.action('brandt')", await_promise=False)
+    await cdp.wait_for("__pt.cutsceneActive()", timeout=3.0)
+    await cdp.advance_cutscene(max_steps=6)
+    for _ in range(3):
+        await cdp.eval("Story.action('beleg')", await_promise=False)
+        await cdp.wait_for("__pt.cutsceneActive()", timeout=3.0)
+        await cdp.advance_cutscene(max_steps=4)
+        await asyncio.sleep(0.3)
+    ub = await cdp.eval("({ u: Story.s.vars.uebergeben, zorn: Story.s.vars.zorn, razzia: StoryRules.actionsFor(Story.story, State.s, 'bar').some(a => a.id === 'razzia') })", await_promise=False)
+    record("stash: drei Belege übergeben ohne Risiko (Igor), Razzia-Knopf da", ub["u"] == 3 and ub["zorn"] == 0 and ub["razzia"], str(ub))
+    await cdp.eval("Story.action('razzia')", await_promise=False)
+    await cdp.wait_for("__pt.cutsceneActive()", timeout=3.0)
+    await cdp.advance_cutscene(max_steps=12)
+    await asyncio.sleep(0.5)
+    ende = await cdp.eval("(State.meta.storyRuns.stash || {}).last", await_promise=False)
+    record("stash: Ende Der Kommissar", ende == "kommissar", "last=%s" % ende)
+    await cdp.advance_cutscene(max_steps=10)  # Insider/„Und jetzt?“ → Titel
+    # Zweiter Lauf: Zorn 3 → Kanal sofort, nächste Story sauber
+    await cdp.navigate(URL_BASE + "?fresh&story=stash&prev=stammgast&day=7")
+    await asyncio.sleep(0.8)
+    await cdp.inject_helpers()
+    await cdp.advance_cutscene(max_steps=10)
+    await cdp.wait_for("State.mode === 'story' && Story.s && Story.s.day === 7", timeout=5.0)
+    await cdp.eval("Story.s.vars.zorn = 2; Story.s.vars.ziel = 20000; Story.s.vars.rueckgabe = 11000; Story.s.vars.woche = 1; State.s.balance = 0; Story.s.phase = 'evening'; State.save(); Story.renderDaybar();", await_promise=False)
+    await cdp.eval("Story.night()", await_promise=False)
+    await cdp.wait_for("__pt.cutsceneActive()", timeout=4.0)
+    await cdp.advance_cutscene(max_steps=14)
+    await asyncio.sleep(0.5)
+    k = await cdp.eval("({ last: (State.meta.storyRuns.stash || {}).last, ended: Story.s ? Story.s.ended : null })", await_promise=False)
+    record("stash: Abrechnung ohne Geld bei Zorn 2 → Kanal sofort", k["last"] == "kanal", str(k))
 
 
 async def scenario_roulette_chips(cdp):
@@ -1617,6 +1759,7 @@ async def main():
         await scenario_stadt_shop(cdp)
         await scenario_royal_free(cdp)
         await scenario_kater(cdp)
+        await scenario_stash(cdp)
         await scenario_mugging(cdp)
         await scenario_story_stadt(cdp)
         await scenario_roulette_chips(cdp)
