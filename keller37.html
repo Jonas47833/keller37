@@ -6128,7 +6128,10 @@ const Story = {
     const resPromise = new Promise((resolve) => { resolveRes = resolve; });
     const off = Bus.on('fight:leave', (r) => { off(); resolveRes(r); });
     await UI.show('shootout');
-    if (!Shootout.running) { Shootout.pending = null; off(); resolveRes({ kind: cfg.kind, won: false, aborted: true }); } // Screen nicht bereit – nicht ewig warten
+    /* Shootout.forced (nicht .running) prüfen: ein Duell, das schon während des Mount-Fensters
+       durchlief (running wieder false, aber forced noch gesetzt – erst leave()/unmount() löscht es),
+       ist kein "Screen nicht bereit"-Abbruch. Nur wenn forced fehlt, ist der Screen wirklich nie hochgefahren. */
+    if (!Shootout.forced) { Shootout.pending = null; off(); resolveRes({ kind: cfg.kind, won: false, aborted: true }); } // Screen nicht bereit – nicht ewig warten
     const res = await resPromise;
     if (this.stale(st)) return res;
     st.flags.fightWon = !!res.won; st.flags.fightLost = !res.won; st.flags[`fight_${cfg.kind}`] = true;
@@ -7341,7 +7344,7 @@ const STORY_STASH = {
       return { scene: 'stash.hinterhalt', force: 'shootout', fight: { kind: 'hinterhalt', foes: Array(n).fill('junge') } };
     },
     hinterhaltVerloren(s) { STORY_STASH.fns.raub(s); return { scene: 'stash.hinterhalt.lost' }; },
-    tutorial() { return { force: 'shootout', fight: { kind: 'tutorial', foes: ['laeufer'], bonus: 100 } }; },
+    tutorial(s) { s.story.flags.ueberfallHeute = true; return { force: 'shootout', fight: { kind: 'tutorial', foes: ['laeufer'], bonus: 100 } }; },
     finale(s) { return { force: 'shootout', fight: { kind: 'finale', foes: s.story.flags.igor ? ['anabi'] : ['igor', 'anabi'] } }; },
     belegRisiko(s, rng) {
       const st = s.story, v = st.vars;
@@ -7361,6 +7364,16 @@ const STORY_STASH = {
       s.balance -= amt; v.kredit -= amt;
       return { toast: { icon: '🧾', title: `−${StoryRules.fmtMoney(amt)}`, text: `Kredit noch ${StoryRules.fmtMoney(v.kredit)}.`, tone: 'info' } };
     },
+    /* Dev-Start mitten in der Story (?day=N): ohne diese Nachbesserung stünde Woche/Ziel/Rückgabe auf 0,
+       bis die nächste reguläre Lieferung/Abrechnung sie setzt. Kein Kontostand-Effekt, keine Lieferung heute Nacht. */
+    devWoche(s) {
+      const st = s.story, v = st.vars;
+      if (!(st.day > 1 && !v.woche)) return {};
+      const n = Math.min(4, Math.ceil((st.day - 1) / 7));
+      const w = GangRules.week(n, false);
+      v.woche = n; v.ziel = w.ziel; v.rueckgabe = w.rueckgabe; v.lieferung = w.lieferung;
+      return {};
+    },
   },
   chapters: [
     { id: 'k1', title: 'Der Hausherr', when: { day: { gte: 1 } } },
@@ -7377,7 +7390,7 @@ const STORY_STASH = {
     { id: 'hinterhalt', when: { day: { gte: 8 } }, daily: true, at: 'night', effects: [{ call: 'hinterhalt' }] },
     { id: 'angebot', when: { all: [{ day: { gte: 15 } }, { var: 'ruf', gte: 2 }, { notFlag: 'bahnhof' }, { notFlag: 'bahnhofNein' }] }, once: true, at: 'night', scene: 'stash.angebot' },
     /* ---- Morgen ---- */
-    { id: 'einrichten', when: { day: { gte: 1 } }, once: true, at: 'morning', effects: [{ set: { car: 'mercC', weapon: 0 } }, { enable: ['hinterzimmer'] }] },
+    { id: 'einrichten', when: { day: { gte: 1 } }, once: true, at: 'morning', effects: [{ set: { car: 'mercC' } }, { enable: ['hinterzimmer'] }, { call: 'devWoche' }] },
     { id: 'startKredit30', when: { all: [{ day: { gte: 1 } }, { any: [{ prevEnding: { story: 'kater', id: 'nuechtern' } }, { prevEnding: { story: 'kater', id: 'taxi' } }] }] }, once: true, at: 'morning', effects: [{ var: 'kredit', set: 30000 }] },
     { id: 'startKredit50', when: { all: [{ day: { gte: 1 } }, { any: [{ prevEnding: { story: 'kater', id: 'stammgast' } }, { prevEnding: { story: 'kater', id: 'brownie' } }] }] }, once: true, at: 'morning', effects: [{ var: 'kredit', set: 50000 }] },
     { id: 'startTrocken', when: { all: [{ day: { gte: 1 } }, { prevEnding: { story: 'kater', id: 'nuechtern' } }] }, once: true, at: 'morning', effects: [{ flag: 'trocken' }, { disable: ['beer'] }] },
@@ -7390,7 +7403,7 @@ const STORY_STASH = {
     /* ---- Schlaf: blaues Auge heilt ---- */
     { id: 'blauesAugeEnde', when: { flag: 'blauesAuge' }, at: 'sleep', effects: [{ unflag: 'blauesAuge' }, { luckMod: 0 }] },
     /* ---- Schießerei-Ausgänge ---- */
-    { id: 'tutorialWon', when: { all: [{ flag: 'fight_tutorial' }, { flag: 'fightWon' }] }, at: 'fight:after', scene: 'stash.tutorial.won', effects: [{ var: 'ruf', add: 1 }] },
+    { id: 'tutorialWon', when: { all: [{ flag: 'fight_tutorial' }, { flag: 'fightWon' }] }, at: 'fight:after', scene: 'stash.tutorial.won', effects: [{ var: 'ruf', add: 1 }, { toast: { icon: '🔫', title: 'Ruf +1', text: 'Der Bahnhof hat es gesehen.', tone: 'win' } }] },
     { id: 'tutorialLost', when: { all: [{ flag: 'fight_tutorial' }, { flag: 'fightLost' }] }, at: 'fight:after', scene: 'stash.tutorial.lost' },
     { id: 'hinterhaltWon', when: { all: [{ flag: 'fight_hinterhalt' }, { flag: 'fightWon' }] }, at: 'fight:after', effects: [{ var: 'ruf', add: 1 }, { toast: { icon: '🔫', title: 'Sie rennen', text: 'Ruf +1. Der Bahnhof redet.', tone: 'win' } }] },
     { id: 'hinterhaltLost', when: { all: [{ flag: 'fight_hinterhalt' }, { flag: 'fightLost' }] }, at: 'fight:after', effects: [{ call: 'hinterhaltVerloren' }] },
@@ -9576,6 +9589,7 @@ T.test('STORY_STASH: fight:after – Hinterhalt gewonnen Ruf +1, verloren Raub; 
   const t = stashState(); t.story.day = 10;
   const [ids, o2] = stashHook(t, 'night', seq(0.99, 0.99, 0.99));
   T.ok(ids.includes('tutorial')); const f = o2.find((o) => o.force === 'shootout'); T.eq([f.fight.kind, f.fight.foes, f.fight.bonus], ['tutorial', ['laeufer'], 100]);
+  T.eq(t.story.flags.ueberfallHeute, true, 'Tutorial-Nacht zählt als Überfall – kein zusätzlicher Hinterhalt dieselbe Nacht');
   Object.assign(t.story.flags, { fight_tutorial: true, fightWon: true, fightLost: false }); stashHook(t, 'fight:after'); T.eq(t.story.vars.ruf, 1);
   const fi = stashState(); Object.assign(fi.story.flags, { fight_finale: true, fightWon: true, fightLost: false }); stashHook(fi, 'fight:after');
   T.eq(fi.story.flags.anabiTot, true); T.eq(StoryRules.ending(STORY_STASH, fi, { immediateOnly: true }).id, 'krieg');
@@ -9626,7 +9640,7 @@ T.test('STORY_STASH: Kurier-Kontrolle (job:after) – Zorn +1, Beleg +1', () => 
   const s = stashState(); s.story.flags.kontrolle = true;
   const [ids, outs] = stashHook(s, 'job:after');
   T.eq(ids, ['kontrolle']); T.eq([s.story.vars.zorn, s.story.vars.belege, s.story.vars.belegeOffen, s.story.flags.kontrolle], [1, 1, 1, false]);
-  T.ok(outs.some((o) => o.scene === 'stash.kontrolle') || STORY_STASH.events.find((e) => e.id === 'kontrolle').scene === 'stash.kontrolle');
+  T.eq(STORY_STASH.events.find((e) => e.id === 'kontrolle').scene, 'stash.kontrolle');
 });
 T.test('STORY_STASH: Eintreiber – 1.000 €, keine Stärke nötig, Zorn −1, max 2/Woche', () => {
   const s = stashState({ strength: 0 }); s.story.vars.zorn = 2;
@@ -9685,11 +9699,23 @@ T.test('STORY_STASH: Hausmeister (alle fünf repariert) und Der Stumme nickt', (
   T.eq(stashHook(s, 'spin:after')[0].includes('stummeNickt'), false, 'einmal');
 });
 T.test('STORY_STASH: Dev-Start an Tag 9 richtet trotzdem ein (Auto, Hinterzimmer offen, Kredit)', () => {
-  const s = stashState({ car: null }, 'stammgast'); s.story.day = 9;
+  const s = stashState({ car: null }, 'stammgast'); s.story.day = 9; s.weapon = 2;
   stashHook(s, 'morning');
   T.eq(s.car, 'mercC'); T.eq(s.story.enabled.hinterzimmer, true);
   T.ok(s.story.unlocked.doors.includes('hinterzimmer')); T.eq(s.story.vars.kredit, 50000);
   T.eq(s.story.enabled.pfandleihe, true);
+  T.eq(s.weapon, 2, '?weapon bleibt – einrichten setzt kein weapon:0 mehr');
+});
+T.test('STORY_STASH: ?day=N richtet die laufende Woche ein (devWoche) – Tag 1 ohne, Tag 9 mit', () => {
+  const s = stashState(); s.story.day = 9;
+  stashHook(s, 'morning');
+  T.eq(s.story.vars.woche, 2); T.eq(s.story.vars.ziel, 40000); T.eq(s.story.vars.rueckgabe, 22000);
+  /* devWoche selbst bewegt kein Geld – die einzige Bilanzänderung im selben Morgen-Hook ist die reguläre
+     Nachtkasse (5 intakte Keller-Spiele × 250 €, ab Tag 2 täglich, unabhängig von devWoche). */
+  T.eq(s.balance, 5000 + GangRules.KASSE_PRO_SPIEL * GangRules.KELLER_DOORS.length, 'devWoche selbst bewegt kein Geld');
+  const t = stashState(); t.story.day = 1;
+  stashHook(t, 'morning');
+  T.eq(t.story.vars.woche, 0, 'Tag 1: die reguläre Lieferung heute Nacht setzt die Woche, nicht devWoche');
 });
 T.test('STORY_STASH: goal – vor der ersten Woche, während einer Woche, nach der Abrechnung', () => {
   const s = stashState();

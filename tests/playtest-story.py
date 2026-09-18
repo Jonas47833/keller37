@@ -1562,6 +1562,21 @@ async def scenario_stash(cdp):
     await asyncio.sleep(0.5)
     k = await cdp.eval("({ last: (State.meta.storyRuns.stash || {}).last, ended: Story.s ? Story.s.ended : null })", await_promise=False)
     record("stash: Abrechnung ohne Geld bei Zorn 2 → Kanal sofort", k["last"] == "kanal", str(k))
+    # Ende/Insider (fuer "stash" schon vergeben, siehe oben)/„Und jetzt?“ durchklicken -- „Nächste Story“
+    # ist ohne label_hint die erste Wahl (siehe __pt.advance in PAGE_HELPERS).
+    await cdp.advance_cutscene(max_steps=20)
+    await cdp.wait_for("State.mode === 'story' && Story.s && Story.s.id !== 'stash' && Story.s.day === 1", timeout=8.0)
+    nxt = await cdp.eval(
+        "({ id: Story.s.id, day: Story.s.day, "
+        "zorn: (Story.s.vars.zorn === undefined ? null : Story.s.vars.zorn), "
+        "ended: (Story.s.ended === undefined ? null : Story.s.ended) })",
+        await_promise=False,
+    )
+    record(
+        "stash: nach dem Kanal startet die nächste Story sauber (Tag 1, kein Zorn)",
+        nxt is not None and nxt["id"] != "stash" and nxt["day"] == 1 and nxt["zorn"] is None and nxt["ended"] is None,
+        str(nxt),
+    )
 
 
 async def scenario_roulette_chips(cdp):

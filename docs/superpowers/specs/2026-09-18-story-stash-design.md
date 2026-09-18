@@ -35,7 +35,7 @@ Nicht Teil dieser Spec: Kauf des Casino Royal (mögliche Story 4), Türsteher an
 
 ## 3. Start, HUD, Kapitel
 
-**Start:** 5.000 € Bargeld. Auto und Schuhe aus dem Vorgänger bleiben (`car`, `shoes` werden übernommen), `hasHouse` nein, `weapon: 0`. Offen: alle fünf Keller-Spiele (`roulette`, `slots`, `horses`, `russian`, `blackjack`), Räume `bar`, `doc`, `bank`, `invest`, `life`, `stadt`, `royal`. Das Hinterzimmer (`hinterzimmer`) öffnet Tag 2, die Pfandleihe Tag 8. `disabled: ['tinder', 'house', 'dealer', 'kidney']`. Kein Alkohol-System (Pegel/Leber gibt es in dieser Story nicht); Bier wirkt wie im freien Spiel.
+**Start:** 5.000 € Bargeld. Auto und Schuhe aus dem Vorgänger bleiben (`car`, `shoes` werden übernommen), `hasHouse` nein, `weapon: 0`. Offen: alle fünf Keller-Spiele (`roulette`, `slots`, `horses`, `russian`, `blackjack`), Räume `bar`, `doc`, `bank`, `invest`, `life`, `stadt`, `royal`. Das Hinterzimmer (`hinterzimmer`) öffnet Tag 2, die Pfandleihe Tag 8. `disabled: ['tinder', 'house', 'dealer', 'kidney']`. Kein Alkohol-System (Pegel/Leber gibt es in dieser Story nicht); Bier wirkt wie im freien Spiel. (Technisch: Story-Start setzt `car: 'mercC'`; die Engine trägt keine Ausrüstung zwischen Stories weiter – Upgrades/Schuhe aus Story 2 gehen verloren.)
 
 **HUD:** `🧺 Umsatz` (Woche, `fmt: 'money'`, Label-Funktion „12.400 / 20.000"), `😡 Zorn` (0–3, `tone: 'danger'`), `🧾 Kredit` (Geld). Ziel-Text (`goal`) zeigt Woche, Fälligkeit und am Abrechnungstag die Warnung: „Heute Abend: 11.000 € fällig · Umsatz 14.200 / 20.000".
 
@@ -80,7 +80,7 @@ Zorn ist auf 0–3 gekappt (`varMax`). **Zorn ≥ 3 → Ende `kanal`**, `immedia
 
 **Nachtkasse** (Morgen-Event täglich, Effekt `call: 'nachtkasse'`): `N.kasseProSpiel` = **250 €** pro intaktem Keller-Spiel (max. 1.250 €/Tag). Hinterzimmer und Royal zählen nicht. Toast: „Nachtkasse: +1.000 € (Slots kaputt)".
 
-**Überfall** (Nacht-Event ab Tag 8, `call: 'ueberfall'`, vor dem Hinterhalt): Chance **25 %**, mit Flag `igor` **15 %**, mit Flag `bahnhof` **0 %** (die Bahnhof-Jungs waren es). Ein zufälliges intaktes Keller-Spiel wird zertrümmert: `broken[door] = preis` (mit `igor` halber Preis, gerundet auf 100 €). Sind alle fünf kaputt, kein Überfall. Morgen-Szene: Igor vor den Scherben. Es gibt höchstens einen Überfall pro Nacht; kaputte Spiele bleiben kaputt, bis der Spieler zahlt – sie können sich stapeln.
+**Überfall** (Nacht-Event ab Tag 8, `call: 'ueberfall'`, vor dem Hinterhalt): Chance **25 %**, mit Flag `igor` **15 %**, mit Flag `bahnhof` **0 %** (die Bahnhof-Jungs waren es). Ein zufälliges intaktes Keller-Spiel wird zertrümmert: `broken[door] = preis` (mit `igor` halber Preis, gerundet auf 100 €). Sind alle fünf kaputt, kein Überfall. Nacht-Szene: um drei Uhr ruft Igor an (die Reparaturkosten stehen am Morgen an der Tür). Es gibt höchstens einen Überfall pro Nacht; kaputte Spiele bleiben kaputt, bis der Spieler zahlt – sie können sich stapeln.
 
 | Spiel | Reparatur (`N.reparatur`) |
 |---|---|
@@ -141,7 +141,7 @@ Nur Aufstieg, kein Verkauf. `weapon` wandert wie `car` nicht in die nächste Sto
 
 **Regeln (`BaccaratRules`, rein):** Punto Banco, unendlicher Schuh (jede Karte unabhängig gezogen, wie Blackjack). Wetten **Spieler** 1:1, **Bank** 0,95:1, **Unentschieden** 8:1; Spieler-/Bank-Wette bei Unentschieden zurück. Punktwert = Summe modulo 10, Bildkarten/10 = 0, Ass = 1. Natural (8/9 mit zwei Karten) beendet die Hand. Drittkarte: Spieler zieht bei ≤ 5, steht bei 6–7. Bank: zieht bei ≤ 2 immer; 3: außer Spieler-Drittkarte 8; 4: bei Spieler-Drittkarte 2–7; 5: bei 4–7; 6: bei 6–7; 7: steht; zieht ohne Spieler-Drittkarte bei ≤ 5. RTP: Spieler ≈ 98,8 %, Bank ≈ 98,9 %, Unentschieden ≈ 85,6 %.
 
-**Limits:** `N.baccarat = { min: 500, max: 10000, chips: [500, 1000, 5000, 10000] }` pro Hand über alle Felder. Mehrere Felder gleichzeitig erlaubt (wie Roulette-Mehrfacheinsatz).
+**Limits:** `N.baccarat = { min: 500, max: 10000, chips: [500, 1000, 5000, 10000] }` pro Hand über alle Felder. Mehrere Felder gleichzeitig erlaubt (wie Roulette-Mehrfacheinsatz). Spieler und Bank gleichzeitig zu setzen ist erlaubt (≈ −1,15 % Erwartung, kaum Varianz) — das ist die bewusste „Waschgebühr"; wer die Wochenspannung will, setzt eine Seite.
 
 **Glück:** wie Craps. `Rules.pech(luck, rng)` würfelt einen Gewinn einmal neu; bei positivem `effectiveLuck` wird eine verlorene Hand mit `luck` % einmal neu gegeben. Beides höchstens einmal pro Hand.
 
@@ -204,7 +204,7 @@ Priorität von oben; erste erfüllte zählt.
 | `krieg` | 🔫 Der Krieg | 60, `immediate` | Flag `anabiTot` | Kessler klopft dir auf die Schulter. Der Keller gehört dir – und den Bahnhof-Jungs. Trophäe **Schnellste Hand**. |
 | `kommissar` | 👮 Der Kommissar | 50, `immediate` | Flag `razzia` (Aktion, `uebergeben ≥ 3`, Tag ≥ 26) | Blaulicht im Keller. Anabi in Handschellen. Brandt: „Der Keller ist Beweismittel. Sie sind frei. Nur nicht hier." Mit `igor` seine Zeile. Trophäe **Kronzeuge**. |
 | `abloese` | 💰 Die Ablöse | 40, `immediate` | Flag `frei` (Aktion „Ablöse zahlen": `balance ≥ N.abloese + kredit`, `zorn ≤ 1`, Tag ≥ 22) | Anabi zählt nach, zweimal. Der Stumme nimmt den Tisch mit. Der Keller ist wirklich deiner. Trophäe **Sauber**. |
-| `flucht` | 🌍 Die Flucht | 30, `immediate` | Flag `flucht` (Aktion „Abhauen": `car`, `balance ≥ 30.000`, Tag ≥ 20) | Nachts über die Grenze. Der Keller brennt hinter dir – nicht deine Schuld, sagt niemand. |
+| `flucht` | 🌍 Die Flucht | 30, `immediate` | Flag `flucht` (Aktion „Abhauen": `car`, `balance ≥ 30.000`, Tag ≥ 20) — bewusst leicht erreichbar: das Feiglings-Ende ohne Keller und Trophäe. | Nachts über die Grenze. Der Keller brennt hinter dir – nicht deine Schuld, sagt niemand. |
 | `strohmann` | 🧹 Der Strohmann | 0, `fallback` | Tag 30 | Woche 5 kommt. Lieferung 50.000 €. Dein Name steht im Grundbuch, seiner auf dir. |
 
 `N.abloese = 100000`. Enden landen in `storyRuns.stash.endings`. Für eine spätere Story 4 bleibt der Spieler bei `abloese`, `krieg`, `strohmann` Besitzer, bei `kommissar` und `flucht` ohne Keller.
@@ -217,7 +217,7 @@ Priorität von oben; erste erfüllte zählt.
 |---|---|
 | `?story=stash` | Story erzwingen, Sperre umgehen |
 | `?prev=wirt` | voriges Kater-Ende für diesen Lauf (mit `?fresh`) |
-| `?day=N` | Starttag (mit `?fresh`) |
+| `?day=N` | Starttag (mit `?fresh`) (setzt `woche`/`ziel`/`rueckgabe` der laufenden Woche, ohne Lieferung) |
 | `?weapon=2` | Waffenstufe setzen (Story-Modus) |
 | `?ending=abloese` | Ende direkt abspielen |
 | `?screen=hinterzimmer` | Hinterzimmer direkt öffnen (im Story-Modus); die Spiel-ID beim Settle ist trotzdem `baccarat` |
