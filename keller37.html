@@ -176,6 +176,8 @@ body.cs-open .toast { max-width: 300px; }
 .cs-bg.bank { background: linear-gradient(180deg, #0c1f33 0%, #123a5c 50%, #06131f 100%); }
 .cs-bg.strasse { background: linear-gradient(180deg, #7fb2e5 0%, #c7d7e3 50%, #5b5b4d 100%); }
 .cs-bg.keller { background: radial-gradient(circle at 50% 10%, #4a4a3a 0%, #151512 40%, #000 100%); }
+.cs-bg.bahnhof { background: linear-gradient(180deg, #05070d 0%, #1a2233 45%, #3b3a2a 100%); }
+.cs-bg.pfandleihe { background: linear-gradient(180deg, #2a2418 0%, #14110a 60%, #000 100%); }
 .cs-money { position: absolute; top: 16px; left: 20px; z-index: 3; font-family: var(--font-mono); font-size: 1.3rem; font-weight: 700; color: var(--gold-2); background: rgba(0,0,0,.5); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(201,162,39,.4); }
 .cs-money.up { animation: pulseGold .6s ease both; }
 .cs-money.down { animation: pulseRed .6s ease both; }
@@ -2172,11 +2174,17 @@ const Cutscene = {
     raeuber: { name: 'Der Räuber', emoji: '🥷', color: 'var(--neon-red)' },
     sylvie: { name: 'Madame Sylvie', emoji: '🎩', color: '#e8d5a3' },
     insider: { name: 'Der Insider', emoji: '🕵️', color: 'var(--neon-blue)' },
+    anabi: { name: 'Anabi Stash', emoji: '🕶️', color: '#d4af37' },
+    stumme: { name: 'Der Stumme', emoji: '🃏', color: '#8a8a8a' },
+    kessler: { name: 'Kessler', emoji: '🚬', color: 'var(--neon-red)' },
+    brandt: { name: 'Kommissar Brandt', emoji: '👮', color: 'var(--neon-blue)' },
+    kowalski: { name: 'Kowalski', emoji: '🔧', color: '#b8a070' },
   },
   PROPS: {
     bar: ['🍾', '🪑'], hinterzimmer: ['🕯️', '🚬'], standesamt: ['💐', '🔔'], villa: ['🏙️', '🌙'], hafen: ['🏗️', '🌙'],
     'hafen-morgen': ['🏗️', '🌅'], klinik: ['🩺', '💡'], bank: ['🏧', '🪴'], strasse: ['🏠', '🚗'], keller: ['💡', '🪑'],
     autohaus: ['🚗', '🪴'], intersport: ['👟', '🏷️'], gasse: ['🗑️', '🌙'],
+    bahnhof: ['🚉', '🌙'], pfandleihe: ['🔫', '🏷️'],
   },
   SCENES: {},
   define(id, panels) { this.SCENES[id] = panels; },
@@ -5328,7 +5336,7 @@ const Stories = {
 };
 
 const Story = {
-  DOORS: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'postman'],
+  DOORS: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'postman', 'hinterzimmer'],
   ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'], royal: ['royal'], megaslots: ['royal'], craps: ['royal'], wheel: ['royal'] },
   story: null,
   allowOnce: null,
@@ -5655,7 +5663,9 @@ const Story = {
   hudNotes() {
     return (this.story.hud || []).map((hd) => {
       const v = this.s.vars[hd.var] || 0;
-      const txt = hd.fmt === 'money' ? UI.fmt(v) : (hd.max ? `${v}/${hd.max}` : String(v));
+      const max = typeof hd.max === 'function' ? hd.max(State.s) : hd.max;
+      const f = (n) => (hd.fmt === 'money' ? UI.fmt(n) : String(n));
+      const txt = max != null ? (hd.fmt === 'money' ? `${f(v)} / ${f(max)}` : `${v}/${max}`) : f(v); // Zahlen wie bisher „0/3“, Geld „12.400 € / 20.000 €“
       const label = typeof hd.label === 'function' ? hd.label(State.s) : hd.label;
       return h('span', { class: `note ${hd.tone || 'gold'}` }, `${label} ${txt}`);
     });
@@ -8404,6 +8414,12 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     } finally {
       State.mode = keep.mode; State.s = keep.s; Story.story = keep.story;
     }
+  });
+  if (typeof document !== 'undefined') T.test('Cutscene.CAST: Story-3-Figuren und Hintergründe', () => {
+    for (const id of ['anabi', 'stumme', 'kessler', 'brandt', 'kowalski']) T.ok(Cutscene.CAST[id] && Cutscene.CAST[id].name, `Figur ${id}`);
+    T.ok(Cutscene.PROPS.bahnhof && Cutscene.PROPS.pfandleihe, 'Props');
+    const probe = document.createElement('div'); probe.className = 'cs-bg bahnhof'; document.body.append(probe);
+    T.ok(getComputedStyle(probe).backgroundImage !== 'none', 'Hintergrund bahnhof hat CSS'); probe.remove();
   });
 }
 
