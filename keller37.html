@@ -134,6 +134,12 @@ input { font-family: var(--font-mono); }
 .bet-field input::-webkit-inner-spin-button, .bet-field input::-webkit-outer-spin-button { -webkit-appearance: none; }
 .bet-field button { background: rgba(255,255,255,.05); border: 0; width: 32px; height: 38px; font-size: 1.1rem; }
 .bet-field button:hover { background: rgba(255,255,255,.12); }
+/* Anzeigefeld ohne Stepper (Tische mit festen Einsätzen: Mega Seven, Craps, Glücksrad, Baccarat) – Betrag in Gold plus Euro-Zeichen;
+   der Chip mit diesem Wert trägt .on (Game.bindBet) und wird nur an diesen Tischen hervorgehoben */
+.bet-view { padding-right: 10px; }
+.bet-view input { width: 84px; padding-right: 0; cursor: default; }
+.bet-view::after { content: '€'; color: var(--gold-2); font-size: 1.1rem; font-weight: 700; }
+.bac-panel .chip.on { background: #fff; color: #111; border-color: var(--gold-2); box-shadow: 0 0 0 2px var(--gold-2), 0 3px 8px rgba(0,0,0,.6); transform: translateY(-3px); }
 .chalk { background: #1c1e1a; border: 6px solid #4a3a2a; border-radius: 4px; padding: 12px 16px; color: #e6e2d3; font-family: var(--font-mono); text-shadow: 0 0 2px rgba(255,255,255,.4); box-shadow: inset 0 0 30px rgba(0,0,0,.6); }
 .chalk h4 { font-family: var(--font-display); letter-spacing: .1em; font-size: 1.2rem; color: #fff; margin-bottom: 6px; }
 .chalk .dim { color: #a9a596; }
@@ -435,6 +441,8 @@ body.cs-open .toast { max-width: 300px; }
   .bet-field input { min-width: 0; }
   .bet-bar .bet-field input { flex: 1; width: auto; font-size: 1.2rem; }
   .bet-bar .bet-field button { flex: 0 0 48px; width: 48px; height: 46px; font-size: 1.3rem; }
+  .bet-bar .bet-view { justify-content: center; min-height: 46px; }   /* Anzeigefeld: Betrag und Euro-Zeichen mittig beieinander */
+  .bet-bar .bet-view input { flex: 0 1 auto; width: 110px; }
   .bet-bar > .chip { grid-column: span 15; justify-self: center; }
   .roulette-panel .bet-bar > .chip { grid-column: span 12; }
   .rr-panel .bet-bar > .chip { grid-column: span 20; }
@@ -524,6 +532,9 @@ body[data-zone="royal"] .side-tabs button.on { color: var(--gold-2); border-top-
 /* Gemeinsame Bausteine: Chips, Knöpfe, Tafeln, Status, Neon */
 body[data-zone="royal"] .chip { --chip: #141216; background: var(--chip); border: 4px dashed var(--gold); box-shadow: inset 0 0 0 3px #0b0a0c, inset 0 0 0 4px var(--bronze), 0 3px 6px rgba(0,0,0,.6); color: var(--gold-2); }
 body[data-zone="royal"] .chip:hover, body[data-zone="royal"] .chip:active { --chip: var(--gold); color: #141216; }
+body[data-zone="royal"] .chip.on { --chip: var(--gold); color: #141216; box-shadow: inset 0 0 0 3px #0b0a0c, inset 0 0 0 4px var(--bronze), 0 0 0 2px var(--gold-2), 0 3px 8px rgba(0,0,0,.6); transform: translateY(-3px); }
+body[data-zone="royal"] .bet-field { border-color: var(--bronze); }
+body[data-zone="royal"] .bet-view input, body[data-zone="royal"] .bet-view::after { color: var(--gold-2); }
 body[data-zone="royal"] .btn { font-family: var(--font-display); font-weight: 700; letter-spacing: .15em; border-radius: 3px; --c: var(--gold); color: var(--gold-2); background: transparent; }
 body[data-zone="royal"] .btn.solid { background: linear-gradient(#e2c77a, #b8923f); color: #1a1208; border-color: #e2c77a; }
 body[data-zone="royal"] .btn.solid:hover:not(:disabled) { background: linear-gradient(#f1dfa8, #c9a961); box-shadow: 0 0 14px rgba(201,169,97,.5); }
@@ -1318,7 +1329,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     </div>
     <div class="status" id="megaStatus">Einsatz wählen und drehen</div>
     <div class="bet-bar">
-      <input type="number" id="megaBet" value="100" min="100" hidden>
+      <div class="bet-field bet-view"><input type="number" id="megaBet" value="100" min="100" readonly></div>
       <button class="chip" data-chip="100" data-v="100">100</button>
       <button class="chip" data-chip="250" data-v="25">250</button>
       <button class="chip" data-chip="500" data-v="50">500</button>
@@ -1344,7 +1355,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     </div>
     <div class="status" id="bacStatus">500 bis 10.000 € pro Hand. Kein Kleingeld.</div>
     <div class="bet-bar">
-      <input type="number" id="bacBet" value="500" min="500" hidden>
+      <div class="bet-field bet-view"><input type="number" id="bacBet" value="500" min="500" readonly></div>
       <button class="chip" data-chip="500" data-v="50">500</button>
       <button class="chip" data-chip="1000" data-v="25">1000</button>
       <button class="chip" data-chip="5000" data-v="100">5000</button>
@@ -1371,7 +1382,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     </div>
     <div class="status" id="crapsStatus">Einsatz wählen, auf Pass Line oder Field legen, würfeln</div>
     <div class="bet-bar">
-      <input type="number" id="crapsBet" value="50" min="50" hidden>
+      <div class="bet-field bet-view"><input type="number" id="crapsBet" value="50" min="50" readonly></div>
       <button class="chip" data-chip="50" data-v="50">50</button>
       <button class="chip" data-chip="200" data-v="25">200</button>
       <button class="chip" data-chip="500" data-v="100">500</button>
@@ -1401,7 +1412,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     </div>
     <div class="status" id="wheelStatus">Einsatz wählen und drehen</div>
     <div class="bet-bar">
-      <input type="number" id="wheelBet" value="100" min="100" hidden>
+      <div class="bet-field bet-view"><input type="number" id="wheelBet" value="100" min="100" readonly></div>
       <button class="chip" data-chip="100" data-v="100">100</button>
       <button class="chip" data-chip="500" data-v="50">500</button>
       <button class="chip" data-chip="1000" data-v="25">1000</button>
@@ -2617,9 +2628,16 @@ const Game = {
       input.value = Math.max(1, v + parseInt(b.dataset.step, 10));
       SFX.play('click');
     }));
-    qsa('[data-chip]', root).forEach((c) => c.addEventListener('click', () => {
+    /* Chip-Markierung: der Chip, dessen Wert im Feld steht, trägt .on (Anzeige nur an Tischen mit festen Einsätzen, s. CSS .bet-view) */
+    const chips = qsa('[data-chip]', root);
+    const mark = (chip) => chips.forEach((c) => c.classList.toggle('on', c === chip));
+    mark(chips.find((c) => c.dataset.chip === input.value) || null);
+    input.addEventListener('change', () => mark(null));
+    qsa('[data-step]', root).forEach((b) => b.addEventListener('click', () => mark(null)));
+    chips.forEach((c) => c.addEventListener('click', () => {
       const v = c.dataset.chip;
       input.value = v === 'max' ? maxFn() : parseInt(v, 10);
+      mark(c);
       SFX.play('chip');
     }));
   },
@@ -10277,6 +10295,27 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     } finally {
       BaccaratRules.deal = keep.deal; State.save = keep.save; State.saveMeta = keep.saveMeta; State.s = keep.s; State.mode = keep.mode;
       State.meta.achievements = keep.achievements;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
+      UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide();
+    }
+  });
+  T.test('Einsatz-Anzeige (Royal + Baccarat): Feld sichtbar und nur lesbar, Chip-Klick setzt Betrag und markiert genau diesen Chip', async () => {
+    const keep = { s: State.s, mode: State.mode, save: State.save, saveMeta: State.saveMeta, cur: UI.current };
+    State.save = () => {}; State.saveMeta = () => {};
+    try {
+      State.mode = 'free'; State.s = State.fresh(); State.s.balance = 50000;
+      for (const [screen, id, start, chip] of [['megaslots', 'megaBet', '100', '500'], ['craps', 'crapsBet', '50', '200'], ['wheel', 'wheelBet', '100', '1000'], ['hinterzimmer', 'bacBet', '500', '5000']]) {
+        await UI.show(screen);
+        const root = qs('#stage');
+        const input = qs('#' + id, root);
+        T.ok(!input.hidden && input.readOnly && !!input.closest('.bet-field'), `${screen}: Feld sichtbar, nur lesbar, im bet-field`);
+        T.eq(qsa('.bet-bar .chip.on', root).map((c) => c.dataset.chip), [start], `${screen}: Start-Chip markiert`);
+        qs(`.bet-bar .chip[data-chip="${chip}"]`, root).click();
+        T.eq(input.value, chip, `${screen}: Feld zeigt ${chip}`);
+        T.eq(qsa('.bet-bar .chip.on', root).map((c) => c.dataset.chip), [chip], `${screen}: nur der geklickte Chip markiert`);
+      }
+    } finally {
+      State.save = keep.save; State.saveMeta = keep.saveMeta; State.s = keep.s; State.mode = keep.mode;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
       UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide();
     }
