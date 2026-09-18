@@ -769,6 +769,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
     <div class="door" data-screen="horses" style="--neon: var(--neon-green)"><div class="sign">Rennbahn</div><div class="glyph">🏇</div><div class="chalk-tag">Quote 4.0</div><div class="knob"></div></div>
     <div class="door" data-screen="russian" style="--neon: var(--neon-blue)"><div class="sign">Igor</div><div class="glyph">🔫</div><div class="chalk-tag">Duell · 1 Kugel</div><div class="knob"></div></div>
     <div class="door" data-screen="blackjack" style="--neon: var(--neon-green)"><div class="sign">Black Jack</div><div class="glyph">🃏</div><div class="chalk-tag">bis 21</div><div class="knob"></div></div>
+    <div class="door" data-screen="hinterzimmer" style="--neon: var(--gold-2)" hidden><div class="sign">Hinterzimmer</div><div class="glyph">🂡</div><div class="chalk-tag">Baccarat · 500–10.000 €</div><div class="knob"></div></div>
     <div class="door day" data-screen="postman" style="--neon: var(--day)"><div class="sign">Ausgang</div><div class="glyph">📬</div><div class="chalk-tag">Post austragen</div><div class="knob"></div></div>
     <div class="door day" data-screen="stadt" style="--neon: var(--day)"><div class="sign">Stadt</div><div class="glyph">🏙️</div><div class="chalk-tag">Autohaus · INTERSPORT</div><div class="knob"></div></div>
   </div>
@@ -2190,6 +2191,8 @@ UI.register('hub', {
     if (rTag) rTag.textContent = `Plein ${mods.rouletteNumberPayout}:1`;
     const hTag = qs('[data-screen="horses"] .chalk-tag', root);
     if (hTag) hTag.textContent = `Quote ${(1 + mods.horsePayout).toFixed(1)}`;
+    const hz = qs('[data-screen="hinterzimmer"]', root);
+    if (hz) hz.hidden = !(State.mode === 'story' && typeof Story !== 'undefined' && Story.s && Story.s.enabled && Story.s.enabled.hinterzimmer);
     qsa('.door', root).forEach((d) => {
       d.addEventListener('click', () => { SFX.play('click'); UI.show(d.dataset.screen); });
       d.addEventListener('mouseenter', () => SFX.play('neonBuzz'));
@@ -4591,6 +4594,7 @@ const Achievements = {
     { id: 'royalHigh', title: 'High Roller', icon: '🎩', desc: 'Einzelgewinn von 5.000 € im Casino Royal.' },
     { id: 'fuenfSiebener', title: 'Fünf Siebener', icon: '7️⃣', desc: 'Fünf 7️⃣ auf einer Linie bei Mega Seven.' },
     { id: 'gegenDieWand', title: 'Gegen die Wand', icon: '🎡', desc: 'Bankrott am Glücksrad mit 5.000 € Einsatz.' },
+    { id: 'natural', title: 'Natural', icon: '🂡', desc: 'Fünf Naturals in einer Sitzung am Tisch im Hinterzimmer.' },
     { id: 'jobFirst', title: 'Erster Arbeitstag', icon: '🧾', desc: 'Einen Job in der Story beendet.', group: 'story' },
     { id: 'teller10', title: 'Tellerwäscher', icon: '🍽️', desc: '10 von 10 Tellern sauber.', group: 'story' },
     { id: 'nachtschicht', title: 'Nachtschicht', icon: '🚕', desc: 'Taxi-Schicht mit mindestens 200 €.', group: 'story' },
@@ -4603,6 +4607,7 @@ const Achievements = {
     { id: 'endeBrownie', title: 'Der Brownie', icon: '💊', desc: 'Der Doc hat einen Partner.', group: 'story' },
     { id: 'endeBett', title: 'Das Bett beim Doc', icon: '🛏️', desc: 'Die Niere war ein Vorschuss.', group: 'story' },
     { id: 'standhaft', title: 'Standhaft', icon: '🙅', desc: 'Dem Doc dreimal Nein gesagt.', group: 'story' },
+    { id: 'stummeNickt', title: 'Der Stumme nickt', icon: '🀄', desc: '100.000 € Umsatz an Anabis Tisch.', group: 'story' },
   ],
   has(id) { return State.meta.achievements.includes(id); },
   unlock(id) {
@@ -8831,6 +8836,24 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.eq(Baccarat.bets.player, 0, 'krummer Chip abgelehnt');
     } finally {
       BaccaratRules.deal = keep.deal; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
+    }
+  });
+  T.test('Hub: Tür Hinterzimmer nur sichtbar, wenn die Story sie zeigt', async () => {
+    const keep = { s: State.s, mode: State.mode, story: Story.story, save: State.save, cur: UI.current };
+    State.save = () => {};
+    try {
+      State.mode = 'free'; State.s = State.fresh();
+      await UI.show('hub');
+      T.eq(qs('[data-screen="hinterzimmer"]', qs('#stage')).hidden, true, 'freies Spiel: versteckt');
+      State.mode = 'story'; State.s = State.freshStory(STORY_PROBE); Story.story = STORY_PROBE;
+      State.s.story.enabled.hinterzimmer = true;
+      await UI.show('hub');
+      const door = qs('[data-screen="hinterzimmer"]', qs('#stage'));
+      T.eq(door.hidden, false, 'Story mit enabled: sichtbar');
+      T.ok(door.classList.contains('locked'), 'ohne unlocked.doors gesperrt');
+    } finally {
+      State.save = keep.save; State.s = keep.s; State.mode = keep.mode; Story.story = keep.story;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
     }
   });
