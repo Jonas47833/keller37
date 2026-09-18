@@ -2035,7 +2035,7 @@ const UI = {
   mobile() { return window.matchMedia('(max-width: 760px)').matches; },
   async show(id) {
     if (this.busy) return;
-    if (typeof Shootout !== 'undefined' && Shootout.running && Shootout.forced && id !== 'shootout') { UI.toast({ icon: '🔫', title: 'Erst das Duell beenden' }); return; }
+    if (typeof Story !== 'undefined' && Story.fightActive() && id !== 'shootout') { UI.toast({ icon: '🔫', title: 'Erst das Duell beenden' }); return; }
     const def = this.screens.get(id);
     if (!def) { console.warn('[ui] Screen fehlt:', id); return; }
     if (typeof Story !== 'undefined' && Story.isLocked(id)) { UI.toast({ icon: '🔒', title: Story.lockReason(id), tone: 'loss' }); SFX.play('lose'); return; }
@@ -2211,7 +2211,7 @@ const UI = {
       }, { passive: true });
       document.addEventListener('keydown', (e) => {
         if (typeof Russian !== 'undefined' && Russian.inDuel && Russian.duel && Russian.duel.forced) return;
-        if (typeof Shootout !== 'undefined' && Shootout.running && Shootout.forced) return;
+        if (typeof Story !== 'undefined' && Story.fightActive()) return;
         if (e.key !== 'Escape' || !qs('#cutscene').hidden || !qs('#title').hidden || !UI.current) return;
         const home = State.mode === 'story' && Story.s && Story.s.phase === 'morning' && UI.screens.has('jobs') ? 'jobs' : 'hub';
         if (UI.current.id !== home) UI.show(home);
@@ -5131,6 +5131,7 @@ const StoryRules = {
     if ('toast' in eff) return { toast: eff.toast };
     const out = {};
     if ('force' in eff) out.force = eff.force;
+    if ('fight' in eff) out.fight = eff.fight;
     if ('loseDay' in eff) out.loseDay = true;
     if ('scene' in eff) out.scene = eff.scene;
     if ('show' in eff) out.show = eff.show;
@@ -5243,6 +5244,11 @@ const StoryRules = {
       scene(e.scene, e.id); for (const eff of e.effects || []) { scene(eff.scene, e.id); jobs(eff.unlock && eff.unlock.jobs, e.id); rooms(eff.unlock && eff.unlock.rooms, e.id); }
       for (const eff of e.effects || []) if ('break' in eff && !(eff.price > 0)) errs.push(`${story.id}: break "${eff.break}" ohne price (${e.id})`);
       for (const eff of e.effects || []) if ('call' in eff && typeof (story.fns || {})[eff.call] !== 'function') errs.push(`${story.id}: call "${eff.call}" ohne Funktion (${e.id})`);
+      for (const eff of e.effects || []) if (eff.force === 'shootout') {
+        const ok = eff.fight && Array.isArray(eff.fight.foes) && eff.fight.foes.length > 0
+          && eff.fight.foes.every((f) => (typeof GangRules !== 'undefined' ? !!GangRules.FOES[f] : true));
+        if (!ok) errs.push(`${story.id}: force shootout ohne gültige fight.foes (${e.id})`);
+      }
     }
     for (const a of story.actions || []) { scene(a.scene, `action ${a.id}`); if (!StoryRules.ROOMS.includes(a.room)) errs.push(`${story.id}: Raum "${a.room}" unbekannt (action ${a.id})`); }
     const setKeys = (list, where) => (list || []).forEach((eff) => { if (eff.set) for (const k of Object.keys(eff.set)) if (!StoryRules.SET_KEYS.includes(k)) errs.push(`${story.id}: set-Key "${k}" nicht erlaubt (${where})`); });
@@ -5600,7 +5606,7 @@ const Title = {
   async open() {
     if (typeof Story !== 'undefined' && Story.sleeping) { UI.toast({ icon: '⏳', title: 'Erst die Nacht abwarten' }); return; }
     if (typeof Russian !== 'undefined' && Russian.inDuel && Russian.duel && Russian.duel.forced) { UI.toast({ icon: '⏳', title: 'Erst das Duell beenden' }); return; }
-    if (typeof Shootout !== 'undefined' && Shootout.running && Shootout.forced) { UI.toast({ icon: '⏳', title: 'Erst das Duell beenden' }); return; }
+    if (typeof Story !== 'undefined' && Story.fightActive()) { UI.toast({ icon: '⏳', title: 'Erst das Duell beenden' }); return; }
     if (Cutscene.active || Game.inFlight > 0) { UI.toast({ icon: '⏳', title: 'Erst die Runde beenden' }); return; }
     State.save();
     const choice = await Title.show();
@@ -5685,6 +5691,8 @@ const Story = {
      finish() → „Nächste Story" tauscht State.s gegen die nächste Story aus (this.s zeigt dann auf die NEUE, ended null),
      „Zum Titel" → freies Spiel lässt this.s undefined – Prüfungen über this.s nach dem await sind deshalb tot. */
   stale(st) { return !st || !!st.ended || State.s.story !== st; },
+  /* Erzwungenes Duell läuft noch – auch nach dem Ergebnis, solange „Weiter" nicht geklickt wurde (Shootout.forced bleibt bis leave() gesetzt) */
+  fightActive() { return typeof Shootout !== 'undefined' && !!Shootout.forced; },
 
   /* ---- Einstieg ---- */
   async enter(choice) {
@@ -5827,7 +5835,7 @@ const Story = {
   /* Story-Aktion aus der Seitenleiste: spielt ihre Szene, wendet Choice-Effekte an, prüft sofortige Enden */
   async action(id) {
     const a = (this.story.actions || []).find((x) => x.id === id);
-    if (!a || !StoryRules.check(a.when, State.s) || Cutscene.active || Game.inFlight > 0 || this.sleeping || UI.busy) return;
+    if (!a || !StoryRules.check(a.when, State.s) || Cutscene.active || Game.inFlight > 0 || this.sleeping || UI.busy || this.fightActive()) return;
     const st = this.s;
     await this.playScene(a.scene);
     if (this.stale(st)) return; // Choice-Effekt hat die Story beendet (finish lief schon in applyEffects) – nichts mehr auf der toten Story rendern
@@ -5877,7 +5885,11 @@ const Story = {
   },
   async night() {
     if (this.sleeping) return;
-    if (this.s.phase !== 'evening' || Cutscene.active || Game.inFlight > 0) { if (Game.inFlight > 0) UI.toast({ icon: '⏳', title: 'Erst die Runde beenden' }); return; }
+    if (this.s.phase !== 'evening' || Cutscene.active || Game.inFlight > 0 || this.fightActive()) {
+      if (this.fightActive()) UI.toast({ icon: '🔫', title: 'Erst das Duell beenden' });
+      else if (Game.inFlight > 0) UI.toast({ icon: '⏳', title: 'Erst die Runde beenden' });
+      return;
+    }
     this.sleeping = true;
     this.renderDaybar();
     const st = this.s;
@@ -6059,7 +6071,7 @@ const Story = {
     const resPromise = new Promise((resolve) => { resolveRes = resolve; });
     const off = Bus.on('fight:leave', (r) => { off(); resolveRes(r); });
     await UI.show('shootout');
-    if (!Shootout.running) { off(); resolveRes({ kind: cfg.kind, won: false, aborted: true }); } // Screen nicht bereit – nicht ewig warten
+    if (!Shootout.running) { Shootout.pending = null; off(); resolveRes({ kind: cfg.kind, won: false, aborted: true }); } // Screen nicht bereit – nicht ewig warten
     const res = await resPromise;
     if (this.stale(st)) return res;
     st.flags.fightWon = !!res.won; st.flags.fightLost = !res.won; st.flags[`fight_${cfg.kind}`] = true;
@@ -6405,7 +6417,7 @@ const Taxi = {
     const apply = () => { if (!this.alive(gen) || !this.running) return; this.braking = true; this.brakeUntil = performance.now() + 600; qs('#taxiCar', this.root).classList.add('braking'); const f = qs('#brakeFlash', this.root); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); };
     if (delay > 0) setTimeout(apply, delay); else apply();
   },
-  ticket() { if (!this.root) return; const p = h('div', { class: 'ticket-pop' }, 'STRAFZETTEL −50 €'); qs('#taxiRoad', this.root).append(p); UI.shake(qs('#taxiRoad', this.root)); setTimeout(() => p.remove(), 900); },
+  ticket() { if (!this.root) return; const p = h('div', { class: 'ticket-pop' }, this.variant === 'kurier' ? 'STRAFZETTEL – weniger Lohn' : 'STRAFZETTEL −50 €'); qs('#taxiRoad', this.root).append(p); UI.shake(qs('#taxiRoad', this.root)); setTimeout(() => p.remove(), 900); },
   floatText(txt, cls) { if (!this.root) return; const el = h('div', { class: 'ticket-pop', style: 'background:#2f7a1f' }, txt); qs('#taxiRoad', this.root).append(el); setTimeout(() => el.remove(), 600); },
   score() { if (this.root) qs('#taxiScore', this.root).textContent = `${this.variant === 'kurier' ? 'Übergaben' : 'Fahrgäste'} ${this.passengers} · Strafzettel ${this.tickets}`; },
   async finish() {
@@ -6560,9 +6572,13 @@ UI.register('shootout', {
     document.removeEventListener('keydown', Shootout.onKey);
     clearTimeout(Shootout.timer); clearTimeout(Shootout.nextTimer);
     const wasRunning = Shootout.running;
+    const kind = Shootout.cfg ? Shootout.cfg.kind : null;
     Shootout.gen++; Shootout.root = null; Shootout.running = false; Shootout.phase = 'idle';
     /* Screen mitten im Kampf verlassen (Brand-Knopf, Reload-Schutz greift nicht): zählt als verloren, damit ein wartendes forceFight nicht hängt */
-    if (wasRunning) { const kind = Shootout.cfg ? Shootout.cfg.kind : null; Shootout.forced = false; Bus.emit('fight:done', { kind, won: false, rounds: Shootout.results, aborted: true }); Bus.emit('fight:leave', { kind, won: false, aborted: true }); }
+    if (wasRunning) Bus.emit('fight:done', { kind, won: false, rounds: Shootout.results, aborted: true });
+    /* forced bleibt nach dem Ergebnis gesetzt, bis „Weiter" (leave()) geklickt wird – wer stattdessen wegnavigiert (Escape, Marke, Sidebar),
+       muss das wartende forceFight trotzdem auflösen, sonst bleibt Story.night() für immer gesperrt (sleeping = true) */
+    if (Shootout.forced) { Bus.emit('fight:leave', { kind, won: !wasRunning && Shootout.won, aborted: wasRunning }); Shootout.forced = false; }
   },
 });
 </script>
@@ -9235,6 +9251,57 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     } finally {
       GangRules.drawWait = keep.wait; State.save = keep.save; State.s = keep.s; State.mode = keep.mode; Story.story = keep.story;
       clearTimeout(Shootout.timer); clearTimeout(Shootout.nextTimer); Shootout.running = false; Shootout.forced = false; Shootout.pending = null;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
+    }
+  });
+  T.test('Story.forceFight: nach dem Ergebnis bleibt der Screen gesperrt, Weiter löst auf', async () => {
+    const keep = { s: State.s, mode: State.mode, story: Story.story, cur: UI.current, save: State.save, wait: GangRules.drawWait };
+    State.save = () => {}; GangRules.drawWait = () => 30;
+    const story = { id: 't.fight2', title: 'T', days: 3, start: { balance: 100, vars: {}, unlocked: { jobs: [], doors: [], rooms: [] } }, chapters: [], scenes: {},
+      events: [], endings: [{ id: 'aus', title: 'Aus', scene: 'x', priority: 0, fallback: true }] };
+    try {
+      State.mode = 'story'; State.s = State.freshStory(story); State.s.weapon = 3; State.s.story.phase = 'evening'; Story.story = story;
+      const p = Story.forceFight({ kind: 'probe', foes: ['laeufer'] });
+      await wait(400); // UI.show + mount + start
+      Shootout.ready(); await wait(120); Shootout.tap(); // Waffe 3 = 300 ms Vorsprung → sicherer Sieg gegen den Läufer
+      T.eq(Shootout.running, false, 'Runde gewonnen, Screen bleibt bis „Weiter" stehen');
+      await UI.show('hub');
+      T.eq(UI.current.id, 'shootout', 'Wegnavigieren nach dem Ergebnis wird blockiert');
+      T.eq(Story.fightActive(), true, 'forced bleibt gesetzt, bis „Weiter" geklickt wird');
+      const dayBefore = Story.s.day;
+      await Story.night();
+      T.eq(Story.s.day, dayBefore, 'Schlafen bleibt gesperrt, solange das Duell offen ist');
+      T.eq(Story.sleeping, false);
+      qs('#btnDuelDone').click();
+      const res = await p;
+      T.eq(res.won, true);
+      T.eq(Story.fightActive(), false, '"Weiter" löst das Warten auf');
+    } finally {
+      GangRules.drawWait = keep.wait; State.save = keep.save; State.s = keep.s; State.mode = keep.mode; Story.story = keep.story;
+      clearTimeout(Shootout.timer); clearTimeout(Shootout.nextTimer); Shootout.running = false; Shootout.forced = false; Shootout.pending = null;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
+    }
+  });
+  T.test('Shootout: Verlassen nach dem Ergebnis löst fight:leave aus (kein Hängen)', async () => {
+    const keep = { cur: UI.current, wait: GangRules.drawWait, s: State.s, mode: State.mode, save: State.save };
+    State.save = () => {}; State.mode = 'free'; State.s = State.fresh();
+    try {
+      GangRules.drawWait = () => 30;
+      await UI.show('shootout');
+      Shootout.start({ kind: 't4', foes: ['laeufer'], bonus: 300, forced: true });
+      Shootout.ready();
+      await wait(120); // Blitz nach 30 ms (gestubbt)
+      Shootout.tap(); // ≈ 90 ms − 300 Bonus → 0 < Läufer (≥ 320)
+      T.eq([Shootout.running, Shootout.forced, Shootout.results[0].won], [false, true, true], 'Runde gewonnen, forced bleibt bis leave() gesetzt');
+      const events = [];
+      const off = Bus.on('fight:leave', (e) => events.push(e));
+      UI.screens.get('shootout').unmount(); // Verlassen ohne „Weiter" (Escape/Marke/Sidebar) darf das forceFight nicht hängen lassen
+      off();
+      T.eq(events.length, 1, 'fight:leave feuert beim Verlassen');
+      T.eq([events[0].won, events[0].aborted, Shootout.forced], [true, false, false]);
+    } finally {
+      GangRules.drawWait = keep.wait; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
+      clearTimeout(Shootout.timer); clearTimeout(Shootout.nextTimer); Shootout.running = false; Shootout.forced = false; Shootout.pending = null; Shootout.root = null;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
     }
   });
