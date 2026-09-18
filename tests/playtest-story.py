@@ -896,8 +896,8 @@ async def scenario_stadt_shop(cdp):
     await cdp.inject_helpers()
     await cdp.eval("State.meta.insider = []; State.meta.insiderClaimed = {}; State.saveMeta(); 0", await_promise=False)
     # Strasse: vier Schaufenster (Autohaus, INTERSPORT, Casino Royal ohne Auto gesperrt), Laden noch zu
-    n_fronts = await cdp.eval("document.querySelectorAll('#strasse .storefront').length", await_promise=False)
-    royal_locked = await cdp.eval("document.querySelector('#strasse .storefront.royal').classList.contains('locked')", await_promise=False)
+    n_fronts = await cdp.eval("document.querySelectorAll('#strasse .storefront, #strasse .facade').length", await_promise=False)
+    royal_locked = await cdp.eval("document.querySelector('#strasse .facade').classList.contains('locked')", await_promise=False)
     laden_hidden = await cdp.eval("document.querySelector('#laden').classList.contains('hidden')", await_promise=False)
     record("stadt: Strasse zeigt vier Schaufenster (Casino Royal ohne Auto gesperrt), Laden zu",
            n_fronts == 4 and royal_locked is True and laden_hidden is True,
@@ -1238,9 +1238,14 @@ async def scenario_kater(cdp):
     record("kater: Mercedes am Tag 1", car == "mercC" and house is True, "car=%s hasHouse=%s" % (car, house))
     gear = await cdp.eval("(document.querySelector('#gearLine')||{}).textContent", await_promise=False)
     notes = await cdp.eval("document.querySelector('#notes').textContent", await_promise=False)
+    hud = await cdp.eval("""(function(){
+      return { leber: (document.querySelector('.hud-leber .val') || {}).textContent,
+               kruege: document.querySelectorAll('.hud-pegel .krug.on').length,
+               deckel: (document.querySelector('.hud-deckel .val') || {}).textContent };
+    })()""", await_promise=False) or {}
     record("kater: HUD zeigt Mercedes, Villa-Ertrag und Leber/Pegel/Deckel",
-           gear is not None and "Mercedes" in gear and notes is not None and "💸" in notes and "🫀 Leber 70/100" in notes and "🍺 Pegel 0/3" in notes and "🧾 Deckel 0 €" in notes,
-           "gear=%s notes=%s" % (gear, notes))
+           gear is not None and "Mercedes" in gear and notes is not None and "💸" in notes and hud.get("leber") == "70" and hud.get("kruege") == 0 and hud.get("deckel") == "0 €",
+           "gear=%s notes=%s hud=%s" % (gear, notes, hud))
     pin = await cdp.eval("[...document.querySelectorAll('#pinboard .jobnote')].map(n => n.textContent.includes('Filialleiter') ? 'fil' : '').filter(Boolean).length", await_promise=False)
     record("kater: Filialleiter an der Pinnwand", pin == 1, "filialleiter-zettel=%s" % pin)
     royal_ok = await cdp.eval("Story.roomUnlocked('royal') && !Story.isLocked('royal') && !!document.querySelector('#side [data-action=royal]:not([disabled])')", await_promise=False)
@@ -1285,9 +1290,12 @@ async def scenario_kater(cdp):
     deckel = await cdp.eval("State.s.story.vars.deckel", await_promise=False)
     record("kater: Deckel 50 nach Freibier", deckel == 50, "deckel=%s" % deckel)
     side_price = await cdp.eval("(document.querySelector('#side [data-action=beer] .price')||{}).textContent", await_promise=False)
-    notes = await cdp.eval("document.querySelector('#notes').textContent", await_promise=False)
-    record("kater: danach Bier 50 €, Deckel im HUD", side_price == "50 €" and notes is not None and "🧾 Deckel 50 €" in notes and "🍺 Pegel 1/3" in notes,
-           "side=%s notes=%s" % (side_price, notes))
+    hud = await cdp.eval("""(function(){
+      return { kruege: document.querySelectorAll('.hud-pegel .krug.on').length,
+               deckel: (document.querySelector('.hud-deckel .val') || {}).textContent };
+    })()""", await_promise=False) or {}
+    record("kater: danach Bier 50 €, Deckel im HUD", side_price == "50 €" and hud.get("deckel") == "50 €" and hud.get("kruege") == 1,
+           "side=%s hud=%s" % (side_price, hud))
     await cdp.eval("Story.night()", await_promise=False)
     await cdp.wait_for("Story.sleeping === true", timeout=1.0)
     for _ in range(40):
@@ -1307,8 +1315,8 @@ async def scenario_kater(cdp):
     await cdp.eval("State.s.car = 'audiA3'; State.s.story.unlocked.rooms.push('royal'); State.save(); UI.renderSide();", await_promise=False)
     await cdp.eval("UI.show('stadt')")
     await cdp.wait_for("UI.current && UI.current.id === 'stadt' && !UI.busy", timeout=3.0)
-    front = await cdp.eval("(document.querySelector('#strasse .storefront.royal .seller')||{}).textContent", await_promise=False)
-    front_locked = await cdp.eval("!!document.querySelector('#strasse .storefront.royal.locked')", await_promise=False)
+    front = await cdp.eval("(document.querySelector('#strasse .facade .doorman')||{}).textContent", await_promise=False)
+    front_locked = await cdp.eval("!!document.querySelector('#strasse .facade.locked')", await_promise=False)
     record("kater: Royal-Schaufenster zeigt die Zitter-Sperre", front is not None and "Sie zittern" in front and front_locked is True, "seller=%s locked=%s" % (front, front_locked))
     await cdp.eval("Royal.enter()", await_promise=False)
     await cdp.wait_for("__pt.cutsceneActive()", timeout=2.0)
@@ -1499,7 +1507,7 @@ async def scenario_stash(cdp):
     # Waffe kaufen
     await cdp.eval("State.s.balance = 40000; State.save(); UI.show('stadt');", await_promise=False)
     await cdp.wait_for("UI.current && UI.current.id === 'stadt' && !UI.busy", timeout=3.0)
-    n = await cdp.eval("document.querySelectorAll('#strasse .storefront').length", await_promise=False)
+    n = await cdp.eval("document.querySelectorAll('#strasse .storefront, #strasse .facade').length", await_promise=False)
     record("stash: Stadt zeigt fünf Schaufenster (mit Pfandleihe)", n == 5, "n=%s" % n)
     await cdp.eval("Stadt.open('pfandleihe'); Stadt.buyWeapon(1)", await_promise=False)
     await cdp.wait_for("__pt.cutsceneActive()", timeout=3.0)
@@ -1751,6 +1759,92 @@ async def _scenario_perks_body(cdp):
     record("insider: Mechaniker zeigt nach Niete Festhalten-Buttons", holds == 3, "holds=%s" % holds)
 
 
+async def scenario_royal_look(cdp):
+    """Art-deco-Paket: Zone + Vorhang beim Betreten/Verlassen, Fassade in drei Zustaenden,
+    Kater-HUD, Freispiel-Banner, Bankrott-Blackout, Goldregen."""
+    # Fassade ohne Auto
+    await cdp.navigate(URL_BASE + "?fresh&mode=free&screen=stadt")
+    await asyncio.sleep(0.8)
+    await cdp.inject_helpers()
+    await cdp.eval("localStorage.removeItem('keller37.meta')", await_promise=False)
+    f = await cdp.eval("(function(){ const f=document.querySelector('.facade'); return f && {locked: f.classList.contains('locked'), sign: f.querySelector('.brass-sign').textContent, doorman: !!f.querySelector('.doorman')}; })()", await_promise=False) or {}
+    record("fassade: ohne Auto gesperrt mit Parkservice-Schild", f.get("locked") and "Parkservice" in (f.get("sign") or "") and not f.get("doorman"), f)
+    # Fassade mit Auto + Zone beim Betreten
+    await cdp.eval("State.s.car = 'audiA3'; State.s.balance = 5000; State.s.flags.royalSeen = true; State.save(); Stadt.render();", await_promise=False)
+    f = await cdp.eval("(function(){ const f=document.querySelector('.facade'); return {locked: f.classList.contains('locked'), sign: f.querySelector('.brass-sign').textContent}; })()", await_promise=False) or {}
+    record("fassade: mit Auto offen, Schild Eintritt 100", not f.get("locked") and "100" in (f.get("sign") or ""), f)
+    zone_before = await cdp.eval("document.body.dataset.zone", await_promise=False)
+    await cdp.eval("document.querySelector('.facade').click()", await_promise=False)
+    await asyncio.sleep(0.15)
+    fade_on = await cdp.eval("document.querySelector('#zonefade').classList.contains('on')", await_promise=False)
+    await cdp.wait_for("UI.current && UI.current.id === 'royal' && !UI.busy", timeout=4.0)
+    zone_after = await cdp.eval("document.body.dataset.zone", await_promise=False)
+    sub = await cdp.eval("getComputedStyle(document.querySelector('#brandSub')).display", await_promise=False)
+    record("zone: Vorhang beim Betreten, Zone royal, Untertitel sichtbar", zone_before == "keller" and fade_on is True and zone_after == "royal" and sub == "block",
+           "before=%s fade=%s after=%s sub=%s" % (zone_before, fade_on, zone_after, sub))
+    portals = await cdp.eval("document.querySelectorAll('.portal').length", await_promise=False)
+    record("lobby: drei Portale", portals == 3, "portals=%s" % portals)
+    # Mega Seven: Freispiel-Banner + Gewinnlinie
+    await cdp.eval("UI.show('megaslots')")
+    mega = await cdp.eval("""(async function(){
+      /* Gewinnlinie 🍒×3 (Reihe 0) + 3 Scatter ⭐ (Reihe 2, Walzen 0-2): sichere Freispiele + eine
+         Gewinnlinie, aber Auszahlung (40 €) bleibt weit unter RoyalRules.GUEST_WIN (5000) -- eine
+         5er-Reihe 7️⃣ (wie ursprünglich hier verdrahtet) loest sonst Royal.onWin()/Cutscene('royal.guest')
+         aus, die auf einen Klick wartet und den Test aufhaengt. */
+      RoyalRules.megaRoll = function(){ return [['🍒','💎','⭐'],['🍒','BAR','⭐'],['🍒','🔔','⭐'],['BAR','🍒','7️⃣'],['💎','7️⃣','BAR']]; };
+      RoyalRules.megaLuckOverride = function(g){ return g; };
+      document.querySelector('#megaBet').value = '100';
+      await MegaSlots.spin();
+      return { banner: document.querySelector('#megaFree').classList.contains('show'), free: MegaSlots.freeLeft,
+               lines: document.querySelectorAll('#megaLinesSvg polyline').length, cls: document.querySelector('.mega-machine').classList.contains('free') };
+    })()""")
+    record("mega: Freispiel-Banner und goldene Gewinnlinie", mega and mega.get("banner") and mega.get("free", 0) > 0 and mega.get("lines", 0) >= 1 and mega.get("cls"), mega)
+    # Glücksrad: Bankrott -> Blackout-Klasse + Sylvie-Toast
+    # Die Blackout-Klasse liegt nur zwischen dem 4.6s-Dreh-Wait und dem 900ms-Timeout danach an
+    # (~4.6-5.5s); ein einzelner fester sleep(4.8) traf dieses Fenster unter Last (viele vorige
+    # Szenarien im selben Tab) nicht zuverlässig -- daher wird gepollt statt einmalig geprueft.
+    await cdp.eval("UI.show('wheel')")
+    await cdp.eval("""(function(){
+      RoyalRules.wheelSpin = function(){ return 0; };
+      RoyalRules.wheelLuckOverride = function(i){ return i; };
+      document.querySelector('#wheelBet').value = '100';
+      window.__wheelSpin = Wheel.spin();
+    })()""", await_promise=False)
+    black = await cdp.wait_for("document.querySelector('.wheel-panel').classList.contains('blackout')", timeout=8.0)
+    toast = await cdp.eval("document.querySelector('#toasts').textContent.includes('Das Haus dankt')", await_promise=False)
+    seg = await cdp.eval("document.querySelector('.wheel .seg.bust') !== null", await_promise=False)
+    await cdp.eval("window.__wheelSpin", timeout=10)
+    wheel = {"black": black, "toast": toast, "seg": seg}
+    record("wheel: Bankrott dunkelt ab, Sylvie-Toast, Bust-Segmente", wheel and wheel.get("black") and wheel.get("toast") and wheel.get("seg"), wheel)
+    # Goldregen + zurueck in die Stadt = Zone keller
+    rain = await cdp.eval("Royal.goldRain(); document.querySelectorAll('.gold-drop').length", await_promise=False)
+    record("royal: Goldregen erzeugt Partikel", (rain or 0) >= 12, "drops=%s" % rain)
+    await cdp.eval("UI.show('royal')")
+    await cdp.click("#royalLeave")
+    await cdp.wait_for("UI.current && UI.current.id === 'stadt' && !UI.busy", timeout=4.0)
+    zone_back = await cdp.eval("document.body.dataset.zone", await_promise=False)
+    record("zone: zurueck in die Stadt = keller", zone_back == "keller", "zone=%s" % zone_back)
+    # Kater-HUD + Zitter + Tuersteher
+    await cdp.navigate(URL_BASE + "?fresh&story=kater&prev=doc&day=5")
+    await asyncio.sleep(1.2)
+    await cdp.inject_helpers()
+    await cdp.advance_cutscene(max_steps=30)
+    hud = await cdp.eval("""(function(){
+      Story.s.vars.leber = 25; Story.s.vars.pegel = 2; Story.s.vars.deckel = 250; Story.s.flags.zitter = true; State.s.car = 'audiA3'; State.save(); UI.renderWallet();
+      const bar = document.querySelector('.hud-leber .fill'); const kr = document.querySelectorAll('.hud-pegel .krug.on').length;
+      return { width: bar && bar.style.width, danger: !!document.querySelector('.hud-leber.danger'), kruege: kr,
+               marks: (document.querySelector('.hud-deckel .coaster') || {}).textContent, zitter: document.body.classList.contains('zitter'),
+               note: document.querySelector('#notes').textContent.includes('Zittern') };
+    })()""", await_promise=False) or {}
+    record("kater-hud: Leber 25 rot, 2 Kruege, 5 Striche, Zittern", hud.get("width") == "25%" and hud.get("danger") and hud.get("kruege") == 2 and hud.get("zitter") and hud.get("note") and hud.get("marks") == "|||||", hud)
+    # Nach dem Intro laeuft der Tag-1-Morgen (einrichten/niereWeg) noch fire-and-forget bis zur
+    # Pinnwand (UI.busy bleibt bis dahin true) -- UI.show() ist ein No-Op solange busy, also erst warten
+    await cdp.wait_for("!UI.busy && !__pt.cutsceneActive()", timeout=5.0)
+    await cdp.eval("UI.show('stadt')")
+    door = await cdp.eval("(function(){ const f=document.querySelector('.facade'); return f && {gated: f.classList.contains('gated'), doorman: !!f.querySelector('.doorman'), txt: (f.querySelector('.doorman')||{}).textContent}; })()", await_promise=False) or {}
+    record("fassade: Zitter-Tag zeigt Tuersteher", door.get("gated") and door.get("doorman") and "zittern" in (door.get("txt") or "").lower(), door)
+
+
 async def main():
     cdp = CDP()
     cdp.launch(mobile=MOBILE)
@@ -1773,6 +1867,7 @@ async def main():
         await scenario_free_sandbox_unchanged(cdp)
         await scenario_stadt_shop(cdp)
         await scenario_royal_free(cdp)
+        await scenario_royal_look(cdp)
         await scenario_kater(cdp)
         await scenario_stash(cdp)
         await scenario_mugging(cdp)

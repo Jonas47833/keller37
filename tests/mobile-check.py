@@ -38,7 +38,7 @@ def record(name, ok, detail=""):
 # Screens im freien Spiel; jobs ist Story-only und wird unten separat geladen
 FREE_SCREENS = ["hub", "slots", "blackjack", "roulette", "horses", "russian", "postman", "finance", "invest", "life", "stadt", "skills", "royal", "craps", "megaslots", "wheel"]
 
-TAP_SELECTORS = [".side-tabs button", ".icon-btn", ".chip", ".bet-bar .btn", ".bet-field button", ".rcell", ".table-bar .btn", ".door", ".side-btn"]
+TAP_SELECTORS = [".side-tabs button", ".icon-btn", ".chip", ".bet-bar .btn", ".bet-field button", ".rcell", ".table-bar .btn", ".door", ".side-btn", ".portal", ".facade"]
 
 CHECK_JS = r"""
 (function(sel, minTap){
@@ -117,6 +117,14 @@ async def main():
                      h: Math.round(document.querySelector('.side-tabs').getBoundingClientRect().height) }; })()
         """, await_promise=False) or {}
         record("tabs: alle mit Icon, eine Zeile, >= 52 px", t.get("n", 0) >= 4 and t.get("icons") == t.get("n") and t.get("oneRow") and t.get("h", 0) >= 52, t)
+
+        # Zone: Royal-Screens setzen body[data-zone=royal], Keller-Screens keller
+        zones = {}
+        for sc in ["hub", "royal", "craps", "megaslots", "wheel", "stadt"]:
+            await cdp.navigate(URL + "?fresh&mode=free&screen=" + sc, wait=1.2)
+            zones[sc] = await cdp.eval("document.body.dataset.zone", await_promise=False)
+        record("zone: Royal-Screens royal, Keller-Screens keller",
+               all(zones[k] == "royal" for k in ["royal", "craps", "megaslots", "wheel"]) and zones["hub"] == "keller" and zones["stadt"] == "keller", zones)
 
         # Story: Pinnwand + Tagesleiste
         await cdp.navigate(URL + "?fresh&story=schuld&day=1", wait=2.0)
