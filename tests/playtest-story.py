@@ -26,6 +26,7 @@ import asyncio
 import base64
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -124,6 +125,7 @@ class CDP:
     def launch(self, mobile=False):
         profile = os.environ.get("K37_PROFILE", "/tmp/k37story-profile")
         subprocess.run(["rm", "-rf", profile])
+        self.profile = profile  # wird in close() wieder geloescht -- ein Chrome-Profil sind ~140 MB
         args = [
             find_chrome(),
             "--headless=new",
@@ -285,6 +287,8 @@ class CDP:
                 self.proc.wait(timeout=5)
             except Exception:
                 self.proc.kill()
+        if getattr(self, "profile", None):
+            shutil.rmtree(self.profile, ignore_errors=True)  # Chrome-Profil aufraeumen (sonst sammeln sich GBs in /tmp)
 
 
 RESULTS = []
