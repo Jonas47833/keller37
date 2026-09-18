@@ -130,7 +130,14 @@ tests/screenshot.sh out.png "?screen=roulette"
 python3 tests/playtest-story.py     # CDP-Playtest Story-Modus (Chrome, Port 9335)
 python3 tests/desktop-diff.py       # Keller-Screens pixelidentisch zu main? (1280×900, Pillow)
 python3 tests/mobile-check.py       # Handy-Ansicht 400×800: Screenshots + Layout-Checks (Port 9361)
+python3 tests/perf-trace.py --mobile  # Chrome-Trace je Szene: Paints, Raster, Layouts pro Sekunde (Port 9377)
 ```
+
+`perf-trace.py` misst, was der Browser während Rad-Spin, Walzen, Taxi, Spüler und im Leerlauf pro Frame wirklich tut. Faustregel:
+während einer Compositor-Animation (`transform`/`opacity`) sollen Paint und Layout bei ~0 liegen; alles, was `background-position`,
+`box-shadow`, `top`/`left` oder `filter` animiert, malt jedes Frame neu und ruckelt auf dem Handy. Die Raster-Millisekunden sind
+Software-Raster auf dem Mac, also nur im Vorher/Nachher-Vergleich aussagekräftig. `PATCH="<JS>"` führt vor jeder Szene Code aus
+(z. B. ein `<style>`-Experiment), `--timeline` zeigt den Verlauf in 250-ms-Schritten.
 
 `K37_PORT`, `K37_PROFILE`, `K37_SHOTS` überschreiben Port, Chrome-Profilordner und Screenshot-Ordner des Playtests (Default wie oben); `K37_CHROME` zeigt auf ein Chrome-Binary, sonst werden die üblichen Pfade (macOS, `~/.local/opt/chrome-linux64`, apt) durchsucht – nützlich, um mehrere Läufe parallel zu isolieren. `mobile-check.py` prüft pro Screen horizontale Überbreite und Tap-Ziele ≥ 40 px, dazu Roulette-Tisch, Einsatz-Leiste, Tab-Leiste, Header-Einklappen, als Gegenprobe den Desktop-Tisch und den Zonen-Wechsel (Royal/Keller); Screenshots landen in `/tmp/k37mobile` (bzw. `K37_SHOTS`).
 
