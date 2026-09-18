@@ -7431,42 +7431,222 @@ const STORY_STASH = {
   ],
   trophies: { krieg: 'schnellsteHand', kommissar: 'kronzeuge', abloese: 'sauber' },
   scenes: {
-    /* Task 4 ersetzt die Stubs durch Texte; die Wahl-Szenen tragen ihre Effekte schon hier */
-    'stash.intro': [{ bg: 'bar', who: 'du', text: 'stash.intro' }],
-    'stash.tisch': [{ bg: 'keller', who: 'du', text: 'stash.tisch' }],
-    'stash.k2': [{ bg: 'bahnhof', who: 'du', text: 'stash.k2' }], 'stash.k3': [{ bg: 'bar', who: 'du', text: 'stash.k3' }], 'stash.k4': [{ bg: 'bar', who: 'du', text: 'stash.k4' }],
-    'stash.lieferung': [{ bg: 'keller', who: 'anabi', text: 'stash.lieferung' }],
-    'stash.abrechnung': [{ bg: 'keller', who: 'anabi', text: 'stash.abrechnung' }],
-    'stash.ueberfall': [{ bg: 'keller', who: 'igor', text: 'stash.ueberfall' }],
-    'stash.hinterhalt': [{ bg: 'gasse', who: 'du', text: 'stash.hinterhalt' }],
-    'stash.hinterhalt.raub': [{ bg: 'gasse', who: 'du', text: 'stash.hinterhalt.raub' }],
-    'stash.hinterhalt.lost': [{ bg: 'gasse', who: 'du', text: 'stash.hinterhalt.lost' }],
-    'stash.tutorial': [{ bg: 'keller', who: 'anabi', text: 'stash.tutorial' }],
-    'stash.tutorial.won': [{ bg: 'bahnhof', who: 'anabi', text: 'stash.tutorial.won' }],
-    'stash.tutorial.lost': [{ bg: 'bahnhof', who: 'anabi', text: 'stash.tutorial.lost' }],
-    'stash.angebot': [{ bg: 'bahnhof', who: 'kessler', text: 'stash.angebot',
-      choices: [{ label: 'Annehmen', value: 'ja', cls: 'red', effects: [{ flag: 'bahnhof' }] }, { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ flag: 'bahnhofNein' }] }] }],
-    'stash.igor': (ctx) => [{ bg: 'bar', who: 'igor', text: 'stash.igor',
-      choices: [{ label: 'Prost', value: 'prost', cls: 'green', effects: [{ balance: -100 }, { var: 'igorBiere', add: 1 }, { flag: 'igorHeute' }, ...(ctx.raw.vars.igorBiere >= GangRules.IGOR_BIERE - 1 ? [{ flag: 'igor' }, { achievement: 'igorsFreund' }] : [])] }] }],
-    'stash.brandt': (ctx) => [{ bg: 'bar', who: 'brandt', text: 'stash.brandt', choices: [{ label: 'Verstanden', value: 'ok', cls: 'ghost', effects: ctx.raw.flags.brandtKennt ? [] : [{ flag: 'brandtKennt' }] }] }],
-    'stash.beleg': [{ bg: 'bar', who: 'brandt', text: 'stash.beleg', choices: [{ label: 'Übergeben', value: 'geben', cls: 'blue', effects: [{ call: 'belegRisiko' }] }, { label: 'Doch nicht', value: 'nein', cls: 'ghost' }] }],
-    'stash.beleg.gesehen': [{ bg: 'bar', who: 'igor', text: 'stash.beleg.gesehen' }],
-    'stash.razzia': [{ bg: 'bar', who: 'brandt', text: 'stash.razzia', choices: [{ label: 'Heute Nacht', value: 'ja', cls: 'red', effects: [{ flag: 'razzia' }] }, { label: 'Noch nicht', value: 'nein', cls: 'ghost' }] }],
-    'stash.abloese': [{ bg: 'keller', who: 'anabi', text: 'stash.abloese', choices: [{ label: 'Zahlen', value: 'zahlen', cls: 'red', effects: [{ call: 'abloese' }] }, { label: 'Noch nicht', value: 'nein', cls: 'ghost' }] }],
-    'stash.kredit': [{ bg: 'keller', who: 'stumme', text: 'stash.kredit', choices: [{ label: 'Zahlen', value: 'zahlen', cls: 'blue', effects: [{ call: 'kreditZahlen' }] }, { label: 'Doch nicht', value: 'nein', cls: 'ghost' }] }],
-    'stash.flucht': [{ bg: 'strasse', who: 'du', text: 'stash.flucht', choices: [{ label: 'Abhauen', value: 'ja', cls: 'red', effects: [{ flag: 'flucht' }] }, { label: 'Bleiben', value: 'nein', cls: 'ghost' }] }],
-    'stash.finale': [{ bg: 'keller', who: 'du', text: 'stash.finale', choices: [{ label: 'Los', value: 'los', cls: 'red', effects: [{ call: 'finale' }] }, { label: 'Nicht heute', value: 'nein', cls: 'ghost' }] }],
-    'stash.kontrolle': [{ bg: 'strasse', who: 'brandt', text: 'stash.kontrolle' }],
-    'stash.sylvie.warn': [{ bg: 'royal', who: 'sylvie', text: 'stash.sylvie.warn' }],
-    'stash.sylvie.bann': [{ bg: 'royal', who: 'sylvie', text: 'stash.sylvie.bann' }],
-    'stash.eintr.kiosk': [{ bg: 'strasse', who: 'du', text: 'stash.eintr.kiosk' }],
-    'stash.eintr.friseur': [{ bg: 'strasse', who: 'du', text: 'stash.eintr.friseur' }],
-    'stash.ende.kanal': [{ bg: 'hafen', who: 'du', text: 'stash.ende.kanal' }],
-    'stash.ende.krieg': [{ bg: 'keller', who: 'kessler', text: 'stash.ende.krieg' }],
-    'stash.ende.kommissar': [{ bg: 'keller', who: 'brandt', text: 'stash.ende.kommissar' }],
-    'stash.ende.abloese': [{ bg: 'keller', who: 'anabi', text: 'stash.ende.abloese' }],
-    'stash.ende.flucht': [{ bg: 'strasse', who: 'du', text: 'stash.ende.flucht' }],
-    'stash.ende.strohmann': [{ bg: 'keller', who: 'anabi', text: 'stash.ende.strohmann' }],
+    'stash.intro': (ctx) => {
+      const prev = (ctx.prev || {}).kater || 'wirt';
+      const start = {
+        wirt: [
+          { bg: 'keller', who: 'du', mood: 'happy', text: 'Dein Name über der Tür. Kreide, aber immerhin. Der Wirt sitzt am Tresen und trinkt sein Freibier – jetzt von dir.' },
+          { bg: 'keller', who: 'wirt', mood: 'calm', text: 'Ein Rat vom Vorbesitzer: Wenn einer kommt und „bittet“, guck erst, wer hinter ihm steht.' },
+          { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Schöner Laden. Klein. Unauffällig. Genau richtig für Geld, das nicht auffallen soll. Ich bitte höflich – Igor bittet anders.' },
+        ],
+        nuechtern: [
+          { bg: 'strasse', who: 'du', mood: 'calm', text: 'Neun Monate trocken. Der Keller steht wieder zum Verkauf – der Käufer hat sich in den Kanal gelegt, sagt man. Dir fehlen dreißigtausend.' },
+          { bg: 'bank', who: 'krause', mood: 'calm', text: 'Kein Kredit für Spielhallen, tut mir leid. Aber da wäre ein Herr, der Ihnen gern hilft. Er wartet draußen.' },
+          { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Dreißigtausend, kein Zins. Ich will keinen Zins. Ich will einen Freund mit einem Casino. Den hab ich jetzt.' },
+        ],
+        taxi: [
+          { bg: 'strasse', who: 'du', mood: 'angry', text: 'Der Kaufvertrag war unterschrieben. Das Geld war im Taxi. Chantal auch. Der Notar wollte trotzdem sein Geld.' },
+          { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Ich hab den Notar bezahlt. Dreißigtausend. Sieh es als Hochzeitsgeschenk – nachträglich.' },
+          { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Dafür wäscht du. Nicht Wäsche. Geld. Man nennt es so, weil es danach sauber ist.' },
+        ],
+        stammgast: [
+          { bg: 'keller', who: 'du', mood: 'calm', text: 'Der Wirt hat verkauft. An einen Mann mit Sonnenbrille, nachts. Am nächsten Morgen stand dein Name im Grundbuch.' },
+          { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Strohmann. Ein hässliches Wort für einen schönen Beruf. Du hast ein Casino, ich hab einen Namen, der nicht meiner ist.' },
+          { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Fünfzigtausend hat mich der Laden gekostet. Das steht jetzt auf deinem Zettel. Ich bin nicht der Wirt – bei mir gibt es kein Freibier.' },
+        ],
+        brownie: [
+          { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Mein Lieferant will dich kennenlernen. Er hat gehört, du kannst mit Geld umgehen. Ich hab nicht widersprochen.' },
+          { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Der Doc verkauft Brownies. Ich verkaufe, was in den Brownies ist. Und du bekommst dafür einen Keller. Auf Pump. Fünfzigtausend.' },
+          { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Du bist schon drin. Tiefer als die anderen. Das ist keine Drohung, das ist eine Bilanz.' },
+        ],
+      }[prev];
+      return [
+        ...start,
+        { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Jeden Montag bringt jemand eine Tasche. Du spielst das Geld durch die Tische – nicht verstecken, spielen. Sonntag zahlst du zurück, mit zehn Prozent obendrauf. Was du gewinnst, gehört dir.' },
+        { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Und der Umsatz muss stimmen. Geld, das nur rumliegt, ist nicht gewaschen. Geld, das gesetzt wurde, schon. Frag nicht, warum. Frag den Finanzbeamten.' },
+        { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Dreimal enttäuschst du mich – dann fährt Igor dich an den Kanal. Er ist ein guter Fahrer. Willkommen im Geschäft.' },
+      ];
+    },
+    'stash.tisch': [
+      { bg: 'keller', who: 'du', mood: 'calm', text: 'Sieben Uhr morgens. Vier Männer tragen einen Tisch die Treppe runter. Grünes Tuch, Goldrand, ein Schuh für acht Decks.' },
+      { bg: 'keller', who: 'stumme', mood: 'calm', text: '…' },
+      { bg: 'keller', who: 'du', mood: 'calm', text: 'Der Croupier sagt nichts. Er nickt Richtung Hinterzimmer. Baccarat, fünfhundert Minimum. Anabis Tisch. Deine Umsätze.' },
+    ],
+    'stash.k2': [
+      { bg: 'bahnhof', who: 'du', mood: 'calm', text: 'Seit dem Tisch im Hinterzimmer steht nachts jemand vor deiner Tür. Kapuzen, Bahnhofsviertel, andere Gang. Sie wissen, wem der Keller wirklich gehört.' },
+      { bg: 'keller', who: 'igor', mood: 'calm', text: 'Bahnhof-Jungs. Kessler ist ihr Boss. Die wollen nicht dein Geld – die wollen Anabis Waschmaschine kaputt machen. Deine.' },
+      { bg: 'keller', who: 'igor', mood: 'calm', text: 'Kowalski in der Stadt hat eine Pfandleihe. Er verleiht nichts. Er verkauft. Frag nach dem Handschuhfach.' },
+    ],
+    'stash.k3': [
+      { bg: 'bar', who: 'du', mood: 'calm', text: 'Ein Mann im grauen Mantel sitzt seit drei Abenden an deiner Bar und trinkt Wasser. Er spielt nicht. Er guckt.' },
+      { bg: 'bar', who: 'brandt', mood: 'calm', text: 'Brandt. Kommissar. Ich sag es gleich, damit Sie nicht raten müssen. Ich will nicht Sie. Ich will den mit der Sonnenbrille.' },
+    ],
+    'stash.k4': [
+      { bg: 'keller', who: 'du', mood: 'calm', text: 'Woche vier. Die Lieferungen werden größer, die Nächte kürzer. Anabi sagt, es läuft gut. Das ist das Schlimmste, was er sagen kann.' },
+      { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Freunde reden über alles. Auch über Ablösen. Achtzig, hundert – Zahlen. Wenn du eine hast, komm an den Tisch.' },
+    ],
+    'stash.lieferung': (ctx) => {
+      const v = ctx.raw.vars, fmt = StoryRules.fmtMoney;
+      const wer = [
+        { who: 'anabi', text: `Die erste Tasche. ${fmt(v.lieferung)}. Bis Sonntag ${fmt(v.ziel)} Umsatz – Roulette, Slots, mein Tisch, egal. Und ${fmt(v.rueckgabe)} liegen dann hier.` },
+        { who: 'igor', text: `Anabi schickt Grüße und ${fmt(v.lieferung)}. Ziel diese Woche: ${fmt(v.ziel)} Umsatz, ${fmt(v.rueckgabe)} zurück. Ich schreib es dir auf den Bierdeckel.` },
+        { who: 'stumme', text: `Der Stumme stellt die Tasche auf den Tresen. ${fmt(v.lieferung)}. Ein Zettel: „${fmt(v.ziel)} Umsatz. ${fmt(v.rueckgabe)} zurück. Sonntag.“ Er nickt und geht.` },
+        { who: 'anabi', text: `Die große Tasche. ${fmt(v.lieferung)}. ${fmt(v.ziel)} Umsatz, ${fmt(v.rueckgabe)} zurück. Danach reden wir über die Zukunft. Deine.` },
+      ][Math.min(3, Math.max(0, v.woche - 1))];
+      return [
+        { bg: 'keller', who: 'du', mood: 'calm', text: 'Nachts klopft es. Zweimal kurz, einmal lang. Die Lieferung.' },
+        Object.assign({ bg: 'keller', mood: 'calm' }, wer),
+        ...(ctx.raw.flags.bahnhof ? [{ bg: 'keller', who: 'du', mood: 'calm', text: 'Und eine zweite Tasche, kleiner, ohne Zettel. Kessler. Zwei Herren, ein Umsatzziel – und es ist gewachsen.' }] : []),
+      ];
+    },
+    'stash.abrechnung': (ctx) => {
+      const v = ctx.raw.vars, f = ctx.raw.flags, fmt = StoryRules.fmtMoney;
+      const bahnhof = !!v.anabiErfaehrt; // nur in der Abrechnung, in der Anabi es erfährt
+      const ausgang = [
+        { who: 'anabi', mood: 'happy', text: `${fmt(v.letztePay)} auf den Tisch, ${fmt(v.ziel)} durch die Tische. Sauber. Ich streich dir was vom Zettel. Und du bekommst den Kassenzettel – heb ihn auf, für deine Buchhaltung.` },
+        { who: 'anabi', mood: 'calm', text: `Das Geld ist da. Aber es ist nicht *durch*. Es liegt nur da. Umsatz zu niedrig. Ich zähle mit, weißt du. Einmal.` },
+        { who: 'anabi', mood: 'angry', text: `Umsatz stimmt, Geld fehlt. Ich nehm, was da ist – ${fmt(v.letztePay)}. Der Rest kommt auf den Zettel, mit Aufschlag. Ich bin keine Bank. Ich bin schlimmer.` },
+        { who: 'anabi', mood: 'angry', text: `Kein Umsatz, kein Geld. Zwei Fehler in einer Woche. Igor, merk dir das Gesicht. Für den Fall, dass wir es noch mal brauchen.` },
+      ][v.ausgang || 0];
+      return [
+        { bg: 'keller', who: 'du', mood: 'calm', text: 'Sonntagabend. Der Keller ist leer, bis auf den Mann, der zählt.' },
+        Object.assign({ bg: 'keller' }, ausgang),
+        ...(bahnhof ? [{ bg: 'keller', who: 'anabi', mood: 'angry', text: 'Ach – und man erzählt sich, du wäschst auch für den Bahnhof. Zwei Herren. Ich mag keine Gemeinschaftsgüter.' }] : []),
+        { bg: 'keller', who: 'igor', mood: 'calm', text: `Zorn: ${v.zorn} von 3. Zettel: ${fmt(v.kredit)}. Ich sag es nur, damit du es weißt.` },
+      ];
+    },
+    'stash.ueberfall': (ctx) => {
+      const namen = { roulette: 'der Kessel', slots: 'der Automat', horses: 'das Tableau', russian: 'Igors Revolver', blackjack: 'der Blackjack-Tisch' };
+      const was = namen[ctx.raw.vars.letzterUeberfall] || 'ein Spiel';
+      return [
+        { bg: 'keller', who: 'du', mood: 'shock', text: 'Drei Uhr nachts. Das Telefon. Igor.' },
+        { bg: 'keller', who: 'igor', mood: ctx.raw.flags.igor ? 'calm' : 'angry', text: ctx.raw.flags.igor ? `Sie waren da. Ich auch. ${was} hat es trotzdem erwischt – aber nur zur Hälfte. Der Rest war ich.` : `Bahnhof-Jungs. Fenster eingeschlagen, ${was} zertrümmert. Ich war nicht da. Ich bin nie da, wenn ich nicht bezahlt werde.` },
+        { bg: 'keller', who: 'du', mood: 'calm', text: 'Morgen steht ein Preis an der Tür. Reparieren kostet. Nicht reparieren kostet mehr: keine Nachtkasse, kein Umsatz.' },
+      ];
+    },
+    'stash.hinterhalt': (ctx) => [
+      { bg: 'gasse', who: 'du', mood: 'calm', text: `Heimweg. ${ctx.raw.vars.hinterhaltN === 1 ? 'Einer' : ctx.raw.vars.hinterhaltN === 2 ? 'Zwei' : 'Drei'} von den Bahnhof-Jungs. Kapuzen, Hände in den Taschen. Deine Hand geht ans Handschuhfach.` },
+      { bg: 'gasse', who: 'du', mood: 'calm', text: 'Keiner sagt was. So läuft das hier. Wer zuerst zieht, redet danach.' },
+    ],
+    'stash.hinterhalt.raub': (ctx) => [
+      { bg: 'gasse', who: 'du', mood: 'shock', text: `Heimweg. ${ctx.raw.vars.hinterhaltN === 1 ? 'Einer' : 'Ein paar'} von den Bahnhof-Jungs. Du hast Fäuste. Sie haben mehr.` },
+      { bg: 'gasse', who: 'raeuber', mood: 'angry', text: 'Grüß den Sonnenbrillen-Mann. Und sag ihm, das hier war umsonst. Das nächste Mal nicht.' },
+      { bg: 'gasse', who: 'du', mood: 'calm', text: `${StoryRules.fmtMoney(ctx.raw.vars.letzterRaub)} weg. Ein Auge zu. Morgen wird ein schlechter Tag – das Glück sieht das Veilchen und geht.` },
+    ],
+    'stash.hinterhalt.lost': (ctx) => [
+      { bg: 'gasse', who: 'du', mood: 'shock', text: 'Zu langsam. Der Asphalt ist kalt, das Blut warm, das Portemonnaie leer.' },
+      { bg: 'gasse', who: 'raeuber', mood: 'calm', text: `${StoryRules.fmtMoney(ctx.raw.vars.letzterRaub)}. Und die Waffe behältst du – wir haben genug. Grüß den Sonnenbrillen-Mann.` },
+    ],
+    'stash.tutorial': [
+      { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Da läuft ein Junge vom Bahnhof mit meiner Tasche herum. Er glaubt, sie gehört ihm. Erklär ihm das Gegenteil.' },
+      { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Hier. Meine Pistole – geliehen, nicht geschenkt. Warte, bis er zieht. Dann sei schneller. Das ist die ganze Kunst.' },
+    ],
+    'stash.tutorial.won': [
+      { bg: 'bahnhof', who: 'anabi', mood: 'happy', text: 'Er liegt, du stehst. Der Bahnhof hat es gesehen. Das ist Ruf. Ruf ist Geld, das man nicht zählen muss.' },
+      { bg: 'bahnhof', who: 'anabi', mood: 'calm', text: 'Die Pistole bitte. Du hast eine Pfandleihe in der Stadt, wenn du eine eigene willst. Kowalski. Sag nicht, dass ich dich schicke.' },
+    ],
+    'stash.tutorial.lost': [
+      { bg: 'bahnhof', who: 'anabi', mood: 'calm', text: 'Er ist weg, die Tasche auch, du hast ein Loch in der Jacke. Meine Pistole – danke. Nächstes Mal zieh nicht, bevor er zieht. Oder zieh schneller danach. Eins von beidem.' },
+    ],
+    'stash.angebot': [
+      { bg: 'bahnhof', who: 'du', mood: 'calm', text: 'Kessler wartet an der Unterführung. Allein. Das ist entweder Respekt oder eine Falle. Bei Kessler ist es meistens beides.' },
+      { bg: 'bahnhof', who: 'kessler', mood: 'calm', text: 'Du hast meine Jungs hingelegt. Zweimal. Ich könnte sauer sein. Ich bin lieber praktisch: Wasch für uns, dann lassen wir dich in Ruhe.' },
+      { bg: 'bahnhof', who: 'kessler', mood: 'calm', text: 'Keine Überfälle mehr, keine Hinterhalte. Dafür wächst dein Umsatzziel – zwei Herren wollen waschen. Und Anabi erfährt es. Irgendwann. Dann brauchst du uns wirklich.',
+        choices: [{ label: 'Annehmen', value: 'ja', cls: 'red', effects: [{ flag: 'bahnhof' }] }, { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ flag: 'bahnhofNein' }] }] },
+    ],
+    'stash.igor': (ctx) => {
+      const n = ctx.raw.vars.igorBiere || 0, getraenk = ctx.raw.flags.trocken ? 'Cola' : 'Bier';
+      const text = [
+        `Igor sitzt allein. Du stellst ihm ${getraenk === 'Cola' ? 'eine Cola' : 'ein Bier'} hin. Er guckt es an, als wäre es ein Trick. „Anabi bezahlt mich. Der Wirt hat mich gemocht. Das ist nicht dasselbe.“`,
+        `Das zweite ${getraenk === 'Cola' ? 'Glas' : 'Bier'}. Igor redet. Über Vito, über den Wirt, über Nächte, in denen er nicht da war, weil ihn keiner gefragt hat. „Anabi fragt nie. Er sagt.“`,
+        `Das dritte. Igor stellt das Glas ab, sehr vorsichtig. „Wenn sie kommen, bin ich da. Wenn du redest, hab ich nichts gehört. Und wenn es gegen ihn geht – steh ich nicht dazwischen.“`,
+      ][Math.min(2, n)];
+      return [{ bg: 'bar', who: 'igor', mood: n >= 2 ? 'happy' : 'calm', text,
+        choices: [{ label: 'Prost', value: 'prost', cls: 'green', effects: [{ balance: -100 }, { var: 'igorBiere', add: 1 }, { flag: 'igorHeute' }, ...(n >= GangRules.IGOR_BIERE - 1 ? [{ flag: 'igor' }, { achievement: 'igorsFreund' }] : [])] }] }];
+    },
+    'stash.brandt': (ctx) => {
+      const v = ctx.raw.vars;
+      if (!ctx.raw.flags.brandtKennt) return [
+        { bg: 'bar', who: 'brandt', mood: 'calm', text: 'Setzen Sie sich. Ich weiß, was hier läuft. Montags Tasche, sonntags Tasche, dazwischen ein Baccarat-Tisch, der niemandem gehört. Ich kann es nur nicht beweisen.' },
+        { bg: 'bar', who: 'brandt', mood: 'calm', text: 'Drei Belege und ein Datum. Kassenzettel von seinen Abrechnungen, ein Koffer aus einer Kontrolle – egal. Dann sind Sie Zeuge, kein Täter. Und der Keller? Beweismittel. Man kann nicht alles haben.',
+          choices: [{ label: 'Verstanden', value: 'ok', cls: 'ghost', effects: [{ flag: 'brandtKennt' }] }] },
+      ];
+      return [{ bg: 'bar', who: 'brandt', mood: 'calm', text: `${v.uebergeben} von ${GangRules.BELEGE_NOETIG} Belegen bei mir. ${v.belegeOffen ? `${v.belegeOffen} haben Sie noch in der Tasche.` : 'Nichts Neues in Ihrer Tasche.'} ${v.uebergeben >= GangRules.BELEGE_NOETIG ? 'Ab Tag 26 brauche ich nur noch ein Wort von Ihnen.' : 'Ich trinke Wasser. Ich habe Zeit.'}`,
+        choices: [{ label: 'Verstanden', value: 'ok', cls: 'ghost', effects: [] }] }];
+    },
+    'stash.beleg': [
+      { bg: 'bar', who: 'brandt', mood: 'calm', text: 'Unter dem Tresen, bitte. Nicht gucken, ob jemand guckt. Das sieht man.',
+        choices: [{ label: 'Übergeben', value: 'geben', cls: 'blue', effects: [{ call: 'belegRisiko' }] }, { label: 'Doch nicht', value: 'nein', cls: 'ghost' }] },
+    ],
+    'stash.beleg.gesehen': [
+      { bg: 'bar', who: 'igor', mood: 'angry', text: 'Ich hab das gesehen. Der Zettel, der Mantel. Ich muss es Anabi sagen – oder er merkt, dass ich es nicht gesagt habe. Tut mir leid. Ehrlich.' },
+      { bg: 'keller', who: 'anabi', mood: 'angry', text: 'Ein Zettel an einen Polizisten. Ein Zettel. Ich zähl das als Enttäuschung. Du weißt, wie ich zähle.' },
+    ],
+    'stash.razzia': [
+      { bg: 'bar', who: 'brandt', mood: 'calm', text: 'Drei Belege. Der Rest ist ein Datum. Sagen Sie „heute Nacht“, dann steht in einer Stunde ein Bus vor der Tür – und Sie stehen hinter mir, nicht vor mir.',
+        choices: [{ label: 'Heute Nacht', value: 'ja', cls: 'red', effects: [{ flag: 'razzia' }] }, { label: 'Noch nicht', value: 'nein', cls: 'ghost' }] },
+    ],
+    'stash.abloese': (ctx) => [
+      { bg: 'keller', who: 'anabi', mood: 'calm', text: `Ablöse. Hunderttausend für den Keller, dazu dein Zettel: ${StoryRules.fmtMoney(ctx.raw.vars.kredit || 0)}. Macht ${StoryRules.fmtMoney(GangRules.ABLOESE + (ctx.raw.vars.kredit || 0))}. Bar, jetzt, hier. Dann bin ich weg – und der Tisch auch.`,
+        choices: [{ label: 'Zahlen', value: 'zahlen', cls: 'red', effects: [{ call: 'abloese' }] }, { label: 'Noch nicht', value: 'nein', cls: 'ghost' }] },
+    ],
+    'stash.kredit': (ctx) => [
+      { bg: 'keller', who: 'stumme', mood: 'calm', text: `Der Stumme schiebt einen Zettel rüber. „${StoryRules.fmtMoney(ctx.raw.vars.kredit || 0)}“. Darunter: „5.000?“ Er hält den Stift.`,
+        choices: [{ label: 'Zahlen', value: 'zahlen', cls: 'blue', effects: [{ call: 'kreditZahlen' }] }, { label: 'Doch nicht', value: 'nein', cls: 'ghost' }] },
+    ],
+    'stash.flucht': [
+      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Der Wagen ist vollgetankt. Dreißigtausend im Kofferraum reichen für eine Grenze und ein Jahr. Der Keller bleibt hier. Anabi auch. Dein Name im Grundbuch – auch.',
+        choices: [{ label: 'Abhauen', value: 'ja', cls: 'red', effects: [{ flag: 'flucht' }] }, { label: 'Bleiben', value: 'nein', cls: 'ghost' }] },
+    ],
+    'stash.finale': (ctx) => [
+      { bg: 'keller', who: 'du', mood: 'calm', text: `Anabi sitzt am Tisch im Hinterzimmer. ${ctx.raw.flags.igor ? 'Igor steht an der Tür und guckt weg.' : 'Igor steht an der Tür und guckt nicht weg.'} Kessler wartet draußen – für danach. Für dich gibt es nur jetzt.`,
+        choices: [{ label: 'Los', value: 'los', cls: 'red', effects: [{ call: 'finale' }] }, { label: 'Nicht heute', value: 'nein', cls: 'ghost' }] },
+    ],
+    'stash.kontrolle': [
+      { bg: 'strasse', who: 'brandt', mood: 'calm', text: 'Zwei Strafzettel in einer Nacht – da guckt man in den Kofferraum. Was für ein Koffer. Ich nehm ihn mit. Und ich schreib auf, wo er herkommt. Das ist ein Beleg. Für später.' },
+      { bg: 'keller', who: 'anabi', mood: 'angry', text: 'Mein Koffer bei der Polizei. Weil du bei Rot nicht bremsen kannst. Ich zähl das. Du weißt, wie.' },
+    ],
+    'stash.sylvie.warn': [
+      { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Sie spielen anders als sonst. Größer, schneller, ohne Freude. Ich sehe so etwas. Ich sehe alles. Dies ist ein Casino, keine Waschküche.' },
+    ],
+    'stash.sylvie.bann': [
+      { bg: 'royal', who: 'sylvie', mood: 'angry', text: 'Genug. Das Haus behält sich alles vor – auch die Tür. Der Parkservice bringt Ihnen den Wagen. Kommen Sie nicht wieder. In diesem Leben.' },
+      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Hausverbot. Der Umsatz muss ab jetzt durch den Keller. Ganz allein.' },
+    ],
+    'stash.eintr.kiosk': [
+      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Kiosk am Bahnhof. Der Besitzer schuldet Anabi vierhundert. Er zahlt, bevor du fertig gefragt hast. Du nimmst dir eine Zeitung mit. Er sagt, sie geht aufs Haus.' },
+    ],
+    'stash.eintr.friseur': [
+      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Friseur, zweiter Stock. Er will erst nicht, dann doch, dann schneidet er dir umsonst die Haare. Anabi hat seine Liste, du hast eine neue Frisur.' },
+    ],
+    'stash.ende.kanal': [
+      { bg: 'keller', who: 'anabi', mood: 'calm', fx: 'blackout', text: 'Dreimal. Ich hab es dir gesagt. Igor – der Wagen.' },
+      { bg: 'hafen', who: 'igor', mood: 'calm', text: 'Er fährt langsam. Anabi sitzt hinten und sagt nichts. Der Kanal ist ruhig um diese Zeit.' },
+      { bg: 'hafen', who: 'du', mood: 'calm', text: 'Der Keller bekommt einen neuen Strohmann. Er wird auch nicht rechnen können.' },
+    ],
+    'stash.ende.krieg': [
+      { bg: 'keller', who: 'du', mood: 'calm', fx: 'flash', text: 'Anabi liegt neben seinem Tisch. Die Sonnenbrille ist heil geblieben. Sonst nichts.' },
+      { bg: 'keller', who: 'kessler', mood: 'happy', text: 'Schnellste Hand der Stadt. Der Keller gehört dir. Und uns. Aber wir sind bessere Partner – wir klopfen wenigstens.' },
+      { bg: 'keller', who: 'du', mood: 'calm', text: 'Neuer Herr, alte Tasche. Die Wäsche läuft weiter. Nur die Hand am Kofferraum ist jetzt deine.' },
+    ],
+    'stash.ende.kommissar': (ctx) => [
+      { bg: 'keller', who: 'du', mood: 'calm', fx: 'flash', text: 'Blaulicht die Treppe runter. Anabi in Handschellen, der Stumme sagt zum ersten Mal ein Wort, und es ist kein schönes.' },
+      ...(ctx.raw.flags.igor ? [{ bg: 'keller', who: 'igor', mood: 'calm', text: 'Ich hab gewusst, dass du es bist. Ich hab nichts gesagt.' }] : []),
+      { bg: 'keller', who: 'brandt', mood: 'calm', text: 'Der Keller ist Beweismittel. Sie sind frei. Nur nicht hier. Ein Taxi wartet – ich hab es bezahlt. Das erste Mal, dass die Stadt Ihnen etwas schuldet.' },
+    ],
+    'stash.ende.abloese': [
+      { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Er zählt nach. Zweimal. Dann nickt er dem Stummen zu, und vier Männer tragen den Tisch die Treppe hoch.' },
+      { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Sauber. Du bist der Erste, der sich freigekauft hat. Ich erzähl das niemandem. Es wäre schlecht fürs Geschäft.' },
+      { bg: 'keller', who: 'du', mood: 'happy', text: 'Der Keller gehört dir. Wirklich. Der Wirt trinkt sein Freibier und sagt, er hätte es gewusst.' },
+    ],
+    'stash.ende.flucht': [
+      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Nachts über die Grenze. Im Rückspiegel ein Schein über der Stadt – der Keller brennt. Nicht deine Schuld, sagt niemand.' },
+      { bg: 'hafen-morgen', who: 'du', mood: 'calm', text: 'Neuer Name, altes Spiel. Irgendwo gibt es immer einen Keller.' },
+    ],
+    'stash.ende.strohmann': [
+      { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Woche fünf. Die Tasche ist größer. Fünfzigtausend. Du weißt, wie es geht.' },
+      { bg: 'keller', who: 'du', mood: 'calm', text: 'Dein Name steht im Grundbuch. Seiner steht auf dir. Der Stumme nickt. Die Wäsche läuft.' },
+    ],
   },
 };
 if (typeof Stories !== 'undefined') Stories.define(STORY_STASH);
@@ -9519,6 +9699,29 @@ T.test('STORY_STASH: goal – vor der ersten Woche, während einer Woche, nach d
   T.ok(mid.includes('Woche 1')); T.ok(mid.includes('Tag 7'));
   s.story.day = 8;
   T.ok(STORY_STASH.goal(s).includes('abgerechnet'));
+});
+T.test('STORY_STASH: Intro je Vorgängerende – Variante + gemeinsamer Schluss mit Anabi', () => {
+  for (const prev of ['wirt', 'nuechtern', 'taxi', 'stammgast', 'brownie']) {
+    const panels = STORY_STASH.scenes['stash.intro']({ raw: { flags: {}, vars: {} }, prev: { kater: prev } });
+    T.ok(panels.length >= 4, `${prev}: mindestens vier Panels`);
+    T.eq(panels[panels.length - 1].who, 'anabi', `${prev}: Anabi hat das letzte Wort`);
+    T.ok(panels.every((p) => p.text && !p.text.startsWith('stash.')), `${prev}: keine Stubs`);
+  }
+});
+T.test('STORY_STASH: Abrechnungs-Szene je Ausgang, Lieferung je Woche, keine Stubs mehr', () => {
+  const ctx = (vars, flags = {}) => ({ raw: { vars: Object.assign({ woche: 1, lieferung: 10000, ziel: 20000, rueckgabe: 11000, letztePay: 11000, kredit: 0, zorn: 0 }, vars), flags }, prev: {}, flags });
+  const texts = new Set();
+  for (const ausgang of [0, 1, 2, 3]) { const p = STORY_STASH.scenes['stash.abrechnung'](ctx({ ausgang })); T.ok(p.length >= 2, `Ausgang ${ausgang}`); texts.add(p[1].text); }
+  T.eq(texts.size, 4, 'vier verschiedene Texte');
+  T.ok(STORY_STASH.scenes['stash.abrechnung'](ctx({ ausgang: 0, anabiErfaehrt: 1 }, { bahnhof: true, anabiWeiss: true })).some((p) => p.text.includes('Bahnhof')));
+  T.eq(STORY_STASH.scenes['stash.abrechnung'](ctx({ ausgang: 0, anabiErfaehrt: 0 }, { bahnhof: true, anabiWeiss: true })).some((p) => p.text.includes('Bahnhof')), false, 'nur einmal');
+  for (const woche of [1, 2, 3, 4]) T.ok(STORY_STASH.scenes['stash.lieferung'](ctx({ woche })).length >= 2, `Woche ${woche}`);
+  for (const [id, def] of Object.entries(STORY_STASH.scenes)) {
+    const panels = typeof def === 'function' ? def(ctx({ ausgang: 0, letzterUeberfall: 'slots', letzterRaub: 500, hinterhaltN: 2, igorBiere: 0, belege: 1, belegeOffen: 1, uebergeben: 0 })) : def;
+    T.ok(panels.length > 0 && panels.every((p) => p.text && !p.text.startsWith('stash.')), `${id}: Text statt Stub`);
+    T.ok(panels.every((p) => p.who && (typeof Cutscene !== 'undefined' ? Cutscene.CAST[p.who] : true)), `${id}: Sprecher bekannt`);
+  }
+  for (const e of STORY_STASH.endings) { const p = STORY_STASH.scenes[e.scene]; const panels = typeof p === 'function' ? p(ctx({})) : p; T.eq(panels[panels.length - 1].choices, undefined, `${e.id}: Ende ohne Wahl`); }
 });
 
 /* ---- Story-Engine (nur im Browser – Block story-engine wird in Node nicht geladen) ---- */
