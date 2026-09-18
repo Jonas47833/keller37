@@ -5808,7 +5808,9 @@ const Jobs = {
   },
   /* „Feierabend": verbuchen (falls noch nicht geschehen) und in den Abend wechseln */
   async finishGame(id) {
+    const run = State.s;
     const collected = await this.collect(id);
+    if (State.s !== run || run.story.ended) return; // job:after hat die Story beendet/gewechselt – kein Abend mehr auf der toten Story
     if (collected || Story.s.jobToday === id) await Story.evening();
   },
   abort() { Story.jobStart = null; },
@@ -8302,6 +8304,38 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     } finally {
       State.mode = keep.mode; State.s = keep.s; State.save = keep.save; State.saveMeta = keep.saveMeta;
       Story.story = keep.story; Story.finish = keep.finish; Story.fade = keep.fade;
+      Story.sleeping = false; Story.finishing = false; Story.lostDay = false;
+      UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide(); Story.renderDaybar();
+    }
+  });
+  /* Jobs.collect() ruft jetzt Story.hook('job:after') – dessen Events können die Story sofort beenden (finish()).
+     Jobs.finishGame() darf dann keinen Abend mehr auf der toten Story anbrechen lassen. finish() ist hier ein Stub,
+     der nur das Ende vermerkt (kein Cutscene, kein Story-Wechsel); Speichern ist abgeklemmt, alles wird danach zurückgesetzt. */
+  T.test('Jobs.finishGame: job:after-Ende lässt keinen Abend auf der toten Story anbrechen', async () => {
+    const story = {
+      id: 'job.tot', title: 'job.tot', days: 3, start: { balance: 100, vars: {}, unlocked: { jobs: [], doors: [], rooms: [] } }, chapters: [], scenes: {},
+      events: [{ id: 'aus', at: 'job:after', effects: [{ flag: 'tot' }] }],
+      endings: [
+        { id: 'ende', title: 'Ende', priority: 1, immediate: true, when: { flag: 'tot' }, scene: 'x' },
+        { id: 'aus', title: 'Aus', scene: 'x', priority: 0, fallback: true },
+      ],
+    };
+    const sA = State.freshStory(story);
+    const keep = { mode: State.mode, s: State.s, save: State.save, saveMeta: State.saveMeta, story: Story.story, finish: Story.finish, fade: Story.fade, evening: Story.evening, jobStart: Story.jobStart };
+    let eveningCalls = 0;
+    try {
+      State.save = () => {}; State.saveMeta = () => {};
+      Story.fade = async () => {};
+      Story.finish = async function (end) { this.s.ended = end.id; }; // wie Story.night: nur das Ende vermerken, kein Story-Wechsel
+      Story.evening = async () => { eveningCalls++; };
+      State.mode = 'story'; State.s = sA; Story.story = story;
+      Story.jobStart = { id: 'taxi', balance: State.s.balance, variant: null };
+      await Jobs.finishGame('taxi');
+      T.eq(sA.story.ended, 'ende', 'sofortiges Ende nach job:after gespielt');
+      T.eq(eveningCalls, 0, 'Story.evening wurde NICHT gerufen');
+    } finally {
+      State.mode = keep.mode; State.s = keep.s; State.save = keep.save; State.saveMeta = keep.saveMeta;
+      Story.story = keep.story; Story.finish = keep.finish; Story.fade = keep.fade; Story.evening = keep.evening; Story.jobStart = keep.jobStart;
       Story.sleeping = false; Story.finishing = false; Story.lostDay = false;
       UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide(); Story.renderDaybar();
     }
