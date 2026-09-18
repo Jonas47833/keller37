@@ -848,6 +848,22 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 @keyframes plateHit { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -80%) scale(1.2); } 100% { transform: translate(-50%, -50%) scale(0); opacity: 0; } }
 @keyframes plateBreak { 0% { transform: translate(-50%, -50%) rotate(0); } 100% { transform: translate(-50%, 40%) rotate(60deg); opacity: 0; } }
 @keyframes roadMove { from { background-position: 0 0; } to { background-position: 0 44px; } }
+/* Kater-HUD (Story 2) */
+.kater-hud { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.kater-hud > span { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: .78rem; color: var(--text); }
+.hud-leber .bar { width: 90px; height: 10px; background: #1c1f1a; border: 1px solid #3a3f35; border-radius: 2px; overflow: hidden; }
+.hud-leber .fill { display: block; height: 100%; background: var(--neon-green); transition: width .3s; }
+.hud-leber.warn .fill { background: #e8c65a; }
+.hud-leber.danger .fill { background: var(--neon-red); animation: pulseText 1.2s infinite; }
+.hud-pegel .krug { opacity: .3; font-size: 1rem; }
+.hud-pegel .krug.on { opacity: 1; }
+.hud-pegel.covered { border-bottom: 2px solid var(--neon-green); padding-bottom: 1px; }
+.hud-deckel .coaster { width: 34px; height: 34px; border-radius: 50%; background: #d9c7a3; color: #4a3a22; border: 2px solid #b8a27a; box-shadow: inset 0 0 0 4px #d9c7a3, inset 0 0 0 5px #b8a27a; display: inline-flex; align-items: center; justify-content: center; font-size: .6rem; line-height: 1; letter-spacing: -1px; }
+.hud-deckel.empty .coaster { opacity: .4; }
+body.zitter .balance, body.zitter .hud-pegel { animation: zitter 3s infinite; }
+@keyframes zitter { 0%, 8%, 100% { transform: translateX(0); } 1% { transform: translateX(-1px); } 3% { transform: translateX(1px); } 5% { transform: translateX(-1px); } 7% { transform: translateX(1px); } }
+@media (max-width: 760px) { .hud-leber .bar { width: 70px; } }
+@media (prefers-reduced-motion: reduce) { body.zitter .balance, body.zitter .hud-pegel, .hud-leber.danger .fill { animation: none; } }
 </style>
 </head>
 <body>
@@ -2169,6 +2185,7 @@ const UI = {
     luckEl.title = `Glück ${luckTxt} %`;
     luckEl.innerHTML = '';
     luckEl.append('🍀', ...[0, 1, 2, 3, 4].map((i) => h('span', { class: 'seg' + (i < segs ? ' on' : '') })), h('span', { class: 'luck-val' }, `${luckTxt}%`));
+    document.body.classList.toggle('zitter', State.mode === 'story' && typeof Story !== 'undefined' && !!(Story.s && Story.s.flags && Story.s.flags.zitter));
     const notes = qs('#notes');
     notes.innerHTML = '';
     if (s.isHeartbroken) notes.append(h('span', { class: 'note pink' }, `💔 Liebeskummer · ${s.beers}/2 🍺`));
@@ -5358,6 +5375,9 @@ const RoyalRules = {
     for (let k = 1; k <= 2; k++) { const j = (index + k) % S.length; if (S[j] !== 0) return j; }
     return index;
   },
+  /* Kater-HUD: Leber-Farbstufe und Strichliste auf dem Bierdeckel (ein Strich je 50 €, höchstens 8) */
+  leberTone(v) { return v > 60 ? 'ok' : v > 30 ? 'warn' : 'danger'; },
+  deckelMarks(v) { return Math.min(8, Math.floor((v || 0) / 50)); },
 };
 </script>
 
@@ -5774,12 +5794,30 @@ const Story = {
 
   /* ---- HUD ---- */
   hudNotes() {
+    if (this.story.hudRender === 'kater') return [this.katerHud()];
     return (this.story.hud || []).map((hd) => {
       const v = this.s.vars[hd.var] || 0;
       const txt = hd.fmt === 'money' ? UI.fmt(v) : (hd.max ? `${v}/${hd.max}` : String(v));
       const label = typeof hd.label === 'function' ? hd.label(State.s) : hd.label;
       return h('span', { class: `note ${hd.tone || 'gold'}` }, `${label} ${txt}`);
     });
+  },
+  /* Story 2: Leber-Balken, Bierkrüge, Bierdeckel statt drei Zettel */
+  katerHud() {
+    const v = this.s.vars, f = this.s.flags;
+    const leber = Math.max(0, Math.min(100, v.leber || 0)), pegel = v.pegel || 0, deckel = v.deckel || 0;
+    const tone = RoyalRules.leberTone(leber);
+    const covered = pegel >= 3 || (f.sucht && (v.brownieHeute || 0) > 0);
+    const kruege = [0, 1, 2].map((i) => h('span', { class: 'krug' + (i < pegel ? ' on' : '') }, '🍺'));
+    if (f.sucht) kruege.push(h('span', { class: 'krug' + ((v.brownieHeute || 0) > 0 ? ' on' : '') }, '🍪'));
+    const marks = RoyalRules.deckelMarks(deckel);
+    return h('div', { class: 'kater-hud' },
+      h('span', { class: `hud-leber ${tone}`, title: `Leber ${leber}/100` }, '🫀', h('span', { class: 'bar' }, h('span', { class: 'fill', style: `width:${leber}%` })), h('span', { class: 'val' }, `${leber}`)),
+      h('span', { class: 'hud-pegel' + (covered ? ' covered' : ''), title: `Pegel ${pegel}/3` }, ...kruege),
+      h('span', { class: 'hud-deckel' + (deckel > 0 ? '' : ' empty'), title: `Deckel ${UI.fmt(deckel)}` },
+        /* Tally-Mark-Zeichen (𝍷/𝍸) fehlen in vielen System-/Headless-Schriften (Tofu-Boxen) – Strichliste als reine Striche */
+        h('span', { class: 'coaster' }, '|'.repeat(marks) + (deckel >= 450 ? '…' : '')), h('span', { class: 'val' }, UI.fmt(deckel))),
+      f.zitter ? h('span', { class: 'note danger' }, '🫨 Zittern · −15 Glück') : null);
   },
   renderDaybar() {
     const slot = qs('#daybarSlot');
@@ -6537,6 +6575,7 @@ Bus.on('rr:result', ({ victim }) => {
 /* ================= STORY 2: DER KATER – Fortsetzung von „Die Schuld" ================= */
 const STORY_KATER = {
   id: 'kater', title: 'Der Kater', days: 30, requires: 'schuld',
+  hudRender: 'kater',
   start: {
     balance: 2000,
     unlocked: { jobs: ['filialleiter'], doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack'], rooms: ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal'] },
@@ -6741,7 +6780,7 @@ const STORY_KATER = {
     { id: 'deckel', when: { all: [{ flag: 'abgestuerzt' }, { var: 'bierHeute', eq: 0 }] }, at: 'buy:beer', effects: [{ var: 'deckel', add: 50 }, { price: { beer: 50 } }] },
     { id: 'bier', when: { flag: 'abgestuerzt' }, at: 'buy:beer', effects: [{ var: 'bierHeute', add: 1 }, { var: 'pegel', add: 1 }, { var: 'leber', add: -1 }] },
     { id: 'leberToastBier', when: { all: [{ flag: 'abgestuerzt' }, { var: 'leber', lte: 30 }, { var: 'leber', gt: 0 }] }, at: 'buy:beer', effects: [{ toast: { icon: '🫀', title: 'Die Leber meldet sich', text: 'Der Doc hat ein Bett frei.', tone: 'loss' } }] },
-    { id: 'zitterEnde', when: { flag: 'zitter' }, at: 'buy:beer', effects: [{ unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }] },
+    { id: 'zitterEnde', when: { flag: 'zitter' }, at: 'buy:beer', effects: [{ unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }, { toast: { icon: '🍺', title: 'Ruhige Hände.', tone: 'win' } }] },
     /* ---- Niere ---- */
     { id: 'niere', when: { flag: 'abgestuerzt' }, at: 'buy:kidney', effects: [{ var: 'leber', add: -20 }] },
     /* ---- Nacht: Entzug, Pegel-Reset, Warnung ---- */
@@ -6757,7 +6796,7 @@ const STORY_KATER = {
     { id: 'brownie', when: { all: [{ flag: 'abgestuerzt' }] }, at: 'buy:brownie', effects: [{ var: 'brownieHeute', add: 1 }, { var: 'leber', add: -4 }] },
     { id: 'brownieDeckt', when: { all: [{ flag: 'abgestuerzt' }, { flag: 'sucht' }] }, at: 'buy:brownie', effects: [{ var: 'pegel', set: 3 }] },
     { id: 'leberToastBrownie', when: { all: [{ flag: 'abgestuerzt' }, { var: 'leber', lte: 30 }, { var: 'leber', gt: 0 }] }, at: 'buy:brownie', effects: [{ toast: { icon: '🫀', title: 'Die Leber meldet sich', text: 'Der Doc hat ein Bett frei.', tone: 'loss' } }] },
-    { id: 'zitterEndeBrownie', when: { flag: 'zitter' }, at: 'buy:brownie', effects: [{ unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }] },
+    { id: 'zitterEndeBrownie', when: { flag: 'zitter' }, at: 'buy:brownie', effects: [{ unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }, { toast: { icon: '🍪', title: 'Ruhige Hände.', tone: 'win' } }] },
     /* ---- Therapie ---- */
     { id: 'therapieFrei', when: { all: [{ day: { gte: 11 } }, { flag: 'abgestuerzt' }, { notFlag: 'nuechtern' }] }, once: true, at: 'morning', effects: [{ enable: ['therapy'] }] },
     { id: 'therapie', when: { flag: 'abgestuerzt' }, at: 'buy:therapy', scene: 'kater.therapie', effects: [{ flag: 'nuechtern' }, { disable: ['beer', 'brownie', 'therapy'] }, { unflag: 'zitter' }, { luckMod: 0 }, { jobMod: null }, { price: { beer: 50 } }] },
@@ -7408,6 +7447,10 @@ T.test('wheelLuckOverride: Pech rückt einen Gewinn auf das nächste Bankrott-Se
   T.eq(RoyalRules.wheelLuckOverride(i10, 0, seq(0)), i10, 'luck 0 unverändert');
 });
 
+T.test('RoyalRules.leberTone/deckelMarks', () => {
+  T.eq([100, 61, 60, 31, 30, 0].map(RoyalRules.leberTone), ['ok', 'ok', 'warn', 'warn', 'danger', 'danger']);
+  T.eq([0, 49, 50, 100, 400, 450, 9999].map(RoyalRules.deckelMarks), [0, 0, 1, 2, 8, 8, 8]);
+});
 /* ---- RoyalRules: Eintritt ---- */
 T.test('RoyalRules.canEnter / entryFee', () => {
   T.eq(RoyalRules.canEnter(base()), { ok: false, reason: 'car', text: 'Parkservice only – zu Fuß kommt hier keiner rein.' });
