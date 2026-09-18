@@ -4679,6 +4679,12 @@ const Achievements = {
     { id: 'endeBett', title: 'Das Bett beim Doc', icon: '🛏️', desc: 'Die Niere war ein Vorschuss.', group: 'story' },
     { id: 'standhaft', title: 'Standhaft', icon: '🙅', desc: 'Dem Doc dreimal Nein gesagt.', group: 'story' },
     { id: 'stummeNickt', title: 'Der Stumme nickt', icon: '🀄', desc: '100.000 € Umsatz an Anabis Tisch.', group: 'story' },
+    { id: 'schnellsteHand', title: 'Schnellste Hand', icon: '🔫', desc: 'Anabi Stash im Duell erledigt.', group: 'story' },
+    { id: 'kronzeuge', title: 'Kronzeuge', icon: '👮', desc: 'Brandt hat seine Razzia bekommen.', group: 'story' },
+    { id: 'sauber', title: 'Sauber', icon: '💰', desc: 'Die Ablöse gezahlt. Der Keller ist wirklich deiner.', group: 'story' },
+    { id: 'waschmaschine', title: 'Waschmaschine', icon: '🧺', desc: 'Alle vier Abrechnungen geschafft.', group: 'story' },
+    { id: 'hausmeister', title: 'Hausmeister', icon: '🔧', desc: 'Alle fünf Spiele mindestens einmal repariert.', group: 'story' },
+    { id: 'igorsFreund', title: 'Igors Freund', icon: '🍺', desc: 'Drei Abende mit Igor. Er steht jetzt neben dir.', group: 'story' },
   ],
   has(id) { return State.meta.achievements.includes(id); },
   unlock(id) {
@@ -7241,6 +7247,230 @@ const STORY_KATER = {
 if (typeof Stories !== 'undefined') Stories.define(STORY_KATER);
 </script>
 
+<script id="story-stash">
+/* ================= STORY 3: DIE WÄSCHE – Anabi Stash, vier Wochen, sechs Auswege ================= */
+const STORY_STASH = {
+  id: 'stash', title: 'Die Wäsche', days: 30, requires: 'kater',
+  prevEndings: ['wirt', 'nuechtern', 'taxi', 'stammgast', 'brownie'],
+  lockText: '„Der Kater“ endete im Bett beim Doc. Wer tot ist, wäscht nichts mehr.',
+  start: {
+    balance: 5000,
+    unlocked: { jobs: ['eintreiber'], doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack'], rooms: ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal'] },
+    vars: { woche: 0, umsatz: 0, umsatzRoyal: 0, umsatzHinterzimmer: 0, umsatzTotal: 0, ziel: 0, rueckgabe: 0, lieferung: 0, zorn: 0, kredit: 0, belege: 0, belegeOffen: 0, uebergeben: 0, ruf: 0, igorBiere: 0, eintreiberWoche: 0, abrechnungenOk: 0, ausgang: 0, anabiErfaehrt: 0 },
+  },
+  varMax: { zorn: 3 },
+  prices: { brownie: 1000 },
+  disabled: ['tinder', 'house', 'dealer', 'brownie'],
+  turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel'], umsatzHinterzimmer: ['baccarat'] },
+  jobOverrides: {
+    eintreiber: { base: 1000, requires: { var: 'eintreiberWoche', lt: 2 }, requireText: 'Anabi hat nicht jeden Tag Schuldner', pay: '1.000 €', desc: 'Anabi hat eine Liste. Wer sie abarbeitet, macht ihn ruhiger.' },
+  },
+  lockReason: { royal: 'Hausverbot', hinterzimmer: 'Anabis Tisch kommt morgen' },
+  N: { abloese: GangRules.ABLOESE, fluchtMin: GangRules.FLUCHT_MIN, kreditSchritt: GangRules.KREDIT_SCHRITT },
+  hud: [
+    { var: 'umsatz', label: '🧺 Umsatz', fmt: 'money', max: (s) => s.story.vars.ziel || 0 },
+    { var: 'zorn', label: '😡 Zorn', max: 3, tone: 'danger' },
+    { var: 'kredit', label: '🧾 Kredit', fmt: 'money' },
+  ],
+  goal: (s) => {
+    const v = s.story.vars, f = s.story.flags, fmt = StoryRules.fmtMoney;
+    if (f.frei) return 'Der Keller ist deiner. Wirklich.';
+    if (!v.woche) return 'Der Keller gehört dir. Auf dem Papier.';
+    const heute = [7, 14, 21, 28].includes(s.story.day);
+    return `Woche ${v.woche}: Umsatz ${fmt(v.umsatz)} / ${fmt(v.ziel)} · ${heute ? 'HEUTE ABEND' : `Tag ${v.woche * 7}`}: ${fmt(v.rueckgabe)} fällig`;
+  },
+  intro: 'stash.intro',
+  /* ---- Story-Funktionen (Effekt call) – rechnen, setzen Vars/Flags, geben Szene/Toast/Force zurück ---- */
+  fns: {
+    lieferung(s) {
+      const st = s.story, v = st.vars;
+      const w = GangRules.week(v.woche + 1, !!st.flags.bahnhof);
+      v.woche++; v.umsatz = 0; v.umsatzRoyal = 0; v.eintreiberWoche = 0;
+      v.ziel = w.ziel; v.rueckgabe = w.rueckgabe; v.lieferung = w.lieferung;
+      s.balance += w.lieferung;
+      delete st.flags.royalWarn;
+      return { scene: 'stash.lieferung' };
+    },
+    abrechnung(s) {
+      const st = s.story, v = st.vars, f = st.flags;
+      const r = GangRules.abrechnung({ umsatz: v.umsatz, ziel: v.ziel, balance: s.balance, rueckgabe: v.rueckgabe });
+      s.balance -= r.pay;
+      v.kredit = Math.max(0, (v.kredit || 0) + r.kreditDelta);
+      v.zorn = GangRules.zorn(v.zorn, r.zornDelta);
+      v.belege += r.belegDelta; v.belegeOffen += r.belegDelta;
+      if (r.ausgang === 'ok') v.abrechnungenOk++;
+      v.anabiErfaehrt = 0;
+      if (f.bahnhof && !f.anabiWeiss) { f.anabiWeiss = true; v.zorn = GangRules.zorn(v.zorn, 1); v.anabiErfaehrt = 1; }
+      v.ausgang = { ok: 0, umsatz: 1, geld: 2, beides: 3 }[r.ausgang];
+      v.letztePay = r.pay;
+      const out = { scene: 'stash.abrechnung' };
+      if (v.abrechnungenOk >= 4 && !f.waschmaschine) { f.waschmaschine = true; out.achievement = 'waschmaschine'; }
+      return out;
+    },
+    nachtkasse(s) {
+      const r = GangRules.nachtkasse(s.story.broken);
+      s.balance += r.sum;
+      const namen = { roulette: 'Roulette', slots: 'Slots', horses: 'Pferde', russian: 'Russisch', blackjack: 'Blackjack' };
+      return { toast: { icon: '🧾', title: 'Nachtkasse', text: `+${StoryRules.fmtMoney(r.sum)}${r.kaputt.length ? ` (${r.kaputt.map((d) => namen[d]).join(', ')} kaputt)` : ''}`, tone: r.sum > 0 ? 'win' : 'loss' } };
+    },
+    ueberfall(s, rng) {
+      const st = s.story;
+      const door = GangRules.raid(st.broken, st.flags, rng);
+      if (!door) return {};
+      st.broken = st.broken || {};
+      st.broken[door] = GangRules.repairPrice(door, !!st.flags.igor);
+      st.flags.ueberfallHeute = true;
+      st.vars.letzterUeberfall = door;
+      return { scene: 'stash.ueberfall' };
+    },
+    raub(s) {
+      const st = s.story, loot = GangRules.robbery(s.balance);
+      s.balance -= loot; st.vars.letzterRaub = loot;
+      st.flags.blauesAuge = true; st.luckMod = -15;
+      return {};
+    },
+    hinterhalt(s, rng) {
+      const st = s.story;
+      if (st.flags.ueberfallHeute || st.flags.bahnhof) return {};
+      const w = GangRules.weapon(s);
+      if (rng() >= GangRules.ambushChance(st.flags, w)) return {};
+      const n = GangRules.ambushCount(rng);
+      st.vars.hinterhaltN = n;
+      if (!w.tier) { STORY_STASH.fns.raub(s); return { scene: 'stash.hinterhalt.raub' }; }
+      return { scene: 'stash.hinterhalt', force: 'shootout', fight: { kind: 'hinterhalt', foes: Array(n).fill('junge') } };
+    },
+    hinterhaltVerloren(s) { STORY_STASH.fns.raub(s); return { scene: 'stash.hinterhalt.lost' }; },
+    tutorial() { return { force: 'shootout', fight: { kind: 'tutorial', foes: ['laeufer'], bonus: 100 } }; },
+    finale(s) { return { force: 'shootout', fight: { kind: 'finale', foes: s.story.flags.igor ? ['anabi'] : ['igor', 'anabi'] } }; },
+    belegRisiko(s, rng) {
+      const st = s.story, v = st.vars;
+      v.uebergeben++; v.belegeOffen = Math.max(0, v.belegeOffen - 1);
+      if (!st.flags.igor && rng() < GangRules.BELEG_RISIKO) { v.zorn = GangRules.zorn(v.zorn, 1); return { scene: 'stash.beleg.gesehen' }; }
+      return { toast: { icon: '🧾', title: 'Beleg übergeben', text: `Brandt steckt den Zettel ein. ${v.uebergeben} von ${GangRules.BELEGE_NOETIG}.`, tone: 'info' } };
+    },
+    abloese(s) {
+      const v = s.story.vars, price = GangRules.ABLOESE + (v.kredit || 0);
+      if (s.balance < price) return { toast: { icon: '💰', title: `Ablöse: ${StoryRules.fmtMoney(price)}`, text: 'So viel liegt nicht auf dem Tisch.', tone: 'loss' } };
+      s.balance -= price; v.kredit = 0; s.story.flags.frei = true;
+      return {};
+    },
+    kreditZahlen(s) {
+      const v = s.story.vars, amt = Math.min(GangRules.KREDIT_SCHRITT, v.kredit || 0, s.balance);
+      if (amt <= 0) return {};
+      s.balance -= amt; v.kredit -= amt;
+      return { toast: { icon: '🧾', title: `−${StoryRules.fmtMoney(amt)}`, text: `Kredit noch ${StoryRules.fmtMoney(v.kredit)}.`, tone: 'info' } };
+    },
+  },
+  chapters: [
+    { id: 'k1', title: 'Der Hausherr', when: { day: { gte: 1 } } },
+    { id: 'k2', title: 'Die Bahnhof-Jungs', when: { day: { gte: 8 } }, intro: 'stash.k2', unlock: { jobs: ['kurierfahrt'] } },
+    { id: 'k3', title: 'Der Kommissar', when: { day: { gte: 15 } }, intro: 'stash.k3' },
+    { id: 'k4', title: 'Abrechnung', when: { day: { gte: 22 } }, intro: 'stash.k4' },
+  ],
+  events: [
+    /* ---- Nacht: Abrechnung zuerst ---- */
+    { id: 'abrechnung', when: { any: [{ day: { eq: 7 } }, { day: { eq: 14 } }, { day: { eq: 21 } }, { day: { eq: 28 } }] }, daily: true, at: 'night', effects: [{ call: 'abrechnung' }] },
+    { id: 'lieferung', when: { any: [{ day: { eq: 1 } }, { day: { eq: 8 } }, { day: { eq: 15 } }, { day: { eq: 22 } }] }, daily: true, at: 'night', effects: [{ call: 'lieferung' }] },
+    { id: 'tutorial', when: { day: { eq: 10 } }, once: true, at: 'night', scene: 'stash.tutorial', effects: [{ call: 'tutorial' }] },
+    { id: 'ueberfall', when: { day: { gte: 8 } }, daily: true, at: 'night', effects: [{ call: 'ueberfall' }] },
+    { id: 'hinterhalt', when: { day: { gte: 8 } }, daily: true, at: 'night', effects: [{ call: 'hinterhalt' }] },
+    { id: 'angebot', when: { all: [{ day: { gte: 15 } }, { var: 'ruf', gte: 2 }, { notFlag: 'bahnhof' }, { notFlag: 'bahnhofNein' }] }, once: true, at: 'night', scene: 'stash.angebot' },
+    /* ---- Morgen ---- */
+    { id: 'einrichten', when: { day: { eq: 1 } }, once: true, at: 'morning', effects: [{ set: { car: 'mercC', weapon: 0 } }, { enable: ['hinterzimmer'] }] },
+    { id: 'startKredit30', when: { all: [{ day: { eq: 1 } }, { any: [{ prevEnding: { story: 'kater', id: 'nuechtern' } }, { prevEnding: { story: 'kater', id: 'taxi' } }] }] }, once: true, at: 'morning', effects: [{ var: 'kredit', set: 30000 }] },
+    { id: 'startKredit50', when: { all: [{ day: { eq: 1 } }, { any: [{ prevEnding: { story: 'kater', id: 'stammgast' } }, { prevEnding: { story: 'kater', id: 'brownie' } }] }] }, once: true, at: 'morning', effects: [{ var: 'kredit', set: 50000 }] },
+    { id: 'startTrocken', when: { all: [{ day: { eq: 1 } }, { prevEnding: { story: 'kater', id: 'nuechtern' } }] }, once: true, at: 'morning', effects: [{ flag: 'trocken' }, { disable: ['beer'] }] },
+    { id: 'startBrownie', when: { all: [{ day: { eq: 1 } }, { prevEnding: { story: 'kater', id: 'brownie' } }] }, once: true, at: 'morning', effects: [{ enable: ['brownie'] }] },
+    { id: 'tisch', when: { day: { eq: 2 } }, once: true, at: 'morning', scene: 'stash.tisch', effects: [{ unlock: { doors: ['hinterzimmer'] } }] },
+    { id: 'tagesstart', when: { day: { gte: 1 } }, daily: true, at: 'morning', effects: [{ unflag: 'ueberfallHeute' }, { unflag: 'igorHeute' }] },
+    { id: 'nachtkasse', when: { day: { gte: 2 } }, daily: true, at: 'morning', effects: [{ call: 'nachtkasse' }] },
+    { id: 'pfandleihe', when: { day: { gte: 8 } }, once: true, at: 'morning', effects: [{ enable: ['pfandleihe'] }] },
+    { id: 'hausmeister', when: { all: [{ var: 'repariert_roulette', gte: 1 }, { var: 'repariert_slots', gte: 1 }, { var: 'repariert_horses', gte: 1 }, { var: 'repariert_russian', gte: 1 }, { var: 'repariert_blackjack', gte: 1 }] }, once: true, at: 'morning', effects: [{ achievement: 'hausmeister' }] },
+    /* ---- Schlaf: blaues Auge heilt ---- */
+    { id: 'blauesAugeEnde', when: { flag: 'blauesAuge' }, at: 'sleep', effects: [{ unflag: 'blauesAuge' }, { luckMod: 0 }] },
+    /* ---- Schießerei-Ausgänge ---- */
+    { id: 'tutorialWon', when: { all: [{ flag: 'fight_tutorial' }, { flag: 'fightWon' }] }, at: 'fight:after', scene: 'stash.tutorial.won', effects: [{ var: 'ruf', add: 1 }] },
+    { id: 'tutorialLost', when: { all: [{ flag: 'fight_tutorial' }, { flag: 'fightLost' }] }, at: 'fight:after', scene: 'stash.tutorial.lost' },
+    { id: 'hinterhaltWon', when: { all: [{ flag: 'fight_hinterhalt' }, { flag: 'fightWon' }] }, at: 'fight:after', effects: [{ var: 'ruf', add: 1 }, { toast: { icon: '🔫', title: 'Sie rennen', text: 'Ruf +1. Der Bahnhof redet.', tone: 'win' } }] },
+    { id: 'hinterhaltLost', when: { all: [{ flag: 'fight_hinterhalt' }, { flag: 'fightLost' }] }, at: 'fight:after', effects: [{ call: 'hinterhaltVerloren' }] },
+    { id: 'finaleWon', when: { all: [{ flag: 'fight_finale' }, { flag: 'fightWon' }] }, at: 'fight:after', effects: [{ flag: 'anabiTot' }] },
+    { id: 'finaleLost', when: { all: [{ flag: 'fight_finale' }, { flag: 'fightLost' }] }, at: 'fight:after', effects: [{ flag: 'kanal' }] },
+    /* ---- Kurierfahrt: Kontrolle ---- */
+    { id: 'kontrolle', when: { flag: 'kontrolle' }, at: 'job:after', scene: 'stash.kontrolle', effects: [{ unflag: 'kontrolle' }, { var: 'zorn', add: 1 }, { var: 'belege', add: 1 }, { var: 'belegeOffen', add: 1 }] },
+    /* ---- Royal: Sylvie ---- */
+    { id: 'sylvieWarn', when: { all: [{ var: 'umsatzRoyal', gte: 10000 }, { var: 'umsatzRoyal', lt: 15000 }, { notFlag: 'royalWarn' }, { notFlag: 'royalBann' }] }, at: 'royal:enter', scene: 'stash.sylvie.warn', effects: [{ flag: 'royalWarn' }] },
+    { id: 'royalBannEnter', when: { all: [{ var: 'umsatzRoyal', gte: 15000 }, { notFlag: 'royalBann' }] }, at: 'royal:enter', scene: 'stash.sylvie.bann', effects: [{ flag: 'royalBann' }, { lock: { rooms: ['royal'] } }, { show: 'stadt' }] },
+    { id: 'royalBannSpin', when: { all: [{ var: 'umsatzRoyal', gte: 15000 }, { notFlag: 'royalBann' }] }, at: 'spin:after', scene: 'stash.sylvie.bann', effects: [{ flag: 'royalBann' }, { lock: { rooms: ['royal'] } }, { show: 'stadt' }] },
+    /* ---- Hinterzimmer ---- */
+    { id: 'stummeNickt', when: { all: [{ var: 'umsatzHinterzimmer', gte: 100000 }, { notFlag: 'stummeNickt' }] }, once: true, at: 'spin:after', effects: [{ flag: 'stummeNickt' }, { achievement: 'stummeNickt' }] },
+  ],
+  actions: [
+    { id: 'igorBier', room: 'bar', label: '🍺 Bier mit Igor · 100 €', when: { all: [{ day: { gte: 8 } }, { notFlag: 'trocken' }, { notFlag: 'igor' }, { notFlag: 'igorHeute' }, { balance: { gte: 100 } }] }, scene: 'stash.igor' },
+    { id: 'igorCola', room: 'bar', label: '🥤 Cola mit Igor · 100 €', when: { all: [{ day: { gte: 8 } }, { flag: 'trocken' }, { notFlag: 'igor' }, { notFlag: 'igorHeute' }, { balance: { gte: 100 } }] }, scene: 'stash.igor' },
+    { id: 'brandt', room: 'bar', label: '👮 Mit Brandt reden', when: { all: [{ day: { gte: 15 } }, { notFlag: 'razzia' }] }, scene: 'stash.brandt' },
+    { id: 'beleg', room: 'bar', label: '🧾 Beleg übergeben', when: { all: [{ day: { gte: 15 } }, { flag: 'brandtKennt' }, { var: 'belegeOffen', gte: 1 }, { notFlag: 'razzia' }] }, scene: 'stash.beleg' },
+    { id: 'razzia', room: 'bar', label: '👮 Razzia auslösen', when: { all: [{ day: { gte: 26 } }, { var: 'uebergeben', gte: 3 }, { notFlag: 'razzia' }] }, scene: 'stash.razzia' },
+    { id: 'anabiStellen', room: 'bar', label: '🔫 Anabi stellen', when: { all: [{ day: { gte: 25 } }, { flag: 'bahnhof' }, { weapon: { gte: 1 } }, { notFlag: 'anabiTot' }, { notFlag: 'kanal' }] }, scene: 'stash.finale' },
+    { id: 'abloese', room: 'bank', label: '💰 Ablöse zahlen', when: { all: [{ day: { gte: 22 } }, { var: 'zorn', lte: 1 }, { notFlag: 'frei' }] }, scene: 'stash.abloese' },
+    { id: 'kredit', room: 'bank', label: '🧾 Kredit abzahlen · 5.000 €', when: { all: [{ var: 'kredit', gte: 1 }, { balance: { gte: 5000 } }] }, scene: 'stash.kredit' },
+    { id: 'flucht', room: 'stadt', label: '🌍 Abhauen', when: { all: [{ day: { gte: 20 } }, { balance: { gte: 30000 } }, { notFlag: 'flucht' }] }, scene: 'stash.flucht' },
+  ],
+  jobScenes: { eintreiber: ['stash.eintr.kiosk', 'stash.eintr.friseur'] },
+  jobEffects: {
+    'stash.eintr.kiosk': [{ var: 'eintreiberWoche', add: 1 }, { var: 'zorn', add: -1 }],
+    'stash.eintr.friseur': [{ var: 'eintreiberWoche', add: 1 }, { var: 'zorn', add: -1 }],
+  },
+  endings: [
+    { id: 'kanal', title: 'Der Kanal', priority: 70, immediate: true, when: { any: [{ var: 'zorn', gte: 3 }, { flag: 'kanal' }] }, scene: 'stash.ende.kanal' },
+    { id: 'krieg', title: 'Der Krieg', priority: 60, immediate: true, when: { flag: 'anabiTot' }, scene: 'stash.ende.krieg' },
+    { id: 'kommissar', title: 'Der Kommissar', priority: 50, immediate: true, when: { flag: 'razzia' }, scene: 'stash.ende.kommissar' },
+    { id: 'abloese', title: 'Die Ablöse', priority: 40, immediate: true, when: { flag: 'frei' }, scene: 'stash.ende.abloese' },
+    { id: 'flucht', title: 'Die Flucht', priority: 30, immediate: true, when: { flag: 'flucht' }, scene: 'stash.ende.flucht' },
+    { id: 'strohmann', title: 'Der Strohmann', priority: 0, scene: 'stash.ende.strohmann', fallback: true },
+  ],
+  trophies: { krieg: 'schnellsteHand', kommissar: 'kronzeuge', abloese: 'sauber' },
+  scenes: {
+    /* Task 4 ersetzt die Stubs durch Texte; die Wahl-Szenen tragen ihre Effekte schon hier */
+    'stash.intro': [{ bg: 'bar', who: 'du', text: 'stash.intro' }],
+    'stash.tisch': [{ bg: 'keller', who: 'du', text: 'stash.tisch' }],
+    'stash.k2': [{ bg: 'bahnhof', who: 'du', text: 'stash.k2' }], 'stash.k3': [{ bg: 'bar', who: 'du', text: 'stash.k3' }], 'stash.k4': [{ bg: 'bar', who: 'du', text: 'stash.k4' }],
+    'stash.lieferung': [{ bg: 'keller', who: 'anabi', text: 'stash.lieferung' }],
+    'stash.abrechnung': [{ bg: 'keller', who: 'anabi', text: 'stash.abrechnung' }],
+    'stash.ueberfall': [{ bg: 'keller', who: 'igor', text: 'stash.ueberfall' }],
+    'stash.hinterhalt': [{ bg: 'gasse', who: 'du', text: 'stash.hinterhalt' }],
+    'stash.hinterhalt.raub': [{ bg: 'gasse', who: 'du', text: 'stash.hinterhalt.raub' }],
+    'stash.hinterhalt.lost': [{ bg: 'gasse', who: 'du', text: 'stash.hinterhalt.lost' }],
+    'stash.tutorial': [{ bg: 'keller', who: 'anabi', text: 'stash.tutorial' }],
+    'stash.tutorial.won': [{ bg: 'bahnhof', who: 'anabi', text: 'stash.tutorial.won' }],
+    'stash.tutorial.lost': [{ bg: 'bahnhof', who: 'anabi', text: 'stash.tutorial.lost' }],
+    'stash.angebot': [{ bg: 'bahnhof', who: 'kessler', text: 'stash.angebot',
+      choices: [{ label: 'Annehmen', value: 'ja', cls: 'red', effects: [{ flag: 'bahnhof' }] }, { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ flag: 'bahnhofNein' }] }] }],
+    'stash.igor': (ctx) => [{ bg: 'bar', who: 'igor', text: 'stash.igor',
+      choices: [{ label: 'Prost', value: 'prost', cls: 'green', effects: [{ balance: -100 }, { var: 'igorBiere', add: 1 }, { flag: 'igorHeute' }, ...(ctx.raw.vars.igorBiere >= GangRules.IGOR_BIERE - 1 ? [{ flag: 'igor' }, { achievement: 'igorsFreund' }] : [])] }] }],
+    'stash.brandt': (ctx) => [{ bg: 'bar', who: 'brandt', text: 'stash.brandt', choices: [{ label: 'Verstanden', value: 'ok', cls: 'ghost', effects: ctx.raw.flags.brandtKennt ? [] : [{ flag: 'brandtKennt' }] }] }],
+    'stash.beleg': [{ bg: 'bar', who: 'brandt', text: 'stash.beleg', choices: [{ label: 'Übergeben', value: 'geben', cls: 'blue', effects: [{ call: 'belegRisiko' }] }, { label: 'Doch nicht', value: 'nein', cls: 'ghost' }] }],
+    'stash.beleg.gesehen': [{ bg: 'bar', who: 'igor', text: 'stash.beleg.gesehen' }],
+    'stash.razzia': [{ bg: 'bar', who: 'brandt', text: 'stash.razzia', choices: [{ label: 'Heute Nacht', value: 'ja', cls: 'red', effects: [{ flag: 'razzia' }] }, { label: 'Noch nicht', value: 'nein', cls: 'ghost' }] }],
+    'stash.abloese': [{ bg: 'keller', who: 'anabi', text: 'stash.abloese', choices: [{ label: 'Zahlen', value: 'zahlen', cls: 'red', effects: [{ call: 'abloese' }] }, { label: 'Noch nicht', value: 'nein', cls: 'ghost' }] }],
+    'stash.kredit': [{ bg: 'keller', who: 'stumme', text: 'stash.kredit', choices: [{ label: 'Zahlen', value: 'zahlen', cls: 'blue', effects: [{ call: 'kreditZahlen' }] }, { label: 'Doch nicht', value: 'nein', cls: 'ghost' }] }],
+    'stash.flucht': [{ bg: 'strasse', who: 'du', text: 'stash.flucht', choices: [{ label: 'Abhauen', value: 'ja', cls: 'red', effects: [{ flag: 'flucht' }] }, { label: 'Bleiben', value: 'nein', cls: 'ghost' }] }],
+    'stash.finale': [{ bg: 'keller', who: 'du', text: 'stash.finale', choices: [{ label: 'Los', value: 'los', cls: 'red', effects: [{ call: 'finale' }] }, { label: 'Nicht heute', value: 'nein', cls: 'ghost' }] }],
+    'stash.kontrolle': [{ bg: 'strasse', who: 'brandt', text: 'stash.kontrolle' }],
+    'stash.sylvie.warn': [{ bg: 'royal', who: 'sylvie', text: 'stash.sylvie.warn' }],
+    'stash.sylvie.bann': [{ bg: 'royal', who: 'sylvie', text: 'stash.sylvie.bann' }],
+    'stash.eintr.kiosk': [{ bg: 'strasse', who: 'du', text: 'stash.eintr.kiosk' }],
+    'stash.eintr.friseur': [{ bg: 'strasse', who: 'du', text: 'stash.eintr.friseur' }],
+    'stash.ende.kanal': [{ bg: 'hafen', who: 'du', text: 'stash.ende.kanal' }],
+    'stash.ende.krieg': [{ bg: 'keller', who: 'kessler', text: 'stash.ende.krieg' }],
+    'stash.ende.kommissar': [{ bg: 'keller', who: 'brandt', text: 'stash.ende.kommissar' }],
+    'stash.ende.abloese': [{ bg: 'keller', who: 'anabi', text: 'stash.ende.abloese' }],
+    'stash.ende.flucht': [{ bg: 'strasse', who: 'du', text: 'stash.ende.flucht' }],
+    'stash.ende.strohmann': [{ bg: 'keller', who: 'anabi', text: 'stash.ende.strohmann' }],
+  },
+};
+if (typeof Stories !== 'undefined') Stories.define(STORY_STASH);
+</script>
+
 <script id="selftest">
 /* ================= SELFTEST – läuft mit ?selftest im Browser und via node tests/run-selftest.mjs ================= */
 const SelfTest = {
@@ -9029,6 +9259,249 @@ T.test('Story Schuld: stadtOffen ab Tag 4, Eintreiber mit Türsteher freigeschal
   T.eq(st.jobEffects['schuld.eintreiber.kiosk'], [{ var: 'ruf', add: 1 }]);
   T.eq(st.jobEffects['schuld.eintreiber.zahnarzt'], [{ var: 'ruf', add: 1 }]);
   for (const id of ['schuld.stadt', 'schuld.eintreiber.kiosk', 'schuld.eintreiber.zahnarzt']) T.ok(Array.isArray(st.scenes[id]) && st.scenes[id].length >= 2, id);
+});
+
+/* ---- Story 3: Die Wäsche ---- */
+const STASH_JOBS = ['spueler', 'post', 'taxi', 'tuersteher', 'croupier', 'eintreiber', 'kurier', 'praktikant', 'docassi', 'filialleiter', 'kurierfahrt'];
+const stashState = (o = {}, prev = 'wirt') => Object.assign(base({ balance: 5000, car: 'mercC', weapon: 0, flags: {} }), { story: StoryRules.freshStoryPart(STORY_STASH, { kater: { lastPlayed: 1, endings: [prev], last: prev } }) }, o);
+/* Events eines Hooks wie die Engine anwenden; gibt [eventIds, outs] zurück – outs = Rückgaben der Effekte (scene/force/toast) */
+const stashHook = (s, at, rng = seq(0.99)) => {
+  const ids = [], outs = [];
+  for (const e of StoryRules.dueEvents(STORY_STASH, s, at)) {
+    ids.push(e.id);
+    for (const eff of e.effects || []) outs.push(StoryRules.applyEffect(s, eff, STORY_STASH, rng));
+    if (e.once) s.story.seen.push(e.id);
+    if (e.daily) (s.story.seenDay || (s.story.seenDay = {}))[e.id] = s.story.day;
+  }
+  return [ids, outs];
+};
+/* Wahl in einer Szene anwenden: Effekte der Choice mit value in panels */
+const stashChoose = (s, sceneId, value, extra = {}, rng = seq(0.99)) => {
+  const def = STORY_STASH.scenes[sceneId];
+  const ctx = Object.assign({ raw: { balance: s.balance, day: s.story.day, vars: Object.assign({}, s.story.vars), flags: Object.assign({}, s.story.flags) }, prev: s.story.prev, flags: s.story.flags }, extra);
+  const panels = typeof def === 'function' ? def(ctx) : def;
+  const outs = [];
+  for (const p of panels) for (const ch of p.choices || []) if (ch.value === value) for (const eff of ch.effects || []) outs.push(StoryRules.applyEffect(s, eff, STORY_STASH, rng));
+  return outs;
+};
+T.test('STORY_STASH ist gültig, setzt Der Kater voraus, nicht nach Bett', () => {
+  T.eq(StoryRules.validate(STORY_STASH, Object.keys(STORY_STASH.scenes), STASH_JOBS, ['probe', 'schuld', 'kater', 'stash'], { kater: STORY_KATER }), []);
+  T.eq([STORY_STASH.requires, STORY_STASH.days, STORY_STASH.prevEndings], ['kater', 30, ['wirt', 'nuechtern', 'taxi', 'stammgast', 'brownie']]);
+  T.ok(STORY_STASH.lockText.length > 10);
+  T.eq(StoryRules.lockReasonFor(STORY_STASH, { kater: { endings: ['bett'], last: 'bett' } }), 'prevEnding');
+  T.eq(StoryRules.lockReasonFor(STORY_STASH, { kater: { endings: ['bett', 'wirt'], last: 'wirt' } }), null);
+  T.eq(STORY_STASH.endings.map((e) => e.id), ['kanal', 'krieg', 'kommissar', 'abloese', 'flucht', 'strohmann']);
+  T.eq(STORY_STASH.endings.filter((e) => e.immediate).length, 5);
+  T.eq(Object.keys(STORY_STASH.trophies).sort(), ['abloese', 'kommissar', 'krieg']);
+  T.eq(STORY_STASH.events[0].id, 'abrechnung', 'Abrechnung läuft vor allen anderen Nacht-Events');
+});
+T.test('STORY_STASH: Start, Tag-1-Morgen je Vorgängerende (Kredit, trocken, Brownie), Auto, Hinterzimmer sichtbar', () => {
+  const s = stashState();
+  T.eq(s.story.unlocked.jobs, ['eintreiber']);
+  T.eq(s.story.unlocked.doors, ['roulette', 'slots', 'horses', 'russian', 'blackjack']);
+  T.eq(s.story.unlocked.rooms, ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal']);
+  T.eq(s.story.disabled, ['tinder', 'house', 'dealer', 'brownie']);
+  T.eq(s.story.vars.zorn, 0); T.eq(s.story.vars.woche, 0);
+  for (const [prev, kredit, trocken, brownie] of [['wirt', 0, false, false], ['nuechtern', 30000, true, false], ['taxi', 30000, false, false], ['stammgast', 50000, false, false], ['brownie', 50000, false, true]]) {
+    const t = stashState({ car: null }, prev);
+    stashHook(t, 'morning');
+    T.eq(t.story.vars.kredit, kredit, `${prev}: Kredit`);
+    T.eq(!!t.story.flags.trocken, trocken, `${prev}: trocken`);
+    T.eq(!!(t.story.enabled && t.story.enabled.brownie), brownie, `${prev}: Brownie`);
+    T.eq(StoryRules.purchaseAllowed(t, 'beer'), trocken ? false : null, `${prev}: Bier`);
+    T.eq(t.car, 'mercC'); T.eq(t.story.enabled.hinterzimmer, true); T.eq(t.story.unlocked.doors.includes('hinterzimmer'), false, 'Tisch kommt Tag 2');
+  }
+  const d2 = stashState(); d2.story.day = 2; d2.story.seen.push('einrichten');
+  T.ok(stashHook(d2, 'morning')[0].includes('tisch')); T.ok(d2.story.unlocked.doors.includes('hinterzimmer'));
+  const d8 = stashState(); d8.story.day = 8;
+  stashHook(d8, 'morning'); T.eq(d8.story.enabled.pfandleihe, true);
+});
+T.test('STORY_STASH: Kapitel 1/8/15/22, Kurierfahrt ab Kapitel 2', () => {
+  const s = stashState();
+  for (const [day, id] of [[1, 'k1'], [7, 'k1'], [8, 'k2'], [15, 'k3'], [22, 'k4'], [30, 'k4']]) { s.story.day = day; T.eq(StoryRules.chapterFor(STORY_STASH, s).id, id, `Tag ${day}`); }
+  T.eq(STORY_STASH.chapters[1].unlock.jobs, ['kurierfahrt']);
+});
+T.test('STORY_STASH: Lieferung Tag 1/8/15/22 – Geld, Woche, Ziel, Umsatz-Reset, Bahnhof ×1,5, nur einmal pro Tag', () => {
+  const s = stashState({ balance: 5000 });
+  const [ids, outs] = stashHook(s, 'night');
+  T.ok(ids.includes('lieferung')); T.eq(outs.find((o) => o.scene).scene, 'stash.lieferung');
+  T.eq([s.balance, s.story.vars.woche, s.story.vars.ziel, s.story.vars.rueckgabe, s.story.vars.umsatz], [15000, 1, 20000, 11000, 0]);
+  T.eq(stashHook(s, 'night')[0].includes('lieferung'), false, 'daily');
+  s.story.day = 8; s.story.vars.umsatz = 12345; s.story.vars.umsatzRoyal = 4000; s.story.vars.eintreiberWoche = 2; s.story.flags.royalWarn = true; s.story.flags.bahnhof = true;
+  stashHook(s, 'night');
+  T.eq([s.balance, s.story.vars.woche, s.story.vars.ziel, s.story.vars.umsatz, s.story.vars.umsatzRoyal, s.story.vars.eintreiberWoche, s.story.flags.royalWarn], [35000, 2, 60000, 0, 0, 0, undefined]);
+  s.story.day = 9; T.eq(stashHook(s, 'night')[0].includes('lieferung'), false, 'Tag 9 keine Lieferung');
+});
+T.test('STORY_STASH: Abrechnung – vier Ausgänge, Beleg, Kredit, Zorn, Anabi erfährt vom Bahnhof', () => {
+  const mk = (umsatz, balance, extra = {}) => { const s = stashState({ balance }); s.story.day = 7; Object.assign(s.story.vars, { woche: 1, ziel: 20000, rueckgabe: 11000, umsatz, kredit: 30000 }); Object.assign(s.story.flags, extra); return s; };
+  let s = mk(20000, 15000);
+  let [ids, outs] = stashHook(s, 'night');
+  T.eq(ids[0], 'abrechnung'); T.eq(outs[0].scene, 'stash.abrechnung');
+  T.eq([s.balance, s.story.vars.zorn, s.story.vars.kredit, s.story.vars.belege, s.story.vars.belegeOffen, s.story.vars.abrechnungenOk, s.story.vars.ausgang], [4000, 0, 25000, 1, 1, 1, 0]);
+  s = mk(10000, 15000); stashHook(s, 'night');
+  T.eq([s.balance, s.story.vars.zorn, s.story.vars.kredit, s.story.vars.belege, s.story.vars.ausgang], [4000, 1, 30000, 0, 1]);
+  s = mk(20000, 5000); stashHook(s, 'night');
+  T.eq([s.balance, s.story.vars.zorn, s.story.vars.kredit, s.story.vars.ausgang], [0, 1, 39000, 2]);
+  s = mk(0, 0); stashHook(s, 'night');
+  T.eq([s.story.vars.zorn, s.story.vars.kredit, s.story.vars.ausgang], [2, 46500, 3]);
+  s = mk(0, 0, { bahnhof: true }); stashHook(s, 'night');
+  T.eq([s.story.vars.zorn, s.story.flags.anabiWeiss], [3, true], 'Bahnhof-Deal: einmalig +1');
+  T.eq(StoryRules.ending(STORY_STASH, s, { immediateOnly: true }).id, 'kanal', 'Zorn 3 → Kanal sofort');
+  s = mk(20000, 15000, { bahnhof: true, anabiWeiss: true }); s.story.vars.zorn = 1; stashHook(s, 'night');
+  T.eq(s.story.vars.zorn, 0, 'nicht zweimal');
+  s = mk(20000, 15000); s.story.vars.zorn = 0; s.story.vars.abrechnungenOk = 3; [ids, outs] = stashHook(s, 'night');
+  T.ok(outs.some((o) => o.achievement === 'waschmaschine'), '4/4 → Waschmaschine');
+});
+T.test('STORY_STASH: Nachtkasse morgens ab Tag 2 (daily), kaputte Spiele fehlen', () => {
+  const s = stashState({ balance: 0 }); s.story.day = 3; s.story.seen.push('einrichten', 'tisch');
+  const [ids, outs] = stashHook(s, 'morning');
+  T.ok(ids.includes('nachtkasse')); T.eq(s.balance, 1250); T.ok(outs.some((o) => o.toast && o.toast.text.includes('1.250')));
+  T.eq(stashHook(s, 'morning')[0].includes('nachtkasse'), false, 'daily');
+  s.story.day = 4; s.story.broken = { slots: 4000, roulette: 6000 };
+  stashHook(s, 'morning'); T.eq(s.balance, 2000);
+});
+T.test('STORY_STASH: Überfall ab Tag 8 – zertrümmert eine Tür, Igor halbiert, Bahnhof stoppt, Flag ueberfallHeute', () => {
+  const s = stashState(); s.story.day = 8;
+  let [, outs] = stashHook(s, 'night', seq(0.1, 0, 0.99));            // Lieferung (kein rng); Überfall: rng 0.1 < 0.25, Auswahl 0 → roulette; Hinterhalt entfällt (ueberfallHeute, kein rng)
+  T.eq(s.story.broken, { roulette: 6000 }); T.eq(s.story.flags.ueberfallHeute, true); T.ok(outs.some((o) => o.scene === 'stash.ueberfall'));
+  const t = stashState({ balance: 50000 }); t.story.day = 9; t.story.flags.igor = true;
+  stashHook(t, 'night', seq(0.1, 0.5, 0.99));                          // Überfall 0.1 < 0.15, Auswahl 0.5 → 3. intakte (horses); Hinterhalt entfällt (ueberfallHeute)
+  T.eq(t.story.broken, { horses: 1500 });
+  const u = stashState(); u.story.day = 9; u.story.flags.bahnhof = true;
+  stashHook(u, 'night', seq(0, 0, 0)); T.eq(u.story.broken, {}, 'Bahnhof-Deal: keine Überfälle');
+  const v = stashState(); v.story.day = 7; stashHook(v, 'night', seq(0, 0, 0)); T.eq(v.story.broken, {}, 'vor Tag 8 nichts');
+  s.story.day = 9; stashHook(s, 'morning'); T.eq(s.story.flags.ueberfallHeute, false, 'morgens gelöscht');
+});
+T.test('STORY_STASH: Hinterhalt – ohne Waffe Raub + blaues Auge, mit Waffe Schießerei, nicht nach Überfall/Bahnhof', () => {
+  const s = stashState({ balance: 10000 }); s.story.day = 9;
+  let [, outs] = stashHook(s, 'night', seq(0.99, 0.1, 0.5));           // Überfall 0.99 nein; Hinterhalt 0.1 < 0.15; Anzahl 0.5 → 2
+  T.eq([s.balance, s.story.flags.blauesAuge, s.story.luckMod, s.story.vars.hinterhaltN], [8000, true, -15, 2]);
+  T.ok(outs.some((o) => o.scene === 'stash.hinterhalt.raub'));
+  s.story.day = 10; stashHook(s, 'sleep'); T.eq([s.story.flags.blauesAuge, s.story.luckMod], [false, 0], 'nächste Nacht: blaues Auge weg');
+  const w = stashState({ balance: 10000, weapon: 1 }); w.story.day = 9;
+  [, outs] = stashHook(w, 'night', seq(0.99, 0.1, 0.99));
+  const f = outs.find((o) => o.force === 'shootout');
+  T.eq([w.balance, f.fight.kind, f.fight.foes], [10000, 'hinterhalt', ['junge', 'junge', 'junge']]);
+  T.ok(outs.some((o) => o.scene === 'stash.hinterhalt'));
+  const g = stashState({ weapon: 3 }); g.story.day = 9; stashHook(g, 'night', seq(0.99, 0.1, 0)); T.eq(g.story.vars.hinterhaltN, undefined, 'Goldene: 0.1 ≥ 0.075');
+  const b = stashState(); b.story.day = 9; b.story.flags.bahnhof = true; stashHook(b, 'night', seq(0, 0, 0)); T.eq(b.story.flags.blauesAuge, undefined);
+});
+T.test('STORY_STASH: fight:after – Hinterhalt gewonnen Ruf +1, verloren Raub; Tutorial; Finale setzt anabiTot/kanal', () => {
+  const s = stashState({ balance: 10000 }); s.story.day = 9;
+  Object.assign(s.story.flags, { fight_hinterhalt: true, fightWon: true, fightLost: false });
+  stashHook(s, 'fight:after'); T.eq([s.story.vars.ruf, s.balance], [1, 10000]);
+  Object.assign(s.story.flags, { fightWon: false, fightLost: true });
+  const [, outs] = stashHook(s, 'fight:after'); T.eq([s.balance, s.story.flags.blauesAuge], [8000, true]); T.ok(outs.some((o) => o.scene === 'stash.hinterhalt.lost'));
+  const t = stashState(); t.story.day = 10;
+  const [ids, o2] = stashHook(t, 'night', seq(0.99, 0.99, 0.99));
+  T.ok(ids.includes('tutorial')); const f = o2.find((o) => o.force === 'shootout'); T.eq([f.fight.kind, f.fight.foes, f.fight.bonus], ['tutorial', ['laeufer'], 100]);
+  Object.assign(t.story.flags, { fight_tutorial: true, fightWon: true, fightLost: false }); stashHook(t, 'fight:after'); T.eq(t.story.vars.ruf, 1);
+  const fi = stashState(); Object.assign(fi.story.flags, { fight_finale: true, fightWon: true, fightLost: false }); stashHook(fi, 'fight:after');
+  T.eq(fi.story.flags.anabiTot, true); T.eq(StoryRules.ending(STORY_STASH, fi, { immediateOnly: true }).id, 'krieg');
+  const fl = stashState(); Object.assign(fl.story.flags, { fight_finale: true, fightWon: false, fightLost: true }); stashHook(fl, 'fight:after');
+  T.eq(StoryRules.ending(STORY_STASH, fl, { immediateOnly: true }).id, 'kanal');
+});
+T.test('STORY_STASH: Angebot der Bahnhof-Jungs ab Tag 15 mit Ruf 2, Annehmen/Ablehnen', () => {
+  const s = stashState(); s.story.day = 15; s.story.vars.ruf = 1;
+  T.eq(stashHook(s, 'night', seq(0.99, 0.99, 0.99))[0].includes('angebot'), false);
+  s.story.day = 16; s.story.vars.ruf = 2;
+  T.ok(stashHook(s, 'night', seq(0.99, 0.99, 0.99))[0].includes('angebot'));
+  stashChoose(s, 'stash.angebot', 'ja'); T.eq(s.story.flags.bahnhof, true);
+  const n = stashState(); n.story.day = 16; n.story.vars.ruf = 2; stashChoose(n, 'stash.angebot', 'nein'); T.eq(n.story.flags.bahnhofNein, true);
+  n.story.seen.push('angebot'); T.eq(stashHook(n, 'night', seq(0.99, 0.99, 0.99))[0].includes('angebot'), false, 'once');
+});
+T.test('STORY_STASH: Igor – Bar-Aktion ab Tag 8, 100 €, einmal pro Tag, drittes Bier → igor + Trophäe; trocken → Cola', () => {
+  const s = stashState({ balance: 1000 }); s.story.day = 8;
+  const acts = () => StoryRules.actionsFor(STORY_STASH, s, 'bar').map((a) => a.id);
+  T.ok(acts().includes('igorBier')); T.eq(acts().includes('igorCola'), false);
+  stashChoose(s, 'stash.igor', 'prost'); T.eq([s.balance, s.story.vars.igorBiere, s.story.flags.igorHeute], [900, 1, true]);
+  T.eq(acts().includes('igorBier'), false, 'heute schon');
+  s.story.day = 9; stashHook(s, 'morning'); T.eq(s.story.flags.igorHeute, false);
+  stashChoose(s, 'stash.igor', 'prost'); s.story.flags.igorHeute = false;
+  const outs = stashChoose(s, 'stash.igor', 'prost');
+  T.eq([s.story.vars.igorBiere, s.story.flags.igor], [3, true]); T.ok(outs.some((o) => o.achievement === 'igorsFreund'));
+  T.eq(acts().includes('igorBier'), false, 'Igor ist deiner');
+  const t = stashState({ balance: 1000 }); t.story.day = 8; t.story.flags.trocken = true;
+  T.ok(StoryRules.actionsFor(STORY_STASH, t, 'bar').map((a) => a.id).includes('igorCola'));
+});
+T.test('STORY_STASH: Brandt ab Tag 15, Belege übergeben mit Risiko, Razzia ab Tag 26 mit 3 Belegen', () => {
+  const s = stashState(); s.story.day = 15; s.story.vars.belege = 2; s.story.vars.belegeOffen = 2;
+  const acts = () => StoryRules.actionsFor(STORY_STASH, s, 'bar').map((a) => a.id);
+  T.ok(acts().includes('brandt')); T.eq(acts().includes('beleg'), false, 'erst mit Brandt reden');
+  stashChoose(s, 'stash.brandt', 'ok'); T.eq(s.story.flags.brandtKennt, true); T.ok(acts().includes('beleg'));
+  let outs = stashChoose(s, 'stash.beleg', 'geben', {}, seq(0.5));    // 0.5 ≥ 0.2: unbemerkt
+  T.eq([s.story.vars.uebergeben, s.story.vars.belegeOffen, s.story.vars.zorn], [1, 1, 0]); T.ok(outs.some((o) => o.toast));
+  outs = stashChoose(s, 'stash.beleg', 'geben', {}, seq(0.1));        // 0.1 < 0.2: Igor sieht es
+  T.eq([s.story.vars.uebergeben, s.story.vars.belegeOffen, s.story.vars.zorn], [2, 0, 1]); T.ok(outs.some((o) => o.scene === 'stash.beleg.gesehen'));
+  T.eq(acts().includes('beleg'), false, 'keine offenen Belege');
+  s.story.flags.igor = true; s.story.vars.belegeOffen = 1; let calls = 0;
+  stashChoose(s, 'stash.beleg', 'geben', {}, () => { calls++; return 0; }); T.eq([s.story.vars.zorn, calls], [1, 0], 'mit Igor kein Risiko, kein Würfel');
+  T.eq(acts().includes('razzia'), false, 'Tag 15');
+  s.story.day = 26; T.ok(acts().includes('razzia'));
+  stashChoose(s, 'stash.razzia', 'ja'); T.eq(StoryRules.ending(STORY_STASH, s, { immediateOnly: true }).id, 'kommissar');
+  const u = stashState(); u.story.day = 26; u.story.vars.uebergeben = 2; T.eq(StoryRules.actionsFor(STORY_STASH, u, 'bar').map((a) => a.id).includes('razzia'), false);
+});
+T.test('STORY_STASH: Kurier-Kontrolle (job:after) – Zorn +1, Beleg +1', () => {
+  const s = stashState(); s.story.flags.kontrolle = true;
+  const [ids, outs] = stashHook(s, 'job:after');
+  T.eq(ids, ['kontrolle']); T.eq([s.story.vars.zorn, s.story.vars.belege, s.story.vars.belegeOffen, s.story.flags.kontrolle], [1, 1, 1, false]);
+  T.ok(outs.some((o) => o.scene === 'stash.kontrolle') || STORY_STASH.events.find((e) => e.id === 'kontrolle').scene === 'stash.kontrolle');
+});
+T.test('STORY_STASH: Eintreiber – 1.000 €, keine Stärke nötig, Zorn −1, max 2/Woche', () => {
+  const s = stashState({ strength: 0 }); s.story.vars.zorn = 2;
+  const job = StoryRules.jobDef({ id: 'eintreiber', requires: { strength: { gte: 4 } }, base: 150 }, STORY_STASH);
+  T.eq([job.base, StoryRules.jobAvailable(job, s).ok], [1000, true]);
+  for (const sc of STORY_STASH.jobScenes.eintreiber) for (const eff of STORY_STASH.jobEffects[sc]) StoryRules.applyEffect(s, eff, STORY_STASH);
+  T.eq([s.story.vars.zorn, s.story.vars.eintreiberWoche], [0, 2]);
+  T.eq(StoryRules.jobAvailable(job, s).ok, false, 'zwei pro Woche');
+});
+T.test('STORY_STASH: Sylvie – Warnung ab 10.000 einmal pro Woche, Hausverbot ab 15.000 (Betreten und mitten im Spiel)', () => {
+  const s = stashState(); s.story.vars.umsatzRoyal = 10000;
+  T.eq(stashHook(s, 'royal:enter')[0], ['sylvieWarn']); T.eq(s.story.flags.royalWarn, true);
+  T.eq(stashHook(s, 'royal:enter')[0], [], 'einmal');
+  s.story.vars.umsatzRoyal = 15000;
+  const [ids, outs] = stashHook(s, 'spin:after');
+  T.ok(ids.includes('royalBannSpin')); T.eq(s.story.flags.royalBann, true); T.eq(s.story.unlocked.rooms.includes('royal'), false); T.ok(outs.some((o) => o.show === 'stadt'));
+  T.eq(stashHook(s, 'royal:enter')[0].includes('royalBannEnter'), false, 'nicht doppelt');
+  T.eq(STORY_STASH.lockReason.royal, 'Hausverbot');
+});
+T.test('STORY_STASH: Aktionen Ablöse, Kredit abzahlen, Flucht, Anabi stellen', () => {
+  const s = stashState({ balance: 140000 }); s.story.day = 22; s.story.vars.kredit = 30000; s.story.vars.zorn = 1;
+  const bank = () => StoryRules.actionsFor(STORY_STASH, s, 'bank').map((a) => a.id);
+  T.ok(bank().includes('abloese')); T.ok(bank().includes('kredit'));
+  stashChoose(s, 'stash.kredit', 'zahlen'); T.eq([s.balance, s.story.vars.kredit], [135000, 25000]);
+  s.story.vars.zorn = 2; T.eq(bank().includes('abloese'), false, 'Zorn ≤ 1'); s.story.vars.zorn = 1;
+  s.balance = 100000; let outs = stashChoose(s, 'stash.abloese', 'zahlen'); T.ok(outs.some((o) => o.toast), 'zu wenig: 125.000 nötig'); T.eq(s.story.flags.frei, undefined);
+  s.balance = 125000; stashChoose(s, 'stash.abloese', 'zahlen'); T.eq([s.balance, s.story.flags.frei, s.story.vars.kredit], [0, true, 0]);
+  T.eq(StoryRules.ending(STORY_STASH, s, { immediateOnly: true }).id, 'abloese');
+  const f = stashState({ balance: 30000 }); f.story.day = 20;
+  T.ok(StoryRules.actionsFor(STORY_STASH, f, 'stadt').map((a) => a.id).includes('flucht'));
+  f.balance = 29999; T.eq(StoryRules.actionsFor(STORY_STASH, f, 'stadt').length, 0);
+  f.balance = 30000; stashChoose(f, 'stash.flucht', 'ja'); T.eq(StoryRules.ending(STORY_STASH, f, { immediateOnly: true }).id, 'flucht');
+  const a = stashState({ weapon: 0 }); a.story.day = 25; a.story.flags.bahnhof = true;
+  const bar = (st) => StoryRules.actionsFor(STORY_STASH, st, 'bar').map((x) => x.id);
+  T.eq(bar(a).includes('anabiStellen'), false, 'ohne Waffe kein Knopf');
+  a.weapon = 1; T.ok(bar(a).includes('anabiStellen'));
+  outs = stashChoose(a, 'stash.finale', 'los'); T.eq(outs.find((o) => o.force).fight.foes, ['igor', 'anabi']);
+  a.story.flags.igor = true; outs = stashChoose(a, 'stash.finale', 'los'); T.eq(outs.find((o) => o.force).fight.foes, ['anabi']);
+});
+T.test('STORY_STASH: Enden-Priorität und Fallback', () => {
+  const s = stashState(); s.story.day = 31;
+  T.eq(StoryRules.ending(STORY_STASH, s).id, 'strohmann');
+  Object.assign(s.story.flags, { flucht: true, frei: true, razzia: true, anabiTot: true }); s.story.vars.zorn = 3;
+  T.eq(StoryRules.ending(STORY_STASH, s).id, 'kanal');
+  s.story.vars.zorn = 0; T.eq(StoryRules.ending(STORY_STASH, s).id, 'krieg');
+  delete s.story.flags.anabiTot; T.eq(StoryRules.ending(STORY_STASH, s).id, 'kommissar');
+  delete s.story.flags.razzia; T.eq(StoryRules.ending(STORY_STASH, s).id, 'abloese');
+  delete s.story.flags.frei; T.eq(StoryRules.ending(STORY_STASH, s).id, 'flucht');
+});
+T.test('STORY_STASH: Hausmeister (alle fünf repariert) und Der Stumme nickt', () => {
+  const s = stashState(); s.story.day = 5;
+  for (const d of GangRules.KELLER_DOORS) s.story.vars[`repariert_${d}`] = 1;
+  const [, outs] = stashHook(s, 'morning'); T.ok(outs.some((o) => o.achievement === 'hausmeister'));
+  s.story.vars.umsatzHinterzimmer = 100000;
+  T.ok(stashHook(s, 'spin:after')[1].some((o) => o.achievement === 'stummeNickt'));
+  T.eq(stashHook(s, 'spin:after')[0].includes('stummeNickt'), false, 'einmal');
 });
 
 /* ---- Story-Engine (nur im Browser – Block story-engine wird in Node nicht geladen) ---- */
