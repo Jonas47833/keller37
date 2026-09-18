@@ -3024,6 +3024,7 @@ const Stadt = {
   close() { SFX.play('click'); this.shop = null; this.render(); },
   render() {
     if (!this.root) return;
+    if (this.shop && !this.storyShop(this.shop)) this.shop = null; // Story-Laden ohne Freigabe (z. B. ?shop= im freien Spiel) – zurück auf die Straße
     const street = qs('#strasse', this.root), laden = qs('#laden', this.root);
     const shop = this.shop ? this.SHOPS[this.shop] : null;
     qs('#stadtTitle', this.root).textContent = shop ? `${shop.icon} ${shop.name}` : '🏙️ Stadt';
@@ -9234,6 +9235,9 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       State.mode = 'free'; State.s = State.fresh();
       await UI.show('stadt');
       T.eq(qs('.storefront.pfandleihe', qs('#stage')), null, 'freies Spiel: kein Schaufenster');
+      Stadt.shop = 'pfandleihe'; Stadt.render();
+      T.eq(Stadt.shop, null, 'freies Spiel: direkt gesetztes ?shop= wird zurückgesetzt');
+      T.eq(qs('#laden .gear-card', qs('#stage')), null, 'freies Spiel: kein Laden trotz ?shop=');
       State.mode = 'story'; State.s = State.freshStory(STORY_PROBE); Story.story = STORY_PROBE; State.s.balance = 40000;
       State.s.story.unlocked.rooms.push('stadt'); State.s.story.enabled.pfandleihe = true;
       await UI.show('stadt');
