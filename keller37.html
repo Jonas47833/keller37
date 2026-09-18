@@ -5255,6 +5255,30 @@ const BaccaratRules = {
     const p = R.total(player), b = R.total(banker);
     return { player, banker, p, b, natural, winner: p > b ? 'player' : b > p ? 'banker' : 'tie' };
   },
+  checkBets(bets) {
+    const total = (bets.player || 0) + (bets.banker || 0) + (bets.tie || 0);
+    if (total < BaccaratRules.MIN) return { ok: false, reason: 'min', total };
+    if (total > BaccaratRules.MAX) return { ok: false, reason: 'max', total };
+    return { ok: true, total };
+  },
+  /* Netto: Spieler/Bank verlieren nur gegen die andere Seite (Push bei Unentschieden), Bank zahlt 0,95:1, Unentschieden 8:1 */
+  settle(bets, hand) {
+    const P = BaccaratRules.PAY;
+    let delta = 0;
+    for (const side of ['player', 'banker']) {
+      const amt = bets[side] || 0; if (!amt) continue;
+      if (hand.winner === side) delta += Math.round(amt * P[side]); else if (hand.winner !== 'tie') delta -= amt;
+    }
+    if (bets.tie) delta += hand.winner === 'tie' ? bets.tie * P.tie : -bets.tie;
+    return delta;
+  },
+  /* Glück: eine Verlusthand wird mit luck % einmal neu gegeben. Pech: eine Gewinnhand wird mit |luck| % einmal neu gegeben. */
+  luckOverride(hand, bets, luck, rng) {
+    const delta = BaccaratRules.settle(bets, hand);
+    if (luck < 0) return delta > 0 && Rules.pech(luck, rng) ? BaccaratRules.deal(rng) : hand;
+    if (luck > 0 && delta < 0 && rng() * 100 < luck) return BaccaratRules.deal(rng);
+    return hand;
+  },
 };
 </script>
 
@@ -7926,6 +7950,56 @@ T.test('BaccaratRules.deal: Natural beendet, Spieler zieht ≤ 5, Bank nach Tabl
   /* Spieler 2+2 = 4 → zieht 3 → 7; Bank 3+K = 3, Spieler-Drittkarte 3 (≠ 8) → zieht 5 → 8 → Bank */
   h = R.deal(seq(...bacCard(1), ...bacCard(2), ...bacCard(1), ...bacCard(12), ...bacCard(2), ...bacCard(4)));
   T.eq([h.p, h.b, h.winner, h.banker.length], [7, 8, 'banker', 3]);
+});
+T.test('BaccaratRules.settle: 1:1, 0,95:1, 8:1, Push bei Unentschieden', () => {
+  const R = BaccaratRules;
+  const win = (w) => ({ winner: w });
+  T.eq(R.settle({ player: 1000 }, win('player')), 1000);
+  T.eq(R.settle({ player: 1000 }, win('banker')), -1000);
+  T.eq(R.settle({ banker: 1000 }, win('banker')), 950);
+  T.eq(R.settle({ banker: 500 }, win('banker')), 475);
+  T.eq(R.settle({ banker: 1000 }, win('player')), -1000);
+  T.eq(R.settle({ tie: 500 }, win('tie')), 4000);
+  T.eq(R.settle({ tie: 500 }, win('banker')), -500);
+  T.eq(R.settle({ player: 1000, banker: 500 }, win('tie')), 0, 'Push');
+  T.eq(R.settle({ player: 1000, tie: 500 }, win('tie')), 4000);
+  T.eq(R.settle({ player: 1000, banker: 1000 }, win('banker')), -50, 'beide Seiten: Provision bleibt');
+  T.eq(R.settle({}, win('player')), 0);
+});
+T.test('BaccaratRules.checkBets: Summe 500–10.000', () => {
+  const R = BaccaratRules;
+  T.eq(R.checkBets({ player: 500 }), { ok: true, total: 500 });
+  T.eq(R.checkBets({ player: 400 }), { ok: false, reason: 'min', total: 400 });
+  T.eq(R.checkBets({ player: 5000, banker: 5000, tie: 500 }), { ok: false, reason: 'max', total: 10500 });
+  T.eq(R.checkBets({ tie: 10000 }), { ok: true, total: 10000 });
+});
+T.test('BaccaratRules.luckOverride: Pech würfelt Gewinn einmal neu, Glück gibt Verlust einmal neu, sonst unverändert', () => {
+  const R = BaccaratRules;
+  const won = { winner: 'player' }, lost = { winner: 'banker' };
+  const bets = { player: 1000 };
+  /* Pech: luck −50, rng 0.4 < 0.5 → Redeal (Karten aus den folgenden rng-Werten) */
+  const rd = R.luckOverride(won, bets, -50, seq(0.4, ...bacCard(3), ...bacCard(1), ...bacCard(4), ...bacCard(2)));
+  T.ok(rd !== won && rd.player, 'neue Hand');
+  T.eq(R.luckOverride(won, bets, -50, seq(0.6)), won, 'Pech nicht ausgelöst');
+  T.eq(R.luckOverride(lost, bets, -50, seq(0.0)), lost, 'Pech greift nur bei Gewinn');
+  let calls = 0; R.luckOverride(lost, bets, -50, () => { calls++; return 0; }); T.eq(calls, 0, 'Pech bei Verlust: kein rng-Aufruf');
+  /* Glück: luck 30, rng 0.2 < 0.3 → Redeal */
+  const rg = R.luckOverride(lost, bets, 30, seq(0.2, ...bacCard(3), ...bacCard(1), ...bacCard(4), ...bacCard(2)));
+  T.ok(rg !== lost && rg.player, 'neue Hand bei Glück');
+  T.eq(R.luckOverride(lost, bets, 30, seq(0.5)), lost);
+  T.eq(R.luckOverride(won, bets, 30, seq(0.0)), won, 'Glück greift nur bei Verlust');
+  T.eq(R.luckOverride({ winner: 'tie' }, bets, 30, seq(0.0)), { winner: 'tie' }, 'Push ist kein Verlust');
+  T.eq(R.luckOverride(lost, bets, 0, seq(0.0)), lost);
+});
+T.test('BaccaratRules: RTP-Simulation 200.000 Hände – Spieler ≈ 98,8 %, Bank ≈ 98,9 %, Unentschieden ≈ 85,6 %', () => {
+  const R = BaccaratRules, rng = seeded(37);
+  let p = 0, b = 0, t = 0; const N = 200000;
+  for (let i = 0; i < N; i++) { const h = R.deal(rng); p += R.settle({ player: 100 }, h); b += R.settle({ banker: 100 }, h); t += R.settle({ tie: 100 }, h); }
+  const rtp = (net) => 100 + net / N; // Einsatz 100 → RTP in Prozent
+  /* Toleranzen ≈ 3σ bei 200.000 Händen (Spieler/Bank σ ≈ 0,21, Unentschieden σ ≈ 0,6) – ein Treffer außerhalb ist ein Tableau-Fehler, keine Statistik */
+  T.ok(Math.abs(rtp(p) - 98.76) < 0.65, `Spieler ${rtp(p).toFixed(2)}`);
+  T.ok(Math.abs(rtp(b) - 98.94) < 0.65, `Bank ${rtp(b).toFixed(2)}`);
+  T.ok(Math.abs(rtp(t) - 85.6) < 2.0, `Unentschieden ${rtp(t).toFixed(2)}`);
 });
 
 /* ---- Story 2: Der Kater ---- */
