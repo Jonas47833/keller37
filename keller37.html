@@ -2033,6 +2033,7 @@ const UI = {
   mobile() { return window.matchMedia('(max-width: 760px)').matches; },
   async show(id) {
     if (this.busy) return;
+    if (typeof Shootout !== 'undefined' && Shootout.running && Shootout.forced && id !== 'shootout') { UI.toast({ icon: '🔫', title: 'Erst das Duell beenden' }); return; }
     const def = this.screens.get(id);
     if (!def) { console.warn('[ui] Screen fehlt:', id); return; }
     if (typeof Story !== 'undefined' && Story.isLocked(id)) { UI.toast({ icon: '🔒', title: Story.lockReason(id), tone: 'loss' }); SFX.play('lose'); return; }
@@ -2208,6 +2209,7 @@ const UI = {
       }, { passive: true });
       document.addEventListener('keydown', (e) => {
         if (typeof Russian !== 'undefined' && Russian.inDuel && Russian.duel && Russian.duel.forced) return;
+        if (typeof Shootout !== 'undefined' && Shootout.running && Shootout.forced) return;
         if (e.key !== 'Escape' || !qs('#cutscene').hidden || !qs('#title').hidden || !UI.current) return;
         const home = State.mode === 'story' && Story.s && Story.s.phase === 'morning' && UI.screens.has('jobs') ? 'jobs' : 'hub';
         if (UI.current.id !== home) UI.show(home);
@@ -5562,6 +5564,7 @@ const Title = {
   async open() {
     if (typeof Story !== 'undefined' && Story.sleeping) { UI.toast({ icon: '⏳', title: 'Erst die Nacht abwarten' }); return; }
     if (typeof Russian !== 'undefined' && Russian.inDuel && Russian.duel && Russian.duel.forced) { UI.toast({ icon: '⏳', title: 'Erst das Duell beenden' }); return; }
+    if (typeof Shootout !== 'undefined' && Shootout.running && Shootout.forced) { UI.toast({ icon: '⏳', title: 'Erst das Duell beenden' }); return; }
     if (Cutscene.active || Game.inFlight > 0) { UI.toast({ icon: '⏳', title: 'Erst die Runde beenden' }); return; }
     State.save();
     const choice = await Title.show();
@@ -5669,6 +5672,7 @@ const Story = {
       if (typeof Perks !== 'undefined') Perks.refreshExcluded(true);
       if (typeof Roulette !== 'undefined') Roulette.lastBets = [];
       if (params.has('day') && params.has('fresh')) State.s.story.day = Math.max(1, parseInt(params.get('day'), 10) || 1);
+      if (params.has('weapon') && params.has('fresh')) State.s.weapon = Math.max(0, Math.min(3, parseInt(params.get('weapon'), 10) || 0));
       this.story = story;
       this.setup();
       State.save();
@@ -5697,7 +5701,7 @@ const Story = {
      dieselbe Story mit ?fresh&day=… erzwingen. */
   consumeDevParams() {
     const params = new URLSearchParams(location.search);
-    const dev = ['story', 'day', 'job', 'ending', 'fresh', 'prev'];
+    const dev = ['story', 'day', 'job', 'ending', 'fresh', 'prev', 'weapon'];
     if (!dev.some((k) => params.has(k))) return;
     dev.forEach((k) => params.delete(k));
     const q = params.toString();
@@ -6007,6 +6011,27 @@ const Story = {
     State.save();
     await wait(800);
     return victim;
+  },
+
+  /* ---- Erzwungene Schießerei ---- */
+  async forceFight(cfg) {
+    const st = this.s;
+    const bonus = cfg.bonus != null ? cfg.bonus : GangRules.weapon(State.s).bonus;
+    Shootout.pending = { kind: cfg.kind, foes: cfg.foes || [], bonus, forced: true };
+    this.allowOnce = 'shootout';
+    await UI.show('shootout');
+    const res = await new Promise((resolve) => {
+      const off = Bus.on('fight:leave', (r) => { off(); resolve(r); });
+      if (!Shootout.running) { off(); resolve({ kind: cfg.kind, won: false, aborted: true }); } // Screen nicht bereit – nicht ewig warten
+    });
+    if (this.stale(st)) return res;
+    st.flags.fightWon = !!res.won; st.flags.fightLost = !res.won; st.flags[`fight_${cfg.kind}`] = true;
+    State.save();
+    await this.runEvents('fight:after');
+    if (!this.stale(st)) { delete st.flags[`fight_${cfg.kind}`]; State.save(); }
+    if (this.stale(st)) return res;
+    await this.checkImmediate();
+    return res;
   },
 };
 
@@ -9140,6 +9165,29 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.eq(events[1], ['leave', 't3', true]);
     } finally {
       off1(); off2(); GangRules.drawWait = keep.wait; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
+    }
+  });
+  T.test('Story.forceFight: Screen, Ergebnis-Flags, fight:after-Events, Aufräumen', async () => {
+    const keep = { s: State.s, mode: State.mode, story: Story.story, cur: UI.current, save: State.save, wait: GangRules.drawWait };
+    State.save = () => {}; GangRules.drawWait = () => 30;
+    const story = { id: 't.fight', title: 'T', days: 3, start: { balance: 100, vars: {}, unlocked: { jobs: [], doors: [], rooms: [] } }, chapters: [], scenes: {},
+      events: [{ id: 'gewonnen', at: 'fight:after', when: { all: [{ flag: 'fight_probe' }, { flag: 'fightWon' }] }, effects: [{ var: 'ruf', add: 1 }] }],
+      endings: [{ id: 'aus', title: 'Aus', scene: 'x', priority: 0, fallback: true }] };
+    try {
+      State.mode = 'story'; State.s = State.freshStory(story); State.s.weapon = 2; Story.story = story;
+      const p = Story.forceFight({ kind: 'probe', foes: ['laeufer'] });
+      await wait(400); // UI.show + mount + start
+      T.eq([UI.current.id, Shootout.running, Shootout.forced, Shootout.cfg.bonus], ['shootout', true, true, 200], 'Waffe 2 → 200 ms');
+      Shootout.ready(); await wait(120); Shootout.tap();
+      T.eq(Shootout.running, false);
+      qs('#btnDuelDone').click();
+      const res = await p;
+      T.eq(res.won, true);
+      T.eq([State.s.story.flags.fightWon, State.s.story.flags.fightLost, State.s.story.flags.fight_probe], [true, false, undefined]);
+      T.eq(State.s.story.vars.ruf, 1, 'fight:after-Event lief');
+    } finally {
+      GangRules.drawWait = keep.wait; State.save = keep.save; State.s = keep.s; State.mode = keep.mode; Story.story = keep.story;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
     }
   });
