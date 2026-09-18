@@ -44,7 +44,7 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
 - **Story 2 „Der Kater":** Fortsetzung – erst spielbar, wenn „Die Schuld" ein Ende hat, und der
   Einstieg hängt davon ab, welches. Hochzeit, Absturz, drei Bier am Tag als Pflicht und als
   Glücksquelle, eine Leber als Countdown, der Doc mit einem Angebot, und der Keller, der zu
-  kaufen ist. Sechs Enden.
+  kaufen ist. Sechs Enden. Story 3 bringt Umsatzzähler (`stake`), kaputte Türen (`broken`/🔧), Story-Funktionen (`call`), Waffen-Slot, `prevEndings` und Job-Overrides – alles generisch.
 
 ## Skills & Insider
 

@@ -86,6 +86,12 @@ Stories.define({
   endings: [ { id, title, priority, when: cond, scene: sceneId, fallback?: true, immediate?: true } ],
 });
 ```
+- `turnoverGroups: { varName: [gameIds] }` – Umsatz-Gruppen; `umsatz`/`umsatzTotal` zählen immer (Bus `stake`).
+- `broken: { door: price }` im Story-Zustand; Effekte `{ break, price }`, `{ repair }`; `StoryRules.repair(s, door)`; Lobby zeigt 🔧.
+- `fns: { name: (s, rng) => out }` mit Effekt `{ call: 'name' }`; `out` wie ein Effekt-Ergebnis (`scene`, `toast`, `achievement`, `force`, `fight`, `show`).
+- Effekt `{ show: 'screen' }`; Hooks `fight:after`, `job:after`; Gear-Slot `weapon` in `SET_KEYS`.
+- `prevEndings: [ids]` + `lockText`; `jobOverrides: { jobId: { base, requires, pay, … } }`; Job-Feld `variant` (an den Screen über `Story.jobStart.variant`).
+- `hud[].max` darf Funktion sein.
 - **Effekte** (in Szenen-Choices und Ereignissen): `{ var: 'vertrauen', add: 1 }`, `{ var: 'schuld', set: 0 }`, `{ flag: 'x' }`, `{ balance: -250 }`, `{ unlock: { jobs: ['taxi'] } }`, `{ force: 'duel' }` (erzwungenes Spiel), `{ loseDay: true }`.
 - Weitere Effekte: `{ luckMod: -15 }` (Story-Glücksmodifikator, wird auf das Endergebnis addiert, das Resultat klemmt auf ≥ 0), `{ jobMod: { spuelerZone, taxiBrakeDelay, postTime, shiftPay } }` bzw. `{ jobMod: null }` (setzt zurück) für Job-Feintuning, `{ price: { brownie: 300 } }` ändert einen Preis zur Laufzeit, `{ enable: ['therapy'] }` / `{ disable: ['beer'] }` schalten Sandbox-Käufe pro Story um.
 - Szenen werden mit der bestehenden `Cutscene.define` definiert; Choices bekommen zusätzlich `effects: [...]`, die die Engine nach der Wahl anwendet. Platzhalter `{{var.schuld}}`, `{{day}}`, `{{balance}}` werden aus dem Story-Kontext gefüllt.
