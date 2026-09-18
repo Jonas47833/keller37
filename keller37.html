@@ -5074,6 +5074,7 @@ const StoryRules = {
     if ('notFlag' in cond) return !st.flags[cond.notFlag];
     if ('unlocked' in cond) return ['jobs', 'doors', 'rooms'].some((k) => st.unlocked[k].includes(cond.unlocked));
     if ('strength' in cond) return StoryRules._ops(cond.strength, s.strength || 0);
+    if ('weapon' in cond) return StoryRules._ops(cond.weapon, s.weapon || 0);
     if ('prevEnding' in cond) return (st.prev || {})[cond.prevEnding.story] === cond.prevEnding.id;
     throw new Error(`Ungültige Bedingung: ${JSON.stringify(cond)}`);
   },
@@ -8880,6 +8881,10 @@ T.test('StoryRules.check: strength', () => {
   T.ok(StoryRules.check({ strength: { gte: 4 } }, s));
   T.ok(!StoryRules.check({ strength: { gte: 5 } }, s));
   T.ok(!StoryRules.check({ strength: { gte: 1 } }, storyBase()));
+});
+T.test('StoryRules.check: weapon', () => {
+  T.eq(StoryRules.check({ weapon: { gte: 1 } }, base({ story: { vars: {}, flags: {} } })), false);
+  T.eq(StoryRules.check({ weapon: { gte: 1 } }, base({ weapon: 2, story: { vars: {}, flags: {} } })), true);
 });
 T.test('StoryRules.validate: Räume', () => {
   T.ok(StoryRules.ROOMS.includes('stadt'));
