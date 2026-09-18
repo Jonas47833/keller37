@@ -6388,12 +6388,13 @@ UI.register('job-taxi', {
 <script id="game-shootout">
 /* ================= SCHIESSEREI „ZIEH!“ – Reaktionsduell, ein Gegner nach dem anderen ================= */
 const Shootout = {
-  root: null, gen: 0, running: false, forced: false, pending: null, cfg: null, foes: [], idx: 0, phase: 'idle', signalAt: 0, timer: null, nextTimer: null, results: [],
+  root: null, gen: 0, running: false, forced: false, pending: null, cfg: null, foes: [], idx: 0, phase: 'idle', signalAt: 0, timer: null, nextTimer: null, results: [], won: false,
   alive(gen) { return !!this.root && this.gen === gen; },
   /* cfg: { kind, foes: ['junge', …], bonus (ms), forced } */
   start(cfg) {
     if (!this.root || this.running) return;
     this.cfg = cfg; this.foes = cfg.foes.map((id) => GangRules.FOES[id]).filter(Boolean); this.idx = 0; this.results = [];
+    if (!this.foes.length) { qs('#duelStatus', this.root).textContent = 'Kein Gegner.'; return; }
     this.running = true; this.forced = !!cfg.forced; this.phase = 'idle';
     qs('#btnDuelStart', this.root).classList.remove('hidden'); qs('#btnDuelDone', this.root).classList.add('hidden');
     qs('#btnDuelStart', this.root).textContent = 'Bereit';
@@ -6446,7 +6447,7 @@ const Shootout = {
     this.nextTimer = setTimeout(() => { if (!this.alive(gen)) return; this.phase = 'idle'; this.renderFoe(); const b = qs('#btnDuelStart', this.root); b.textContent = 'Nächster'; b.classList.remove('hidden'); }, 900);
   },
   finish(won) {
-    this.running = false; this.phase = 'done';
+    this.running = false; this.phase = 'done'; this.won = won;
     if (this.root) {
       qs('#btnDuelStart', this.root).classList.add('hidden'); qs('#btnDuelDone', this.root).classList.remove('hidden');
       const line = won ? 'Alle liegen. Du gehst.' : 'Du liegst. Sie gehen.';
@@ -6456,7 +6457,7 @@ const Shootout = {
   },
   async leave() {
     if (this.running) return;
-    const kind = this.cfg ? this.cfg.kind : null, won = this.results.length > 0 && this.results.every((r) => r.won) && this.idx >= this.foes.length;
+    const kind = this.cfg ? this.cfg.kind : null, won = this.won;
     const forced = this.forced; this.forced = false;
     await Bus.emit('fight:leave', { kind, won });
     if (!forced) await UI.show('hub'); // Story/Dev: die Story entscheidet, wohin es geht (Nacht läuft weiter, Ende, …)
@@ -9122,6 +9123,21 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.eq(events, [['done', 't2', true]]);
       await Shootout.leave();
       T.eq(events[1], ['leave', 't2', true]); T.eq(UI.current.id, 'shootout', 'erzwungen: Screen bleibt, die Story navigiert');
+      events.length = 0;
+      Shootout.start({ kind: 't3', foes: ['laeufer', 'laeufer'], bonus: 300 });
+      Shootout.ready();
+      await wait(120); // Blitz nach 30 ms (gestubbt)
+      Shootout.tap(); // Runde 1 gewonnen: ≈ 90 ms − 300 Bonus → 0 < Läufer (≥ 320)
+      T.eq([Shootout.running, Shootout.idx, Shootout.phase, events], [true, 1, 'result', []], 'Mehr-Gegner-Pfad: läuft weiter, noch kein fight:done');
+      await wait(1000); // nextTimer (900 ms) räumt auf Runde 2 um
+      T.eq([Shootout.phase, qs('#duelCount').textContent, qs('#btnDuelStart').classList.contains('hidden'), qs('#btnDuelStart').textContent], ['idle', '2 / 2', false, 'Nächster']);
+      Shootout.ready();
+      await wait(120);
+      Shootout.tap(); // Runde 2 gewonnen → finish(true)
+      T.eq([Shootout.running, Shootout.results.length, Shootout.results.every((r) => r.won)], [false, 2, true]);
+      T.eq(events, [['done', 't3', true]]);
+      await Shootout.leave();
+      T.eq(events[1], ['leave', 't3', true]);
     } finally {
       off1(); off2(); GangRules.drawWait = keep.wait; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
