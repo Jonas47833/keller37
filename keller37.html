@@ -1166,7 +1166,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
       <button class="btn blue sm" id="btnBacPlayer">auf Spieler</button>
       <button class="btn green sm" id="btnBacTie">auf Unentschieden</button>
       <button class="btn red sm" id="btnBacBanker">auf Bank</button>
-      <button class="btn ghost sm" id="btnBacClear">Leeren</button>
+      <button class="btn ghost" id="btnBacClear">Leeren</button>
       <button class="btn solid" id="btnBacDeal">Geben</button>
       <button class="btn ghost sm" id="bacBack">← Keller</button>
     </div>
@@ -2192,7 +2192,7 @@ UI.register('hub', {
     const hTag = qs('[data-screen="horses"] .chalk-tag', root);
     if (hTag) hTag.textContent = `Quote ${(1 + mods.horsePayout).toFixed(1)}`;
     const hz = qs('[data-screen="hinterzimmer"]', root);
-    if (hz) hz.hidden = !(State.mode === 'story' && typeof Story !== 'undefined' && Story.s && Story.s.enabled && Story.s.enabled.hinterzimmer);
+    if (hz) hz.hidden = !(State.mode === 'story' && typeof Story !== 'undefined' && Story.s && ((Story.s.enabled && Story.s.enabled.hinterzimmer) || Story.s.unlocked.doors.includes('hinterzimmer')));
     qsa('.door', root).forEach((d) => {
       d.addEventListener('click', () => { SFX.play('click'); UI.show(d.dataset.screen); });
       d.addEventListener('mouseenter', () => SFX.play('neonBuzz'));
@@ -8150,7 +8150,8 @@ T.test('BaccaratRules: RTP-Simulation 200.000 Hände – Spieler ≈ 98,8 %, Ban
   let p = 0, b = 0, t = 0; const N = 200000;
   for (let i = 0; i < N; i++) { const h = R.deal(rng); p += R.settle({ player: 100 }, h); b += R.settle({ banker: 100 }, h); t += R.settle({ tie: 100 }, h); }
   const rtp = (net) => 100 + net / N; // Einsatz 100 → RTP in Prozent
-  /* Toleranzen ≈ 3σ bei 200.000 Händen (Spieler/Bank σ ≈ 0,21, Unentschieden σ ≈ 0,6) – ein Treffer außerhalb ist ein Tableau-Fehler, keine Statistik */
+  /* Toleranzen ≈ 3σ bei 200.000 Händen (Spieler/Bank σ ≈ 0,21, Unentschieden σ ≈ 0,6) – grober Plausibilitätskorridor:
+     das Tableau selbst prüft der bankerDraws-Test; ein Treffer außerhalb heißt: settle/deal grob falsch */
   T.ok(Math.abs(rtp(p) - 98.76) < 0.65, `Spieler ${rtp(p).toFixed(2)}`);
   T.ok(Math.abs(rtp(b) - 98.94) < 0.65, `Bank ${rtp(b).toFixed(2)}`);
   T.ok(Math.abs(rtp(t) - 85.6) < 2.0, `Unentschieden ${rtp(t).toFixed(2)}`);
@@ -8816,8 +8817,8 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     }
   });
   T.test('Baccarat-Screen: Einsatz platzieren, Schnappschuss abrechnen, Karten liegen', async () => {
-    const keep = { s: State.s, mode: State.mode, deal: BaccaratRules.deal, save: State.save, cur: UI.current };
-    State.save = () => {};
+    const keep = { s: State.s, mode: State.mode, deal: BaccaratRules.deal, save: State.save, saveMeta: State.saveMeta, cur: UI.current, achievements: [...State.meta.achievements] };
+    State.save = () => {}; State.saveMeta = () => {};
     try {
       State.mode = 'free'; State.s = State.fresh(); State.s.balance = 20000;
       BaccaratRules.deal = () => ({ player: [{ val: '4', suit: '♠' }, { val: '5', suit: '♥' }], banker: [{ val: '2', suit: '♦' }, { val: '3', suit: '♣' }], p: 9, b: 5, natural: true, winner: 'player' });
@@ -8835,8 +8836,10 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       qs('#bacBet', root).value = '400'; Baccarat.place('player');
       T.eq(Baccarat.bets.player, 0, 'krummer Chip abgelehnt');
     } finally {
-      BaccaratRules.deal = keep.deal; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
+      BaccaratRules.deal = keep.deal; State.save = keep.save; State.saveMeta = keep.saveMeta; State.s = keep.s; State.mode = keep.mode;
+      State.meta.achievements = keep.achievements;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
+      UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide();
     }
   });
   T.test('Hub: Tür Hinterzimmer nur sichtbar, wenn die Story sie zeigt', async () => {
@@ -8852,6 +8855,12 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       const door = qs('[data-screen="hinterzimmer"]', qs('#stage'));
       T.eq(door.hidden, false, 'Story mit enabled: sichtbar');
       T.ok(door.classList.contains('locked'), 'ohne unlocked.doors gesperrt');
+      State.s.story.enabled.hinterzimmer = false;
+      State.s.story.unlocked.doors.push('hinterzimmer');
+      await UI.show('hub');
+      const door2 = qs('[data-screen="hinterzimmer"]', qs('#stage'));
+      T.eq(door2.hidden, false, 'Story ohne enabled, aber unlocked.doors: sichtbar');
+      T.ok(!door2.classList.contains('locked'), 'unlocked.doors: nicht gesperrt');
     } finally {
       State.save = keep.save; State.s = keep.s; State.mode = keep.mode; Story.story = keep.story;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
