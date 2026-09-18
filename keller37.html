@@ -692,7 +692,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
   background: radial-gradient(circle at 10% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 25% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 40% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 50% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 60% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 75% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 90% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px); }
 .cs-bg.royal::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: linear-gradient(180deg, transparent, rgba(0,0,0,.4)), repeating-linear-gradient(45deg, #141216 0 28px, #1a171c 28px 56px); opacity: .7; }
 .cs-portrait.royal-frame { border-color: #c9a961; box-shadow: 0 0 0 3px #0b0a0c, 0 0 0 4px #8a6a2e, 0 0 24px rgba(201,169,97,.4); }
-.gold-drop { position: absolute; top: -10%; z-index: 5; pointer-events: none; animation: goldDrop 2.2s ease-in both; text-shadow: 0 0 8px rgba(241,223,168,.8); }
+.gold-drop { position: fixed; top: -5vh; z-index: 79; pointer-events: none; animation: goldDrop 2.2s ease-in both; text-shadow: 0 0 8px rgba(241,223,168,.8); }
 @keyframes goldDrop { from { transform: translateY(0) rotate(0); opacity: 1; } to { transform: translateY(110vh) rotate(360deg); opacity: .2; } }
 .balance.gold-flash { animation: goldFlash .8s ease both; }
 @keyframes goldFlash { 0% { box-shadow: 0 0 0 0 rgba(241,223,168,.9); } 100% { box-shadow: 0 0 0 22px rgba(241,223,168,0); } }
@@ -3265,10 +3265,9 @@ const Royal = {
   goldRain(n = 30) {
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const count = reduced || UI.mobile() ? 12 : n;
-    const stage = qs('#stage'); if (!stage) return;
     for (let i = 0; i < count; i++) {
       const p = h('span', { class: 'gold-drop', style: `left:${rand(2, 98)}%; animation-delay:${rand(0, 0.8)}s; font-size:${rand(1, 2)}rem` }, pick(['🪙', '✨', '✦']));
-      stage.append(p); setTimeout(() => p.remove(), 2600);
+      document.body.append(p); setTimeout(() => p.remove(), 2600);
     }
     const bal = qs('#balance'); if (bal) { bal.classList.remove('gold-flash'); void bal.offsetWidth; bal.classList.add('gold-flash'); }
   },
