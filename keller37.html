@@ -5219,6 +5219,45 @@ const RoyalRules = {
 };
 </script>
 
+<script id="baccarat-rules">
+/* ================= BACCARAT (Punto Banco) – reine Regeln, kein DOM ================= */
+const BaccaratRules = {
+  MIN: 500, MAX: 10000, CHIPS: [500, 1000, 5000, 10000],
+  PAY: { player: 1, banker: 0.95, tie: 8 },
+  RANKS: ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'],
+  SUITS: ['♠', '♥', '♦', '♣'],
+  /* Unendlicher Schuh: erst Rang, dann Farbe – zwei rng-Aufrufe pro Karte */
+  card(rng) { const R = BaccaratRules; return { val: R.RANKS[Math.floor(rng() * 13)], suit: R.SUITS[Math.floor(rng() * 4)] }; },
+  value(c) { const i = BaccaratRules.RANKS.indexOf(c.val); return i >= 9 ? 0 : i + 1; },
+  total(cards) { return cards.reduce((a, c) => a + BaccaratRules.value(c), 0) % 10; },
+  /* Drittkarten-Tableau der Bank; playerThird = Wert der Spieler-Drittkarte oder null (Spieler stand) */
+  bankerDraws(bankerTotal, playerThird) {
+    if (playerThird == null) return bankerTotal <= 5;
+    switch (bankerTotal) {
+      case 0: case 1: case 2: return true;
+      case 3: return playerThird !== 8;
+      case 4: return playerThird >= 2 && playerThird <= 7;
+      case 5: return playerThird >= 4 && playerThird <= 7;
+      case 6: return playerThird === 6 || playerThird === 7;
+      default: return false;
+    }
+  },
+  deal(rng) {
+    const R = BaccaratRules;
+    const player = [R.card(rng)], banker = [R.card(rng)];
+    player.push(R.card(rng)); banker.push(R.card(rng));
+    const natural = R.total(player) >= 8 || R.total(banker) >= 8;
+    let playerThird = null;
+    if (!natural) {
+      if (R.total(player) <= 5) { const c = R.card(rng); player.push(c); playerThird = R.value(c); }
+      if (R.bankerDraws(R.total(banker), playerThird)) banker.push(R.card(rng));
+    }
+    const p = R.total(player), b = R.total(banker);
+    return { player, banker, p, b, natural, winner: p > b ? 'player' : b > p ? 'banker' : 'tie' };
+  },
+};
+</script>
+
 <script id="title">
 /* ================= TITELSCREEN – Modus-Wahl ================= */
 const Title = {
@@ -7849,6 +7888,44 @@ T.test('STORY_SCHULD: Flucht braucht Ruf, Igor sieht sie nur nach einer Tür-Sch
   T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), []);
   s.story.jobToday = 'tuersteher';
   T.eq(night(), ['fluchtFrage', 'igorSah']);
+});
+
+/* ---- Baccarat ---- */
+/* rng-Helfer: eine Karte = zwei rng-Werte (Rang-Index/13, Farbe/4) */
+const bacCard = (rankIdx, suitIdx = 0) => [rankIdx / 13 + 0.001, suitIdx / 4 + 0.001];
+T.test('BaccaratRules: Kartenwerte – A=1, 2–9 Zahl, 10/J/Q/K = 0, Summe modulo 10', () => {
+  const R = BaccaratRules;
+  T.eq(R.card(seq(...bacCard(0, 1))), { val: 'A', suit: '♥' });
+  T.eq(R.card(seq(...bacCard(12, 3))), { val: 'K', suit: '♣' });
+  T.eq(['A', '5', '9', '10', 'J', 'Q', 'K'].map((val) => R.value({ val, suit: '♠' })), [1, 5, 9, 0, 0, 0, 0]);
+  T.eq(R.total([{ val: '7', suit: '♠' }, { val: '8', suit: '♠' }]), 5);
+  T.eq(R.total([{ val: 'K', suit: '♠' }, { val: '9', suit: '♠' }]), 9);
+});
+T.test('BaccaratRules.bankerDraws: komplettes Tableau', () => {
+  const R = BaccaratRules;
+  for (const t of [0, 1, 2, 3, 4, 5]) T.eq(R.bankerDraws(t, null), true, `ohne Spieler-Drittkarte zieht Bank bei ${t}`);
+  for (const t of [6, 7]) T.eq(R.bankerDraws(t, null), false);
+  for (const t of [0, 1, 2]) for (const p of [0, 5, 9]) T.eq(R.bankerDraws(t, p), true, `Bank ${t} zieht immer`);
+  T.eq([0, 7, 8, 9].map((p) => R.bankerDraws(3, p)), [true, true, false, true], 'Bank 3: außer bei 8');
+  T.eq([1, 2, 7, 8].map((p) => R.bankerDraws(4, p)), [false, true, true, false], 'Bank 4: bei 2–7');
+  T.eq([3, 4, 7, 8].map((p) => R.bankerDraws(5, p)), [false, true, true, false], 'Bank 5: bei 4–7');
+  T.eq([5, 6, 7, 8].map((p) => R.bankerDraws(6, p)), [false, true, true, false], 'Bank 6: bei 6–7');
+  for (const p of [0, 6, 9]) T.eq(R.bankerDraws(7, p), false, 'Bank 7 steht');
+});
+T.test('BaccaratRules.deal: Natural beendet, Spieler zieht ≤ 5, Bank nach Tableau, Gewinner', () => {
+  const R = BaccaratRules;
+  /* Reihenfolge: P1 B1 P2 B2 – Spieler 4+5 = 9 (Natural), Bank 2+3 = 5 → keine Drittkarten */
+  let h = R.deal(seq(...bacCard(3), ...bacCard(1), ...bacCard(4), ...bacCard(2)));
+  T.eq([h.p, h.b, h.natural, h.winner, h.player.length, h.banker.length], [9, 5, true, 'player', 2, 2]);
+  /* Spieler 2+3 = 5 → zieht 9 → 4; Bank 6+K = 6, Spieler-Drittkarte 9 → Bank steht → Bank gewinnt 6:4 */
+  h = R.deal(seq(...bacCard(1), ...bacCard(5), ...bacCard(2), ...bacCard(12), ...bacCard(8)));
+  T.eq([h.p, h.b, h.natural, h.winner, h.player.length, h.banker.length], [4, 6, false, 'banker', 3, 2]);
+  /* Spieler 6+K = 6 steht; Bank 2+2 = 4 ohne Spieler-Drittkarte → zieht 2 → 6 → Unentschieden */
+  h = R.deal(seq(...bacCard(5), ...bacCard(1), ...bacCard(12), ...bacCard(1), ...bacCard(1)));
+  T.eq([h.p, h.b, h.winner, h.player.length, h.banker.length], [6, 6, 'tie', 2, 3]);
+  /* Spieler 2+2 = 4 → zieht 3 → 7; Bank 3+K = 3, Spieler-Drittkarte 3 (≠ 8) → zieht 5 → 8 → Bank */
+  h = R.deal(seq(...bacCard(1), ...bacCard(2), ...bacCard(1), ...bacCard(12), ...bacCard(2), ...bacCard(4)));
+  T.eq([h.p, h.b, h.winner, h.banker.length], [7, 8, 'banker', 3]);
 });
 
 /* ---- Story 2: Der Kater ---- */
