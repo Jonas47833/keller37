@@ -646,6 +646,22 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .craps-bet p { font-size: .75rem; color: rgba(255,255,255,.7); margin: 4px 0 0; }
 .craps-bet.won { box-shadow: 0 0 0 3px var(--neon-green); } .craps-bet.lost { opacity: .5; }
 .craps-history { font-family: var(--font-mono); font-size: .8rem; color: rgba(255,255,255,.7); text-align: center; margin-top: 10px; min-height: 1.2em; }
+.door[hidden] { display: none; } /* .door setzt keine display-Eigenschaft, aber sicher ist sicher – die Hinterzimmer-Tür ist außerhalb von Story 3 versteckt */
+.bac-panel { align-items: stretch; }
+.bac-table { background: radial-gradient(ellipse at 50% 20%, #5a1f1f, #2a0b0b 70%, #150505); border: 6px solid #3a2410; border-radius: 26px; padding: 16px 22px; box-shadow: var(--shadow), inset 0 0 60px rgba(0,0,0,.6); }
+.bac-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-family: var(--font-display); font-size: 1.3rem; }
+.bac-croupier { font-family: var(--font-mono); font-size: .75rem; color: rgba(255,255,255,.6); text-align: right; }
+.bac-hands { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+.bac-hand { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.bac-hand .cards { min-height: 100px; }
+.bac-hand.natural .hand-val { color: var(--gold); text-shadow: 0 0 10px var(--gold); }
+.bac-bets { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.bac-bet { border: 2px dashed rgba(255,255,255,.45); border-radius: 10px; padding: 8px; text-align: center; color: #fff; }
+.bac-bet h4 { margin: 0; font-family: var(--font-display); letter-spacing: .12em; font-size: .95rem; }
+.bac-bet .amt { font-family: var(--font-mono); font-size: 1.1rem; color: var(--gold-2); }
+.bac-bet p { font-size: .72rem; color: rgba(255,255,255,.7); margin: 3px 0 0; }
+.bac-bet.won { box-shadow: 0 0 0 3px var(--neon-green); } .bac-bet.lost { opacity: .5; } .bac-bet.push { box-shadow: 0 0 0 3px rgba(255,255,255,.5); }
+@media (max-width: 760px) { .bac-bets { grid-template-columns: 1fr; } .bac-head { flex-direction: column; align-items: flex-start; } }
 @media (max-width: 760px) { .craps-table { border-radius: 60px / 30px; padding: 14px 16px; } .craps-bets { grid-template-columns: 1fr; } }
 /* Casino Royal – Glücksrad */
 .wheel-panel { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
@@ -1122,6 +1138,36 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
       <button class="chip" data-chip="1000" data-v="max">1000</button>
       <button class="btn solid" id="btnMega">Drehen</button>
       <button class="btn ghost sm" id="megaBack">← Lobby</button>
+    </div>
+  </div>
+</template>
+<template id="tpl-baccarat">
+  <div class="panel bac-panel">
+    <div class="bac-table">
+      <div class="bac-head"><span class="neon" style="--neon: var(--gold-2)">HINTERZIMMER</span><span class="bac-croupier" id="bacCroupier">Der Stumme legt die Karten. Er sagt nichts.</span></div>
+      <div class="bac-hands">
+        <div class="bac-hand"><div class="hand-label">Spieler <span class="hand-val" id="bacPlayerVal">–</span></div><div class="cards" id="bacPlayerCards"></div></div>
+        <div class="bac-hand"><div class="hand-label">Bank <span class="hand-val" id="bacBankerVal">–</span></div><div class="cards" id="bacBankerCards"></div></div>
+      </div>
+      <div class="bac-bets">
+        <div class="bac-bet" id="bacPlayerBox"><h4>SPIELER</h4><div class="amt" id="bacPlayerAmt">0 €</div><p>zahlt 1:1</p></div>
+        <div class="bac-bet" id="bacTieBox"><h4>UNENTSCHIEDEN</h4><div class="amt" id="bacTieAmt">0 €</div><p>zahlt 8:1</p></div>
+        <div class="bac-bet" id="bacBankerBox"><h4>BANK</h4><div class="amt" id="bacBankerAmt">0 €</div><p>zahlt 0,95:1</p></div>
+      </div>
+    </div>
+    <div class="status" id="bacStatus">500 bis 10.000 € pro Hand. Kein Kleingeld.</div>
+    <div class="bet-bar">
+      <input type="number" id="bacBet" value="500" min="500" hidden>
+      <button class="chip" data-chip="500" data-v="50">500</button>
+      <button class="chip" data-chip="1000" data-v="25">1000</button>
+      <button class="chip" data-chip="5000" data-v="100">5000</button>
+      <button class="chip" data-chip="10000" data-v="max">10000</button>
+      <button class="btn blue sm" id="btnBacPlayer">auf Spieler</button>
+      <button class="btn green sm" id="btnBacTie">auf Unentschieden</button>
+      <button class="btn red sm" id="btnBacBanker">auf Bank</button>
+      <button class="btn ghost sm" id="btnBacClear">Leeren</button>
+      <button class="btn solid" id="btnBacDeal">Geben</button>
+      <button class="btn ghost sm" id="bacBack">← Keller</button>
     </div>
   </div>
 </template>
@@ -3372,6 +3418,109 @@ UI.register('wheel', {
 /* Neustart / Tagesende: Freispiele verfallen, die Tische werden geräumt */
 Bus.on('gameover:restart', () => { MegaSlots.freeLeft = 0; MegaSlots.freeRun = null; Craps.reset(); });
 Bus.on('story:day', () => { MegaSlots.freeLeft = 0; MegaSlots.freeRun = null; Craps.reset(); });
+</script>
+
+<script id="game-baccarat">
+/* ================= HINTERZIMMER – Baccarat (Punto Banco), Anabis Tisch ================= */
+const Baccarat = {
+  root: null, dealing: false, gen: 0, bets: { player: 0, banker: 0, tie: 0 }, run: null, naturals: 0,
+  alive(gen) { return !!this.root && this.gen === gen; },
+  /* Einsätze gehören zum Spielstand: anderer State.s → Tisch räumen */
+  checkRun() { if (this.run !== State.s) { this.reset(); this.render(); } },
+  reset() { this.bets = { player: 0, banker: 0, tie: 0 }; this.run = null; },
+  place(kind) {
+    if (this.dealing || !this.root) return;
+    this.checkRun();
+    const v = Game.readBet('bacBet');
+    if (!BaccaratRules.CHIPS.includes(v)) { UI.toast({ icon: '🂡', title: 'Einsatz', text: 'Hier gilt 500, 1.000, 5.000 oder 10.000 €.', tone: 'loss' }); return; }
+    const next = Object.assign({}, this.bets); next[kind] += v;
+    const chk = BaccaratRules.checkBets(next);
+    if (!chk.ok && chk.reason === 'max') { UI.toast({ icon: '🂡', title: 'Tischlimit', text: `Höchstens ${UI.fmt(BaccaratRules.MAX)} pro Hand.`, tone: 'loss' }); return; }
+    this.bets = next; this.run = State.s;
+    SFX.play('chip'); this.render();
+  },
+  clear() { if (this.dealing || !this.root) return; this.bets = { player: 0, banker: 0, tie: 0 }; SFX.play('click'); this.render(); },
+  render() {
+    if (!this.root) return;
+    qs('#bacPlayerAmt', this.root).textContent = UI.fmt(this.bets.player);
+    qs('#bacBankerAmt', this.root).textContent = UI.fmt(this.bets.banker);
+    qs('#bacTieAmt', this.root).textContent = UI.fmt(this.bets.tie);
+    qs('#btnBacDeal', this.root).disabled = this.dealing || !BaccaratRules.checkBets(this.bets).ok;
+  },
+  async showCards(hand, gen, reduced) {
+    const p = qs('#bacPlayerCards', this.root), b = qs('#bacBankerCards', this.root);
+    p.innerHTML = ''; b.innerHTML = '';
+    qs('#bacPlayerVal', this.root).textContent = '–'; qs('#bacBankerVal', this.root).textContent = '–';
+    qsa('.bac-hand', this.root).forEach((el) => el.classList.remove('natural'));
+    const order = [['p', 0], ['b', 0], ['p', 1], ['b', 1], ['p', 2], ['b', 2]];
+    for (const [side, i] of order) {
+      const cards = side === 'p' ? hand.player : hand.banker;
+      if (!cards[i]) continue;
+      if (!this.alive(gen)) return;
+      (side === 'p' ? p : b).append(Blackjack.cardEl(cards[i]));
+      SFX.play('cardSlide');
+      qs(side === 'p' ? '#bacPlayerVal' : '#bacBankerVal', this.root).textContent = BaccaratRules.total(cards.slice(0, i + 1));
+      await wait(reduced ? 60 : 420);
+    }
+    if (!this.alive(gen)) return;
+    if (hand.natural) qsa('.bac-hand', this.root).forEach((el, k) => { if ((k === 0 ? hand.p : hand.b) >= 8) el.classList.add('natural'); });
+  },
+  async deal() {
+    if (this.dealing || !this.root) return;
+    this.checkRun();
+    const bets = Object.assign({}, this.bets); // Schnappschuss – abgerechnet wird, was abgezogen wurde
+    const chk = BaccaratRules.checkBets(bets);
+    if (!chk.ok) { UI.toast({ icon: '🂡', title: chk.reason === 'min' ? `Mindestens ${UI.fmt(BaccaratRules.MIN)}` : 'Tischlimit', tone: 'loss' }); return; }
+    if (!Game.beginSpin(chk.total)) return;
+    const run = Game.run, gen = this.gen;
+    this.dealing = true; this.render();
+    try {
+      qsa('.bac-bet', this.root).forEach((el) => el.classList.remove('won', 'lost', 'push'));
+      qs('#bacStatus', this.root).textContent = 'Der Stumme gibt…';
+      const mods = Perks.mods();
+      let hand = BaccaratRules.deal(Math.random);
+      hand = BaccaratRules.luckOverride(hand, bets, Rules.effectiveLuck(Rules.luck(State.s, mods), chk.total), Math.random);
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      await this.showCards(hand, gen, reduced);
+      const delta = BaccaratRules.settle(bets, hand);
+      this.bets = { player: 0, banker: 0, tie: 0 };
+      if (hand.natural) this.naturals++;
+      if (this.naturals >= 5) Achievements.unlock('natural');
+      if (this.alive(gen)) {
+        const box = { player: '#bacPlayerBox', banker: '#bacBankerBox', tie: '#bacTieBox' };
+        for (const k of ['player', 'banker', 'tie']) { if (!bets[k]) continue; const el = qs(box[k], this.root); el.classList.add(hand.winner === k ? 'won' : (hand.winner === 'tie' && k !== 'tie') ? 'push' : 'lost'); }
+        const who = hand.winner === 'player' ? 'Spieler' : hand.winner === 'banker' ? 'Bank' : 'Unentschieden';
+        qs('#bacStatus', this.root).innerHTML = `<span class="${delta > 0 ? 'win' : delta < 0 ? 'loss' : ''}">${who} ${hand.p}:${hand.b}${hand.natural ? ' · Natural' : ''} (${delta >= 0 ? '+' : '−'}${UI.fmt(Math.abs(delta))})</span>`;
+        SFX.play(delta > 0 ? 'cash' : delta < 0 ? 'lose' : 'click');
+        this.render();
+      }
+      await Bus.emit('baccarat:result', { delta, bet: chk.total, detail: { hand, bets } });
+      await Game.settle(delta, { from: this.alive(gen) ? qs('.bac-table', this.root) : null, game: 'baccarat', bet: chk.total, run });
+    } finally {
+      if (this.gen === gen) { this.dealing = false; this.render(); }
+    }
+  },
+  onKey(e) { if (e.code === 'Space' && qs('#cutscene').hidden && !e.repeat) { e.preventDefault(); Baccarat.deal(); } },
+};
+UI.register('hinterzimmer', {
+  template: 'tpl-baccarat',
+  mount(root) {
+    Baccarat.gen++; Baccarat.root = root; Baccarat.naturals = 0;
+    if (Baccarat.run !== State.s) Baccarat.reset();
+    Game.bindBet(root, 'bacBet', () => BaccaratRules.MAX);
+    qs('#btnBacPlayer', root).addEventListener('click', () => Baccarat.place('player'));
+    qs('#btnBacBanker', root).addEventListener('click', () => Baccarat.place('banker'));
+    qs('#btnBacTie', root).addEventListener('click', () => Baccarat.place('tie'));
+    qs('#btnBacClear', root).addEventListener('click', () => Baccarat.clear());
+    qs('#btnBacDeal', root).addEventListener('click', () => Baccarat.deal());
+    qs('#bacBack', root).addEventListener('click', () => { SFX.play('click'); UI.show('hub'); });
+    document.addEventListener('keydown', Baccarat.onKey);
+    Baccarat.render();
+  },
+  unmount() { Baccarat.gen++; document.removeEventListener('keydown', Baccarat.onKey); Baccarat.root = null; Baccarat.dealing = false; },
+});
+Bus.on('gameover:restart', () => Baccarat.reset());
+Bus.on('story:day', () => Baccarat.reset());
 </script>
 
 <script id="game-slots">
@@ -8659,6 +8808,30 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.eq(notes.map((n) => n.textContent), ['🧺 Umsatz 12.400 € / 20.000 €', '💪 Mut 2/3', '🧾 Kredit 0 €']);
     } finally {
       State.mode = keep.mode; State.s = keep.s; Story.story = keep.story; State.save = keep.save;
+    }
+  });
+  T.test('Baccarat-Screen: Einsatz platzieren, Schnappschuss abrechnen, Karten liegen', async () => {
+    const keep = { s: State.s, mode: State.mode, deal: BaccaratRules.deal, save: State.save, cur: UI.current };
+    State.save = () => {};
+    try {
+      State.mode = 'free'; State.s = State.fresh(); State.s.balance = 20000;
+      BaccaratRules.deal = () => ({ player: [{ val: '4', suit: '♠' }, { val: '5', suit: '♥' }], banker: [{ val: '2', suit: '♦' }, { val: '3', suit: '♣' }], p: 9, b: 5, natural: true, winner: 'player' });
+      await UI.show('hinterzimmer');
+      const root = qs('#stage');
+      qs('#bacBet', root).value = '1000';
+      Baccarat.place('player'); Baccarat.place('banker');
+      T.eq(Baccarat.bets, { player: 1000, banker: 1000, tie: 0 });
+      T.eq(qs('#btnBacDeal', root).disabled, false);
+      await Baccarat.deal();
+      T.eq(State.s.balance, 20000, 'Spieler +1.000, Bank −1.000');
+      T.eq(qsa('#bacPlayerCards .pcard', root).length, 2); T.eq(qsa('#bacBankerCards .pcard', root).length, 2);
+      T.eq(Baccarat.bets, { player: 0, banker: 0, tie: 0 }, 'Tisch geräumt');
+      T.ok(qs('#bacPlayerBox', root).classList.contains('won') && qs('#bacBankerBox', root).classList.contains('lost'));
+      qs('#bacBet', root).value = '400'; Baccarat.place('player');
+      T.eq(Baccarat.bets.player, 0, 'krummer Chip abgelehnt');
+    } finally {
+      BaccaratRules.deal = keep.deal; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
     }
   });
 }
