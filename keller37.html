@@ -5622,7 +5622,7 @@ const Story = {
   decorateHub(root) {
     qsa('.door', root).forEach((d) => {
       const id = d.dataset.screen;
-      const price = this.s.broken ? this.s.broken[id] : null;
+      const price = State.mode === 'story' && this.story && this.s && this.s.broken ? this.s.broken[id] : null;
       if (price != null) {
         d.classList.add('locked', 'broken');
         qs('.chalk-tag', d).textContent = 'Zertrümmert';
@@ -8355,6 +8355,20 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       State.mode = keep.mode; State.s = keep.s; State.save = keep.save; State.saveMeta = keep.saveMeta;
       Story.story = keep.story; Cutscene.play = keep.play;
       UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide(); Story.renderDaybar();
+    }
+  });
+  /* Casino Royal mountet mit UI.register('royal', …) Story.decorateHub(root) ungeprüft (auch im freien Spiel) –
+     this.s (State.s.story) ist dort undefined, decorateHub darf also nicht ungeprüft this.s.broken lesen. */
+  T.test('Story.decorateHub: freies Spiel (this.s = State.s.story = undefined) wirft nicht und sperrt nichts', () => {
+    const keep = { mode: State.mode, s: State.s, story: Story.story };
+    try {
+      State.mode = 'free'; State.s = State.fresh(); Story.story = null;
+      const root = document.createElement('div');
+      root.innerHTML = '<div class="door" data-screen="slots"><div class="chalk-tag"></div></div>';
+      Story.decorateHub(root);
+      T.eq(qsa('.door.locked', root).length, 0, 'im freien Spiel keine Sperre');
+    } finally {
+      State.mode = keep.mode; State.s = keep.s; Story.story = keep.story;
     }
   });
 }
