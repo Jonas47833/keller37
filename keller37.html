@@ -6019,11 +6019,12 @@ const Story = {
     const bonus = cfg.bonus != null ? cfg.bonus : GangRules.weapon(State.s).bonus;
     Shootout.pending = { kind: cfg.kind, foes: cfg.foes || [], bonus, forced: true };
     this.allowOnce = 'shootout';
+    let resolveRes;
+    const resPromise = new Promise((resolve) => { resolveRes = resolve; });
+    const off = Bus.on('fight:leave', (r) => { off(); resolveRes(r); });
     await UI.show('shootout');
-    const res = await new Promise((resolve) => {
-      const off = Bus.on('fight:leave', (r) => { off(); resolve(r); });
-      if (!Shootout.running) { off(); resolve({ kind: cfg.kind, won: false, aborted: true }); } // Screen nicht bereit – nicht ewig warten
-    });
+    if (!Shootout.running) { off(); resolveRes({ kind: cfg.kind, won: false, aborted: true }); } // Screen nicht bereit – nicht ewig warten
+    const res = await resPromise;
     if (this.stale(st)) return res;
     st.flags.fightWon = !!res.won; st.flags.fightLost = !res.won; st.flags[`fight_${cfg.kind}`] = true;
     State.save();
@@ -9165,6 +9166,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.eq(events[1], ['leave', 't3', true]);
     } finally {
       off1(); off2(); GangRules.drawWait = keep.wait; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
+      clearTimeout(Shootout.timer); clearTimeout(Shootout.nextTimer); Shootout.running = false; Shootout.forced = false; Shootout.pending = null;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
     }
   });
@@ -9188,6 +9190,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.eq(State.s.story.vars.ruf, 1, 'fight:after-Event lief');
     } finally {
       GangRules.drawWait = keep.wait; State.save = keep.save; State.s = keep.s; State.mode = keep.mode; Story.story = keep.story;
+      clearTimeout(Shootout.timer); clearTimeout(Shootout.nextTimer); Shootout.running = false; Shootout.forced = false; Shootout.pending = null;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
     }
   });
