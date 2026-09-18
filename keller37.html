@@ -8419,7 +8419,32 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     for (const id of ['anabi', 'stumme', 'kessler', 'brandt', 'kowalski']) T.ok(Cutscene.CAST[id] && Cutscene.CAST[id].name, `Figur ${id}`);
     T.ok(Cutscene.PROPS.bahnhof && Cutscene.PROPS.pfandleihe, 'Props');
     const probe = document.createElement('div'); probe.className = 'cs-bg bahnhof'; document.body.append(probe);
-    T.ok(getComputedStyle(probe).backgroundImage !== 'none', 'Hintergrund bahnhof hat CSS'); probe.remove();
+    try { T.ok(getComputedStyle(probe).backgroundImage !== 'none', 'Hintergrund bahnhof hat CSS'); } finally { probe.remove(); }
+  });
+  if (typeof document !== 'undefined') T.test('Story.hudNotes: Zahl-Max, Geld ohne Max, Geld mit Funktions-Max', () => {
+    const keep = { mode: State.mode, s: State.s, story: Story.story, save: State.save };
+    try {
+      State.save = () => {};
+      const story = {
+        id: 'hudtest', title: 'HUD-Test', days: 1,
+        start: { balance: 0, vars: { umsatz: 0, ziel: 0, mut: 0, kredit: 0 }, unlocked: { jobs: [], doors: [], rooms: [] } },
+        chapters: [], events: [], scenes: {},
+        hud: [
+          { var: 'umsatz', label: '🧺 Umsatz', fmt: 'money', max: (s) => s.story.vars.ziel || 0 },
+          { var: 'mut', label: '💪 Mut', max: 3 },
+          { var: 'kredit', label: '🧾 Kredit', fmt: 'money' },
+        ],
+        endings: [{ id: 'aus', title: 'Aus', scene: 'x', priority: 0, fallback: true }],
+      };
+      State.mode = 'story';
+      State.s = State.freshStory(story);
+      State.s.story.vars = { umsatz: 12400, ziel: 20000, mut: 2, kredit: 0 };
+      Story.story = story;
+      const notes = Story.hudNotes();
+      T.eq(notes.map((n) => n.textContent), ['🧺 Umsatz 12.400 € / 20.000 €', '💪 Mut 2/3', '🧾 Kredit 0 €']);
+    } finally {
+      State.mode = keep.mode; State.s = keep.s; Story.story = keep.story; State.save = keep.save;
+    }
   });
 }
 
