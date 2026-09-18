@@ -5554,6 +5554,56 @@ const GangRules = {
     if (tickets >= 2) return { pay: 0, kontrolle: true };
     return { pay: tickets === 0 ? 3000 : 1500, kontrolle: false };
   },
+  /* ---- Story 3: Wäsche-Wochen ---- */
+  WEEKS: [
+    { lieferung: 10000, ziel: 20000, rueckgabe: 11000 },
+    { lieferung: 20000, ziel: 40000, rueckgabe: 22000 },
+    { lieferung: 30000, ziel: 60000, rueckgabe: 33000 },
+    { lieferung: 40000, ziel: 80000, rueckgabe: 44000 },
+  ],
+  BAHNHOF_MULT: 1.5,
+  week(n, bahnhof) {
+    const W = GangRules.WEEKS, w = W[Math.min(W.length, Math.max(1, n)) - 1];
+    return { lieferung: w.lieferung, ziel: bahnhof ? Math.round(w.ziel * GangRules.BAHNHOF_MULT / 1000) * 1000 : w.ziel, rueckgabe: w.rueckgabe };
+  },
+  KREDIT_NACHLASS: 5000, KREDIT_AUFSCHLAG: 1.5, KREDIT_SCHRITT: 5000,
+  /* Vier Ausgänge: Umsatz erreicht? Zahlen möglich? – pay ist, was der Abholer mitnimmt (höchstens den Kontostand) */
+  abrechnung({ umsatz, ziel, balance, rueckgabe }) {
+    const umsatzOk = umsatz >= ziel, kannZahlen = balance >= rueckgabe;
+    if (umsatzOk && kannZahlen) return { ausgang: 'ok', pay: rueckgabe, kreditDelta: -GangRules.KREDIT_NACHLASS, zornDelta: -1, belegDelta: 1 };
+    if (!umsatzOk && kannZahlen) return { ausgang: 'umsatz', pay: rueckgabe, kreditDelta: 0, zornDelta: 1, belegDelta: 0 };
+    const pay = Math.max(0, balance), rest = Math.round((rueckgabe - pay) * GangRules.KREDIT_AUFSCHLAG);
+    return { ausgang: umsatzOk ? 'geld' : 'beides', pay, kreditDelta: rest, zornDelta: umsatzOk ? 1 : 2, belegDelta: 0 };
+  },
+  ZORN_MAX: 3,
+  zorn(v, d) { return Math.max(0, Math.min(GangRules.ZORN_MAX, (v || 0) + d)); },
+  /* ---- Dein Keller ---- */
+  KELLER_DOORS: ['roulette', 'slots', 'horses', 'russian', 'blackjack'],
+  KASSE_PRO_SPIEL: 250,
+  nachtkasse(broken = {}) {
+    const kaputt = GangRules.KELLER_DOORS.filter((d) => broken[d] != null);
+    return { sum: (GangRules.KELLER_DOORS.length - kaputt.length) * GangRules.KASSE_PRO_SPIEL, kaputt };
+  },
+  REPAIR: { roulette: 6000, blackjack: 5000, slots: 4000, horses: 3000, russian: 2000 },
+  repairPrice(door, igor) { const p = GangRules.REPAIR[door]; return igor ? Math.round(p / 2 / 100) * 100 : p; },
+  RAID: { base: 0.25, igor: 0.15 },
+  raidChance(flags) { return flags.bahnhof ? 0 : flags.igor ? GangRules.RAID.igor : GangRules.RAID.base; },
+  /* rng 1: Chance; rng 2: Wahl unter den intakten Türen (KELLER_DOORS-Reihenfolge) */
+  raid(broken = {}, flags = {}, rng = Math.random) {
+    const chance = GangRules.raidChance(flags);
+    const intact = GangRules.KELLER_DOORS.filter((d) => broken[d] == null);
+    if (!chance || !intact.length) return null;
+    if (rng() >= chance) return null;
+    return intact[Math.min(intact.length - 1, Math.floor(rng() * intact.length))];
+  },
+  AMBUSH: { base: 0.15, max: 3 },
+  ambushChance(flags, weapon) { return flags.bahnhof ? 0 : GangRules.AMBUSH.base * (weapon && weapon.ambushMult ? weapon.ambushMult : 1); },
+  ambushCount(rng) { return 1 + Math.min(GangRules.AMBUSH.max - 1, Math.floor(rng() * GangRules.AMBUSH.max)); },
+  ROB: { pct: 0.2, max: 5000 },
+  robbery(balance) { return Math.max(0, Math.min(GangRules.ROB.max, Math.round(balance * GangRules.ROB.pct))); },
+  /* ---- Schwellen ---- */
+  ROYAL: { warn: 10000, bann: 15000 },
+  ABLOESE: 100000, FLUCHT_MIN: 30000, IGOR_BIERE: 3, BELEG_RISIKO: 0.2, BELEGE_NOETIG: 3,
 };
 </script>
 
@@ -8485,6 +8535,54 @@ T.test('GangRules.kurierPay: 0 → 3.000, 1 → 1.500, ≥ 2 → Kontrolle', () 
   T.eq(GangRules.kurierPay(1), { pay: 1500, kontrolle: false });
   T.eq(GangRules.kurierPay(2), { pay: 0, kontrolle: true });
   T.eq(GangRules.kurierPay(5), { pay: 0, kontrolle: true });
+});
+
+/* ---- Gang: Story-Rechnungen ---- */
+T.test('GangRules.week: vier Wochen, danach Woche 4, Bahnhof ×1,5 auf Tausender', () => {
+  T.eq(GangRules.week(1, false), { lieferung: 10000, ziel: 20000, rueckgabe: 11000 });
+  T.eq(GangRules.week(4, false), { lieferung: 40000, ziel: 80000, rueckgabe: 44000 });
+  T.eq(GangRules.week(9, false), GangRules.week(4, false));
+  T.eq(GangRules.week(2, true), { lieferung: 20000, ziel: 60000, rueckgabe: 22000 });
+  T.eq(GangRules.week(1, true).ziel, 30000);
+});
+T.test('GangRules.abrechnung: vier Ausgänge', () => {
+  const A = GangRules.abrechnung;
+  T.eq(A({ umsatz: 20000, ziel: 20000, balance: 15000, rueckgabe: 11000 }), { ausgang: 'ok', pay: 11000, kreditDelta: -5000, zornDelta: -1, belegDelta: 1 });
+  T.eq(A({ umsatz: 19999, ziel: 20000, balance: 15000, rueckgabe: 11000 }), { ausgang: 'umsatz', pay: 11000, kreditDelta: 0, zornDelta: 1, belegDelta: 0 });
+  T.eq(A({ umsatz: 25000, ziel: 20000, balance: 5000, rueckgabe: 11000 }), { ausgang: 'geld', pay: 5000, kreditDelta: 9000, zornDelta: 1, belegDelta: 0 }, '(11.000 − 5.000) × 1,5');
+  T.eq(A({ umsatz: 0, ziel: 20000, balance: 0, rueckgabe: 11000 }), { ausgang: 'beides', pay: 0, kreditDelta: 16500, zornDelta: 2, belegDelta: 0 });
+  T.eq(GangRules.zorn(0, -1), 0); T.eq(GangRules.zorn(2, 2), 3); T.eq(GangRules.zorn(1, 1), 2);
+});
+T.test('GangRules.nachtkasse: 250 € je intaktem Keller-Spiel', () => {
+  T.eq(GangRules.nachtkasse({}), { sum: 1250, kaputt: [] });
+  T.eq(GangRules.nachtkasse({ slots: 4000, horses: 3000 }), { sum: 750, kaputt: ['slots', 'horses'] });
+  T.eq(GangRules.nachtkasse({ roulette: 1, slots: 1, horses: 1, russian: 1, blackjack: 1 }).sum, 0);
+  T.eq(GangRules.nachtkasse({ hinterzimmer: 1 }).sum, 1250, 'Hinterzimmer zählt nicht');
+});
+T.test('GangRules: Reparaturpreise, Igor halbiert auf 100', () => {
+  T.eq(GangRules.REPAIR, { roulette: 6000, blackjack: 5000, slots: 4000, horses: 3000, russian: 2000 });
+  T.eq(GangRules.repairPrice('roulette', false), 6000); T.eq(GangRules.repairPrice('roulette', true), 3000);
+  T.eq(GangRules.repairPrice('horses', true), 1500); T.eq(GangRules.repairPrice('russian', true), 1000);
+});
+T.test('GangRules.raid: 25/15/0 %, zufällige intakte Tür, nichts bei fünf kaputten', () => {
+  T.eq(GangRules.raidChance({}), 0.25); T.eq(GangRules.raidChance({ igor: true }), 0.15); T.eq(GangRules.raidChance({ bahnhof: true, igor: true }), 0);
+  T.eq(GangRules.raid({}, {}, seq(0.24, 0)), 'roulette');
+  T.eq(GangRules.raid({}, {}, seq(0.24, 0.99)), 'blackjack');
+  T.eq(GangRules.raid({}, {}, seq(0.25, 0)), null, 'Würfel ≥ Chance');
+  T.eq(GangRules.raid({}, { igor: true }, seq(0.2, 0)), null);
+  T.eq(GangRules.raid({ roulette: 1 }, {}, seq(0.1, 0)), 'slots', 'nur intakte Türen');
+  T.eq(GangRules.raid({ roulette: 1, slots: 1, horses: 1, russian: 1, blackjack: 1 }, {}, seq(0, 0)), null);
+  let calls = 0; GangRules.raid({}, { bahnhof: true }, () => { calls++; return 0; }); T.eq(calls, 0, 'Chance 0: kein Würfel');
+});
+T.test('GangRules: Hinterhalt-Chance, Anzahl, Raub', () => {
+  const W = GangRules.WEAPONS;
+  T.eq(GangRules.ambushChance({}, W[0]), 0.15); T.eq(GangRules.ambushChance({}, W[2]), 0.15); T.eq(GangRules.ambushChance({}, W[3]), 0.075);
+  T.eq(GangRules.ambushChance({ bahnhof: true }, W[0]), 0);
+  T.eq([0, 0.34, 0.67, 0.99].map((r) => GangRules.ambushCount(seq(r))), [1, 2, 3, 3]);
+  T.eq(GangRules.robbery(1000), 200); T.eq(GangRules.robbery(100000), 5000); T.eq(GangRules.robbery(0), 0);
+});
+T.test('GangRules: Schwellen', () => {
+  T.eq([GangRules.ROYAL.warn, GangRules.ROYAL.bann, GangRules.ABLOESE, GangRules.FLUCHT_MIN, GangRules.KREDIT_SCHRITT, GangRules.IGOR_BIERE, GangRules.BELEG_RISIKO, GangRules.BELEGE_NOETIG], [10000, 15000, 100000, 30000, 5000, 3, 0.2, 3]);
 });
 
 /* ---- Story 2: Der Kater ---- */
