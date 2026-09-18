@@ -896,8 +896,8 @@ async def scenario_stadt_shop(cdp):
     await cdp.inject_helpers()
     await cdp.eval("State.meta.insider = []; State.meta.insiderClaimed = {}; State.saveMeta(); 0", await_promise=False)
     # Strasse: vier Schaufenster (Autohaus, INTERSPORT, Casino Royal ohne Auto gesperrt), Laden noch zu
-    n_fronts = await cdp.eval("document.querySelectorAll('#strasse .storefront').length", await_promise=False)
-    royal_locked = await cdp.eval("document.querySelector('#strasse .storefront.royal').classList.contains('locked')", await_promise=False)
+    n_fronts = await cdp.eval("document.querySelectorAll('#strasse .storefront, #strasse .facade').length", await_promise=False)
+    royal_locked = await cdp.eval("document.querySelector('#strasse .facade').classList.contains('locked')", await_promise=False)
     laden_hidden = await cdp.eval("document.querySelector('#laden').classList.contains('hidden')", await_promise=False)
     record("stadt: Strasse zeigt vier Schaufenster (Casino Royal ohne Auto gesperrt), Laden zu",
            n_fronts == 4 and royal_locked is True and laden_hidden is True,
@@ -1307,8 +1307,8 @@ async def scenario_kater(cdp):
     await cdp.eval("State.s.car = 'audiA3'; State.s.story.unlocked.rooms.push('royal'); State.save(); UI.renderSide();", await_promise=False)
     await cdp.eval("UI.show('stadt')")
     await cdp.wait_for("UI.current && UI.current.id === 'stadt' && !UI.busy", timeout=3.0)
-    front = await cdp.eval("(document.querySelector('#strasse .storefront.royal .seller')||{}).textContent", await_promise=False)
-    front_locked = await cdp.eval("!!document.querySelector('#strasse .storefront.royal.locked')", await_promise=False)
+    front = await cdp.eval("(document.querySelector('#strasse .facade .doorman')||{}).textContent", await_promise=False)
+    front_locked = await cdp.eval("!!document.querySelector('#strasse .facade.locked')", await_promise=False)
     record("kater: Royal-Schaufenster zeigt die Zitter-Sperre", front is not None and "Sie zittern" in front and front_locked is True, "seller=%s locked=%s" % (front, front_locked))
     await cdp.eval("Royal.enter()", await_promise=False)
     await cdp.wait_for("__pt.cutsceneActive()", timeout=2.0)

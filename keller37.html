@@ -695,10 +695,24 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .royal-head h2 { font-family: var(--font-display); color: var(--gold-2); letter-spacing: .1em; margin: 0; }
 .royal-sylvie { font-family: var(--font-mono); font-style: italic; color: var(--dim); margin: 0; }
 .royal-hub { grid-template-columns: repeat(3, 1fr); }
-.storefront.royal { --neon: var(--gold-2); border-color: #5a3a12; background: linear-gradient(180deg, #3a1a22, #14080b); }
-.storefront.royal.locked { opacity: .7; }
-.storefront.royal.locked .sign { text-shadow: none; color: var(--dim); }
-.strasse .storefront.royal { grid-column: 1 / -1; min-height: 200px; }
+/* Casino Royal – Fassade in der Stadt */
+.facade { position: relative; grid-column: 1 / -1; min-height: 240px; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 16px 18px; cursor: pointer; border: 2px solid #c9a961; border-radius: 4px; overflow: hidden;
+  background: repeating-linear-gradient(180deg, #141216 0 22px, #0e0d10 22px 24px); box-shadow: inset 0 0 0 4px #141216, inset 0 0 0 5px #8a6a2e, var(--shadow); }
+.facade.locked { filter: saturate(.6) brightness(.85); }
+.marquee { display: flex; align-items: center; gap: 12px; }
+.marquee h3 { margin: 0; font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 1.8rem; letter-spacing: .25em; text-transform: uppercase; color: #f1dfa8; text-shadow: 0 0 14px rgba(201,169,97,.5); }
+.bulbs { width: 96px; height: 10px; background: radial-gradient(circle, #f1dfa8 0 2px, rgba(241,223,168,.25) 3px, transparent 4px) 0 50% / 12px 10px repeat-x; }
+.portal-door { width: 120px; height: 120px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12px; font-size: 2.6rem; background: #0b0a0c; border: 2px solid #c9a961; border-radius: 60px 60px 4px 4px; box-shadow: inset 0 0 0 4px #0b0a0c, inset 0 0 0 5px #8a6a2e; position: relative; }
+.portal-door::before { content: ""; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); width: 60%; height: 4px; background: #c9a961; box-shadow: 0 -6px 0 -1px #c9a961, 0 -12px 0 -2px #c9a961; }
+.facade:not(.locked) .portal-door { background: radial-gradient(ellipse at 50% 70%, rgba(201,169,97,.18), #0b0a0c 70%); }
+.brass-sign { padding: 6px 16px; background: linear-gradient(160deg, #b8923f, #e2c77a 45%, #9a7a2f); color: #2a1d08; font-family: var(--font-mono); font-size: .8rem; font-weight: 700; border: 1px solid #5a4520; box-shadow: inset 0 0 0 1px #e2c77a; text-shadow: 0 1px 0 rgba(255,255,255,.35); text-align: center; }
+.doorman { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: #0b0a0c; border: 1px solid #c9a961; color: #efe6cf; font-family: var(--font-mono); font-size: .8rem; white-space: nowrap; }
+.doorman .who { font-size: 1.6rem; }
+.facade.gated .portal-door { opacity: .35; }
+@media (hover: hover) { .bulbs { animation: marquee 1.2s linear infinite; } .facade:hover:not(.locked) { border-color: #f1dfa8; } }
+@keyframes marquee { to { background-position: 12px 50%; } }
+@media (max-width: 760px) { .facade { min-height: 200px; } .marquee h3 { font-size: 1.3rem; } .bulbs { width: 60px; } .doorman { white-space: normal; width: 90%; } }
+@media (prefers-reduced-motion: reduce) { .bulbs { animation: none; } }
 @media (max-width: 760px) { .strasse, .laden { grid-template-columns: 1fr; } .storefront { min-height: 180px; } }
 /* Casino Royal – Mega Seven */
 .mega-panel { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; }
@@ -3071,11 +3085,14 @@ const Stadt = {
       const chk = RoyalRules.canEnter(State.s);
       const gate = Royal.inStory() ? StoryRules.gate(Story.story, State.s, 'royal') : null;
       const roomOpen = !Royal.inStory() || Story.roomUnlocked('royal');
-      if (roomOpen) street.append(h('div', { class: 'storefront royal' + (chk.ok && !gate ? '' : ' locked'), 'data-shop': 'royal', onclick: () => Royal.enter() },
-        h('div', { class: 'sign' }, 'Casino Royal'),
-        h('div', { class: 'glyph' }, '🎩'),
-        h('p', { class: 'seller' }, gate || (chk.ok ? 'Der Parkservice nimmt den Schlüssel.' : chk.text)),
-        h('div', { class: 'owned' }, State.s.flags.royalGuest ? 'Gast des Hauses' : `Eintritt ${UI.fmt(RoyalRules.ENTRY_FEE)}`)));
+      if (roomOpen) {
+        const open = chk.ok && !gate;
+        street.append(h('div', { class: 'facade' + (open ? '' : ' locked') + (gate ? ' gated' : ''), 'data-shop': 'royal', onclick: () => Royal.enter() },
+          h('div', { class: 'marquee' }, h('span', { class: 'bulbs' }), h('h3', {}, 'Casino Royal'), h('span', { class: 'bulbs' })),
+          h('div', { class: 'portal-door' }, '🎩'),
+          h('div', { class: 'brass-sign' }, gate ? 'Hausordnung' : chk.ok ? (State.s.flags.royalGuest ? 'Gast des Hauses' : `Eintritt ${UI.fmt(RoyalRules.ENTRY_FEE)}`) : chk.text),
+          gate ? h('div', { class: 'doorman' }, h('span', { class: 'who' }, '🕴️'), h('span', {}, gate)) : null));
+      }
       return;
     }
     qs('#ladenSeller', this.root).textContent = this.seller(this.shop);
