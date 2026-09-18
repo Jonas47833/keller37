@@ -558,6 +558,8 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .taxi-hud { display: flex; gap: 20px; font-family: var(--font-mono); color: var(--dim); }
 .taxi-road { position: relative; width: 100%; max-width: 420px; height: 420px; background: #2b2b2b; border-left: 8px solid #d8c36b; border-right: 8px solid #d8c36b; border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; }
 .taxi-road.running { background-image: repeating-linear-gradient(180deg, transparent 0 40px, rgba(255,255,255,.04) 40px 44px); animation: roadMove .5s linear infinite; }
+.taxi-road.kurier { background-color: #1e1e28; border-color: #8a7a4a; }
+.taxi-road.kurier .rider { filter: drop-shadow(0 0 8px rgba(212,175,55,.8)); }
 .lane-line { position: absolute; top: 0; bottom: 0; width: 4px; background: repeating-linear-gradient(180deg, #ddd 0 24px, transparent 24px 48px); }
 .lane-line.l1 { left: 33.3%; } .lane-line.l2 { left: 66.6%; }
 .taxi { position: absolute; bottom: 20px; width: 33.3%; text-align: center; font-size: 2.6rem; transition: left .12s; filter: drop-shadow(0 0 8px rgba(245,214,122,.6)); }
@@ -6100,6 +6102,7 @@ const Jobs = {
     praktikant: { id: 'praktikant', name: 'Praktikant bei Krause', icon: '👔', kind: 'shift', base: 120, desc: 'Kaffee kochen, Akten lesen. Manche Akten sind interessant.', pay: '120 €' },
     docassi: { id: 'docassi', name: 'Assistent beim Doc', icon: '🩺', kind: 'shift', base: 250, desc: 'Handschuhe an. Nicht hinsehen.', pay: '250 €' },
     filialleiter: { id: 'filialleiter', name: 'Filialleiter bei Krause', icon: '🏦', kind: 'shift', base: 400, desc: 'Anzug, Schlüssel, Unterschriftenmappe. Ihre Frau ruft öfter an.', pay: '400 €' },
+    kurierfahrt: { id: 'kurierfahrt', name: 'Kurierfahrt', icon: '💼', kind: 'game', screen: 'job-taxi', variant: 'kurier', desc: 'Anabis Koffer im Kofferraum. 60 Sekunden, drei Spuren, Übergabepunkte statt Fahrgäste. Zwei Strafzettel, und die Polizei guckt in den Kofferraum.', pay: 'bis 3.000 €', requires: { balance: { gte: 200 } }, requireText: 'Kaution 200 €' },
   },
   def(id) { const j = this.POOL[id]; return j ? StoryRules.jobDef(j, Story.story) : null; },
   render(root) {
@@ -6338,14 +6341,18 @@ UI.register('job-spueler', {
 <script id="job-taxi">
 /* ================= JOB: NACHTTAXI – drei Spuren, 60 Sekunden ================= */
 const Taxi = {
-  root: null, gen: 0, running: false, raf: null, spawnTimer: null, timeLeft: 60, laneIdx: 1, passengers: 0, tickets: 0, tip: 0, braking: false, brakeUntil: 0, entities: [], speed: 160, lastT: 0, jobId: 'taxi',
+  root: null, gen: 0, running: false, raf: null, spawnTimer: null, timeLeft: 60, laneIdx: 1, passengers: 0, tickets: 0, tip: 0, braking: false, brakeUntil: 0, entities: [], speed: 160, lastT: 0, jobId: 'taxi', variant: null,
   DURATION: 60,
   alive(gen) { return !!this.root && this.gen === gen; },
   start() {
     if (this.running || !this.root) return;
     const gen = this.gen;
     this.jobId = Story.jobStart ? Story.jobStart.id : 'taxi';
+    this.variant = Story.jobStart ? Story.jobStart.variant || null : null;
+    qs('#taxiRoad', this.root).classList.toggle('kurier', this.variant === 'kurier');
+    qs('#taxiCar', this.root).textContent = this.variant === 'kurier' ? '🚗' : '🚕';
     this.running = true; this.timeLeft = this.DURATION; this.laneIdx = 1; this.passengers = 0; this.tickets = 0; this.tip = Rules.gear(State.s).taxiTip; this.entities = []; this.speed = 160;
+    this.score();
     qs('#btnTaxiStart', this.root).classList.add('hidden');
     qs('#taxiRoad', this.root).classList.add('running');
     this.placeCar();
@@ -6363,7 +6370,7 @@ const Taxi = {
         e.y += this.speed * dt; e.el.style.top = `${e.y}px`;
         if (!e.done && e.y >= carY - 20 && e.y <= carY + 30) {
           e.done = true;
-          if (e.kind === 'rider') { if (e.lane === this.laneIdx) { this.passengers++; SFX.play('coin'); e.el.textContent = '💨'; this.floatText(`+${15 + this.tip} €`, 'win'); } }
+          if (e.kind === 'rider') { if (e.lane === this.laneIdx) { this.passengers++; SFX.play('coin'); e.el.textContent = '💨'; this.floatText(this.variant === 'kurier' ? 'Übergabe ✓' : `+${15 + this.tip} €`, 'win'); } }
           else if (this.braking) { SFX.play('click'); } else { this.tickets++; SFX.play('stamp'); this.ticket(); }
           this.score();
         }
@@ -6385,7 +6392,7 @@ const Taxi = {
       road.append(el); this.entities.push({ kind: 'light', el, y: -40, done: false });
     } else {
       const lane = Math.floor(Math.random() * 3);
-      const el = h('div', { class: 'rider', style: `left:${lane * 33.3}%` }, pick(['🙋', '🙋‍♀️', '🧑‍🦳', '🕺']));
+      const el = h('div', { class: 'rider', style: `left:${lane * 33.3}%` }, this.variant === 'kurier' ? '📦' : pick(['🙋', '🙋‍♀️', '🧑‍🦳', '🕺']));
       road.append(el); this.entities.push({ kind: 'rider', el, y: -60, lane, done: false });
     }
   },
@@ -6400,21 +6407,24 @@ const Taxi = {
   },
   ticket() { if (!this.root) return; const p = h('div', { class: 'ticket-pop' }, 'STRAFZETTEL −50 €'); qs('#taxiRoad', this.root).append(p); UI.shake(qs('#taxiRoad', this.root)); setTimeout(() => p.remove(), 900); },
   floatText(txt, cls) { if (!this.root) return; const el = h('div', { class: 'ticket-pop', style: 'background:#2f7a1f' }, txt); qs('#taxiRoad', this.root).append(el); setTimeout(() => el.remove(), 600); },
-  score() { if (this.root) qs('#taxiScore', this.root).textContent = `Fahrgäste ${this.passengers} · Strafzettel ${this.tickets}`; },
+  score() { if (this.root) qs('#taxiScore', this.root).textContent = `${this.variant === 'kurier' ? 'Übergaben' : 'Fahrgäste'} ${this.passengers} · Strafzettel ${this.tickets}`; },
   async finish() {
     this.running = false;
     clearInterval(this.spawnTimer);
-    const pay = Math.max(StoryRules.taxiPay(this.passengers, this.tickets, this.tip), -Math.max(0, State.s.balance));
+    const kurier = this.variant === 'kurier' ? GangRules.kurierPay(this.tickets) : null;
+    const pay = kurier ? kurier.pay : Math.max(StoryRules.taxiPay(this.passengers, this.tickets, this.tip), -Math.max(0, State.s.balance));
     if (this.root) {
       qs('#taxiRoad', this.root).classList.remove('running');
       this.entities.forEach((e) => e.el.remove()); this.entities = [];
       qs('#btnTaxiDone', this.root).classList.remove('hidden');
-      qs('#taxiStatus', this.root).innerHTML = pay >= 0 ? `<span class="win">Feierabend · ${this.passengers} Fahrgäste · ${UI.fmt(pay)}</span>` : `<span class="loss">Feierabend · ${this.tickets} Strafzettel · Abzug ${UI.fmt(-pay)}</span>`;
+      const st = qs('#taxiStatus', this.root);
+      if (kurier) st.innerHTML = kurier.kontrolle ? '<span class="loss">Kontrolle! Blaulicht, Kofferraum auf, Koffer weg. Kein Lohn.</span>' : `<span class="win">Koffer abgeliefert · ${this.tickets} Strafzettel · ${UI.fmt(pay)}</span>`;
+      else st.innerHTML = pay >= 0 ? `<span class="win">Feierabend · ${this.passengers} Fahrgäste · ${UI.fmt(pay)}</span>` : `<span class="loss">Feierabend · ${this.tickets} Strafzettel · Abzug ${UI.fmt(-pay)}</span>`;
     }
     if (pay !== 0) Game.applyDelta(pay, { from: this.root ? qs('#taxiRoad', this.root) : null });
-    if (pay >= 0) SFX.play('cash');
-    await Bus.emit('taxi:result', { passengers: this.passengers, tickets: this.tickets, pay });
-    await Jobs.collect(Story.jobStart ? Story.jobStart.id : 'taxi');
+    if (pay > 0) SFX.play('cash'); else if (kurier && kurier.kontrolle) SFX.play('lose');
+    await Bus.emit('taxi:result', { passengers: this.passengers, tickets: this.tickets, pay, variant: this.variant });
+    await Jobs.collect(this.jobId, kurier && kurier.kontrolle ? { kontrolle: true } : {});
   },
   onKey(e) {
     if (!qs('#cutscene').hidden) return;
@@ -9251,6 +9261,34 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.ok(Stadt.line(State.s).includes('Glock'), 'Gear-Zeile nennt die Waffe');
     } finally {
       Cutscene.play = keep.play; State.save = keep.save; State.s = keep.s; State.mode = keep.mode; Story.story = keep.story;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
+    }
+  });
+  T.test('Taxi-Variante kurier: Skin, Zähler, Lohn nach Strafzetteln, Kontrolle setzt Flag', async () => {
+    const keep = { s: State.s, mode: State.mode, story: Story.story, cur: UI.current, save: State.save };
+    State.save = () => {};
+    const story = { id: 't.kurier', title: 'T', days: 3, start: { balance: 1000, vars: {}, unlocked: { jobs: ['kurierfahrt'], doors: [], rooms: [] } }, chapters: [], events: [], scenes: {},
+      endings: [{ id: 'aus', title: 'Aus', scene: 'x', priority: 0, fallback: true }] };
+    try {
+      State.mode = 'story'; State.s = State.freshStory(story); Story.story = story;
+      Story.jobStart = { id: 'kurierfahrt', balance: 1000, variant: 'kurier' };
+      Story.allowOnce = 'job-taxi';
+      await UI.show('job-taxi');
+      Taxi.start();
+      T.eq([Taxi.variant, Taxi.jobId, qs('#taxiRoad').classList.contains('kurier')], ['kurier', 'kurierfahrt', true]);
+      T.ok(qs('#taxiScore').textContent.startsWith('Übergaben'));
+      Taxi.tickets = 2; Taxi.timeLeft = 0;
+      await Taxi.finish();
+      T.eq(State.s.balance, 1000, 'Kontrolle: kein Lohn');
+      T.eq(State.s.story.flags.kontrolle, true);
+      T.eq(State.s.story.jobToday, 'kurierfahrt');
+      /* zweiter Lauf: 1 Strafzettel → 1.500 € */
+      State.s.story.jobToday = null; delete State.s.story.flags.kontrolle;
+      Story.jobStart = { id: 'kurierfahrt', balance: State.s.balance, variant: 'kurier' };
+      Story.allowOnce = 'job-taxi'; await UI.show('job-taxi'); Taxi.start(); Taxi.tickets = 1; Taxi.timeLeft = 0; await Taxi.finish();
+      T.eq(State.s.balance, 2500); T.eq(State.s.story.flags.kontrolle, undefined);
+    } finally {
+      Story.jobStart = null; State.save = keep.save; State.s = keep.s; State.mode = keep.mode; Story.story = keep.story;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
     }
   });
