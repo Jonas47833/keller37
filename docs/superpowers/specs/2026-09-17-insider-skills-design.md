@@ -56,7 +56,7 @@ Jeder Eintrag: `{ id, name, icon, light, shadow, mods }`. `mods` sind Schlüssel
 | `kalterkopf` | Kalter Kopf | Roulette-Zahlen zahlen 36:1 | Brownie wirkt nur halb | `rouletteNumberPayout: 36, brownieLuckMult: 0.5` |
 | `zockerhaende` | Zockerhände | Slots: Paar zahlt 1,3× | Bank-Zinsen +2 % | `slotPairMult: 1.3, bankRateAdd: 0.02` |
 | `pferdefluesterer` | Pferdeflüsterer | Pferde zahlen 3,3:1 (bis 250 €) | Überfälle 50 % häufiger | `horsePayout: 3.3, mugChanceMult: 1.5` |
-| `eisenmagen` | Eisenmagen | 4 Bier möglich (+25 %), Brownie hält 2 Spins | Postbote: −1 s pro Brief | `maxBeers: 4, brownieSpins: 2, postTimeAdd: -1` |
+| `eisenmagen` | Eisenmagen | 4 Bier möglich (+25 %), Brownie hält 6 Spins (Basis 4, Balancing 2026-09-20) | Postbote: −1 s pro Brief | `maxBeers: 4, brownieSpins: 6, postTimeAdd: -1` |
 | `verhandler` | Verhandler | Bank-Zinsen −2 %, Vito-Frist 7 Spins | Anlagen zahlen 10 % weniger | `bankRateAdd: -0.02, mafiaSpins: 7, investRateMult: 0.9` |
 | `strassenkoeter` | Straßenköter | Kampfchance +15 %, Brieftasche ×2 | Bank-Limit −1.000 € | `fightAdd: 0.15, walletMult: 2, bankLimitAdd: -1000` |
 | `brieftraeger` | Briefträgerherz | Postbote +1 s und +5 € pro Brief | Slots: Paare zahlen nichts | `postTimeAdd: 1, postPayAdd: 5, slotPairMult: 0` |
