@@ -134,6 +134,21 @@ async def main():
         await check_screen(cdp, "story-jobs")
         await cdp.screenshot("mobile-story-jobs.png")
 
+        # Admin-Panel: bei 400 px volle Breite, Tap-Ziele >= 44 px, kein Overflow
+        await cdp.navigate(URL + "?fresh&mode=free&screen=hub&dev", wait=1.4)
+        await cdp.eval("DevRules.HASH = DevRules.hash('t:t');", await_promise=False)
+        await cdp.eval("document.querySelector('#devUser').value = 't'; document.querySelector('#devPass').value = 't'; document.querySelector('#devLogin').requestSubmit();", await_promise=False)
+        await cdp.wait_for("!!document.querySelector('#devFab')", timeout=2.0)
+        for tab in ["werte", "screens", "story", "szenen"]:
+            await cdp.eval("Dev.toggle(true); document.querySelector('.dev-tab[data-tab=%s]').click();" % json.dumps(tab), await_promise=False)
+            await asyncio.sleep(0.3)
+            res = await cdp.eval(CHECK_JS % (json.dumps(["#devFab", ".dev-tab", ".dev-btn", ".dev-in", ".dev-row.dev-check"]), 44), await_promise=False) or {}
+            width = await cdp.eval("document.querySelector('#devPanel').getBoundingClientRect().width === window.innerWidth", await_promise=False)
+            record("dev-panel %s: volle Breite, Tap-Ziele >= 44 px, kein Overflow" % tab, width is True and res.get("overflow", 1) <= 0 and not res.get("small"), (width, res))
+            if tab == "werte":
+                await cdp.screenshot("mobile-dev-panel.png")
+        await cdp.eval("Dev.logout()", await_promise=False)
+
         # Desktop-Gegenprobe: Roulette-Tisch bleibt 13 Spalten breit
         await cdp.set_mobile(False)
         await cdp.navigate(URL + "?fresh&mode=free&screen=roulette", wait=1.4)

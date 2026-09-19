@@ -16,9 +16,9 @@ const storage = {
   removeItem(k) { delete this.data[k]; },
   clear() { this.data = {}; },
 };
-const ctx = { console, localStorage: storage, setTimeout, clearTimeout };
+const ctx = { console, localStorage: storage, setTimeout, clearTimeout, URLSearchParams };
 vm.createContext(ctx);
-for (const id of ['rules', 'gear-rules', 'perk-rules', 'util', 'state', 'bus', 'story-rules', 'royal-rules', 'baccarat-rules', 'gang-rules', 'story-probe', 'story-schuld', 'story-kater', 'story-stash', 'selftest']) {
+for (const id of ['rules', 'gear-rules', 'perk-rules', 'util', 'state', 'bus', 'story-rules', 'royal-rules', 'baccarat-rules', 'gang-rules', 'dev-rules', 'story-probe', 'story-schuld', 'story-kater', 'story-stash', 'selftest']) {
   if (!html.includes(`<script id="${id}">`)) continue; // state/bus kommen erst in Task 4
   vm.runInContext(block(id), ctx, { filename: `${id}.js` });
 }

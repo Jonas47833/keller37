@@ -584,6 +584,41 @@ body[data-zone="royal"] .panel { background: var(--panel); border: 1px solid var
   .portal:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) { .portal:hover .plaque::after { animation: none; display: none; } }
+/* -- Admin-Panel (nur mit ?dev + Login im DOM; bewusst weder Keller- noch Royal-Look) -- */
+#devFab { position: fixed; right: 14px; bottom: 14px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid #3a3f4a; background: #1b1d22; color: #e6e6e6; font-size: 20px; line-height: 1; z-index: 97; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.5); }
+#devPanel { position: fixed; top: 0; right: 0; bottom: 0; width: 380px; max-width: 100%; background: #1b1d22; color: #e6e6e6; font-family: var(--font-mono); font-size: 13px; z-index: 97; transform: translateX(100%); transition: transform .2s ease; display: flex; flex-direction: column; box-shadow: -6px 0 18px rgba(0,0,0,.5); }
+#devPanel.open { transform: none; }
+.dev-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #2c3038; flex-wrap: wrap; }
+.dev-head strong { font-size: 14px; }
+.dev-info { color: #9aa3b2; font-size: 12px; flex: 1 1 100%; margin: 0; }
+.dev-tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid #2c3038; }
+.dev-tab { min-height: 44px; background: none; border: 0; border-bottom: 2px solid transparent; color: #9aa3b2; font: inherit; cursor: pointer; }
+.dev-tab.on { color: #7dd3fc; border-bottom-color: #7dd3fc; }
+.dev-body { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 10px 12px 70px; }
+.dev-sec { margin-bottom: 14px; }
+.dev-sec h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #7dd3fc; }
+.dev-sec h5 { margin: 8px 0 4px; font-size: 12px; color: #9aa3b2; }
+.dev-row { display: grid; grid-template-columns: 110px 1fr auto; gap: 6px; align-items: center; min-height: 44px; margin-bottom: 4px; }
+.dev-row > span { color: #c7ccd6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dev-row.dev-check { grid-template-columns: 44px 1fr; }
+.dev-check input { width: 22px; height: 22px; margin: 0 auto; accent-color: #7dd3fc; }
+.dev-in { min-height: 44px; background: #0f1114; border: 1px solid #3a3f4a; border-radius: 6px; color: #e6e6e6; font: inherit; padding: 0 10px; width: 100%; min-width: 0; }
+.dev-btn { min-height: 44px; min-width: 44px; padding: 0 12px; background: #2a2f38; border: 1px solid #3a3f4a; border-radius: 6px; color: #e6e6e6; font: inherit; cursor: pointer; }
+.dev-btn.ghost { background: none; }
+.dev-btn.warn { border-color: #f59e0b; color: #fbbf24; }
+.dev-btn.dim { opacity: .5; }
+.dev-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.dev-list { display: grid; gap: 6px; }
+.dev-list .dev-btn { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dev-login { position: fixed; left: 50%; top: 20%; transform: translateX(-50%); z-index: 98; background: #1b1d22; border: 1px solid #3a3f4a; border-radius: 10px; padding: 16px; display: grid; gap: 8px; width: min(320px, calc(100% - 32px)); font-family: var(--font-mono); color: #e6e6e6; box-shadow: 0 10px 30px rgba(0,0,0,.6); margin: 0; }
+.dev-login-title { font-size: 14px; font-weight: 700; }
+.dev-login.shake { animation: devShake .3s ease; }
+@keyframes devShake { 0%, 100% { transform: translateX(-50%); } 25% { transform: translateX(calc(-50% - 8px)); } 75% { transform: translateX(calc(-50% + 8px)); } }
+.dev-login-row { display: flex; gap: 8px; }
+.dev-login-row .dev-btn { flex: 1; }
+@media (max-width: 760px) { #devPanel { width: 100%; } #devFab { right: 12px; bottom: 12px; } }
+@media (prefers-reduced-motion: reduce) { #devPanel { transition: none; } .dev-login.shake { animation: none; } }
+body.dev-open #toasts { z-index: 99; }
 /* -- Reduced Motion -- */
 @media (prefers-reduced-motion: reduce) {
   .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running::before, .plate.hit, .plate.broken, .taxi-road.running::before, .brake-flash.on, .ticket-pop, .mega-grid .cell.spin, .die.rolling, .lv-badge.point { animation: none !important; }
@@ -2253,6 +2288,7 @@ const UI = {
     if (zoneChange) { this.renderWallet(); await this.zoneFade(false); }
     else { await wait(UI.mobile() ? 180 : 250); stage.classList.remove('entering'); }
     this.busy = false;
+    if (typeof Dev !== 'undefined' && Dev.active) Dev.render(); // Admin-Panel: Kopfzeile/Reiter nach Screen-Wechsel aktualisieren
   },
   toast({ icon = '📌', title = '', text = '', tone = 'info', ms = 3000 } = {}) {
     const box = qs('#toasts');
@@ -5545,6 +5581,19 @@ const StoryRules = {
     }
     return errs;
   },
+  /* Dev-Parameter des Story-Einstiegs als Options-Objekt – URL (?fresh&story=…) und Admin-Panel füllen dieselbe Form */
+  optsFromParams(params) {
+    const int = (k, lo, hi, dflt) => (params.has(k) ? Math.max(lo, Math.min(hi, parseInt(params.get(k), 10) || dflt)) : null);
+    return {
+      fresh: params.has('fresh'),
+      story: params.get('story'),
+      prev: params.get('prev'),
+      day: int('day', 1, Infinity, 1),
+      weapon: int('weapon', 0, 3, 0),
+      ending: params.get('ending'),
+      job: params.get('job'),
+    };
+  },
   freshStoryPart(story, storyRuns = {}) {
     return {
       id: story.id, day: 1, phase: 'morning',
@@ -5897,6 +5946,84 @@ const GangRules = {
 };
 </script>
 
+<script id="dev-rules">
+/* ================= ADMIN-PANEL – reine Helfer (Login-Hash, Zahlen, Flag-Namen, Gruppierung) ================= */
+/* Hash von "Benutzer:Passwort" (cyrb53), gegen den DevRules.login vergleicht – kein Klartext im Repo. Ändern: in der Browser-Konsole DevRules.hash('Name:Passwort') ausführen und das Ergebnis hier eintragen. */
+const DEV_LOGIN_HASH = '6222687456220819';
+const DevRules = {
+  HASH: DEV_LOGIN_HASH,
+  hash(str) {
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (let i = 0; i < str.length; i++) {
+      const ch = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507); h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507); h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return String(4294967296 * (2097151 & h2) + (h1 >>> 0));
+  },
+  login(user, pass, hash = DevRules.HASH) { return DevRules.hash(`${user}:${pass}`) === hash; },
+  /* Ganzzahl aus einem Eingabefeld (Punkte/Leerzeichen als Tausendertrenner erlaubt); null bei Müll oder außerhalb der Grenzen */
+  parseNumber(raw, { min = -Infinity, max = Infinity } = {}) {
+    const s = String(raw == null ? '' : raw).replace(/[\s.]/g, '');
+    if (!/^-?\d+$/.test(s)) return null;
+    const n = Number(s);
+    if (n < min || n > max) return null;
+    return n;
+  },
+  /* Flag-Namen einer Story: Effekte (flag/unflag) und Bedingungen (flag/notFlag, rekursiv not/all/any) in Szenen, Events, Gates, Kapiteln, Enden */
+  flagNamesIn(story) {
+    const out = new Set();
+    const cond = (c) => {
+      if (!c || typeof c !== 'object') return;
+      if (c.flag) out.add(c.flag);
+      if (c.notFlag) out.add(c.notFlag);
+      if (c.not) cond(c.not);
+      (c.all || []).forEach(cond); (c.any || []).forEach(cond);
+    };
+    const effs = (list) => (list || []).forEach((e) => { if (e && e.flag) out.add(e.flag); if (e && e.unflag) out.add(e.unflag); if (e && e.effects) effs(e.effects); });
+    const panels = (def) => {
+      let p = def;
+      if (typeof def === 'function') { try { p = def({ raw: { flags: {}, vars: {} }, prev: {}, flags: {} }); } catch (e) { p = []; } }
+      for (const panel of p || []) for (const ch of panel.choices || []) { effs(ch.effects); cond(ch.when); }
+    };
+    for (const def of Object.values(story.scenes || {})) panels(def);
+    for (const ev of story.events || []) { cond(ev.when); effs(ev.effects); }
+    for (const list of Object.values(story.gates || {})) for (const g of list || []) cond(g.when);
+    for (const ch of story.chapters || []) cond(ch.when);
+    for (const end of story.endings || []) cond(end.when);
+    for (const list of Object.values(story.jobEffects || {})) effs(list);
+    return [...out].sort();
+  },
+  KELLER_SCREENS: ['hub', 'roulette', 'slots', 'horses', 'russian', 'blackjack', 'hinterzimmer', 'postman', 'finance', 'invest', 'life', 'skills'],
+  ROYAL_SCREENS: ['royal', 'megaslots', 'craps', 'wheel'],
+  STORY_SCREENS: ['jobs', 'vito'],
+  groupScreens(ids) {
+    const g = { keller: [], royal: [], stadt: [], story: [], sonst: [] };
+    for (const id of ids) {
+      if (DevRules.KELLER_SCREENS.includes(id)) g.keller.push(id);
+      else if (DevRules.ROYAL_SCREENS.includes(id)) g.royal.push(id);
+      else if (id === 'stadt') g.stadt.push(id);
+      else if (DevRules.STORY_SCREENS.includes(id) || id.startsWith('job-')) g.story.push(id);
+      else g.sonst.push(id);
+    }
+    return g;
+  },
+  /* Szenen-IDs nach Story gruppieren (Reihenfolge wie sceneIds); alles ohne Story ist „Keller" */
+  sceneGroups(sceneIds, stories) {
+    const taken = new Set();
+    const groups = [];
+    for (const st of Object.values(stories || {})) {
+      const ids = sceneIds.filter((id) => st.scenes && Object.prototype.hasOwnProperty.call(st.scenes, id));
+      ids.forEach((id) => taken.add(id));
+      groups.push({ id: st.id, title: st.title || st.id, ids });
+    }
+    groups.unshift({ id: null, title: 'Keller', ids: sceneIds.filter((id) => !taken.has(id)) });
+    return groups;
+  },
+};
+</script>
+
 <script id="title">
 /* ================= TITELSCREEN – Modus-Wahl ================= */
 const Title = {
@@ -5958,7 +6085,7 @@ const Title = {
 };
 /* Modus betreten: freies Spiel direkt, Story über Story.enter */
 const Modes = {
-  async enter(choice) {
+  async enter(choice, opts = null) {
     if (choice === 'free') {
       State.setMode('free');
       if (typeof Perks !== 'undefined') Perks.refreshExcluded();
@@ -5973,7 +6100,7 @@ const Modes = {
       if (showLoaded && !Rules.isGameOver(State.s, Perks.mods())) UI.toast({ icon: '💾', title: 'Spielstand geladen', text: `Willkommen zurück. ${UI.fmt(State.s.balance)} in der Tasche.` });
       return;
     }
-    if (typeof Story !== 'undefined') await Story.enter(choice);
+    if (typeof Story !== 'undefined') await Story.enter(choice, opts);
     else { UI.toast({ icon: '🚧', title: 'Story kommt noch', tone: 'info' }); await Modes.enter('free'); }
   },
 };
@@ -6037,11 +6164,11 @@ const Story = {
   fightActive() { return typeof Shootout !== 'undefined' && !!Shootout.forced; },
 
   /* ---- Einstieg ---- */
-  async enter(choice) {
+  async enter(choice, opts = null) {
     Stories.validateAll();
-    const params = new URLSearchParams(location.search);
-    this.consumeDevParams(); // `params` ist eine Kopie – gilt für diesen Einstieg, danach nicht mehr
-    if (choice === 'newstory' && State.hasStoryRun() && !params.has('fresh')) {
+    const o = opts || StoryRules.optsFromParams(new URLSearchParams(location.search));
+    this.consumeDevParams(); // `o` ist eine Kopie – gilt für diesen Einstieg, danach nicht mehr
+    if (choice === 'newstory' && State.hasStoryRun() && !o.fresh) {
       State.setMode('story');
       this.story = Stories.get(State.s.story.id);
       this.setup();
@@ -6049,26 +6176,26 @@ const Story = {
       if (c !== 'yes') return this.enter('story');
     }
     if (choice === 'newstory' || !State.hasStoryRun()) {
-      const forced = params.get('story');
+      const forced = o.story;
       const forcedNext = this.forcedNext; this.forcedNext = null;
       const id = forced && Stories.get(forced) ? forced : (forcedNext || StoryRules.pickStory(Stories.list(), State.meta.storyRuns, Math.random));
       const story = Stories.get(id);
       State.startStory(story);
-      if (params.has('prev') && params.has('fresh') && story.requires) State.s.story.prev[story.requires] = params.get('prev');
+      if (o.prev != null && o.fresh && story.requires) State.s.story.prev[story.requires] = o.prev;
       if (typeof Perks !== 'undefined') Perks.refreshExcluded(true);
       if (typeof Roulette !== 'undefined') Roulette.lastBets = [];
-      if (params.has('day') && params.has('fresh')) State.s.story.day = Math.max(1, parseInt(params.get('day'), 10) || 1);
-      if (params.has('weapon') && params.has('fresh')) State.s.weapon = Math.max(0, Math.min(3, parseInt(params.get('weapon'), 10) || 0));
+      if (o.day != null && o.fresh) State.s.story.day = o.day;
+      if (o.weapon != null && o.fresh) State.s.weapon = o.weapon;
       this.story = story;
       this.setup();
       State.save();
       const st = this.s;
-      if (!params.has('day')) { await this.playScene(story.intro); if (this.stale(st)) return; }
+      if (o.day == null) { await this.playScene(story.intro); if (this.stale(st)) return; }
       await this.applyChapter();
       if (this.stale(st)) return;
-      if (params.has('ending')) { const end = story.endings.find((e) => e.id === params.get('ending')); if (end) return this.finish(end); }
+      if (o.ending) { const end = story.endings.find((e) => e.id === o.ending); if (end) return this.finish(end); }
       await this.morning();
-      if (params.has('job') && this.s.phase === 'morning') await Jobs.take(params.get('job'));
+      if (o.job && this.s.phase === 'morning') await Jobs.take(o.job);
       return;
     }
     State.setMode('story');
@@ -6080,7 +6207,7 @@ const Story = {
     if (this.stale(st)) return;
     if (st.phase === 'morning') await this.morning(); else await this.evening();
     if (this.stale(st)) return; // ein sofortiges Ende im Morgen-Event darf Jobs.take/Toast nicht mehr auf einer toten Story ausführen
-    if (params.has('job') && this.s.phase === 'morning') await Jobs.take(params.get('job'));
+    if (o.job && this.s.phase === 'morning') await Jobs.take(o.job);
     UI.toast({ icon: '📖', title: this.story.title, text: `Tag ${this.s.day} von ${this.story.days}.` });
   },
   /* Dev-Parameter gelten genau einmal: aus der URL entfernen, damit „Nächste Story"/Reload nicht wieder
@@ -6395,6 +6522,7 @@ const Story = {
     qs('#btnSleep', slot).disabled = this.s.phase !== 'evening' || this.sleeping;
     qs('#btnBoard', slot).classList.toggle('hidden', this.s.phase !== 'morning');
     qs('#dayGoal', slot).textContent = this.story.goal ? this.story.goal(State.s) : '';
+    if (typeof Dev !== 'undefined' && Dev.active) Dev.render(); // Admin-Panel: Kopfzeile/Reiter nach Tagesleisten-Änderung aktualisieren
   },
   fade(text) {
     const el = qs('#nightfade');
@@ -6498,9 +6626,9 @@ const Jobs = {
     }
     if (!board.children.length) board.append(h('p', { class: 'paper' }, 'Nichts an der Pinnwand. Komm morgen wieder.'));
   },
-  async take(id) {
+  async take(id, { force = false } = {}) {
     const job = this.def(id);
-    if (!job || !StoryRules.jobAvailable(job, State.s).ok) return;
+    if (!job || (!force && !StoryRules.jobAvailable(job, State.s).ok)) return; // force: Admin-Panel überspringt die Verfügbarkeitsprüfung
     if (job.kind === 'game') {
       if (!UI.screens.has(job.screen)) { UI.toast({ icon: '🚧', title: 'Job noch nicht verfügbar', tone: 'info' }); return; }
       Story.jobStart = { id, balance: State.s.balance, variant: job.variant || null };
@@ -7973,6 +8101,344 @@ const STORY_STASH = {
 if (typeof Stories !== 'undefined') Stories.define(STORY_STASH);
 </script>
 
+<script id="dev">
+/* ================= ADMIN-PANEL – verstecktes Dev-Werkzeug (?dev + Login, sessionStorage) ================= */
+const Dev = {
+  active: false,
+  KEY: 'keller37.dev',
+  TAB_KEY: 'keller37.devTab',
+  TABS: [['werte', 'Werte'], ['screens', 'Screens'], ['story', 'Story'], ['szenen', 'Szenen']],
+  tab: 'werte',
+  /* sessionStorage lesen (v undefined), schreiben (String) oder löschen (null) – privater Modus o. ä. wirft, dann gilt die Anmeldung nur bis zum Reload */
+  ss(k, v) {
+    try {
+      if (v === undefined) return sessionStorage.getItem(k);
+      if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v);
+    } catch (e) { return null; }
+    return v;
+  },
+  loggedIn() { return this.ss(this.KEY) === '1'; },
+  init() { if (this.loggedIn()) this.mount(); else this.showLogin(); },
+  showLogin() {
+    if (qs('#devLogin')) return;
+    const user = h('input', { id: 'devUser', class: 'dev-in', type: 'text', placeholder: 'Benutzer', autocomplete: 'off', autocapitalize: 'off' });
+    const pass = h('input', { id: 'devPass', class: 'dev-in', type: 'password', placeholder: 'Passwort' });
+    const box = h('form', { id: 'devLogin', class: 'dev-login', onsubmit: (e) => { e.preventDefault(); this.login(user.value, pass.value); } },
+      h('div', { class: 'dev-login-title' }, '🛠 Admin'), user, pass,
+      h('div', { class: 'dev-login-row' },
+        h('button', { type: 'submit', class: 'dev-btn' }, 'Anmelden'),
+        h('button', { type: 'button', class: 'dev-btn ghost', onclick: () => box.remove() }, 'Abbrechen')));
+    document.body.appendChild(box);
+    user.focus();
+  },
+  login(user, pass) {
+    const box = qs('#devLogin');
+    if (!DevRules.login(user, pass)) {
+      if (box) { box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); qs('#devPass', box).value = ''; }
+      return false;
+    }
+    this.ss(this.KEY, '1');
+    if (box) box.remove();
+    this.mount();
+    return true;
+  },
+  logout() {
+    this.ss(this.KEY, null);
+    this.active = false;
+    const fab = qs('#devFab'); if (fab) fab.remove();
+    const panel = qs('#devPanel'); if (panel) panel.remove();
+    document.body.classList.remove('dev-open');
+    UI.toast({ icon: '🛠', title: 'Abgemeldet' });
+  },
+  mount() {
+    if (this.active) return;
+    this.active = true;
+    const saved = this.ss(this.TAB_KEY);
+    this.tab = this.TABS.some(([id]) => id === saved) ? saved : 'werte';
+    document.body.appendChild(h('button', { id: 'devFab', type: 'button', title: 'Admin-Panel', onclick: () => this.toggle() }, '🛠'));
+    const panel = h('aside', { id: 'devPanel' },
+      h('div', { class: 'dev-head' },
+        h('strong', {}, '🛠 Admin'),
+        h('button', { type: 'button', class: 'dev-btn ghost', onclick: () => this.logout() }, 'Abmelden'),
+        h('button', { type: 'button', class: 'dev-btn ghost', onclick: () => this.toggle(false) }, '✕'),
+        h('p', { id: 'devInfo', class: 'dev-info' })),
+      h('div', { class: 'dev-tabs' }, this.TABS.map(([id, label]) => h('button', { type: 'button', class: 'dev-tab', 'data-tab': id, onclick: () => { this.tab = id; this.ss(this.TAB_KEY, id); this.render(); } }, label))),
+      h('div', { id: 'devBody', class: 'dev-body' }));
+    document.body.appendChild(panel);
+    this.render();
+  },
+  toggle(on) {
+    const p = qs('#devPanel'); if (!p) return;
+    const open = on == null ? !p.classList.contains('open') : !!on;
+    p.classList.toggle('open', open);
+    document.body.classList.toggle('dev-open', open);
+    if (open) this.render();
+  },
+  /* Reiter neu zeichnen – nur wenn das Panel offen ist (UI.show ruft das nach jedem Screen-Wechsel) */
+  render() {
+    if (!this.active) return;
+    const panel = qs('#devPanel'); if (!panel || !panel.classList.contains('open')) return;
+    qsa('.dev-tab', panel).forEach((b) => b.classList.toggle('on', b.dataset.tab === this.tab));
+    qs('#devInfo', panel).textContent = `${State.mode === 'story' ? 'Story' : 'frei'} · ${UI.current ? UI.current.id : '–'} · ${UI.fmt(State.s.balance)}`;
+    const body = qs('#devBody', panel); body.innerHTML = '';
+    const fn = { werte: this.renderWerte, screens: this.renderScreens, story: this.renderStory, szenen: this.renderSzenen }[this.tab];
+    try { body.appendChild(fn.call(this)); } catch (e) { console.error('[dev]', e); body.appendChild(h('p', { class: 'dev-info' }, `Fehler: ${e.message}`)); }
+  },
+  toast(text) { UI.toast({ icon: '🛠', title: text, ms: 2000 }); },
+  /* nach Änderungen an State.s: speichern und alles neu zeichnen, was Werte zeigt */
+  refreshGame() {
+    State.save();
+    UI.setBalance(State.s.balance); UI.renderWallet(); UI.renderSide();
+    if (State.mode === 'story' && typeof Story !== 'undefined' && Story.story) Story.renderDaybar();
+  },
+  /* ---- Bausteine ---- */
+  numRow(label, get, set, opts = {}) {
+    const inp = h('input', { type: 'text', inputmode: 'numeric', class: 'dev-in', value: String(get()) });
+    const apply = () => {
+      const n = DevRules.parseNumber(inp.value, opts);
+      if (n == null) { this.toast(`Ungültig: ${label}`); return; }
+      set(n); this.toast(`${label} → ${n.toLocaleString('de-DE')}`); this.render();
+    };
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); apply(); } });
+    return h('label', { class: 'dev-row', title: label }, h('span', {}, label), inp, h('button', { type: 'button', class: 'dev-btn', onclick: apply }, 'Setzen'));
+  },
+  boolRow(label, get, set) {
+    return h('label', { class: 'dev-row dev-check', title: label },
+      h('input', { type: 'checkbox', checked: get() ? 'checked' : null, onchange: (e) => { set(e.target.checked); this.toast(`${label} → ${e.target.checked ? 'an' : 'aus'}`); } }),
+      h('span', {}, label));
+  },
+  /* options: [[value, label], …]; value '' steht für „keins" (null) */
+  selectRow(label, options, get, set) {
+    const cur = get(); const curVal = cur == null ? '' : String(cur);
+    const sel = h('select', { class: 'dev-in', onchange: (e) => { set(e.target.value === '' ? null : e.target.value); this.toast(`${label} → ${e.target.value || 'keins'}`); } },
+      options.map(([v, l]) => h('option', { value: v, selected: String(v) === curVal ? 'selected' : null }, l)));
+    return h('label', { class: 'dev-row', title: label }, h('span', {}, label), sel);
+  },
+  btn(label, fn, cls = '', attrs = {}) { return h('button', Object.assign({ type: 'button', class: `dev-btn ${cls}`.trim(), onclick: fn }, attrs), label); },
+  sec(title, ...kids) { return h('section', { class: 'dev-sec' }, h('h4', {}, title), ...kids); },
+  /* ---- Reiter (werden in den Folge-Tasks gefüllt) ---- */
+  renderWerte() {
+    const s = State.s;
+    const W = h('div', {});
+    const num = (label, key, opts) => this.numRow(label, () => s[key] || 0, (n) => { s[key] = n; this.refreshGame(); }, opts);
+    W.append(this.sec('Zahlen',
+      num('Kontostand', 'balance', { min: -1e9, max: 1e9 }),
+      num('XP', 'xp', { min: 0, max: 1e6 }),
+      num('Stärke', 'strength', { min: 0, max: 99 }),
+      num('Bier-Pegel', 'beers', { min: 0, max: 9 }),
+      num('Bankschulden', 'bankDebt', { min: 0, max: 1e9 }),
+      num('Mafiaschulden', 'mafiaDebt', { min: 0, max: 1e9 }),
+      num('Waffenstufe', 'weapon', { min: 0, max: 3 })));
+    const flag = (label, key) => this.boolRow(label, () => !!s.flags[key], (v) => { s.flags[key] = v; this.refreshGame(); });
+    const bool = (label, key) => this.boolRow(label, () => !!s[key], (v) => { s[key] = v; this.refreshGame(); });
+    W.append(this.sec('Schalter',
+      flag('Royal-Gast', 'royalGuest'), flag('Igor', 'igor'), flag('Brownie', 'brownie'),
+      bool('Haus', 'hasHouse'), bool('Verheiratet', 'isMarried'), bool('Dealer', 'hasDealer'), bool('Niere verkauft', 'kidneySold')));
+    const opts = (obj) => [['', 'keins'], ...Object.entries(obj).map(([k, v]) => [k, v.name || k])];
+    W.append(this.sec('Ausrüstung',
+      this.selectRow('Auto', opts(Rules.GEAR.cars), () => s.car, (v) => { s.car = v; this.refreshGame(); }),
+      this.selectRow('Schuhe', opts(Rules.GEAR.shoes), () => s.shoes, (v) => { s.shoes = v; this.refreshGame(); })));
+    const reload = (q) => { location.href = location.pathname + q; };
+    W.append(this.sec('Knöpfe', h('div', { class: 'dev-list' },
+      this.btn('Alle Achievements', () => { State.meta.achievements = Achievements.DEFS.map((d) => d.id); State.saveMeta(); this.toast('Alle Trophäen'); this.render(); }),
+      this.btn('Alle Insider-Skills', () => { State.meta.insider = Rules.INSIDER.map((i) => i.id); State.saveMeta(); if (typeof Perks !== 'undefined') Perks.refreshExcluded(true); this.refreshGame(); this.toast('Alle Insider'); this.render(); }),
+      this.btn('Level max', () => { s.xp = Rules.XP_LEVELS[Rules.XP_LEVELS.length - 1]; this.refreshGame(); this.toast('Level max'); this.render(); }),
+      this.btn('Spielstand löschen (frei) ⟲', () => { try { State.storage.removeItem(State.KEY); } catch (e) { /* egal */ } reload('?dev&mode=free'); }, 'warn'),
+      this.btn('Alles löschen ⟲', () => { try { State.storage.removeItem(State.KEY); State.storage.removeItem(State.STORY_KEY); State.storage.removeItem(State.META_KEY); } catch (e) { /* egal */ } reload('?dev'); }, 'warn'))));
+    return W;
+  },
+  renderScreens() {
+    const W = h('div', {});
+    const g = DevRules.groupScreens([...UI.screens.keys()]);
+    const inStory = State.mode === 'story';
+    const grid = (ids, dimIf = () => false) => h('div', { class: 'dev-grid' }, ids.map((id) => this.btn(id, () => this.showScreen(id), dimIf(id) ? 'dim' : '', dimIf(id) ? { disabled: '' } : {})));
+    W.append(this.sec('Keller', grid(g.keller)));
+    W.append(this.sec('Casino Royal', grid(g.royal)));
+    if (typeof Stadt !== 'undefined') {
+      W.append(this.sec('Stadt', h('div', { class: 'dev-grid' },
+        this.btn('stadt', () => { Stadt.shop = null; this.showScreen('stadt'); }),
+        Object.entries(Stadt.SHOPS).map(([id, sh]) => this.btn(`${sh.icon} ${id}`, () => { Stadt.shop = id; this.showScreen('stadt'); })))));
+    }
+    W.append(this.sec('Story', grid(g.story, () => !inStory)));
+    if (g.sonst.length) W.append(this.sec('Sonstiges', grid(g.sonst)));
+    if (typeof Shootout !== 'undefined' && typeof GangRules !== 'undefined') {
+      W.append(this.sec('Schießerei', h('div', { class: 'dev-grid' }, Object.keys(GangRules.FOES).map((foe) => this.btn(foe, () => {
+        Shootout.pending = { kind: 'dev', foes: [foe], bonus: GangRules.weapon(State.s).bonus }; // der Screen konsumiert pending beim Mount
+        this.showScreen('shootout');
+      })))));
+    }
+    if (typeof Mugging !== 'undefined') {
+      W.append(this.sec('Überfall (nächster Spin)', h('div', { class: 'dev-grid' },
+        [['zufällig', true], ['junkie', 'junkie'], ['jugend', 'jugend'], ['cousin', 'cousin']].map(([label, v]) => this.btn(label, () => { Mugging.force = v; this.toast(`Nächster Spin: Überfall (${label})`); })))));
+    }
+    return W;
+  },
+  /* Screen öffnen; in der Story gesperrte Türen/Räume vorher freischalten, Gates einmal durchlassen. Auf dem Handy schließt sich das Panel. */
+  async showScreen(id) {
+    if (UI.busy) { this.toast('Screen gerade nicht erreichbar'); return; }
+    if (State.mode === 'story' && typeof Story !== 'undefined' && Story.story && Story.s && Story.isLocked(id)) {
+      const st = Story.s;
+      if (Story.DOORS.includes(id) && !st.unlocked.doors.includes(id)) st.unlocked.doors.push(id);
+      for (const r of Story.ROOM_OF[id] || []) if (!st.unlocked.rooms.includes(r)) st.unlocked.rooms.push(r);
+      Story.allowOnce = id;
+      State.save();
+      this.toast(`${id} freigeschaltet`);
+    }
+    if (UI.mobile()) this.toggle(false);
+    await UI.show(id);
+  },
+  renderStory() {
+    const W = h('div', {});
+    const stories = Object.values(Stories.all);
+    const running = State.mode === 'story' && typeof Story !== 'undefined' && Story.story && Story.s && !Story.s.ended;
+    W.append(h('p', { class: 'dev-info' }, running
+      ? `${Story.story.title} · Tag ${Story.s.day} · ${Story.s.phase === 'morning' ? 'morgens' : 'abends'} · vorher: ${Object.entries(Story.s.prev || {}).map(([k, v]) => `${k}=${v}`).join(', ') || '–'}`
+      : 'Keine Story aktiv'));
+    /* Starten */
+    const selStory = h('select', { id: 'devStorySel', class: 'dev-in' }, stories.map((st) => h('option', { value: st.id }, `${st.title || st.id}${st.dev ? ' (dev)' : ''}`)));
+    const selPrev = h('select', { id: 'devPrevSel', class: 'dev-in' });
+    const fillPrev = () => {
+      const st = Stories.get(selStory.value);
+      const req = st && st.requires ? Stories.get(st.requires) : null;
+      selPrev.innerHTML = ''; selPrev.disabled = !req;
+      selPrev.append(h('option', { value: '' }, req ? `voriges Ende von „${req.title}“` : '– keine Voraussetzung –'));
+      if (req) req.endings.forEach((e) => selPrev.append(h('option', { value: e.id }, e.id)));
+    };
+    selStory.addEventListener('change', fillPrev); fillPrev();
+    const dayIn = h('input', { id: 'devDayIn', type: 'text', inputmode: 'numeric', class: 'dev-in', value: '1' });
+    const weaponIn = h('input', { id: 'devWeaponIn', type: 'text', inputmode: 'numeric', class: 'dev-in', value: String(State.s.weapon || 0) });
+    W.append(this.sec('Story starten ⟲',
+      h('label', { class: 'dev-row', title: 'Story' }, h('span', {}, 'Story'), selStory),
+      h('label', { class: 'dev-row', title: 'Vorher' }, h('span', {}, 'Vorher'), selPrev),
+      h('label', { class: 'dev-row', title: 'Starttag' }, h('span', {}, 'Starttag (1 = mit Intro)'), dayIn),
+      h('label', { class: 'dev-row', title: 'Waffe' }, h('span', {}, 'Waffe (0–3)'), weaponIn),
+      h('button', { id: 'devStartBtn', type: 'button', class: 'dev-btn warn', onclick: () => this.startStory(selStory.value, selPrev.value || null, dayIn.value, weaponIn.value) }, 'Story starten ⟲')));
+    if (!running) return W;
+    const st = Story.s; const story = Story.story;
+    /* Vars */
+    W.append(this.sec('Vars', Object.keys(st.vars).map((k) => this.numRow(k, () => st.vars[k] || 0, (n) => { st.vars[k] = n; this.refreshStory(); }, { min: -1e9, max: 1e9 }))));
+    /* Flags: gesetzte + alle, die in der Story vorkommen */
+    const names = [...new Set([...Object.keys(st.flags), ...DevRules.flagNamesIn(story)])].sort();
+    W.append(this.sec('Flags', names.map((k) => this.boolRow(k, () => !!st.flags[k], (v) => { st.flags[k] = v; this.refreshStory(); }))));
+    /* Tag/Phase */
+    const daySet = h('input', { id: 'devDaySet', type: 'text', inputmode: 'numeric', class: 'dev-in', value: String(st.day) });
+    const phaseSel = h('select', { id: 'devPhaseSel', class: 'dev-in' },
+      h('option', { value: 'morning', selected: st.phase === 'morning' ? 'selected' : null }, 'morgens'),
+      h('option', { value: 'evening', selected: st.phase === 'evening' ? 'selected' : null }, 'abends'));
+    W.append(this.sec('Tag / Phase',
+      h('label', { class: 'dev-row', title: 'Tag' }, h('span', {}, 'Tag'), daySet, phaseSel),
+      h('button', { id: 'devDayBtn', type: 'button', class: 'dev-btn', onclick: async () => {
+        const d = DevRules.parseNumber(daySet.value, { min: 1, max: story.days || 999 });
+        if (d == null) { this.toast('Ungültig: Tag'); return; }
+        st.day = d; st.phase = phaseSel.value; st.jobToday = null; State.save();
+        this.toast(`Tag ${d}, ${phaseSel.value === 'morning' ? 'morgens' : 'abends'}`);
+        if (UI.mobile()) this.toggle(false);
+        await Modes.enter('story'); // bestehender Fortsetzungspfad: setup → applyChapter → morning/evening
+        this.render();
+      } }, 'Setzen & fortsetzen')));
+    /* Job */
+    const jobs = typeof Jobs !== 'undefined' ? Object.values(Jobs.POOL) : [];
+    const selJob = h('select', { id: 'devJobSel', class: 'dev-in' }, jobs.map((j) => h('option', { value: j.id }, `${j.icon} ${j.name} (${j.id})`)));
+    W.append(this.sec('Job starten',
+      h('label', { class: 'dev-row', title: 'Job' }, h('span', {}, 'Job'), selJob),
+      h('button', { id: 'devJobBtn', type: 'button', class: 'dev-btn', onclick: async () => {
+        const id = selJob.value; const job = Jobs.POOL[id];
+        if (!st.unlocked.jobs.includes(id)) st.unlocked.jobs.push(id);
+        st.phase = 'morning'; st.jobToday = null; State.save(); Story.renderDaybar();
+        this.toast(job && job.requires ? `Job ${id} (Voraussetzung übergangen)` : `Job ${id}`);
+        if (UI.mobile()) this.toggle(false);
+        await Jobs.take(id, { force: true });
+      } }, 'Starten')));
+    /* Ende */
+    const selEnd = h('select', { id: 'devEndSel', class: 'dev-in' }, story.endings.map((e) => h('option', { value: e.id }, e.id)));
+    W.append(this.sec('Ende abspielen',
+      h('label', { class: 'dev-row', title: 'Ende' }, h('span', {}, 'Ende'), selEnd),
+      h('button', { id: 'devEndBtn', type: 'button', class: 'dev-btn warn', onclick: async () => {
+        const end = story.endings.find((e) => e.id === selEnd.value); if (!end) return;
+        this.toggle(false);
+        await Story.finish(end);
+      } }, 'Abspielen')));
+    /* Freischalten */
+    const rooms = [...new Set(Object.values(Story.ROOM_OF).flat())];
+    const unl = (list, id) => (v) => {
+      const i = list.indexOf(id);
+      if (v && i < 0) list.push(id); if (!v && i >= 0) list.splice(i, 1);
+      State.save(); UI.renderSide();
+      if (UI.current && UI.current.id === 'hub') UI.show('hub'); // Türen im Gang neu zeichnen
+    };
+    W.append(this.sec('Freischalten',
+      h('h5', {}, 'Türen'), Story.DOORS.map((d) => this.boolRow(`tuer:${d}`, () => st.unlocked.doors.includes(d), unl(st.unlocked.doors, d))),
+      h('h5', {}, 'Räume'), rooms.map((r) => this.boolRow(`raum:${r}`, () => st.unlocked.rooms.includes(r), unl(st.unlocked.rooms, r))),
+      h('h5', {}, 'Jobs'), jobs.map((j) => this.boolRow(`job:${j.id}`, () => st.unlocked.jobs.includes(j.id), unl(st.unlocked.jobs, j.id)))));
+    return W;
+  },
+  refreshStory() { State.save(); Story.renderDaybar(); UI.renderWallet(); UI.renderSide(); },
+  /* Story neu starten: Story-Spielstand löschen, dann derselbe Pfad wie ?fresh&story=…&prev=…&day=…&weapon=… */
+  async startStory(id, prev, dayRaw, weaponRaw) {
+    const story = Stories.get(id); if (!story) return;
+    const day = DevRules.parseNumber(dayRaw, { min: 1, max: story.days || 999 });
+    const weapon = DevRules.parseNumber(weaponRaw, { min: 0, max: 3 });
+    if (day == null || weapon == null) { this.toast('Ungültig: Tag/Waffe'); return; }
+    try { State.storage.removeItem(State.STORY_KEY); } catch (e) { /* egal */ }
+    if (typeof Story !== 'undefined') Story.forcedNext = null;
+    this.toggle(false);
+    this.toast(`${story.title} ab Tag ${day}`);
+    await Modes.enter('newstory', { fresh: true, story: id, prev, day: day > 1 ? day : null, weapon, ending: null, job: null });
+    this.render();
+  },
+  sceneQuery: '',
+  renderSzenen() {
+    const W = h('div', {});
+    const search = h('input', { id: 'devSceneSearch', type: 'search', class: 'dev-in', placeholder: 'Szene suchen …', value: this.sceneQuery });
+    const list = h('div', {});
+    const running = State.mode === 'story' && typeof Story !== 'undefined' && Story.story && Story.s && !Story.s.ended;
+    const build = () => {
+      list.innerHTML = '';
+      const q = (this.sceneQuery = search.value.trim().toLowerCase());
+      const ids = Object.keys(Cutscene.SCENES).filter((id) => !q || id.toLowerCase().includes(q));
+      for (const g of DevRules.sceneGroups(ids, Stories.all)) {
+        const kids = g.ids.map((id) => this.btn(id, () => this.preview(id), Cutscene.active ? 'dim' : ''));
+        const st = g.id ? Stories.get(g.id) : null;
+        if (st && running && Story.story.id === st.id) {
+          for (const end of st.endings) if (!q || `ende: ${end.id}`.toLowerCase().includes(q)) kids.push(this.btn(`Ende: ${end.id}`, async () => { this.toggle(false); await Story.finish(end); }, 'warn'));
+        }
+        if (kids.length) list.append(this.sec(g.title, h('div', { class: 'dev-list' }, kids)));
+      }
+    };
+    search.addEventListener('input', build); build();
+    W.append(h('div', { class: 'dev-sec' }, search), list);
+    return W;
+  },
+  /* Kontext für die Vorschau: laufende Story → echter Story-Kontext; sonst Beispielwerte (wie ?scene=) plus Startwerte aller Storys.
+     Zusätzlich Beispielwerte für die globalen mug.*-Szenen (wie Mugging.maybe sie baut), sonst wirft ctx.type.intro dort. */
+  previewCtx() {
+    const mugSample = { type: typeof Mugging !== 'undefined' ? Mugging.TYPES.junkie : undefined, loot: '40 €', fight: 50, flee: 30, extra: '0 €', wallet: '10 €', strength: State.s.strength || 0 };
+    if (State.mode === 'story' && typeof Story !== 'undefined' && Story.story && Story.s) {
+      const ctx = Story.ctx();
+      for (const [k, v] of Object.entries(mugSample)) if (!(k in ctx)) ctx[k] = v;
+      return ctx;
+    }
+    const ctx = Object.assign({ bill: 900, before: 1000, after: 500, price: '1.000 €', debt: 300, day: 1, balance: UI.fmt(State.s.balance), stats: { Spins: 12, 'Höchster Kontostand': '1.234 €' }, raw: { balance: State.s.balance, day: 1, vars: {}, flags: {} }, prev: {}, flags: {} }, mugSample);
+    for (const st of Object.values(Stories.all)) for (const [k, v] of Object.entries(st.start.vars || {})) { if (!(k in ctx)) ctx[k] = String(v); if (!(k in ctx.raw.vars)) ctx.raw.vars[k] = v; }
+    return ctx;
+  },
+  /* Vorschau: Cutscene.play direkt – Entscheidungen laufen durch, Effekte greifen nicht.
+     Cutscene.play ruft def(ctx) auf, bevor active gesetzt wird – eine Exception dort (z. B. fehlender
+     Platzhalter im Kontext) lässt also weder active noch die cs-open-Klasse hängen; einfach melden reicht. */
+  async preview(id) {
+    if (Cutscene.active) { this.toast('Erst die laufende Szene beenden'); return; }
+    this.toggle(false);
+    try {
+      await Cutscene.play(id, this.previewCtx());
+      this.toast(`Szene ${id} fertig`);
+    } catch (e) {
+      console.error('[dev] Vorschau', id, e);
+      this.toast(`Szene ${id}: Fehler – ${e.message}`);
+    }
+  },
+};
+</script>
+
 <script id="selftest">
 /* ================= SELFTEST – läuft mit ?selftest im Browser und via node tests/run-selftest.mjs ================= */
 const SelfTest = {
@@ -8628,6 +9094,84 @@ T.test('StoryRules.validate: gates brauchen when und text, Raum royal bekannt', 
 T.test('StoryRules.validate: fehlende Gate-Szene', () => {
   const st = Object.assign({}, STORY_PROBE, { id: 'x', gates: { royal: [{ when: { flag: 'a' }, text: 't', scene: 'x' }] } });
   T.eq(StoryRules.validate(st, Object.keys(STORY_PROBE.scenes), ['spueler', 'post']), ['x: Szene "x" fehlt (gate royal[0])']);
+});
+
+T.test('StoryRules.optsFromParams: URL-Parameter → Options-Objekt', () => {
+  T.eq(StoryRules.optsFromParams(new URLSearchParams('')), { fresh: false, story: null, prev: null, day: null, weapon: null, ending: null, job: null });
+  T.eq(StoryRules.optsFromParams(new URLSearchParams('fresh&story=kater&prev=doc&day=5&weapon=2&ending=wirt&job=spueler')),
+    { fresh: true, story: 'kater', prev: 'doc', day: 5, weapon: 2, ending: 'wirt', job: 'spueler' });
+  T.eq(StoryRules.optsFromParams(new URLSearchParams('day=abc&weapon=')).day, 1, 'Müll bei day → 1 (wie bisher parseInt||1)');
+  T.eq(StoryRules.optsFromParams(new URLSearchParams('day=abc&weapon=')).weapon, 0, 'Müll bei weapon → 0');
+  T.eq(StoryRules.optsFromParams(new URLSearchParams('day=0')).day, 1, 'day mindestens 1');
+  T.eq(StoryRules.optsFromParams(new URLSearchParams('weapon=9')).weapon, 3, 'weapon höchstens 3');
+});
+
+/* ---- DevRules (Admin-Panel) ---- */
+T.test('DevRules.hash: deterministisch, nahe Eingaben verschieden', () => {
+  T.eq(DevRules.hash('a:b'), '5416304911849898');
+  T.eq(DevRules.hash('a:c'), '2267616075222599');
+  T.eq(DevRules.hash(''), '3338908027751811');
+  T.eq(DevRules.hash('a:b'), DevRules.hash('a:b'));
+});
+T.test('DevRules.login: nur exakte Zugangsdaten', () => {
+  T.ok(/^\d{10,17}$/.test(DEV_LOGIN_HASH), 'Hash konfiguriert');
+  T.eq(DevRules.HASH, DEV_LOGIN_HASH);
+  T.eq(DevRules.login('t', 't', DevRules.hash('t:t')), true);
+  T.eq(DevRules.login('T', 't', DevRules.hash('t:t')), false, 'Groß/Klein');
+  T.eq(DevRules.login('t', 'x', DevRules.hash('t:t')), false);
+  T.eq(DevRules.login(' t', 't', DevRules.hash('t:t')), false, 'Leerzeichen');
+  T.eq(DevRules.login('', '', DevRules.hash('t:t')), false);
+});
+T.test('DevRules.parseNumber: Ganzzahlen mit Grenzen, Müll → null', () => {
+  T.eq(DevRules.parseNumber('5000'), 5000);
+  T.eq(DevRules.parseNumber(' 5.000 '), 5000, 'Tausenderpunkt');
+  T.eq(DevRules.parseNumber('-20', { min: -100 }), -20);
+  T.eq(DevRules.parseNumber('4', { min: 0, max: 3 }), null, 'über max');
+  T.eq(DevRules.parseNumber('-1', { min: 0 }), null, 'unter min');
+  T.eq(DevRules.parseNumber(''), null);
+  T.eq(DevRules.parseNumber('abc'), null);
+  T.eq(DevRules.parseNumber('1e3'), null);
+  T.eq(DevRules.parseNumber('1,5'), null, 'keine Dezimalzahlen');
+  T.eq(DevRules.parseNumber(null), null);
+  T.eq(DevRules.parseNumber(42), 42, 'Zahl statt String');
+});
+T.test('DevRules.flagNamesIn: Flags aus Effekten, Bedingungen, Gates, Kapiteln, Enden', () => {
+  const st = {
+    scenes: {
+      a: [{ choices: [{ value: 'x', effects: [{ flag: 'f1' }, { unflag: 'f2' }], when: { notFlag: 'f3' } }] }],
+      b: () => [{ choices: [{ value: 'y', effects: [{ flag: 'f4' }] }] }],
+    },
+    events: [{ when: { all: [{ flag: 'f5' }, { not: { flag: 'f6' } }] }, effects: [{ unflag: 'f1' }] }, { chance: 0.5, effects: [{ flag: 'f10' }] }],
+    gates: { royal: [{ when: { any: [{ flag: 'f7' }] }, text: 't' }] },
+    chapters: [{ when: { flag: 'f8' } }],
+    endings: [{ id: 'e', when: { flag: 'f9' } }],
+    jobEffects: { spueler: [{ unflag: 'f11' }] },
+  };
+  T.eq(DevRules.flagNamesIn(st), ['f1', 'f10', 'f11', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9']);
+  T.eq(DevRules.flagNamesIn({}), []);
+  T.ok(DevRules.flagNamesIn(STORY_KATER).includes('abgestuerzt'), 'Kater: abgestuerzt');
+  T.ok(DevRules.flagNamesIn(STORY_KATER).includes('zitter'), 'Kater: zitter');
+  T.ok(DevRules.flagNamesIn(STORY_KATER).includes('buecher'), 'Kater: buecher (jobEffects)');
+  T.ok(DevRules.flagNamesIn(STORY_SCHULD).includes('verhaftet'), 'Schuld: verhaftet (verschachtelte Effekte)');
+  T.ok(DevRules.flagNamesIn(STORY_SCHULD).includes('vitoPleite'), 'Schuld: vitoPleite (jobEffects)');
+  const probe = DevRules.flagNamesIn(STORY_PROBE);
+  T.eq(probe, [...new Set(probe)].sort(), 'sortiert, ohne Duplikate');
+});
+T.test('DevRules.groupScreens: Keller/Royal/Stadt/Story/Sonst', () => {
+  const g = DevRules.groupScreens(['hub', 'roulette', 'royal', 'craps', 'stadt', 'jobs', 'vito', 'job-spueler', 'shootout', 'skills']);
+  T.eq(g.keller, ['hub', 'roulette', 'skills']);
+  T.eq(g.royal, ['royal', 'craps']);
+  T.eq(g.stadt, ['stadt']);
+  T.eq(g.story, ['jobs', 'vito', 'job-spueler']);
+  T.eq(g.sonst, ['shootout']);
+  T.eq(DevRules.groupScreens([]), { keller: [], royal: [], stadt: [], story: [], sonst: [] });
+});
+T.test('DevRules.sceneGroups: Story-Szenen der Story, Rest ist Keller', () => {
+  const stories = { kater: { id: 'kater', title: 'Der Kater', scenes: { 'kater.intro': [], 'kater.k2': [] } }, probe: { id: 'probe', title: 'Probe', scenes: { 'probe.n1': [] } } };
+  const g = DevRules.sceneGroups(['intro', 'kater.k2', 'probe.n1', 'divorce', 'kater.intro'], stories);
+  T.eq(g[0], { id: null, title: 'Keller', ids: ['intro', 'divorce'] });
+  T.eq(g[1], { id: 'kater', title: 'Der Kater', ids: ['kater.k2', 'kater.intro'] });
+  T.eq(g[2], { id: 'probe', title: 'Probe', ids: ['probe.n1'] });
 });
 
 /* ---- StoryRules ---- */
@@ -10913,6 +11457,7 @@ if (typeof Perks !== 'undefined') T.test('Perks.refreshExcluded: ohne force blei
   const { loaded, discarded } = State.init(storage);
   Modes.freeLoaded = loaded;
   UI.mountShell();
+  if (typeof Dev !== 'undefined' && (params.has('dev') || Dev.loggedIn())) Dev.init(); // Admin-Panel: ?dev zeigt das Login, angemeldet bleibt es bis Tab-Schluss
   if (discarded) UI.toast({ icon: '🗑️', title: 'Alter Spielstand verworfen', text: 'Unlesbar oder falsche Version – neues Spiel.', tone: 'loss', ms: 5000 });
   if (params.has('selftest')) {
     const r = await SelfTest.run();

@@ -117,9 +117,30 @@ leichter macht, aber keine Geldmaschine wird.
 | `?mug=1\|junkie\|jugend\|cousin` | erzwingt den nächsten Überfall (`1` bzw. leer: zufälliger Räubertyp; sonst gezielt `junkie`, `jugend` oder `cousin`) |
 | `?fresh&mode=free&screen=shootout&foe=junge\|kessler\|igor\|anabi&weapon=N` | Schießerei direkt öffnen, Gegner erzwingen, `weapon` (0–3) setzt die Waffenstufe fürs Duell |
 | `?fresh&story=…&weapon=N` | Story-Neustart mit gesetzter Waffenstufe (0–3, siehe Pfandleihe Kowalski) |
+| `?dev` | Admin-Panel-Login einblenden (siehe unten); bleibt in der URL stehen, ist kein Einmal-Parameter |
 
 `story`, `day`, `job`, `ending`, `fresh` und `prev` gelten genau einmal: die Engine entfernt sie nach dem Einstieg
 aus der URL, damit „Nächste Story" oder ein Reload nicht wieder dieselbe erzwungene Story starten.
+
+### Admin-Panel
+
+`keller37.html?dev` zeigt ein Login (Benutzer + Passwort). Nach der Anmeldung erscheint unten rechts ein
+🛠-Knopf, der auf jedem Screen – auch im Casino Royal und in Cutscenes – eine Schublade mit vier Reitern
+öffnet. Die Anmeldung hält, bis der Tab geschlossen wird (`sessionStorage`), auch ohne `?dev` in der URL.
+
+| Reiter | Was geht |
+|---|---|
+| **Werte** | Kontostand, XP, Stärke, Bier-Pegel, Schulden, Waffenstufe setzen; Royal-Gast, Igor, Brownie, Haus, Ehe, Dealer, Niere schalten; Auto/Schuhe wählen; alle Trophäen, alle Insider, Level max; Spielstand oder alles löschen |
+| **Screens** | jeden registrierten Screen öffnen (Keller, Casino Royal, Stadt samt Läden, Story-Screens); Schießerei mit Gegnerwahl; Überfall beim nächsten Spin erzwingen. In der Story werden gesperrte Türen/Räume beim Sprung freigeschaltet |
+| **Story** | Story mit vorigem Ende, Starttag (1 = mit Intro) und Waffenstufe neu starten; laufende Story: alle Vars und Flags editieren (auch noch nie gesetzte, z. B. `abgestuerzt`), Tag/Phase setzen, jeden Job erzwingen, jedes Ende abspielen, Türen/Räume/Jobs freischalten |
+| **Szenen** | alle Cutscenes (Keller und je Story) mit Suche; Klick spielt eine Vorschau **ohne** Effekte auf den Spielstand; unbekannte Platzhalter bleiben als `{{name}}` sichtbar |
+
+Das Panel ist eine Tür mit Schild, kein Tresor: Die Prüfung steht in der Datei (als Hash, nicht im Klartext);
+wer die Browser-Konsole öffnet, kommt daran vorbei. Ohne `?dev` bzw. Anmeldung wird nichts davon ins DOM
+gelegt – normale Spieler sehen keinen Unterschied (`tests/desktop-diff.py` bleibt 0 px).
+
+Zugangsdaten ändern: in der Browser-Konsole `DevRules.hash('Name:Passwort')` ausführen und das Ergebnis in
+`keller37.html` in `DEV_LOGIN_HASH` (Block `dev-rules`) eintragen.
 
 ## Tests
 
@@ -130,6 +151,7 @@ tests/screenshot.sh out.png "?screen=roulette"
 python3 tests/playtest-story.py     # CDP-Playtest Story-Modus (Chrome, Port 9335)
 python3 tests/desktop-diff.py       # Keller-Screens pixelidentisch zu main? (1280×900, Pillow)
 python3 tests/mobile-check.py       # Handy-Ansicht 400×800: Screenshots + Layout-Checks (Port 9361)
+python3 tests/playtest-dev.py       # CDP-Playtest Admin-Panel: Login, Werte, Screens, Story, Szenen (Port 9371)
 python3 tests/perf-trace.py --mobile  # Chrome-Trace je Szene: Paints, Raster, Layouts pro Sekunde (Port 9377)
 ```
 
