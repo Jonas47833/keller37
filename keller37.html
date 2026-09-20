@@ -5910,6 +5910,44 @@ const BaccaratRules = {
 };
 </script>
 
+<script id="poker-rules">
+/* ================= POKER – Five-Card Draw gegen den Wirt (rein, kein DOM) ================= */
+const PokerRules = {
+  ORDER: ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'],
+  NAMES: ['High Card', 'Paar', 'Zwei Paare', 'Drilling', 'Straße', 'Flush', 'Full House', 'Vierling', 'Straight Flush'],
+  value(c) { return PokerRules.ORDER.indexOf(c.val) + 2; },
+  /* rank 0–8; tiebreak: Gruppen nach Häufigkeit, dann Wert absteigend (Paar → [Paar, Kicker…]); Straße/Straight Flush nur die höchste Karte (A-2-3-4-5 → 5) */
+  evaluate(cards) {
+    const R = PokerRules;
+    const vals = cards.map(R.value).sort((a, b) => b - a);
+    const flush = cards.every((c) => c.suit === cards[0].suit);
+    const counts = {};
+    for (const v of vals) counts[v] = (counts[v] || 0) + 1;
+    const groups = Object.entries(counts).map(([v, n]) => ({ v: +v, n })).sort((a, b) => b.n - a.n || b.v - a.v);
+    let straightHigh = 0;
+    if (groups.length === 5) {
+      if (vals[0] - vals[4] === 4) straightHigh = vals[0];
+      else if (vals.join() === '14,5,4,3,2') straightHigh = 5;
+    }
+    const out = (rank, tiebreak) => ({ rank, name: R.NAMES[rank], tiebreak });
+    if (straightHigh && flush) return out(8, [straightHigh]);
+    if (groups[0].n === 4) return out(7, groups.map((g) => g.v));
+    if (groups[0].n === 3 && groups[1].n === 2) return out(6, groups.map((g) => g.v));
+    if (flush) return out(5, vals);
+    if (straightHigh) return out(4, [straightHigh]);
+    if (groups[0].n === 3) return out(3, groups.map((g) => g.v));
+    if (groups[0].n === 2 && groups[1].n === 2) return out(2, groups.map((g) => g.v));
+    if (groups[0].n === 2) return out(1, groups.map((g) => g.v));
+    return out(0, vals);
+  },
+  compare(a, b) {
+    if (a.rank !== b.rank) return a.rank > b.rank ? 1 : -1;
+    for (let i = 0; i < a.tiebreak.length; i++) if (a.tiebreak[i] !== b.tiebreak[i]) return a.tiebreak[i] > b.tiebreak[i] ? 1 : -1;
+    return 0;
+  },
+};
+</script>
+
 <script id="gang-rules">
 /* ================= GANG – Waffen, Duell, Kurier (rein, kein DOM); Wochen-/Wäsche-Logik der Story 3 folgt unten ================= */
 const GangRules = {
@@ -8792,6 +8830,31 @@ T.test('bjOutcome', () => {
   T.eq(Rules.bjOutcome(18, 18), 'push');
   T.eq(Rules.bjOutcome(17, 18), 'dealer');
 });
+
+/* ---- Poker ---- */
+const P = (...cs) => cs.map((s) => ({ val: s.slice(0, -1), suit: s.slice(-1) }));
+T.test('PokerRules.evaluate: jeder Rang', () => {
+  const E = PokerRules.evaluate;
+  T.eq(E(P('A♠', '9♥', '7♦', '4♣', '2♠')), { rank: 0, name: 'High Card', tiebreak: [14, 9, 7, 4, 2] });
+  T.eq(E(P('9♠', '9♥', 'A♦', '4♣', '2♠')), { rank: 1, name: 'Paar', tiebreak: [9, 14, 4, 2] });
+  T.eq(E(P('9♠', '9♥', '4♦', '4♣', 'A♠')), { rank: 2, name: 'Zwei Paare', tiebreak: [9, 4, 14] });
+  T.eq(E(P('7♠', '7♥', '7♦', 'K♣', '2♠')), { rank: 3, name: 'Drilling', tiebreak: [7, 13, 2] });
+  T.eq(E(P('5♠', '6♥', '7♦', '8♣', '9♠')), { rank: 4, name: 'Straße', tiebreak: [9] });
+  T.eq(E(P('A♠', '2♥', '3♦', '4♣', '5♠')), { rank: 4, name: 'Straße', tiebreak: [5] }, 'Rad-Straße zählt 5 hoch');
+  T.eq(E(P('K♥', '9♥', '7♥', '4♥', '2♥')), { rank: 5, name: 'Flush', tiebreak: [13, 9, 7, 4, 2] });
+  T.eq(E(P('7♠', '7♥', '7♦', 'K♣', 'K♠')), { rank: 6, name: 'Full House', tiebreak: [7, 13] });
+  T.eq(E(P('7♠', '7♥', '7♦', '7♣', 'K♠')), { rank: 7, name: 'Vierling', tiebreak: [7, 13] });
+  T.eq(E(P('5♥', '6♥', '7♥', '8♥', '9♥')), { rank: 8, name: 'Straight Flush', tiebreak: [9] });
+  T.eq(E(P('10♠', 'J♠', 'Q♠', 'K♠', 'A♠')), { rank: 8, name: 'Straight Flush', tiebreak: [14] }, 'Royal = höchste Straight Flush');
+});
+T.test('PokerRules.compare: Rang, dann Kicker, Gleichstand 0', () => {
+  const E = PokerRules.evaluate, C = PokerRules.compare;
+  T.eq(C(E(P('9♠', '9♥', 'A♦', '4♣', '2♠')), E(P('A♠', 'K♥', '7♦', '4♣', '2♠'))), 1, 'Paar schlägt High Card');
+  T.eq(C(E(P('9♠', '9♥', 'A♦', '4♣', '2♠')), E(P('9♦', '9♣', 'K♦', '4♥', '2♥'))), 1, 'Kicker Ass schlägt König');
+  T.eq(C(E(P('9♠', '9♥', 'K♦', '4♣', '2♠')), E(P('9♦', '9♣', 'K♥', '4♥', '2♥'))), 0, 'identische Werte = Gleichstand');
+  T.eq(C(E(P('5♠', '6♥', '7♦', '8♣', '9♠')), E(P('K♥', '9♥', '7♥', '4♥', '2♥'))), -1, 'Flush schlägt Straße');
+});
+
 T.test('bjDelta', () => {
   T.eq(Rules.bjDelta('win', 10), 10); T.eq(Rules.bjDelta('bust', 10), -10);
   T.eq(Rules.bjDelta('dealer', 10), -10); T.eq(Rules.bjDelta('push', 10), 0);
