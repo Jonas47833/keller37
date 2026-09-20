@@ -277,7 +277,7 @@ body.cs-open .toast { max-width: 300px; }
 .cs-instant .cs-world.cs-fade { animation: none; }
 .cs-snap .cs-fig, .cs-snap .cs-world { transition: none !important; }
 .cs-instant .cs-fig .part, .cs-snap .cs-fig .part { transition: none !important; }
-.cs-instant .cs-fig[data-pose="down"] .cs-body, .cs-snap .cs-fig[data-pose="down"] .cs-body { animation-duration: 0s !important; } /* Sofort-Modus/Snap: liegt sofort */
+.cs-instant .cs-fig[data-pose="down"] .cs-body { animation-duration: 0s !important; } /* Sofort-Modus: liegt sofort (Snap beendet einen laufenden Fall per getAnimations().finish(), siehe _snap) */
 /* Kulissen-Leben – ausschließlich transform/opacity */
 .life-neon { animation: csFlicker 3s infinite; }
 .life-flicker { animation: csFlicker 4s infinite; }
@@ -333,6 +333,7 @@ body.cs-open .toast { max-width: 300px; }
 @media (prefers-reduced-motion: reduce) {
   #cutscene .cs-set *, .cs-fig, .cs-fig *, .cs-world, .cs-bubble, .cs-shout, .cs-next { animation: none !important; transition: none !important; }
   .cs-fig-inner { transform: scaleX(var(--face)) !important; }
+  .cs-fig[data-pose="down"] .cs-body { transform: rotate(85deg) !important; } /* ohne csFall (animation: none) läge die Figur sonst nicht – _headAt rechnet aber liegend */
 }
 /* ==== 6. SPIELE & RÄUME ==== */
 /* -- Kredite -- */
@@ -3157,6 +3158,10 @@ const Cutscene = {
     }
     void els.root.offsetWidth; // Stil mit abgeschalteten Transitions übernehmen – Transitions enden am Zielwert
     els.root.classList.remove('cs-snap');
+    for (const f of els.figs.values()) { // laufender Fall (Keyframe, keine Transition): sofort zu Ende – nach dem Klassenwechsel, damit finish() die volle Dauer als Ende nimmt
+      const body = f.pose === 'down' ? qs('.cs-body', f.el) : null;
+      if (body && body.getAnimations) for (const a of body.getAnimations()) a.finish();
+    }
   },
   /* Kopfposition GEOMETRISCH aus dem Rig-Kasten plus Zielpose und Blickrichtung berechnet, nie gemessen: so ist sie
      unabhängig von einer gerade laufenden Bewegung (Weg, Hinlegen, Schwanken). Rig-Kasten = äußerer .cs-fig-Kasten
@@ -12137,7 +12142,21 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.ok(Math.abs(now.left - ref.left) <= 2 && Math.abs(now.top - ref.top) <= 2, `Blase am Endpunkt (${now.left}|${now.top} vs ${ref.left}|${ref.top})`);
       root.click(); await done2;
       T.ok(!Cutscene.active, 'Szene beendet');
-    } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.snap']; }
+      /* Klick mitten im Fall (calm → dead, Räuber tritt währenddessen auf): _snap beendet den csFall sofort – Körper liegt bei 85° */
+      Cutscene.define('test.snapfall', [
+        { bg: 'gasse', who: 'du', mood: 'calm', text: 'Steht.' },
+        { bg: 'gasse', who: 'du', mood: 'dead', enter: 'raeuber', text: 'Liegt.' },
+      ]);
+      const done3 = Cutscene.play('test.snapfall', {});
+      await wait(40); root.click(); await wait(40); root.click(); // Auftritt abkürzen, weiter zu Panel 2 (Fall + Räuber-Auftritt starten)
+      await wait(200); root.click(); await wait(30);              // Klick mitten im Fall → _snap
+      const body = qs('.cs-fig.speaking .cs-body', root);
+      T.eq(qs('.cs-fig.speaking', root).dataset.pose, 'down', 'Snap-Fall: Pose down');
+      const m = /matrix\(([^)]+)\)/.exec(getComputedStyle(body).transform), [ma, mb] = m ? m[1].split(',').map(parseFloat) : [1, 0];
+      T.ok(Math.abs(ma) < 0.1 && Math.abs(mb) > 0.99, `Snap-Fall: Körper sofort bei 85° (matrix a=${ma.toFixed(3)} b=${mb.toFixed(3)})`);
+      root.click(); await done3;
+      T.ok(!Cutscene.active, 'Snap-Fall-Szene beendet');
+    } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.snap']; delete Cutscene.SCENES['test.snapfall']; }
   });
   T.test('Cutscene-Kamera close: Zoom zielt auf den gemessenen Kopf – auch liegend und schon gezoomt', async () => {
     const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
@@ -12321,6 +12340,24 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       for (const r of rules) if (r.type === CSSRule.KEYFRAMES_RULE && /^cs[A-Z]/.test(r.name)) { n++; for (const p of animatedProps(r)) T.ok(p === 'transform' || p === 'opacity', `${r.name}: ${p}`); }
     }
     T.ok(n >= 25, `${n} cs-Keyframes gefunden`);
+  });
+  T.test('Cutscene reduced-motion: liegende Figur liegt statisch (rotate(85deg) im @media-Block, wo csFall abgeschaltet ist)', () => {
+    /* Ein echtes @media (prefers-reduced-motion) lässt sich im Harness nicht per matchMedia-Stub aktivieren – daher Prüfung über CSSOM */
+    let found = null, killsAnim = false;
+    for (const sheet of document.styleSheets) {
+      let rules; try { rules = sheet.cssRules; } catch (e) { continue; }
+      for (const r of rules) {
+        if (r.type !== CSSRule.MEDIA_RULE || !/prefers-reduced-motion:\s*reduce/.test(r.conditionText || r.media.mediaText)) continue;
+        for (const inner of r.cssRules) {
+          if (inner.selectorText === '.cs-fig[data-pose="down"] .cs-body') found = inner;
+          if ((inner.selectorText || '').split(',').some((sel) => sel.trim() === '.cs-fig *') && inner.style.animationName === 'none') killsAnim = true;
+        }
+      }
+    }
+    T.ok(killsAnim, 'reduced-motion schaltet Figuren-Animationen ab (also auch csFall)');
+    T.ok(found, 'Regel .cs-fig[data-pose="down"] .cs-body im reduced-motion-Block');
+    T.eq(found && found.style.transform, 'rotate(85deg)', 'statisch liegend');
+    T.eq(found && found.style.getPropertyPriority('transform'), 'important', '!important gegen die Pose-Regeln');
   });
   T.test('Regie: alle Keller-Szenen (Cutscene.SCENES) bestehen validatePanels, Sounds im SFX-Register', () => {
     const ctx = { type: { intro: ['a', 'b'], fightWon: 'a', fightLost: 'a', fled: 'a', caught: 'a', paid: 'a' }, loot: '1 €', fight: 50, flee: 50, wallet: '1 €', strength: 1, extra: '0 €',
