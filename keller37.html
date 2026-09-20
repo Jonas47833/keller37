@@ -7109,10 +7109,32 @@ const GangRules = {
     return { ok: true };
   },
   DRAW_WAIT: [1500, 4000],
+  /* ---- Duell in Ego-Sicht: Zielen, Fehlschüsse, Gegnerschuss ---- */
+  HIT_MARGIN: { mouse: 24, touch: 32 },
+  /* Tipp trifft, wenn er in der um margin vergrößerten Figuren-Box liegt (Bühnenkoordinaten) */
+  hitTest(tap, box, margin = 24) {
+    return tap.x >= box.left - margin && tap.x <= box.left + box.width + margin && tap.y >= box.top - margin && tap.y <= box.top + box.height + margin;
+  },
+  /* Gegnerzeit für eine Runde: base ± spread, gleichverteilt, genau ein rng-Aufruf */
+  foeTime(foe, rng) { return Math.round(foe.base + (rng() * 2 - 1) * foe.spread); },
+  /* Zeitpunkt (ms nach dem Signal), zu dem der Gegner schießt, wenn bis dahin kein Treffer kam – genau der Punkt, ab dem duelRound verliert */
+  foeFiresAt(foeTime, bonus = 0) { return foeTime + bonus; },
+  /* taps: [{ t (ms relativ zum Signal, < 0 = vor dem Signal), hit }]. Der erste Tipp vor dem Signal ist ein Fehlschuss (Runde verloren),
+     sonst entscheidet der erste treffende Tipp; daneben getippte Schüsse zählen als misses und kosten nur Zeit. */
+  resolveRound({ taps, foeTime, bonus = 0 }) {
+    let misses = 0;
+    for (const tap of taps) {
+      if (tap.t < 0) return { won: false, misfire: true, foeTime, you: null, misses };
+      if (!tap.hit) { misses++; continue; }
+      const you = Math.max(0, tap.t - bonus);
+      return { won: you < foeTime, misfire: false, foeTime, you, misses };
+    }
+    return { won: false, misfire: false, foeTime, you: null, misses };
+  },
   drawWait(rng) { const [a, b] = GangRules.DRAW_WAIT; return Math.round(a + rng() * (b - a)); },
   /* reaction: ms nach dem Blitz, null = vor dem Blitz getippt (Fehlschuss). Gegnerzeit streut gleichverteilt ±spread. */
   duelRound({ reaction, bonus = 0, foe, rng }) {
-    const foeTime = Math.round(foe.base + (rng() * 2 - 1) * foe.spread);
+    const foeTime = GangRules.foeTime(foe, rng);
     if (reaction == null) return { won: false, misfire: true, foeTime, you: null };
     const you = Math.max(0, reaction - bonus);
     return { won: you < foeTime, misfire: false, foeTime, you };
@@ -11246,6 +11268,39 @@ T.test('GangRules.duelRound: Fehlschuss verliert, Bonus zieht ab, Streuung ±spr
   T.eq(GangRules.duelRound({ reaction: 300, bonus: 0, foe, rng: seq(0) }).foeTime, 260, 'rng 0 → base − spread');
   T.eq(GangRules.duelRound({ reaction: 300, bonus: 0, foe, rng: seq(1) }).foeTime, 380, 'rng 1 → base + spread');
   T.eq(GangRules.duelRound({ reaction: 250, bonus: 0, foe: GangRules.FOES.anabi, rng: seq(0.5) }).won, false, 'Anabi 220');
+});
+T.test('GangRules.hitTest: innen, am Rand, außen, Touch-Rand', () => {
+  const box = { left: 100, top: 50, width: 80, height: 160 };
+  T.eq(GangRules.hitTest({ x: 140, y: 120 }, box), true, 'innen');
+  T.eq(GangRules.hitTest({ x: 80, y: 120 }, box, 24), true, 'im Rand (24)');
+  T.eq(GangRules.hitTest({ x: 70, y: 120 }, box, 24), false, 'außerhalb des Rands');
+  T.eq(GangRules.hitTest({ x: 70, y: 120 }, box, 32), true, 'Touch-Rand 32');
+  T.eq(GangRules.hitTest({ x: 140, y: 240 }, box, 24), false, 'unterhalb');
+  T.eq(GangRules.HIT_MARGIN, { mouse: 24, touch: 32 });
+});
+T.test('GangRules.foeTime/foeFiresAt: base ± spread, ein rng-Aufruf; Gegner schießt bei foeTime + bonus', () => {
+  const foe = { base: 320, spread: 60 };
+  let calls = 0; const counting = () => { calls++; return 0.5; };
+  T.eq(GangRules.foeTime(foe, counting), 320); T.eq(calls, 1);
+  T.eq(GangRules.foeTime(foe, seq(0)), 260); T.eq(GangRules.foeTime(foe, seq(1)), 380);
+  T.eq(GangRules.foeFiresAt(320, 100), 420); T.eq(GangRules.foeFiresAt(320), 320);
+});
+T.test('GangRules.resolveRound: Fehlschuss vor dem Signal, erster Treffer zählt, misses, Bonus, kein Treffer', () => {
+  T.eq(GangRules.resolveRound({ taps: [{ t: -1, hit: true }], foeTime: 320, bonus: 100 }), { won: false, misfire: true, foeTime: 320, you: null, misses: 0 });
+  T.eq(GangRules.resolveRound({ taps: [{ t: 250, hit: true }], foeTime: 320, bonus: 0 }), { won: true, misfire: false, foeTime: 320, you: 250, misses: 0 });
+  T.eq(GangRules.resolveRound({ taps: [{ t: 120, hit: false }, { t: 260, hit: false }, { t: 380, hit: true }], foeTime: 320, bonus: 100 }), { won: true, misfire: false, foeTime: 320, you: 280, misses: 2 }, 'daneben kostet nur Zeit');
+  T.eq(GangRules.resolveRound({ taps: [{ t: 120, hit: false }], foeTime: 320, bonus: 0 }), { won: false, misfire: false, foeTime: 320, you: null, misses: 1 }, 'kein Treffer: der Gegner war schneller');
+  T.eq(GangRules.resolveRound({ taps: [], foeTime: 320, bonus: 0 }), { won: false, misfire: false, foeTime: 320, you: null, misses: 0 });
+  T.eq(GangRules.resolveRound({ taps: [{ t: 50, hit: true }, { t: 900, hit: true }], foeTime: 320, bonus: 300 }).you, 0, 'Bonus zieht ab, nie unter 0; spätere Tipps egal');
+  T.eq(GangRules.resolveRound({ taps: [{ t: 100, hit: false }, { t: -5, hit: true }], foeTime: 320 }).misfire, true, 'ein negativer Tipp irgendwo in der Liste = Fehlschuss');
+});
+T.test('GangRules.resolveRound ≡ duelRound bei genau einem Treffer (Balance-Invariante)', () => {
+  const foe = GangRules.FOES.junge;
+  for (const [t, bonus, r] of [[250, 0, 0.5], [90, 300, 0.1], [400, 100, 0.9], [330, 0, 0.5]]) {
+    const old = GangRules.duelRound({ reaction: t, bonus, foe, rng: seq(r) });
+    const neu = GangRules.resolveRound({ taps: [{ t, hit: true }], foeTime: GangRules.foeTime(foe, seq(r)), bonus });
+    T.eq([neu.won, neu.you, neu.foeTime, neu.misfire], [old.won, old.you, old.foeTime, old.misfire], `t=${t} bonus=${bonus}`);
+  }
 });
 T.test('GangRules.kurierPay: 0 → 3.000, 1 → 1.500, ≥ 2 → Kontrolle', () => {
   T.eq(GangRules.kurierPay(0), { pay: 3000, kontrolle: false });
