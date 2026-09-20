@@ -2705,7 +2705,7 @@ UI.register('hub', {
 /* ================= CUTSCENE DIRECTOR – Auto-Regie als reine Funktion (DOM-frei, testbar) ================= */
 const CsDirector = {
   SLOTS: ['left', 'mid', 'right', 'far'],
-  POSES: ['idle', 'talk', 'point', 'arms-crossed', 'hands-up', 'walk', 'down', 'flinch'],
+  POSES: ['idle', 'talk', 'point', 'arms-crossed', 'hands-up', 'walk', 'down', 'flinch', 'draw', 'hit'],
   CAMS: ['close', 'wide', 'shake'],
   MOODS: ['calm', 'angry', 'happy', 'shock', 'dead'],
   HURTS: ['pflaster', 'kruecke'],
@@ -2845,6 +2845,8 @@ const CsCast = {
     stumme:      { name: 'Der Stumme',       emoji: '🃏', color: '#8a8a8a',           look: { skin: '#e8c8a8', cloth: '#8a8a8a', accent: '#5a5a5a', hair: 'glatze', hairColor: '#333',    hat: null,   extra: [],                                 build: 'schmal' } },
     kessler:     { name: 'Kessler',          emoji: '🚬', color: 'var(--neon-red)',   look: { skin: '#e8b48a', cloth: '#5a1a1a', accent: '#2a0a0a', hair: 'kurz',   hairColor: '#111',    hat: null,   extra: ['zigarette', 'narbe'],             build: 'normal' } },
     brandt:      { name: 'Kommissar Brandt', emoji: '👮', color: 'var(--neon-blue)',  look: { skin: '#e8c8a8', cloth: '#1e3a5c', accent: '#4cc9f0', hair: 'kurz',   hairColor: '#6a5040', hat: 'kappe', hatColor: '#1e3a5c', extra: ['schnurrbart'], build: 'normal' } },
+    laeufer:     { name: 'Bahnhof-Läufer',   emoji: '🏃', color: 'var(--neon-red)',   look: { skin: '#e8c8a8', cloth: '#2a5a3a', accent: '#f2f2f2', hair: 'kurz',   hairColor: '#3a2414', hat: 'muetze', hatColor: '#222', extra: [],           build: 'schmal' } },
+    junge:       { name: 'Bahnhof-Junge',    emoji: '🧢', color: 'var(--neon-red)',   look: { skin: '#e8b48a', cloth: '#3a3a3a', accent: '#ff7a1a', hair: 'kurz',   hairColor: '#111',    hat: 'cap', hatColor: '#1e3a5c', extra: [],          build: 'klein' } },
     kowalski:    { name: 'Kowalski',         emoji: '🔧', color: '#b8a070',           look: { skin: '#e0b08a', cloth: '#3a4a5a', accent: '#b8a070', hair: 'kurz',   hairColor: '#3a2414', hat: null,   extra: ['schnurrbart'],                    build: 'breit' } },
   },
   SHOES: { basic: '#f2f2f2', trail: '#ff7a1a', carbon: '#111' },
@@ -2892,7 +2894,8 @@ const CsCast = {
     const arm = (side) => {
       const x = side === 'L' ? 14 - armShift : 72 + armShift, cx = side === 'L' ? 21 - armShift : 79 + armShift;
       return part(`arm${side}`, `<rect x="${x}" y="76" width="14" height="52" rx="7" fill="${P.cloth}"/><circle cx="${cx}" cy="130" r="6" fill="${P.skin}"/>
-        ${side === 'L' && opts.hurt === 'kruecke' ? `<path d="M${cx - 14} 118 L${cx - 14} 172" stroke="#8a6a3a" stroke-width="4"/><path d="M${cx - 22} 118 L${cx - 6} 118" stroke="#8a6a3a" stroke-width="4"/>` : ''}`);
+        ${side === 'L' && opts.hurt === 'kruecke' ? `<path d="M${cx - 14} 118 L${cx - 14} 172" stroke="#8a6a3a" stroke-width="4"/><path d="M${cx - 22} 118 L${cx - 6} 118" stroke="#8a6a3a" stroke-width="4"/>` : ''}
+        ${side === 'R' && opts.gun ? `<path class="pistole" d="M${cx - 4} 126 h18 v6 h-10 v9 h-8z" fill="#1a1a1a"/>` : ''}`);
     };
     const face = this.face(mood, P, parts, opts.hurt);
     const hair = this.hair(P);
@@ -11302,6 +11305,16 @@ T.test('GangRules.resolveRound ≡ duelRound bei genau einem Treffer (Balance-In
     T.eq([neu.won, neu.you, neu.foeTime, neu.misfire], [old.won, old.you, old.foeTime, old.misfire], `t=${t} bonus=${bonus}`);
   }
 });
+if (typeof CsCast !== 'undefined') {
+  T.test('CsCast: Looks für Bahnhof-Läufer und -Junge, gun: true zeichnet die Pistole in die rechte Hand', () => {
+    for (const id of ['laeufer', 'junge']) { T.ok(CsCast.CAST[id] && CsCast.CAST[id].look, `Look ${id}`); T.eq(CsCast.CAST[id].name, GangRules.FOES[id].name, `${id}: Name wie in FOES`); }
+    T.ok(CsCast.figureHtml('junge', { gun: true }).includes('class="pistole"'), 'Pistole');
+    T.ok(!CsCast.figureHtml('junge').includes('class="pistole"'), 'ohne gun keine Pistole');
+    const html = CsCast.figureHtml('anabi', { gun: true });
+    T.ok(html.indexOf('class="pistole"') > html.indexOf('class="part armR"') && html.indexOf('class="pistole"') < html.indexOf('class="part head"'), 'Pistole liegt im rechten Arm-Teil');
+  });
+  T.test('CsDirector.POSES kennt draw und hit', () => { T.ok(CsDirector.POSES.includes('draw') && CsDirector.POSES.includes('hit')); });
+}
 T.test('GangRules.kurierPay: 0 → 3.000, 1 → 1.500, ≥ 2 → Kontrolle', () => {
   T.eq(GangRules.kurierPay(0), { pay: 3000, kontrolle: false });
   T.eq(GangRules.kurierPay(1), { pay: 1500, kontrolle: false });
