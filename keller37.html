@@ -6794,6 +6794,8 @@ const Stories = {
     const errs = [];
     const storyIds = Object.keys(this.all);
     for (const st of Object.values(this.all)) errs.push(...StoryRules.validate(st, sceneIds, jobIds || (st.start.unlocked.jobs), storyIds, this.all));
+    const castIds = Object.keys(Cutscene.CAST), sfxIds = typeof SFX !== 'undefined' && SFX.LIB ? Object.keys(SFX.LIB) : null;
+    for (const [id, def] of Object.entries(Cutscene.SCENES)) if (typeof def !== 'function') errs.push(...CsDirector.validatePanels(id, def, { castIds, sfxIds }));
     if (errs.length) { errs.forEach((e) => console.error('[story]', e)); UI.toast({ icon: '🐛', title: 'Story-Daten fehlerhaft', text: errs[0], tone: 'loss', ms: 8000 }); }
     return errs;
   },
@@ -11456,6 +11458,24 @@ if (typeof CsSets !== 'undefined') {
   });
 }
 
+/* ---- Regie-Validierung: jede Szene, jeder Schlüssel ---- */
+if (typeof CsDirector !== 'undefined' && typeof STORY_SCHULD !== 'undefined') {
+  T.test('Regie: alle Story-Szenen (Probe, Schuld, Kater, Wäsche) bestehen validatePanels', () => {
+    const ctx = { raw: { vars: { woche: 1, lieferung: 10000, ziel: 20000, rueckgabe: 11000, letztePay: 11000, kredit: 0, zorn: 0, ausgang: 0, letzterUeberfall: 'slots', letzterRaub: 500, hinterhaltN: 2, igorBiere: 0, belege: 1, belegeOffen: 1, uebergeben: 0 }, flags: {} }, prev: {}, flags: {} };
+    const castIds = Object.keys(CsCast.CAST);
+    const errs = []; let n = 0;
+    for (const story of [STORY_PROBE, STORY_SCHULD, STORY_KATER, STORY_STASH]) {
+      for (const [id, def] of Object.entries(story.scenes || {})) {
+        const panels = typeof def === 'function' ? def(ctx) : def;
+        n += panels.length;
+        errs.push(...CsDirector.validatePanels(id, panels, { castIds }));
+      }
+    }
+    T.eq(errs, []);
+    T.ok(n > 200, `${n} Panels geprüft`);
+  });
+}
+
 /* ---- Story-Engine (nur im Browser – Block story-engine wird in Node nicht geladen) ---- */
 if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
   /* Sofortiges Ende mitten in der Nacht: finish() → „Nächste Story" tauscht State.s aus. Der Rest von runEvents/night
@@ -12027,6 +12047,22 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       for (const r of rules) if (r.type === CSSRule.KEYFRAMES_RULE && /^cs[A-Z]/.test(r.name)) { n++; for (const p of animatedProps(r)) T.ok(p === 'transform' || p === 'opacity', `${r.name}: ${p}`); }
     }
     T.ok(n >= 25, `${n} cs-Keyframes gefunden`);
+  });
+  T.test('Regie: alle Keller-Szenen (Cutscene.SCENES) bestehen validatePanels, Sounds im SFX-Register', () => {
+    const ctx = { type: { intro: ['a', 'b'], fightWon: 'a', fightLost: 'a', fled: 'a', caught: 'a', paid: 'a' }, loot: '1 €', fight: 50, flee: 50, wallet: '1 €', strength: 1, extra: '0 €',
+      choices: [{ label: 'x', value: 'x' }], texts: '', old: 'a', tradeIn: '1 €', neu: 'b', cost: '1 €', name: 'n', price: '1 €', amount: '1 €', fee: '1 €', limit: '1 €', rate: 1, debt: '1 €', bill: '1 €', before: '1 €', after: '1 €', balance: '1 €', stats: {},
+      raw: { vars: {}, flags: {} }, prev: {}, flags: {} };
+    const castIds = Object.keys(Cutscene.CAST), sfxIds = Object.keys(SFX.LIB);
+    const errs = []; let n = 0, skipped = [];
+    for (const [id, def] of Object.entries(Cutscene.SCENES)) {
+      let panels;
+      try { panels = typeof def === 'function' ? def(ctx) : def; } catch (e) { skipped.push(id); continue; }
+      n++;
+      errs.push(...CsDirector.validatePanels(id, panels, { castIds, sfxIds }));
+    }
+    T.eq(errs, []);
+    T.eq(skipped, [], 'jede Szene lässt sich mit dem Test-Kontext erzeugen');
+    T.ok(n >= 60, `${n} Szenen geprüft`);
   });
   const pseudoAnim = (el, pseudo) => getComputedStyle(el, pseudo).animationName;
   T.test('Glücksrad: Rad in Clip-Wrapper (contain: paint), Geometrie unverändert, Zeiger/Lichter/Nabe außerhalb, Glow per ::after', async () => {
