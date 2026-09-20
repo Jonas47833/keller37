@@ -1345,6 +1345,35 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     </div>
   </div>
 </template>
+<template id="tpl-stud">
+  <div class="panel bj-panel felt">
+    <div class="bj-table">
+      <div class="bj-hand dealer">
+        <div class="hand-label">Madame Sylvie <span class="hand-val" id="studDealerName">–</span> <span class="insider-hint hidden" id="studPeek"></span></div>
+        <div class="cards" id="studDealerCards"></div>
+      </div>
+      <div class="bj-arc" id="studArc">Ante · –</div>
+      <div class="bj-hand player">
+        <div class="cards" id="studPlayerCards"></div>
+        <div class="hand-label">Du <span class="hand-val" id="studHandName">–</span></div>
+      </div>
+    </div>
+    <div class="status" id="studStatus">Ante setzen</div>
+    <div class="bet-bar" id="studBetControls">
+      <div class="bet-field bet-view"><input type="number" id="studBet" value="100" min="100" readonly></div>
+      <button class="chip" data-chip="100" data-v="100">100</button>
+      <button class="chip" data-chip="250" data-v="25">250</button>
+      <button class="chip" data-chip="500" data-v="500">500</button>
+      <button class="chip" data-chip="1000" data-v="max">1000</button>
+      <button class="btn solid" id="btnStudDeal">Geben</button>
+    </div>
+    <div class="bet-bar hidden" id="studCallControls">
+      <button class="btn green" id="btnStudCall">Mitgehen</button>
+      <button class="btn ghost" id="btnStudFold">Passen</button>
+    </div>
+    <div class="bet-bar"><button class="btn ghost sm" id="studBack">← Lobby</button></div>
+  </div>
+</template>
 <template id="tpl-roulette">
   <div class="panel roulette-panel felt">
     <div class="roulette-top">
@@ -5314,6 +5343,144 @@ UI.register('poker', {
       UI.toast({ icon: '♠️', title: 'Hand aufgegeben', text: 'Einsatz verfallen.', tone: 'loss' });
     }
     Poker.root = null; Poker.inRound = false; Poker.busy = false; Poker.round = null;
+  },
+});
+</script>
+
+<script id="game-stud">
+/* ================= CARIBBEAN STUD – Ante, fünf Karten, Mitgehen oder Passen gegen das Haus ================= */
+const Stud = {
+  root: null, gen: 0, round: null, inRound: false, busy: false,
+  forceDeck: null, // Dev/Test: festes Deck für die nächste Hand (StudRules.deal verteilt von oben, abwechselnd Spieler/Dealer)
+  GROUPS: ['studBetControls', 'studCallControls'],
+  alive(gen) { return !!this.root && this.gen === gen; },
+  /* Hand ohne Abrechnung fallen lassen (Screen verlassen) – Einsätze sind bereits abgezogen */
+  drop(round) { if (round && !round.done) { round.done = true; Game.forfeit(); } },
+  show(group) { for (const g of this.GROUPS) qs('#' + g, this.root).classList.toggle('hidden', g !== group); },
+  status(html) { qs('#studStatus', this.root).innerHTML = html; },
+  renderArc(round) { qs('#studArc', this.root).textContent = round.called ? `Ante ${UI.fmt(round.ante)} · Bet ${UI.fmt(2 * round.ante)}` : `Ante ${UI.fmt(round.ante)}`; },
+  async deal() {
+    if (this.inRound || !this.root) return;
+    const ante = Game.readBet('studBet');
+    if (!(ante >= StudRules.ANTE.MIN && ante <= StudRules.ANTE.MAX)) { UI.toast({ icon: '🃏', title: 'Einsatz', text: `Zwischen ${UI.fmt(StudRules.ANTE.MIN)} und ${UI.fmt(StudRules.ANTE.MAX)}.`, tone: 'loss' }); SFX.play('lose'); return; }
+    const mods = Perks.mods();
+    const chk = Rules.checkSpin(State.s, 3 * ante, mods);
+    if (!chk.ok && chk.reason === 'funds') { UI.toast({ icon: '🃏', title: 'Zu wenig für diesen Tisch', text: `Du brauchst 3× Ante (${UI.fmt(3 * ante)}).`, tone: 'loss' }); SFX.play('lose'); return; }
+    if (!Game.beginSpin(ante)) return;
+    const gen = this.gen;
+    this.inRound = true; this.busy = true;
+    const deck = this.forceDeck ? this.forceDeck.slice() : Rules.newDeck(Math.random);
+    this.forceDeck = null;
+    let hands = StudRules.deal(deck);
+    hands = StudRules.luckOverride(hands, Rules.effectiveLuck(Rules.luck(State.s, mods), ante), Math.random);
+    const peek = Rules.effectiveInsider(mods.studPeek, ante);
+    const round = { pHand: hands.player, dHand: hands.dealer, ante, called: false, phase: 'deal', gen, run: Game.run, done: false };
+    this.round = round;
+    try {
+      qs('#studPlayerCards', this.root).innerHTML = ''; qs('#studDealerCards', this.root).innerHTML = '';
+      qs('#studHandName', this.root).textContent = '–'; qs('#studDealerName', this.root).textContent = '–';
+      qsa('.hand-val', this.root).forEach((v) => v.classList.remove('push'));
+      const hint = qs('#studPeek', this.root);
+      hint.classList.toggle('hidden', !mods.studPeek);
+      hint.textContent = mods.studPeek && !peek ? `🎩 Sylvies Blick: wirkt bis ${UI.fmt(Rules.INSIDER_CAP)}` : mods.studPeek ? '🎩 Sylvies Blick' : '';
+      qs('#btnStudCall', this.root).textContent = `Mitgehen (${UI.fmt(2 * ante)})`;
+      this.show('studCallControls');
+      this.renderArc(round);
+      this.status(`Mitgehen (${UI.fmt(2 * ante)}) oder passen?`);
+      for (let i = 0; i < 5; i++) {
+        if (!this.alive(gen)) break;
+        qs('#studPlayerCards', this.root).append(UI.cardEl(round.pHand[i]));
+        qs('#studDealerCards', this.root).append(UI.cardEl(round.dHand[i], !(i === 0 || (i === 1 && peek))));
+        SFX.play('cardSlide');
+        await wait(180);
+      }
+      if (this.alive(gen)) qs('#studHandName', this.root).textContent = PokerRules.evaluate(round.pHand).name;
+      round.phase = 'decide';
+    } finally {
+      if (this.gen === gen) this.busy = false;
+      else this.drop(round);
+    }
+  },
+  async call() {
+    const round = this.round;
+    if (!round || round.phase !== 'decide' || this.busy) return;
+    const gen = this.gen;
+    this.busy = true; round.phase = 'showdown';
+    try {
+      Game.applyDelta(-2 * round.ante, { quiet: true }); round.called = true;
+      if (this.alive(gen)) { this.renderArc(round); this.show(null); this.status('Showdown'); }
+      await this.showdown(round);
+    } finally {
+      if (this.gen === gen) this.busy = false;
+      else this.drop(round);
+    }
+  },
+  async fold() {
+    const round = this.round;
+    if (!round || round.phase !== 'decide' || this.busy) return;
+    const gen = this.gen;
+    this.busy = true; round.phase = 'end';
+    try { await this.finish(round, 'fold', -round.ante); }
+    finally { if (this.gen === gen) this.busy = false; else this.drop(round); }
+  },
+  async showdown(round) {
+    if (this.alive(round.gen)) {
+      const cards = qsa('#studDealerCards .pcard.hidden-card', this.root);
+      for (const c of cards) { c.classList.remove('hidden-card'); SFX.play('cardSlide'); await wait(160); }
+      qs('#studDealerName', this.root).textContent = StudRules.qualifies(round.dHand) ? PokerRules.evaluate(round.dHand).name : 'qualifiziert sich nicht';
+      await wait(400);
+    }
+    const r = StudRules.settle(round.pHand, round.dHand, round.ante);
+    await this.finish(round, r.outcome, r.net, r.bonus);
+  },
+  async finish(round, outcome, net, bonus = 0) {
+    if (round.done) return;
+    round.done = true;
+    const pe = PokerRules.evaluate(round.pHand), de = PokerRules.evaluate(round.dHand);
+    const stake = round.called ? 3 * round.ante : round.ante;
+    if (this.alive(round.gen)) {
+      const msg = outcome === 'fold' ? `<span class="loss">Gepasst · −${UI.fmt(round.ante)}</span>`
+        : outcome === 'noqual' ? `<span class="win">Dealer nicht qualifiziert (A-K nötig) · +${UI.fmt(net)}</span>`
+        : outcome === 'win' ? `<span class="win">${pe.name} schlägt ${de.name} · Bonus ${bonus}:1 · +${UI.fmt(net)}</span>`
+        : outcome === 'lose' ? `<span class="loss">${de.name} schlägt ${pe.name} · −${UI.fmt(-net)}</span>`
+        : 'Gleichstand · Push';
+      this.status(msg);
+      if (outcome === 'push') qsa('.hand-val', this.root).forEach((v) => v.classList.add('push'));
+      this.show('studBetControls');
+    }
+    if (this.gen === round.gen) { this.inRound = false; this.busy = false; }
+    await Bus.emit('stud:result', { outcome, player: pe, dealer: de, ante: round.ante, net });
+    await Game.settle(net, { from: this.alive(round.gen) ? qs('#studPlayerCards', this.root) : null, game: 'stud', bet: stake, run: round.run });
+  },
+  /* Leertaste wie an den anderen Royal-Tischen: Geben bzw. Mitgehen */
+  onKey(e) {
+    if (e.code !== 'Space' || !qs('#cutscene').hidden || e.repeat || !Stud.root) return;
+    e.preventDefault();
+    if (Stud.round && Stud.round.phase === 'decide') Stud.call(); else Stud.deal();
+  },
+};
+
+UI.register('stud', {
+  template: 'tpl-stud',
+  mount(root) {
+    Stud.gen++;
+    Stud.root = root;
+    Game.bindBet(root, 'studBet');
+    qs('#btnStudDeal', root).addEventListener('click', () => Stud.deal());
+    qs('#btnStudCall', root).addEventListener('click', () => Stud.call());
+    qs('#btnStudFold', root).addEventListener('click', () => Stud.fold());
+    qs('#studBack', root).addEventListener('click', () => { SFX.play('click'); UI.show('royal'); });
+    document.addEventListener('keydown', Stud.onKey);
+  },
+  unmount() {
+    Stud.gen++;
+    document.removeEventListener('keydown', Stud.onKey);
+    if (Stud.inRound) {
+      /* Zwischen zwei Aktionen verlassen: Hand sofort fallen lassen. Läuft noch eine Kette (busy), räumt die selbst auf. */
+      if (!Stud.busy) Stud.drop(Stud.round);
+      UI.toast({ icon: '🃏', title: 'Hand aufgegeben', text: 'Einsatz verfallen.', tone: 'loss' });
+    }
+    Stud.root = null; Stud.inRound = false; Stud.busy = false; Stud.round = null;
   },
 });
 </script>
@@ -13451,6 +13618,36 @@ if (typeof document !== 'undefined') T.test('Erfolg karibik: Flush oder besser g
     await Bus.emit('stud:result', { outcome: 'win', player: { rank: 5 }, dealer: { rank: 1 }, ante: 100, net: 1100 });
     T.ok(Achievements.has('karibik'), 'Flush gewinnt → Trophäe');
   } finally { State.meta.achievements = keep; State.saveMeta = saveMeta; }
+});
+if (typeof document !== 'undefined') T.test('Stud: Geben bucht Ante, Mitgehen Bet, Showdown zahlt net + Einsatz; Passen verliert Ante', async () => {
+  const keep = { s: State.s, mode: State.mode, save: State.save, saveMeta: State.saveMeta, cur: UI.current };
+  State.save = () => {}; State.saveMeta = () => {};
+  const C = (val, suit) => ({ val, suit });
+  const deck = () => [C('K', '♠'), C('9', '♦'), C('K', '♥'), C('9', '♣'), C('7', '♣'), C('5', '♠'), C('7', '♠'), C('4', '♦'), C('2', '♥'), C('Q', '♥'), ...Rules.newDeck(Math.random)];
+  try {
+    State.mode = 'free'; State.s = State.fresh(); State.s.balance = 1000; State.s.car = 'audiA3';
+    await UI.show('stud');
+    const root = qs('#stage');
+    qs('.chip[data-chip="250"]', root).click(); qs('.chip[data-chip="100"]', root).click();
+    Stud.forceDeck = deck();
+    await Stud.deal();
+    T.eq(State.s.balance, 900, 'Ante 100 abgebucht');
+    T.eq(qsa('#studDealerCards .pcard.hidden-card', root).length, 4, 'vier Dealer-Karten verdeckt');
+    T.eq(qs('#studHandName', root).textContent, 'Zwei Paare');
+    await Stud.call();
+    T.eq(State.s.balance, 1500, '900 − 200 Bet + (500 net + 300 Einsatz)');
+    T.eq(qsa('#studDealerCards .pcard.hidden-card', root).length, 0, 'alles aufgedeckt');
+    T.ok(qs('#studStatus', root).textContent.includes('Bonus 2:1'), qs('#studStatus', root).textContent);
+    T.ok(Stud.round === null || Stud.round.done, 'Hand beendet'); T.ok(!Stud.inRound);
+    Stud.forceDeck = deck();
+    await Stud.deal();
+    await Stud.fold();
+    T.eq(State.s.balance, 1400, 'Passen: Ante weg');
+    T.ok(qs('#studStatus', root).textContent.includes('Gepasst'));
+  } finally {
+    State.s = keep.s; State.mode = keep.mode; State.save = keep.save; State.saveMeta = keep.saveMeta;
+    await UI.show(keep.cur ? keep.cur.id : 'hub');
+  }
 });
 T.test('canPickSkill / skillPointsFree', () => {
   T.eq(Rules.skillPointsFree(base({ xp: 0, skills: [] })), 0);
