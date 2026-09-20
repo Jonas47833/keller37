@@ -8422,63 +8422,91 @@ const DuelStage = {
 };
 /* ================= SCHIESSEREI „ZIEH!“ – Reaktionsduell, ein Gegner nach dem anderen ================= */
 const Shootout = {
-  root: null, gen: 0, running: false, forced: false, pending: null, cfg: null, foes: [], idx: 0, phase: 'idle', signalAt: 0, timer: null, nextTimer: null, results: [], won: false,
+  root: null, gen: 0, running: false, forced: false, pending: null, cfg: null, foes: [], foeIds: [], idx: 0, phase: 'idle', signalAt: 0, foeTime: 0, taps: [],
+  timer: null, foeTimer: null, nextTimer: null, pulseTimer: null, results: [], won: false,
+  NEXT_MS: 1400,            // nächster Gegner erst, wenn der Fall (Zeitlupe) durch ist
   alive(gen) { return !!this.root && this.gen === gen; },
   /* cfg: { kind, foes: ['junge', …], bonus (ms), forced } */
   start(cfg) {
     if (!this.root || this.running) return;
-    this.cfg = cfg; this.foes = cfg.foes.map((id) => GangRules.FOES[id]).filter(Boolean); this.idx = 0; this.results = [];
+    this.cfg = cfg; this.foeIds = cfg.foes.filter((id) => GangRules.FOES[id]); this.foes = this.foeIds.map((id) => GangRules.FOES[id]); this.idx = 0; this.results = [];
     if (!this.foes.length) { qs('#duelStatus', this.root).textContent = 'Kein Gegner.'; return; }
     this.running = true; this.forced = !!cfg.forced; this.phase = 'idle';
+    DuelStage.mount(qs('#duelStage', this.root), { set: DuelStage.SET_BY_KIND[cfg.kind] || 'gasse', weapon: State.s.weapon || 0, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches });
     qs('#btnDuelStart', this.root).classList.remove('hidden'); qs('#btnDuelDone', this.root).classList.add('hidden');
     qs('#btnDuelStart', this.root).textContent = 'Bereit';
-    qs('#duelStatus', this.root).textContent = `${this.foes.length} Gegner. ${cfg.bonus ? `Waffe: ${cfg.bonus} ms Vorsprung.` : 'Ohne Vorsprung.'} „Bereit“ – dann warten, bis ZIEH! aufblitzt.`;
+    qs('#duelStatus', this.root).textContent = `${this.foes.length} Gegner. ${cfg.bonus ? `Waffe: ${cfg.bonus} ms Vorsprung.` : 'Ohne Vorsprung.'} „Bereit“ – dann warten, bis er zieht, und auf ihn tippen.`;
     this.renderFoe();
   },
   renderFoe() {
     if (!this.root) return;
     const foe = this.foes[this.idx];
-    qs('#duelFoe', this.root).textContent = foe ? foe.emoji : ''; qs('#duelFoe', this.root).className = 'duel-fighter foe';
-    qs('#duelYou', this.root).className = 'duel-fighter you';
-    qs('#duelFoeName', this.root).textContent = foe ? foe.name : '';
-    qs('#duelCount', this.root).textContent = `${Math.min(this.idx + 1, this.foes.length)} / ${this.foes.length}`;
-    const sig = qs('#duelSignal', this.root); sig.textContent = '…'; sig.className = 'duel-signal';
+    if (foe) DuelStage.enter(this.foeIds[this.idx], this.idx, this.foes.length, foe.name);
   },
   ready() {
     if (!this.running || this.phase !== 'idle' || !this.root) return;
     const gen = this.gen;
     this.phase = 'wait';
     qs('#btnDuelStart', this.root).classList.add('hidden');
-    const sig = qs('#duelSignal', this.root); sig.textContent = 'Warte…'; sig.className = 'duel-signal wait';
+    qs('#duelStatus', this.root).textContent = 'Warte, bis er zieht.';
+    SFX.loop('heartbeat', 900); DuelStage.tension(true);
+    this.pulseTimer = setTimeout(() => { if (this.alive(gen) && this.phase === 'wait') SFX.loop('heartbeat', 550); }, 1200); // Anspannung: Herz schlägt schneller
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.timer = setTimeout(() => {
       if (!this.alive(gen) || this.phase !== 'wait') return;
-      this.phase = 'draw'; this.signalAt = performance.now();
-      sig.textContent = 'ZIEH!'; sig.className = 'duel-signal draw';
-      SFX.play('reelStop');
+      const foe = this.foes[this.idx], bonus = this.cfg.bonus || 0;
+      this.phase = 'draw'; this.signalAt = performance.now(); this.taps = [];
+      this.foeTime = GangRules.foeTime(foe, Math.random);
+      clearTimeout(this.pulseTimer); SFX.stop('heartbeat'); SFX.play('reelStop');
+      DuelStage.tension(false); DuelStage.signal(); DuelStage.flash('ZIEH!', 500);
+      /* Der Gegner wartet nicht: zu seiner Zeit (plus dein Vorsprung) schießt er, wenn bis dahin kein Treffer kam */
+      this.foeTimer = setTimeout(() => { if (this.alive(gen) && this.phase === 'draw') this.resolve(); }, GangRules.foeFiresAt(this.foeTime, bonus));
     }, reduced ? 800 : GangRules.drawWait(Math.random));
   },
-  tap() {
-    if (!this.running) return;
-    if (this.phase === 'wait') { clearTimeout(this.timer); this.resolve(null); }
-    else if (this.phase === 'draw') this.resolve(Math.round(performance.now() - this.signalAt));
+  /* Schuss per Zeiger: Trefferprüfung gegen die Figuren-Box (Rand: Maus 24 px, Touch 32 px) */
+  shoot(ev) {
+    if (!this.running || !this.root || (this.phase !== 'wait' && this.phase !== 'draw')) return;
+    const pt = DuelStage.toStage(ev.clientX, ev.clientY);
+    const margin = ev.pointerType === 'touch' ? GangRules.HIT_MARGIN.touch : GangRules.HIT_MARGIN.mouse;
+    this.tap(GangRules.hitTest(pt, DuelStage.foeBox(), margin), pt);
   },
-  resolve(reaction) {
+  /* tap(): Tastatur/Playtest = Schuss mit automatischem Treffer; hit=false = daneben (kostet nur Zeit) */
+  tap(hit = true, pt = null) {
+    if (!this.running) return;
+    if (this.phase === 'wait') {
+      clearTimeout(this.timer); SFX.stop('heartbeat'); SFX.play('gunshot');
+      this.taps = [{ t: -1, hit }]; DuelStage.shot({ early: true });
+      this.resolve();
+    } else if (this.phase === 'draw') {
+      const t = Math.round(performance.now() - this.signalAt);
+      this.taps.push({ t, hit });
+      SFX.play(hit ? 'gunshot' : 'ricochet'); if (navigator.vibrate) navigator.vibrate(30);
+      DuelStage.shot({ x: pt ? pt.x : null, y: pt ? pt.y : null, hit });
+      if (hit) this.resolve(); else if (this.root) qs('#duelStatus', this.root).textContent = 'Daneben!';
+    }
+  },
+  resolve() {
     const gen = this.gen;
+    clearTimeout(this.foeTimer); clearTimeout(this.timer); clearTimeout(this.pulseTimer); SFX.stop('heartbeat'); DuelStage.tension(false);
     this.phase = 'result';
     const foe = this.foes[this.idx];
-    const r = GangRules.duelRound({ reaction, bonus: this.cfg.bonus || 0, foe, rng: Math.random });
+    const r = GangRules.resolveRound({ taps: this.taps, foeTime: this.foeTime, bonus: this.cfg.bonus || 0 });
     this.results.push(r);
+    if (r.won) DuelStage.foeDown();
+    else if (r.misfire) DuelStage.flash('Zu früh!', 900);
+    else { DuelStage.foeShoots(); SFX.play('gunshot'); if (navigator.vibrate) navigator.vibrate([40, 40, 80]); }
     if (this.root) {
-      qs(r.won ? '#duelFoe' : '#duelYou', this.root).classList.add(r.won ? 'down' : 'hit');
+      const missTxt = r.misses ? ` ${r.misses}× daneben.` : '';
       qs('#duelStatus', this.root).innerHTML = r.misfire ? `<span class="loss">Zu früh! Der Schuss geht in den Asphalt. ${foe.name} nicht.</span>`
-        : r.won ? `<span class="win">${foe.name}: ${r.foeTime} ms. Du: ${r.you} ms. Er liegt.</span>` : `<span class="loss">${foe.name}: ${r.foeTime} ms. Du: ${r.you} ms. Zu langsam.</span>`;
+        : r.won ? `<span class="win">${foe.name}: ${r.foeTime} ms. Du: ${r.you} ms.${missTxt} Er liegt.</span>`
+        : r.you == null ? `<span class="loss">${foe.name}: ${r.foeTime} ms.${missTxt} Er war schneller.</span>`
+        : `<span class="loss">${foe.name}: ${r.foeTime} ms. Du: ${r.you} ms.${missTxt} Zu langsam.</span>`;
     }
     SFX.play(r.won ? 'cash' : 'lose');
     if (!r.won) return this.finish(false);
     this.idx++;
     if (this.idx >= this.foes.length) return this.finish(true);
-    this.nextTimer = setTimeout(() => { if (!this.alive(gen)) return; this.phase = 'idle'; this.renderFoe(); const b = qs('#btnDuelStart', this.root); b.textContent = 'Nächster'; b.classList.remove('hidden'); }, 900);
+    this.nextTimer = setTimeout(() => { if (!this.alive(gen)) return; this.phase = 'idle'; this.renderFoe(); const b = qs('#btnDuelStart', this.root); b.textContent = 'Nächster'; b.classList.remove('hidden'); }, this.NEXT_MS);
   },
   finish(won) {
     this.running = false; this.phase = 'done'; this.won = won;
@@ -8498,7 +8526,7 @@ const Shootout = {
   },
   onKey(e) {
     if (!qs('#cutscene').hidden || e.repeat) return;
-    if (e.code === 'Space') { e.preventDefault(); if (Shootout.phase === 'idle') Shootout.ready(); else Shootout.tap(); }
+    if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); if (Shootout.phase === 'idle') Shootout.ready(); else Shootout.tap(); }
   },
 };
 UI.register('shootout', {
@@ -8507,7 +8535,7 @@ UI.register('shootout', {
     Shootout.gen++; Shootout.root = root; Shootout.running = false; Shootout.phase = 'idle';
     qs('#btnDuelStart', root).addEventListener('click', () => { SFX.play('click'); Shootout.ready(); });
     qs('#btnDuelDone', root).addEventListener('click', (e) => { e.currentTarget.disabled = true; SFX.play('click'); Shootout.leave(); });
-    qs('#duelStage', root).addEventListener('pointerdown', () => Shootout.tap());
+    qs('#duelStage', root).addEventListener('pointerdown', (e) => { e.preventDefault(); Shootout.shoot(e); });
     document.addEventListener('keydown', Shootout.onKey);
     if (Shootout.pending) { const c = Shootout.pending; Shootout.pending = null; Shootout.start(c); return; }
     const params = new URLSearchParams(location.search);
@@ -8522,7 +8550,8 @@ UI.register('shootout', {
   },
   unmount() {
     document.removeEventListener('keydown', Shootout.onKey);
-    clearTimeout(Shootout.timer); clearTimeout(Shootout.nextTimer);
+    clearTimeout(Shootout.timer); clearTimeout(Shootout.foeTimer); clearTimeout(Shootout.nextTimer); clearTimeout(Shootout.pulseTimer); SFX.stop('heartbeat');
+    DuelStage.unmount();
     const wasRunning = Shootout.running;
     const kind = Shootout.cfg ? Shootout.cfg.kind : null;
     Shootout.gen++; Shootout.root = null; Shootout.running = false; Shootout.phase = 'idle';
@@ -12799,7 +12828,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       await wait(120); // Blitz nach 30 ms (gestubbt)
       Shootout.tap(); // Runde 1 gewonnen: ≈ 90 ms − 300 Bonus → 0 < Läufer (≥ 320)
       T.eq([Shootout.running, Shootout.idx, Shootout.phase, events], [true, 1, 'result', []], 'Mehr-Gegner-Pfad: läuft weiter, noch kein fight:done');
-      await wait(1000); // nextTimer (900 ms) räumt auf Runde 2 um
+      await wait(Shootout.NEXT_MS + 100); // nextTimer räumt auf Runde 2 um
       T.eq([Shootout.phase, qs('#duelCount').textContent, qs('#btnDuelStart').classList.contains('hidden'), qs('#btnDuelStart').textContent], ['idle', '2 / 2', false, 'Nächster']);
       Shootout.ready();
       await wait(120);
@@ -13311,6 +13340,77 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       DuelStage.enter('anabi', 0, 1, 'Anabi Stash'); DuelStage.signal(); T.eq(DuelStage.flashUntil, 0, 'reduced: kein Blitz');
       DuelStage.foeDown(); T.eq(DuelStage.timeScale, 1, 'reduced: keine Zeitlupe'); DuelStage.foeShoots(); T.eq(DuelStage.shakeUntil, 0, 'reduced: kein Ruck');
     } finally { DuelStage.unmount(); host.remove(); }
+  });
+  T.test('Duell in Ego-Sicht: Bühne, Trefferprüfung, Fehlschuss kostet Zeit, Gegner schießt von sich aus, Fehlschuss vor dem Signal', async () => {
+    const keep = { cur: UI.current, wait: GangRules.drawWait, s: State.s, mode: State.mode, save: State.save, ft: GangRules.foeTime };
+    State.save = () => {}; State.mode = 'free'; State.s = State.fresh(); State.s.weapon = 1;
+    const events = []; const off = Bus.on('fight:done', (e) => events.push([e.kind, e.won, e.rounds.map((r) => r.misses)]));
+    const stageRect = () => qs('#duelStage').getBoundingClientRect();
+    const shootAt = (x, y, type = 'mouse') => { const R = stageRect(); Shootout.shoot({ clientX: R.left + x, clientY: R.top + y, pointerType: type }); };
+    const foeCenter = () => { const b = DuelStage.foeBox(); return [b.left + b.width / 2, b.top + b.height / 2]; };
+    try {
+      GangRules.drawWait = () => 30; GangRules.foeTime = () => 300;
+      await UI.show('shootout');
+      Shootout.start({ kind: 'e1', foes: ['junge', 'laeufer'], bonus: 100 });
+      const stage = qs('#duelStage');
+      T.eq([qsa('canvas.duel-world', stage).length, qsa('canvas.duel-fx', stage).length, qsa('.cs-fig.duel-foe svg.part', stage).length], [1, 1, 8], 'Welt- und Effekt-Canvas, Gegner aus dem Rig');
+      T.ok(qs('.cs-fig.duel-foe .pistole', stage), 'Gegner hält eine Pistole'); T.ok(qs('.duel-gun svg', stage), 'eigene Waffe');
+      T.eq([qs('#duelCount').textContent, qs('#duelFoeName').textContent, DuelStage.set], ['1 / 2', 'Bahnhof-Junge', 'gasse']);
+      T.ok(DuelStage.raf > 0, 'Canvas-Schleife läuft');
+      /* Runde 1: vor dem Signal ist ein Tipp kein Schuss auf den Gegner … erst daneben, dann Treffer */
+      Shootout.ready(); T.eq([Shootout.phase, DuelStage.tenseFrom > 0], ['wait', true], 'Anspannung an');
+      await wait(120); T.eq([Shootout.phase, qs('.cs-fig.duel-foe').dataset.pose, qs('.duel-flash').textContent, DuelStage.tenseFrom], ['draw', 'draw', 'ZIEH!', 0], 'Signal: Arm hoch + ZIEH!, Anspannung aus');
+      shootAt(10, 10); T.eq([Shootout.phase, Shootout.taps.length, Shootout.taps[0].hit], ['draw', 1, false], 'daneben: Runde läuft weiter');
+      const [cx, cy] = foeCenter(); shootAt(cx, cy);
+      T.eq([Shootout.phase, Shootout.results[0].won, Shootout.results[0].misses, qs('.cs-fig.duel-foe').dataset.pose], ['result', true, 1, 'hit'], 'Treffer nach einem Fehlschuss');
+      await wait(300); T.eq(qs('.cs-fig.duel-foe').dataset.pose, 'down', 'Gegner fällt');
+      await wait(Shootout.NEXT_MS + 100); T.eq([Shootout.phase, qs('#duelCount').textContent, qs('#duelFoeName').textContent], ['idle', '2 / 2', 'Bahnhof-Läufer']);
+      /* Runde 2: Touch-Rand trifft knapp außerhalb der Box */
+      Shootout.ready(); await wait(120);
+      const b = DuelStage.foeBox(); shootAt(b.left - 28, b.top + b.height / 2, 'touch');
+      T.eq([Shootout.results[1].won, Shootout.results[1].misses, events], [true, 0, [['e1', true, [1, 0]]]], 'Touch-Rand 32 px trifft, Duell gewonnen');
+      await Shootout.leave();
+      /* Gegner schießt von sich aus, wenn kein Treffer kommt (foeTime 300 + Bonus 100 = 400 ms) */
+      events.length = 0; await UI.show('shootout');
+      Shootout.start({ kind: 'e2', foes: ['junge'], bonus: 100 });
+      Shootout.ready(); await wait(120); shootAt(5, 5); shootAt(5, 5);
+      T.eq(Shootout.phase, 'draw'); await wait(450);
+      T.eq([Shootout.phase, Shootout.results[0].won, Shootout.results[0].you, Shootout.results[0].misses, events], ['done', false, null, 2, [['e2', false, [2]]]], 'Gegnerschuss beendet die Runde');
+      T.ok(DuelStage.redUntil > DuelStage.t, 'roter Rand nach dem Gegnerschuss');
+      await Shootout.leave();
+      /* Fehlschuss vor dem Signal – egal wohin getippt */
+      events.length = 0; await UI.show('shootout');
+      Shootout.start({ kind: 'e3', foes: ['junge'], bonus: 0 });
+      Shootout.ready(); const [fx, fy] = foeCenter(); shootAt(fx, fy);
+      T.eq([Shootout.results[0].misfire, Shootout.results[0].won, events], [true, false, [['e3', false, [0]]]]);
+      await Shootout.leave();
+    } finally {
+      off(); GangRules.drawWait = keep.wait; GangRules.foeTime = keep.ft; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
+      clearTimeout(Shootout.timer); clearTimeout(Shootout.foeTimer); clearTimeout(Shootout.nextTimer); Shootout.running = false; Shootout.forced = false; Shootout.pending = null;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
+      T.eq(DuelStage.mounted, false, 'Bühne beim Verlassen abgebaut'); T.eq(DuelStage.raf, 0, 'Canvas-Schleife gestoppt');
+    }
+  });
+  T.test('Duell: reduced-motion lässt Zeitfaktor bei 1 und ohne Blitz; Duell-Keyframes nur transform/opacity', async () => {
+    const keep = { cur: UI.current, wait: GangRules.drawWait, s: State.s, mode: State.mode, save: State.save, mm: window.matchMedia };
+    State.save = () => {}; State.mode = 'free'; State.s = State.fresh();
+    window.matchMedia = (q) => ({ matches: q.includes('reduced-motion'), addEventListener() {}, removeEventListener() {} });
+    try {
+      GangRules.drawWait = () => 30;
+      await UI.show('shootout');
+      Shootout.start({ kind: 'r1', foes: ['junge'], bonus: 300 });
+      T.eq(DuelStage.reduced, true);
+      Shootout.ready(); await wait(900); T.eq(Shootout.phase, 'draw', 'reduced: festes Signal nach 800 ms');
+      T.eq(DuelStage.flashUntil, 0, 'kein Blitz');
+      Shootout.tap(); T.eq(Shootout.results[0].won, true);
+      T.eq(DuelStage.timeScale, 1, 'keine Zeitlupe');
+      await Shootout.leave();
+      for (const name of ['duelRecoil', 'duelTwitch', 'csHit']) { const kf = keyframesOf(name); T.ok(kf, `@keyframes ${name}`); for (const p of animatedProps(kf)) T.ok(p === 'transform' || p === 'opacity', `${name}: ${p}`); }
+    } finally {
+      window.matchMedia = keep.mm; GangRules.drawWait = keep.wait; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
+      clearTimeout(Shootout.timer); clearTimeout(Shootout.foeTimer); clearTimeout(Shootout.nextTimer); Shootout.running = false; Shootout.forced = false; Shootout.pending = null;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
+    }
   });
   const pseudoAnim = (el, pseudo) => getComputedStyle(el, pseudo).animationName;
   T.test('Glücksrad: Rad in Clip-Wrapper (contain: paint), Geometrie unverändert, Zeiger/Lichter/Nabe außerhalb, Glow per ::after', async () => {
