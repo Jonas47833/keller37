@@ -7082,6 +7082,47 @@ const PokerRules = {
 };
 </script>
 
+<script id="stud-rules">
+/* ================= CARIBBEAN STUD – gegen das Haus (rein, kein DOM) ================= */
+const StudRules = {
+  ANTE: { MIN: 100, MAX: 1000 },
+  /* Bonus auf den Bet (2× Ante) je PokerRules-Rang: High Card … Straight Flush; Royal Flush gesondert */
+  BONUS: [1, 1, 2, 3, 4, 5, 7, 20, 50],
+  ROYAL_BONUS: 100,
+  /* Der Dealer spielt ab Ass-König (oder Paar und besser); sonst nur Ante 1:1 */
+  qualifies(hand) {
+    const e = PokerRules.evaluate(hand);
+    return e.rank >= 1 || (e.tiebreak[0] === 14 && e.tiebreak[1] === 13);
+  },
+  bonus(hand) {
+    const e = PokerRules.evaluate(hand);
+    return e.rank === 8 && e.tiebreak[0] === 14 ? StudRules.ROYAL_BONUS : StudRules.BONUS[e.rank];
+  },
+  /* Abwechselnd von oben: gerade Indizes Spieler, ungerade Dealer; Rest bleibt im Deck (forceDeck im Test lesbar) */
+  deal(deck) {
+    const player = [], dealer = [];
+    for (let i = 0; i < 10; i++) (i % 2 === 0 ? player : dealer).push(deck[i]);
+    return { player, dealer, deck: deck.slice(10) };
+  },
+  /* Nettobetrag für den Spieler nach Mitgehen (Einsatz Ante + Bet = 3× Ante) */
+  settle(player, dealer, ante) {
+    if (!StudRules.qualifies(dealer)) return { outcome: 'noqual', net: ante, bonus: 0 };
+    const c = PokerRules.compare(PokerRules.evaluate(player), PokerRules.evaluate(dealer));
+    if (c > 0) { const bonus = StudRules.bonus(player); return { outcome: 'win', net: ante + 2 * ante * bonus, bonus }; }
+    if (c < 0) return { outcome: 'lose', net: -3 * ante, bonus: 0 };
+    return { outcome: 'push', net: 0, bonus: 0 };
+  },
+  /* Glück: eine Verlusthand (als würde der Spieler mitgehen) wird mit luck % einmal neu vom Restdeck gegeben.
+     Pech: eine Gewinnhand mit |luck| %. Höchstens ein rng-Aufruf, höchstens ein Neugeben. */
+  luckOverride(hands, luck, rng) {
+    const net = StudRules.settle(hands.player, hands.dealer, 1).net;
+    if (luck > 0 && net < 0 && rng() * 100 < luck) return StudRules.deal(hands.deck);
+    if (luck < 0 && net > 0 && Rules.pech(luck, rng)) return StudRules.deal(hands.deck);
+    return hands;
+  },
+};
+</script>
+
 <script id="gang-rules">
 /* ================= GANG – Waffen, Duell, Kurier (rein, kein DOM); Wochen-/Wäsche-Logik der Story 3 folgt unten ================= */
 const GangRules = {
@@ -10029,6 +10070,51 @@ T.test('PokerRules.luckOverride: Glück zieht bei Nicht-Verbesserung neu, Pech b
   T.eq(PokerRules.luckOverride(muell, paar, drawFn, -100, seq(0.5)), neu, 'Verbesserung + Pech → Neuzug'); T.eq(calls, 2);
   T.eq(PokerRules.luckOverride(muell, muell, drawFn, 0, seq(0.0)), null, 'ohne Glück nie'); T.eq(calls, 2);
   T.eq(PokerRules.luckOverride(muell, muell, drawFn, 20, seq(0.5)), null, 'Glück 20 bei rng 0,5 → kein Neuzug');
+});
+T.test('StudRules.qualifies: Ass-König oder Paar und besser', () => {
+  const Q = StudRules.qualifies;
+  T.ok(Q(P('A♠', 'K♥', '9♦', '5♣', '2♠')), 'A-K qualifiziert');
+  T.ok(!Q(P('A♠', 'Q♥', 'J♦', '9♣', '2♠')), 'A-Q nicht');
+  T.ok(!Q(P('K♠', 'Q♥', 'J♦', '9♣', '2♠')), 'K-Q nicht');
+  T.ok(Q(P('2♠', '2♥', '9♦', '5♣', '3♠')), 'Paar 2 qualifiziert');
+});
+T.test('StudRules.bonus: Tabelle je Rang, Royal Flush 100', () => {
+  const B = StudRules.bonus;
+  T.eq(StudRules.BONUS, [1, 1, 2, 3, 4, 5, 7, 20, 50]); T.eq(StudRules.ROYAL_BONUS, 100);
+  T.eq(B(P('A♠', '9♥', '7♦', '4♣', '2♠')), 1, 'High Card 1:1');
+  T.eq(B(P('9♠', '9♥', 'A♦', '4♣', '2♠')), 1, 'Paar');
+  T.eq(B(P('9♠', '9♥', '4♦', '4♣', 'A♠')), 2, 'Zwei Paare');
+  T.eq(B(P('7♠', '7♥', '7♦', 'K♣', 'K♠')), 7, 'Full House');
+  T.eq(B(P('9♥', '10♥', 'J♥', 'Q♥', 'K♥')), 50, 'Straight Flush');
+  T.eq(B(P('10♠', 'J♠', 'Q♠', 'K♠', 'A♠')), 100, 'Royal Flush');
+});
+T.test('StudRules.settle: noqual, win mit Bonus, push, lose, Royal', () => {
+  const S = StudRules.settle;
+  const paar9 = P('9♦', '9♣', '5♠', '4♦', 'Q♥'), zweiPaare = P('K♠', 'K♥', '7♣', '7♠', '2♥');
+  T.eq(S(paar9, P('A♠', 'Q♦', 'J♣', '9♥', '2♠'), 200), { outcome: 'noqual', net: 200, bonus: 0 }, 'Dealer A-Q: Ante 1:1, Bet zurück');
+  T.eq(S(zweiPaare, paar9, 200), { outcome: 'win', net: 1000, bonus: 2 }, '200 + 400·2');
+  T.eq(S(P('9♠', '9♥', 'K♦', '4♣', '2♠'), P('9♦', '9♣', 'K♥', '4♥', '2♥'), 200), { outcome: 'push', net: 0, bonus: 0 });
+  T.eq(S(zweiPaare, P('5♠', '5♥', '5♦', '8♣', '3♠'), 200), { outcome: 'lose', net: -600, bonus: 0 }, 'Drilling schlägt Zwei Paare');
+  T.eq(S(P('10♠', 'J♠', 'Q♠', 'K♠', 'A♠'), paar9, 200), { outcome: 'win', net: 40200, bonus: 100 }, 'Royal: 200 + 400·100');
+});
+T.test('StudRules.deal: abwechselnd Spieler/Dealer von oben, Rest bleibt im Deck', () => {
+  const d = StudRules.deal(P('A♠', '2♠', '3♠', '4♠', '5♠', '6♠', '7♠', '8♠', '9♠', '10♠', 'J♠', 'Q♠'));
+  T.eq(d.player.map((c) => c.val), ['A', '3', '5', '7', '9']);
+  T.eq(d.dealer.map((c) => c.val), ['2', '4', '6', '8', '10']);
+  T.eq(d.deck.map((c) => c.val), ['J', 'Q']);
+});
+T.test('StudRules.luckOverride: Glück gibt Verlust neu, Pech gibt Gewinn neu, sonst unverändert', () => {
+  const rest = P('2♣', '3♣', '4♣', '5♣', '6♣', '7♣', '8♣', '9♣', '10♣', 'J♣');
+  const lose = { player: P('A♠', '9♥', '7♦', '4♣', '2♠'), dealer: P('9♦', '9♣', '5♠', '4♦', 'Q♥'), deck: rest };
+  const win = { player: P('K♠', 'K♥', '7♣', '7♠', '2♥'), dealer: P('9♦', '9♣', '5♠', '4♦', 'Q♥'), deck: rest };
+  const neu = StudRules.luckOverride(lose, 50, seq(0.1));
+  T.ok(neu !== lose && neu.player[0].val === '2' && neu.dealer[0].val === '3' && neu.deck.length === 0, 'Verlust + Glück → neu vom Restdeck');
+  T.ok(StudRules.luckOverride(lose, 50, seq(0.9)) === lose, 'rng über luck → unverändert');
+  T.ok(StudRules.luckOverride(win, -50, seq(0.1)) !== win, 'Gewinn + Pech → neu');
+  let calls = 0; const rng = () => { calls++; return 0; };
+  T.ok(StudRules.luckOverride(win, 50, rng) === win, 'Gewinn + Glück → unverändert'); T.eq(calls, 0, 'kein rng-Aufruf');
+  T.ok(StudRules.luckOverride(lose, 0, rng) === lose, 'ohne Glück nie'); T.eq(calls, 0);
+  T.ok(StudRules.luckOverride(lose, -50, rng) === lose, 'Verlust + Pech → unverändert'); T.eq(calls, 0);
 });
 
 T.test('Story 1 Kapitel 2/4 und Dev-Panel enthalten poker', () => {
