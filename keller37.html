@@ -8301,9 +8301,9 @@ const DuelStage = {
     if (!this.mounted) return;
     this.fig.innerHTML = CsCast.figureHtml(foeId, { mood: 'angry', gun: true });
     this.fig.dataset.pose = 'idle'; this.fig.style.setProperty('--fall', '');
-    this.fig.classList.remove('gone'); this.fig.style.setProperty('--s', '0.4');
-    void this.fig.offsetWidth; // Startgröße festschreiben, damit die Annäherung animiert
-    this.fig.style.setProperty('--s', '1');
+    this.fig.style.transition = 'none'; this.fig.style.setProperty('--s', '0.4');
+    void this.fig.offsetWidth; // Startgröße ohne Transition festschreiben
+    this.fig.style.transition = ''; this.fig.style.setProperty('--s', '1');
     qs('#duelFoeName', this.tag).textContent = foeName; qs('#duelCount', this.tag).textContent = `${idx + 1} / ${n}`;
   },
   /* Anspannung: der Rand dunkelt über ~4 s langsam ab, bis das Signal kommt */
@@ -8452,7 +8452,6 @@ const Shootout = {
     qs('#duelStatus', this.root).textContent = 'Warte, bis er zieht.';
     SFX.loop('heartbeat', 900); DuelStage.tension(true);
     this.pulseTimer = setTimeout(() => { if (this.alive(gen) && this.phase === 'wait') SFX.loop('heartbeat', 550); }, 1200); // Anspannung: Herz schlägt schneller
-    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.timer = setTimeout(() => {
       if (!this.alive(gen) || this.phase !== 'wait') return;
       const foe = this.foes[this.idx], bonus = this.cfg.bonus || 0;
@@ -8462,7 +8461,7 @@ const Shootout = {
       DuelStage.tension(false); DuelStage.signal(); DuelStage.flash('ZIEH!', 500);
       /* Der Gegner wartet nicht: zu seiner Zeit (plus dein Vorsprung) schießt er, wenn bis dahin kein Treffer kam */
       this.foeTimer = setTimeout(() => { if (this.alive(gen) && this.phase === 'draw') this.resolve(); }, GangRules.foeFiresAt(this.foeTime, bonus));
-    }, reduced ? 800 : GangRules.drawWait(Math.random));
+    }, GangRules.drawWait(Math.random));
   },
   /* Schuss per Zeiger: Trefferprüfung gegen die Figuren-Box (Rand: Maus 24 px, Touch 32 px) */
   shoot(ev) {
@@ -8475,7 +8474,7 @@ const Shootout = {
   tap(hit = true, pt = null) {
     if (!this.running) return;
     if (this.phase === 'wait') {
-      clearTimeout(this.timer); SFX.stop('heartbeat'); SFX.play('gunshot');
+      clearTimeout(this.timer); SFX.stop('heartbeat'); SFX.play('gunshot'); if (navigator.vibrate) navigator.vibrate(30);
       this.taps = [{ t: -1, hit }]; DuelStage.shot({ early: true });
       this.resolve();
     } else if (this.phase === 'draw') {
@@ -8527,6 +8526,7 @@ const Shootout = {
   },
   onKey(e) {
     if (!qs('#cutscene').hidden || e.repeat) return;
+    if (!Shootout.running) return; // z. B. „Weiter"/„Fertig": Enter/Leertaste soll den normalen Klickpfad treffen
     if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); if (Shootout.phase === 'idle') Shootout.ready(); else Shootout.tap(); }
   },
 };
@@ -13318,6 +13318,8 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.eq([qsa('canvas', host).length, DuelStage.set, DuelStage.mounted, DuelStage.W, DuelStage.H], [2, 'bahnhof', true, 600, 400]);
       T.ok(qs('.duel-gun svg path[fill="#8a6a1a"]', host), 'Stufe 3: „Die Goldene“'); T.ok(DuelStage.raf > 0, 'Schleife läuft');
       DuelStage.enter('junge', 0, 3, 'Bahnhof-Junge');
+      const m0 = getComputedStyle(qs('.duel-foe', host)).transform, a0 = parseFloat(m0.slice(m0.indexOf('(') + 1).split(',')[0]);
+      T.ok(Math.abs(a0 - 0.4) < 0.05, `Annäherung startet wirklich bei Skalierung 0.4 (a=${a0})`);
       T.eq([qs('#duelCount', host).textContent, qs('#duelFoeName', host).textContent, qsa('.duel-foe svg.part', host).length, qs('.duel-foe', host).dataset.pose, qs('.duel-foe', host).style.getPropertyValue('--s')], ['1 / 3', 'Bahnhof-Junge', 8, 'idle', '1']);
       T.ok(qs('.duel-foe .pistole', host), 'Gegner mit Pistole');
       DuelStage.signal(); T.eq(qs('.duel-foe', host).dataset.pose, 'draw'); T.ok(DuelStage.flashUntil > DuelStage.t, 'Blitz');
@@ -13378,6 +13380,10 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.eq(Shootout.phase, 'draw'); await wait(450);
       T.eq([Shootout.phase, Shootout.results[0].won, Shootout.results[0].you, Shootout.results[0].misses, events], ['done', false, null, 2, [['e2', false, [2]]]], 'Gegnerschuss beendet die Runde');
       T.ok(DuelStage.redUntil > DuelStage.t, 'roter Rand nach dem Gegnerschuss');
+      /* Enter auf „Weiter"/„Fertig" darf nicht verschluckt werden: onKey bricht ab, sobald das Duell nicht mehr läuft */
+      const kev = new KeyboardEvent('keydown', { code: 'Enter', cancelable: true });
+      document.dispatchEvent(kev);
+      T.eq([Shootout.phase, kev.defaultPrevented], ['done', false], 'Enter nach Rundenende: kein Absturz, Klickpfad frei (kein preventDefault)');
       await Shootout.leave();
       /* Fehlschuss vor dem Signal – egal wohin getippt */
       events.length = 0; await UI.show('shootout');
@@ -13401,7 +13407,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       await UI.show('shootout');
       Shootout.start({ kind: 'r1', foes: ['junge'], bonus: 300 });
       T.eq(DuelStage.reduced, true);
-      Shootout.ready(); await wait(900); T.eq(Shootout.phase, 'draw', 'reduced: festes Signal nach 800 ms');
+      Shootout.ready(); await wait(120); T.eq(Shootout.phase, 'draw', 'reduced: Wartezeit wie sonst (gestubbt 30 ms)');
       T.eq(DuelStage.flashUntil, 0, 'kein Blitz');
       Shootout.tap(); T.eq(Shootout.results[0].won, true);
       T.eq(DuelStage.timeScale, 1, 'keine Zeitlupe');
