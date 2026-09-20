@@ -3246,8 +3246,8 @@ const Cutscene = {
 /* ---- Szenen: Intro & Neues Spiel ---- */
 Cutscene.define('intro', [
   { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Neu hier? Fünfzig Euro in der Tasche und dieser Blick. Den kenn ich.' },
-  { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Hier unten gibt es keine Regeln, nur Quoten. Die Bar ist rechts, das Hinterzimmer daneben. Frag nicht, was im Brownie ist.' },
-  { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Die Türen sind da drüben. Viel Glück – du wirst es brauchen.' },
+  { bg: 'bar', who: 'wirt', mood: 'calm', pose: 'point', text: 'Hier unten gibt es keine Regeln, nur Quoten. Die Bar ist rechts, das Hinterzimmer daneben. Frag nicht, was im Brownie ist.' },
+  { bg: 'bar', who: 'wirt', mood: 'happy', cam: 'close', text: 'Die Türen sind da drüben. Viel Glück – du wirst es brauchen.' },
 ]);
 Cutscene.define('newgame.confirm', [
   { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Alles auf Anfang? Konto, Haus, Schulden, Chantal – alles weg. Die Trophäen an der Wand bleiben hängen.',
@@ -3505,12 +3505,12 @@ Cutscene.define('brownie.first', [
 ]);
 Cutscene.define('kidney.offer', [
   { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Ah, der Kandidat. Setz dich. Zwei Nieren, ein Hobby – das geht sich rechnerisch nicht aus.' },
-  { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Zweitausend Euro, bar, Eiswanne inklusive. Dafür schluckst du ab jetzt bei jedem Spin für zwanzig Euro Tabletten. Deal?',
+  { bg: 'klinik', who: 'doc', mood: 'calm', pose: 'point', text: 'Zweitausend Euro, bar, Eiswanne inklusive. Dafür schluckst du ab jetzt bei jedem Spin für zwanzig Euro Tabletten. Deal?',
     choices: [{ label: 'Ja, brauch das Geld', value: 'yes', cls: 'red' }, { label: 'Nein danke', value: 'no', cls: 'ghost' }] },
 ]);
 Cutscene.define('kidney.sold', [
-  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'blackout', text: 'Zähl rückwärts von zehn. Zehn… neun…' },
-  { bg: 'klinik', who: 'doc', mood: 'happy', fx: 'gain', text: 'Wach? Gut. Die Naht hält, meistens. Zweitausend liegen auf dem Nachttisch. Die Meds gehen auf dich.' },
+  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'blackout', pose: { who: 'du', pose: 'down' }, text: 'Zähl rückwärts von zehn. Zehn… neun…' },
+  { bg: 'klinik', who: 'doc', mood: 'happy', fx: 'gain', pose: { who: 'du', pose: 'idle' }, text: 'Wach? Gut. Die Naht hält, meistens. Zweitausend liegen auf dem Nachttisch. Die Meds gehen auf dich.' },
 ]);
 
 /* ---- Kredite ---- */
@@ -3624,16 +3624,16 @@ Cutscene.define('bank.limit', [
 ]);
 Cutscene.define('mafia.loan', [
   { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Setz dich. Du brauchst Geld, ich habe Geld. So einfach ist das Leben manchmal.' },
-  { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Fünf Spins. Dann liegt es hier auf dem Tisch. Ich rede nicht gern über das, was sonst passiert. Der Doc redet gern darüber.' },
-  { bg: 'hinterzimmer', who: 'vito', mood: 'happy', text: 'Ich mag dich. Enttäusch mich nicht.' },
+  { bg: 'hinterzimmer', who: 'vito', mood: 'calm', pose: 'point', text: 'Fünf Spins. Dann liegt es hier auf dem Tisch. Ich rede nicht gern über das, was sonst passiert. Der Doc redet gern darüber.' },
+  { bg: 'hinterzimmer', who: 'vito', mood: 'happy', cam: 'close', pause: 500, text: 'Ich mag dich. Enttäusch mich nicht.' },
 ]);
 Cutscene.define('mafia.lastcall', [
-  { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Noch ein Spin, mein Freund. {{debt}}. Ich habe den Doc schon angerufen – nur zur Sicherheit.' },
+  { bg: 'hinterzimmer', who: 'vito', mood: 'calm', cam: 'close', pause: 600, text: 'Noch ein Spin, mein Freund. {{debt}}. Ich habe den Doc schon angerufen – nur zur Sicherheit.' },
 ]);
 Cutscene.define('mafia.legbreak', [
-  { bg: 'hinterzimmer', who: 'vito', mood: 'angry', fx: 'blackout', text: 'Die Frist ist um. Es tut mir leid. Wirklich. Luigi – das Bein.' },
-  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'shake', text: 'KNACK. Ja, das war das Schienbein. Halt still, ich hab nur noch Zahnseide.' },
-  { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'drain', text: 'Not-OP, Titanplatte, Krücken: {{bill}}. Ich schreib es dir auf den Zettel. Vito lässt grüßen.' },
+  { bg: 'hinterzimmer', who: 'vito', mood: 'angry', fx: 'blackout', pose: 'point', text: 'Die Frist ist um. Es tut mir leid. Wirklich. Luigi – das Bein.' },
+  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'shake', shout: 'KNACK!', cam: 'shake', look: { du: { hurt: 'kruecke' } }, pose: { who: 'du', pose: 'down' }, text: 'KNACK. Ja, das war das Schienbein. Halt still, ich hab nur noch Zahnseide.' },
+  { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'drain', pose: { who: 'du', pose: 'idle' }, text: 'Not-OP, Titanplatte, Krücken: {{bill}}. Ich schreib es dir auf den Zettel. Vito lässt grüßen.' },
 ]);
 Cutscene.bind('mafia.lastcall', 'mafia.lastcall');
 Cutscene.bind('mafia.legbreak', 'mafia.legbreak');
@@ -3776,23 +3776,23 @@ UI.register('life', {
 Bus.on('spin:after', () => Life.render());
 
 Cutscene.define('house.bought', [
-  { bg: 'villa', who: 'makler', mood: 'happy', text: 'Traumlage! Penthouse, Blick auf den Hafen, Nachbarn, die nicht fragen. Hier sind die Schlüssel.' },
-  { bg: 'villa', who: 'makler', mood: 'calm', text: 'Dreißig Euro die Minute wirft die Bude ab – Untermieter, frag nicht welche. Und jetzt: Tinder Gold. Du hast schließlich ein Penthouse.' },
+  { bg: 'villa', who: 'makler', mood: 'happy', pose: 'hands-up', text: 'Traumlage! Penthouse, Blick auf den Hafen, Nachbarn, die nicht fragen. Hier sind die Schlüssel.' },
+  { bg: 'villa', who: 'makler', mood: 'calm', pose: 'point', text: 'Dreißig Euro die Minute wirft die Bude ab – Untermieter, frag nicht welche. Und jetzt: Tinder Gold. Du hast schließlich ein Penthouse.' },
 ]);
 Cutscene.define('tinder.match', [
-  { bg: 'standesamt', who: 'chantal', mood: 'happy', text: 'Ehrlich jetzt – ein Penthouse?! Du bist ja soooo reif. ✨ It’s a match!' },
+  { bg: 'standesamt', who: 'chantal', mood: 'happy', cam: 'close', text: 'Ehrlich jetzt – ein Penthouse?! Du bist ja soooo reif. ✨ It’s a match!' },
   { bg: 'standesamt', who: 'chantal', mood: 'happy', fx: 'hearts', text: 'Ich hab schon das Standesamt gebucht. Meine Follower flippen aus.' },
-  { bg: 'standesamt', who: 'du', mood: 'happy', text: '„Ja, ich will." – Irgendwo in der Ferne lacht ein Anwalt.' },
+  { bg: 'standesamt', who: 'du', mood: 'happy', walk: { who: 'chantal', to: 'mid' }, cam: 'wide', text: '„Ja, ich will." – Irgendwo in der Ferne lacht ein Anwalt.' },
 ]);
 Cutscene.define('divorce', [
-  { bg: 'hafen', who: 'chantal', mood: 'angry', text: 'Ehrlich jetzt, Schatz… es liegt nicht an dir. Es liegt an deinem Kontostand.' },
-  { bg: 'hafen', who: 'schmalz', mood: 'calm', text: 'Dr. Schmalz, Fachanwalt für Familienrecht. Das Penthouse geht an meine Mandantin. Das Konto teilen wir. Fair ist fair.' },
-  { bg: 'hafen', who: 'schmalz', mood: 'calm', fx: 'drain', text: '{{before}} durch zwei macht {{after}}. Ich runde zu ihren Gunsten.' },
+  { bg: 'hafen', who: 'chantal', mood: 'angry', pose: 'point', text: 'Ehrlich jetzt, Schatz… es liegt nicht an dir. Es liegt an deinem Kontostand.' },
+  { bg: 'hafen', who: 'schmalz', mood: 'calm', walk: { who: 'chantal', to: 'far' }, text: 'Dr. Schmalz, Fachanwalt für Familienrecht. Das Penthouse geht an meine Mandantin. Das Konto teilen wir. Fair ist fair.' },
+  { bg: 'hafen', who: 'schmalz', mood: 'calm', fx: 'drain', cam: 'close', text: '{{before}} durch zwei macht {{after}}. Ich runde zu ihren Gunsten.' },
   { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Komm, setz dich. Ab jetzt brauchst du zwei Bier intus, sonst klappst du zusammen. Ärztlicher Rat. Meiner.' },
 ]);
 Cutscene.define('heartbreak.collapse', [
-  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'shake', text: 'Kreislauf! Weniger als zwei Bier bei akutem Liebeskummer – das ist grob fahrlässig.' },
-  { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'drain', text: 'Notarzt, Infusion, ein Brownie zur Beruhigung: {{bill}}. Trink nächstes Mal.' },
+  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'shake', pose: { who: 'du', pose: 'down' }, cam: 'shake', text: 'Kreislauf! Weniger als zwei Bier bei akutem Liebeskummer – das ist grob fahrlässig.' },
+  { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'drain', pose: { who: 'du', pose: 'idle' }, text: 'Notarzt, Infusion, ein Brownie zur Beruhigung: {{bill}}. Trink nächstes Mal.' },
 ]);
 Cutscene.define('therapy.done', [
   { bg: 'hinterzimmer', who: 'schmalz', mood: 'calm', text: 'Fünftausend. Davon gehen viertausendneunhundert an mich und hundert an die Therapeutin. Sie sagt, Sie sollen loslassen.' },
@@ -5431,12 +5431,12 @@ UI.register('russian', {
 });
 
 Cutscene.define('igor.first', () => [
-  { bg: 'keller', who: 'igor', mood: 'calm', text: '…' },
+  { bg: 'keller', who: 'igor', mood: 'calm', pause: 900, cam: 'close', text: '…' },
   ...(State.s.strength >= Rules.MUG.STR_RESPECT ? [{ bg: 'keller', who: 'igor', mood: 'happy', text: 'Respekt. Man hört Dinge. Mein Cousin humpelt noch.' }] : []),
-  { bg: 'keller', who: 'igor', mood: 'calm', text: 'Eine Kugel. Sechs Kammern. Du zuerst. Ich habe Zeit.' },
+  { bg: 'keller', who: 'igor', mood: 'calm', pose: 'point', text: 'Eine Kugel. Sechs Kammern. Du zuerst. Ich habe Zeit.' },
 ]);
 Cutscene.define('rr.headshot', [
-  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'flash', text: 'Streifschuss! Du Glückspilz. Hundert Euro fürs Pflaster – und für meine Nerven.' },
+  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'flash', look: { du: { hurt: 'pflaster' } }, cam: 'shake', shout: 'PÄNG!', sfx: 'gunshot', text: 'Streifschuss! Du Glückspilz. Hundert Euro fürs Pflaster – und für meine Nerven.' },
 ]);
 </script>
 
@@ -5675,9 +5675,9 @@ Bus.on('story:ended', ({ id, ending }) => {
 <script id="gameover">
 /* ================= GAME OVER & NEUES SPIEL ================= */
 Cutscene.define('gameover', [
-  { bg: 'hafen-morgen', who: 'vito', mood: 'calm', text: 'Schöner Sonnenaufgang, oder? Ich komme gern hierher, wenn ich nachdenken muss. Über Freunde. Über Schulden.' },
-  { bg: 'hafen-morgen', who: 'vito', mood: 'calm', text: 'Die Bank will nichts mehr von dir, ich habe schon etwas von dir, und dein Konto steht bei {{balance}}. Das nennt man ein Ende.' },
-  { bg: 'hafen-morgen', who: 'vito', mood: 'happy', fx: 'stats', text: 'Aber ich bin kein Unmensch. Fünfzig Euro und ein neuer Anfang. Wir sehen uns unten.',
+  { bg: 'hafen-morgen', who: 'vito', mood: 'calm', cast: ['du', 'vito'], text: 'Schöner Sonnenaufgang, oder? Ich komme gern hierher, wenn ich nachdenken muss. Über Freunde. Über Schulden.' },
+  { bg: 'hafen-morgen', who: 'vito', mood: 'calm', cam: 'close', text: 'Die Bank will nichts mehr von dir, ich habe schon etwas von dir, und dein Konto steht bei {{balance}}. Das nennt man ein Ende.' },
+  { bg: 'hafen-morgen', who: 'vito', mood: 'happy', fx: 'stats', cam: 'wide', pose: 'point', text: 'Aber ich bin kein Unmensch. Fünfzig Euro und ein neuer Anfang. Wir sehen uns unten.',
     choices: [{ label: 'Nochmal', value: 'again', cls: 'red' }] },
 ]);
 
@@ -5819,9 +5819,9 @@ const Mugging = {
   },
 };
 Cutscene.define('mug.intro', (ctx) => [
-  { bg: 'gasse', who: 'du', mood: 'calm', text: 'Der kurze Weg zum Keller. Durch die Gasse. Immer durch die Gasse.' },
-  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'flash', text: ctx.type.intro[0] },
-  { bg: 'gasse', who: 'raeuber', mood: 'calm', text: ctx.type.intro[1] + ` Er will ${ctx.loot}.`,
+  { bg: 'gasse', who: 'du', mood: 'calm', cast: ['du'], walk: { who: 'du', to: 'mid' }, text: 'Der kurze Weg zum Keller. Durch die Gasse. Immer durch die Gasse.' },
+  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'flash', enter: { who: 'raeuber', from: 'right' }, pose: 'point', cam: 'shake', shout: 'HEY!', text: ctx.type.intro[0] },
+  { bg: 'gasse', who: 'raeuber', mood: 'calm', cam: 'close', text: ctx.type.intro[1] + ` Er will ${ctx.loot}.`,
     choices: [
       { label: `💪 Kämpfen (${ctx.fight} %)`, value: 'fight', cls: 'red' },
       { label: `👟 Wegrennen (${ctx.flee} %)`, value: 'flee', cls: 'blue' },
@@ -5829,24 +5829,24 @@ Cutscene.define('mug.intro', (ctx) => [
     ] },
 ]);
 Cutscene.define('mug.fightWon', (ctx) => [
-  { bg: 'gasse', who: 'du', mood: 'angry', fx: 'shake', text: ctx.type.fightWon },
-  { bg: 'gasse', who: 'du', mood: 'happy', fx: ctx.wallet !== '0 €' ? 'gain' : undefined, text: ctx.wallet !== '0 €' ? `Seine Brieftasche: ${ctx.wallet}. Finderlohn. Stärke ${ctx.strength}.` : `Nichts verloren. Stärke ${ctx.strength}.` },
+  { bg: 'gasse', who: 'du', mood: 'angry', fx: 'shake', pose: { who: 'raeuber', pose: 'down' }, shout: 'ZACK!', cam: 'shake', text: ctx.type.fightWon },
+  { bg: 'gasse', who: 'du', mood: 'happy', fx: ctx.wallet !== '0 €' ? 'gain' : undefined, cam: 'close', text: ctx.wallet !== '0 €' ? `Seine Brieftasche: ${ctx.wallet}. Finderlohn. Stärke ${ctx.strength}.` : `Nichts verloren. Stärke ${ctx.strength}.` },
 ]);
 Cutscene.define('mug.fightLost', (ctx) => [
-  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'shake', text: ctx.type.fightLost },
-  { bg: 'gasse', who: 'du', mood: 'dead', fx: 'drain', text: `Du hast eingesteckt. Du hast gelernt. Stärke ${ctx.strength}.` },
+  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'shake', pose: 'point', cam: 'shake', shout: 'ZACK!', text: ctx.type.fightLost },
+  { bg: 'gasse', who: 'du', mood: 'dead', fx: 'drain', look: { du: { hurt: 'pflaster' } }, text: `Du hast eingesteckt. Du hast gelernt. Stärke ${ctx.strength}.` },
 ]);
 Cutscene.define('mug.fled', (ctx) => [
-  { bg: 'gasse', who: 'du', mood: 'shock', fx: 'flash', text: ctx.type.fled },
+  { bg: 'gasse', who: 'du', mood: 'shock', fx: 'flash', pose: 'walk', cam: 'shake', text: ctx.type.fled },
   { bg: 'keller', who: 'du', mood: 'happy', text: 'Unten. Alles noch da. Die Beine zittern, das Geld nicht.' },
 ]);
 Cutscene.define('mug.caught', (ctx) => [
-  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'shake', text: ctx.type.caught },
-  { bg: 'gasse', who: 'du', mood: 'dead', fx: 'drain', text: 'Hätte ich mal bezahlt.' },
+  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'shake', pose: 'point', cam: 'shake', text: ctx.type.caught },
+  { bg: 'gasse', who: 'du', mood: 'dead', fx: 'drain', look: { du: { hurt: 'pflaster' } }, text: 'Hätte ich mal bezahlt.' },
 ]);
 Cutscene.define('mug.paid', (ctx) => [
-  { bg: 'gasse', who: 'raeuber', mood: 'calm', fx: 'drain', text: ctx.type.paid },
-  { bg: 'gasse', who: 'du', mood: 'calm', text: 'Kein Kratzer. Kein Stolz. Weiter.' },
+  { bg: 'gasse', who: 'raeuber', mood: 'calm', fx: 'drain', pose: 'point', text: ctx.type.paid },
+  { bg: 'gasse', who: 'du', mood: 'calm', exit: 'raeuber', text: 'Kein Kratzer. Kein Stolz. Weiter.' },
 ]);
 Bus.on('mug:done', () => { if (State.s.stats.fightsWon >= 5) Achievements.unlock('strassenkaempfer'); });
 </script>
