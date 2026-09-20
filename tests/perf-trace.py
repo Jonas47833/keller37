@@ -73,6 +73,12 @@ SCENARIOS = [
     ("Keller-Slots Spin", "?screen=slots", 4, "document.querySelector('#btnSpin').click()", None),
     ("Roulette Spin", "?screen=roulette", 5, "document.querySelector('.rcell').click(); document.querySelector('#btnSpin').click()", None),
     ("Cutscene idle", "?screen=hub&scene=intro", 4, None, None),
+    # mug.intro braucht ctx.type (Überfalltyp) - der generische ?scene=-Kontext in boot() liefert das nicht
+    # (nur Dev.previewCtx() tut das), darum wird die Szene hier direkt mit einem Mugging-Kontext gestartet.
+    ("Cutscene Regie", "?screen=hub", 4, None,
+     "(async()=>{ Cutscene.play('mug.intro', { loot: '40 €', type: Mugging.TYPES.junkie, fight: 50, flee: 30 });"
+     " for (let i = 0; i < 20 && !Cutscene.active; i++) await new Promise((r) => setTimeout(r, 20));"
+     " return Cutscene.active; })()"),
     ("Taxi fahren", "?story", 4, "document.querySelector('#btnTaxiStart').click()", STORY_JOB.replace("JOB", "'taxi'").replace("BTN", "'#btnTaxiStart'")),
     ("Spueler", "?story", 4, "document.querySelector('#btnDishStart').click()", STORY_JOB.replace("JOB", "'spueler'").replace("BTN", "'#btnDishStart'")),
 ]

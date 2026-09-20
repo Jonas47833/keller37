@@ -21,6 +21,10 @@ Ein satirisches Casino-Lebenssimulations-Spiel in einer einzigen HTML-Datei. Fü
 - **Extras:** synthetisierter Sound (Web Audio, keine Dateien), Spielstand in `localStorage`, Game Over mit Statistik, Trophäen, Reduced-Motion.
 - **Handy (≤ 760 px):** Roulette-Tisch hochkant (Zero oben, 1-2-3 nebeneinander, Außenfelder unten), Einsatz-Leiste in festen Zeilen (Stepper / Chips / kleine Knöpfe zu dritt / Hauptknopf volle Breite – auch in Casino Royal), Tab-Leiste mit Icons, Header-Knöpfe in Touch-Größe, die Glück/Level-Zeile klappt beim Scrollen ein. Auf dem Handy entfallen Backdrop-Blur, Filmkorn und die Tür-Schatten, der Screen-Wechsel blendet nur über – das spart Mobile-Chrome das Ruckeln beim Wechsel zurück in den Keller. Am Desktop ändert sich nichts.
 
+### Cutscene-Bühne
+
+Cutscenes spielen auf einer Bühne aus Ebenen (Himmel, Kulisse, Boden, Figuren, Vordergrund): Comic-Figuren als Inline-SVG (20 Figuren, Protagonist mit Schuhen, Anzug in Story 3, roten Wangen nach Bier, blauem Auge, Augenringen bei Mafia-Schulden), 16 Kulissen mit einem lebenden Element (Neon, Regen, vorbeifahrendes Auto, Zug …), eine Sprechblase am Kopf des Sprechers. Die Auto-Regie (`CsDirector.stagePlan`) inszeniert jedes Panel aus `who/mood/bg`: du links, Gegenüber rechts, Sprecher tritt auf, Stimmung bestimmt Pose (`angry` zeigt, `shock` zuckt, `dead` kippt). Optionale Regie-Schlüssel pro Panel: `cast` (Besetzung, `[]` = Erzähler), `enter`/`exit`, `walk: { who, to: left|mid|right|far }`, `pose` (`idle, talk, point, arms-crossed, hands-up, walk, down, flinch`), `cam` (`close|wide|shake`), `shout: 'PÄNG!'`, `pause` (ms), `sfx`, `look: { du: { hurt: 'pflaster'|'kruecke' } }`. Unbekannte Schlüssel sind Testfehler. `Cutscene.instant = true` (Tests/Dev) und `prefers-reduced-motion` schalten Laufwege und Tippen ab.
+
 ## Story-Modus
 
 Neben dem freien Spiel gibt es einen zweiten Modus: eine Geschichte über rund 30 Spieltage
@@ -168,5 +172,16 @@ Software-Raster auf dem Mac, also nur im Vorher/Nachher-Vergleich aussagekräfti
 (z. B. ein `<style>`-Experiment), `--timeline` zeigt den Verlauf in 250-ms-Schritten.
 
 `K37_PORT`, `K37_PROFILE`, `K37_SHOTS` überschreiben Port, Chrome-Profilordner und Screenshot-Ordner des Playtests (Default wie oben); `K37_CHROME` zeigt auf ein Chrome-Binary, sonst werden die üblichen Pfade (macOS, `~/.local/opt/chrome-linux64`, apt) durchsucht – nützlich, um mehrere Läufe parallel zu isolieren. `mobile-check.py` prüft pro Screen horizontale Überbreite und Tap-Ziele ≥ 40 px, dazu Roulette-Tisch, Einsatz-Leiste, Tab-Leiste, Header-Einklappen, als Gegenprobe den Desktop-Tisch und den Zonen-Wechsel (Royal/Keller); Screenshots landen in `/tmp/k37mobile` (bzw. `K37_SHOTS`).
+
+Die Cutscene-Bühne bringt eigene Tests mit: `run-selftest.mjs` prüft `stagePlan`, `validatePanels`, `figureHtml`/`duParts` (`CsCast`), `CsSets` sowie „Regie: alle Story-Szenen" node-seitig ohne DOM (292 bestanden, 0 fehlgeschlagen, Stand 2026-09-20). `dom-selftest.sh` ergänzt dazu DOM-Tests, die einen echten Chrome brauchen: „Cutscene-Bühne: Figuren, eine Blase am Sprecher, Regie, Skip-Endzustand", „Cutscene-Bühne: Klick während Auftritt/Kamerafahrt beendet Weg und Zoom sofort – Blase am Endpunkt", „Cutscene-Kamera close: Zoom zielt auf den gemessenen Kopf – auch liegend und schon gezoomt" (Kevin stehend/liegend, schwankendes „du"), „Cutscene-Kamera close in Echtzeit: Kopf aus der Zielpose berechnet, wide zoomt erst nach dem Rückzug", „Cutscene-Keyframes (cs*) animieren nur transform oder opacity" und „Regie: alle Keller-Szenen (Cutscene.SCENES) bestehen validatePanels, Sounds im SFX-Register" (327 bestanden, 0 fehlgeschlagen, Stand 2026-09-20).
+
+Trace-Szenario „Cutscene Regie" (`?screen=hub`, `mug.intro` per Skript gestartet – Auftritt, Kamerafahrt, Schreibmaschine) im Vorher/Nachher-Vergleich mit `main` (Raster-Millisekunden/Sekunde, Software-Raster auf demselben Mac; „meistgemalte Elemente" zeigt bei diesem Branch fast nur `.cs-bubble` aus der Schreibmaschine plus einen einmaligen Auftritts-Repaint von `.cs-body`/`.cs-fig-inner` – keine laufenden Figuren- oder Kulissenteile):
+
+| Szene | `main` Desktop | `main` Mobil | Branch Desktop | Branch Mobil |
+|---|---|---|---|---|
+| Cutscene idle | 5,9 ms | 2,8 ms | 3,8 ms | 3,5 ms |
+| Cutscene Regie | 10,4 ms | 10,4 ms | 5,4 ms | 8,4 ms |
+
+`main` malt bei jedem Tipp-Zeichen den ganzen `.cs-box` neu (Skull-Emoji + Text in einem Knoten); dieser Branch trennt Blase und Figur, sodass nur `.cs-bubble`/`.cs-text` neu gemalt werden – die Bühne ist trotz Auftritt und Kamerafahrt nicht langsamer als der Prototyp, meist schneller.
 
 `Gamble Game.html` ist das Original, aus dem die Mechanik 1:1 übernommen wurde. Spec, Plan, Abnahme-Checkliste und Screenshots liegen unter `docs/superpowers/`.
