@@ -2782,7 +2782,7 @@ const CsCast = {
     };
     const face = this.face(mood, P, parts, opts.hurt);
     const hair = this.hair(P);
-    const head = part('head', `${hair.back}<path d="M28 46 a22 24 0 0 1 44 0 v10 a22 20 0 0 1 -44 0z" fill="${P.skin}"/>${face.head}${hair.front}${this.extras(P, parts)}${this.hat(P)}`);
+    const head = part('head', `${hair.back}<path class="skull" d="M28 46 a22 24 0 0 1 44 0 v10 a22 20 0 0 1 -44 0z" fill="${P.skin}"/>${face.head}${hair.front}${this.extras(P, parts)}${this.hat(P)}`);
     const eyes = part('eyes', face.eyes);
     const mouth = part('mouth', face.mouth);
     const klein = P.build === 'klein' ? ' klein' : '';
@@ -3060,7 +3060,7 @@ const Cutscene = {
   offX(side, W) { return side === 'left' ? -0.3 * W : 1.3 * W; },
   /* Kulisse, Figuren und Kamera eines Panels setzen; liefert die Sprecher-Figur oder null (leere Bühne / Erzähler) */
   _stage(els, p, plan, instant) {
-    const W = els.actors.clientWidth, H = els.actors.clientHeight;
+    const W = els.actors.clientWidth;
     if (plan.bg !== els.bg) {
       const known = !!this.SETS[plan.bg], set = this.SETS[known ? plan.bg : 'bar'];
       els.sky.className = `cs-sky ${known ? plan.bg : 'bar'}`;
@@ -3104,14 +3104,25 @@ const Cutscene = {
       f.el.classList.toggle('speaking', c.who === plan.speaker);
       if (c.who === plan.speaker) speaker = f;
     }
+    return speaker;
+  },
+  /* Kamera: Shake, Weitwinkel, oder Zoom auf den gemessenen Kopf des Sprechers (auch liegend oder fern). Läuft erst
+     NACH dem Auftritts-/Wege-Warten in _panel, damit der Kopf an seiner endgültigen Position gemessen wird. */
+  _cam(els, plan, speaker) {
     if (plan.cam === 'shake') UI.shake(els.world);
     else if (plan.cam === 'wide') els.world.style.transform = '';
     else if (plan.cam === 'close' && speaker) {
-      const slot = plan.cast.find((c) => c.who === speaker.who).slot;
-      els.world.style.transformOrigin = `${this.SLOT_X[slot] * W}px ${H * (slot === 'far' ? 0.35 : 0.45)}px`;
+      const W = els.actors.clientWidth, H = els.actors.clientHeight;
+      /* Zoom auf den Kopf des Sprechers – gemessen (auch liegend oder fern) und in ungezoomte Weltkoordinaten zurückgerechnet,
+         falls die Welt aus dem vorigen Panel schon gezoomt ist */
+      const m = /scale\(([\d.]+)\)/.exec(els.world.style.transform), s = m ? parseFloat(m[1]) : 1;
+      const o = (els.world.style.transformOrigin || '').split(' ').map(parseFloat);
+      const ox = Number.isFinite(o[0]) ? o[0] : W / 2, oy = Number.isFinite(o[1]) ? o[1] : H / 2;
+      const hd = this._headAt(els, speaker);
+      const x = ox + (hd.x - ox) / s, y = oy + (hd.y + hd.h / 2 - oy) / s;
+      els.world.style.transformOrigin = `${Math.round(x)}px ${Math.round(y)}px`;
       els.world.style.transform = 'scale(1.8)';
     }
-    return speaker;
   },
   /* Klick während Auftritt/Kamerafahrt: Wege und Zoom sofort zu Ende führen, damit die Blase am Endpunkt gemessen wird */
   _snap(els) {
@@ -3124,10 +3135,12 @@ const Cutscene = {
     void els.root.offsetWidth; // Stil mit abgeschalteten Transitions übernehmen – Transitions enden am Zielwert
     els.root.classList.remove('cs-snap');
   },
-  /* Kopfposition einer Figur relativ zur Bühne – einmal pro Panel gemessen, nie pro Frame */
+  /* Kopfposition = gemessener Schädel, inklusive Drehung/Verkleinerung der Figur – einmal pro Panel gemessen, nie pro Frame */
   _headAt(els, fig) {
-    const R = els.root.getBoundingClientRect(), head = qs('.head', fig.el).getBoundingClientRect();
-    return { x: head.left + head.width / 2 - R.left, y: head.top - R.top, W: R.width };
+    const R = els.root.getBoundingClientRect();
+    const el = qs('.head .skull', fig.el) || qs('.head', fig.el);
+    const head = el.getBoundingClientRect();
+    return { x: head.left + head.width / 2 - R.left, y: head.top - R.top, h: head.height, W: R.width, H: R.height };
   },
   /* Blase über dem Sprecher; ohne Sprecher (leere Bühne) als Erzähler-Blase oben mittig */
   _placeBubble(els, speaker, full) {
@@ -3198,6 +3211,13 @@ const Cutscene = {
         await waitOr(p.pause || 0);
         if (finished) return;
         if (showAll) this._snap(els);
+        this._cam(els, plan, speaker);
+        if (plan.cam === 'close') {
+          // Kopf erst NACH abgeschlossenem Zoom messen (Blase am Endpunkt), sonst wie oben abkürzbar per Klick
+          await waitOr(instant || showAll ? 0 : this.WALK_MS);
+          if (finished) return;
+          if (showAll) this._snap(els);
+        }
         if (p.shout) this._shout(els, speaker, p.shout);
         this._placeBubble(els, speaker, full);
         started = true;
@@ -12039,6 +12059,40 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       root.click(); await done2;
       T.ok(!Cutscene.active, 'Szene beendet');
     } finally { Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.snap']; }
+  });
+  T.test('Cutscene-Kamera close: Zoom zielt auf den gemessenen Kopf – auch liegend und schon gezoomt', async () => {
+    const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
+    State.save = () => {}; State.s = State.fresh();
+    Cutscene.instant = true;
+    Cutscene.define('test.cam', [
+      { bg: 'gasse', who: 'du', mood: 'dead', cast: ['du'], pose: 'down', cam: 'close', text: 'Am Boden.' },
+      { bg: 'gasse', who: 'raeuber', mood: 'angry', cam: 'close', text: 'Steh auf.' },
+    ]);
+    const root = qs('#cutscene');
+    const checkZoom = (label) => {
+      const world = qs('.cs-world', root);
+      T.ok(/scale/.test(world.style.transform), `${label}: Kamera close`);
+      const [ox, oy] = world.style.transformOrigin.split(' ').map(parseFloat);
+      const R = root.getBoundingClientRect();
+      T.ok(ox >= 0 && ox <= R.width, `${label}: Origin-x im Rahmen (${ox} von ${R.width})`);
+      T.ok(oy >= 0 && oy <= R.height, `${label}: Origin-y im Rahmen (${oy} von ${R.height})`);
+      const skull = qs('.cs-fig.speaking .head .skull', root).getBoundingClientRect();
+      const cx = skull.left + skull.width / 2 - R.left, cy = skull.top + skull.height / 2 - R.top;
+      T.ok(Math.abs(cx - ox) <= 3 && Math.abs(cy - oy) <= 3, `${label}: Origin = Kopfmitte (${cx.toFixed(1)}|${cy.toFixed(1)} vs ${ox}|${oy})`);
+      const b = qs('.cs-bubble', root);
+      const left = parseFloat(b.style.left);
+      T.ok(left >= 0 && left + b.offsetWidth <= R.width + 1, `${label}: Blase im Rahmen`);
+      T.ok(parseFloat(b.style.top) >= 0, `${label}: Blase top >= 0`);
+    };
+    try {
+      const done = Cutscene.play('test.cam', {});
+      await wait(40);
+      checkZoom('Panel 1 (liegend)');
+      root.click(); await wait(40);
+      checkZoom('Panel 2 (andere Figur, Welt schon gezoomt)');
+      root.click(); await done;
+      T.ok(!Cutscene.active, 'Szene beendet');
+    } finally { Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.cam']; }
   });
   T.test('Cutscene-Keyframes (cs*) animieren nur transform oder opacity', () => {
     let n = 0;
