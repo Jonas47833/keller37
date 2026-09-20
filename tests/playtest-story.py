@@ -2008,8 +2008,8 @@ async def scenario_stud(cdp):
         status = await cdp.eval("document.querySelector('#studStatus').textContent", await_promise=False)
         return before, after_deal, hidden, after, status
 
-    # Trophaeen liegen im Meta-Speicher und ueberleben ?fresh und fruehere Laeufe im selben Chrome-Profil: hier zuruecksetzen
-    await cdp.eval("State.meta.achievements = State.meta.achievements.filter(id => id !== 'karibik'); State.saveMeta(); 0", await_promise=False)
+    # Trophaeen und Insider-Wissen (State.meta.insider) liegen im Meta-Speicher und ueberleben ?fresh und fruehere Laeufe im selben Chrome-Profil: hier zuruecksetzen
+    await cdp.eval("State.meta.insider = []; State.meta.achievements = State.meta.achievements.filter(id => id !== 'karibik'); State.saveMeta(); 0", await_promise=False)
     # 1) Zwei Paare gegen Paar 9, Ante 100: Bet 200, Bonus 2:1 -> net +500
     b0, bd, hidden, b1, status = await play(["K♠", "K♥", "7♣", "7♠", "2♥"], ["9♦", "9♣", "5♠", "4♦", "Q♥"], 100, "shot")
     ach = await cdp.eval("Achievements.has('karibik')", await_promise=False)

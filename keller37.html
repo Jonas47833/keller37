@@ -4303,7 +4303,7 @@ UI.register('royal', {
 });
 Cutscene.define('royal.first', [
   { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Willkommen. Sie sind neu. Man sieht es an den Schuhen, nicht am Auto.' },
-  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Drei Tische. Höhere Einsätze, bessere Beleuchtung, dieselbe Mathematik. Viel Vergnügen.' },
+  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Vier Tische. Höhere Einsätze, bessere Beleuchtung, dieselbe Mathematik. Viel Vergnügen.' },
 ]);
 Cutscene.define('royal.leave', [
   { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Sie gehen? Der Eintritt gilt nicht für den Rückweg – die nächsten {{fee}} nehmen wir wieder an der Tür.',
@@ -5478,8 +5478,8 @@ UI.register('stud', {
   unmount() {
     Stud.gen++;
     document.removeEventListener('keydown', Stud.onKey);
-    if (Stud.inRound) {
-      /* Zwischen zwei Aktionen verlassen: Hand sofort fallen lassen. Läuft noch eine Kette (busy), räumt die selbst auf. */
+    if (Stud.inRound && !(Stud.busy && Stud.round && Stud.round.phase === 'showdown')) {
+      /* Zwischen zwei Aktionen verlassen: Hand sofort fallen lassen. Läuft noch eine Kette (busy), räumt die selbst auf. Ein laufender Showdown rechnet dagegen fertig ab und zahlt aus, ganz ohne diesen Toast. */
       if (!Stud.busy) Stud.drop(Stud.round);
       UI.toast({ icon: '🃏', title: 'Hand aufgegeben', text: 'Einsatz verfallen.', tone: 'loss' });
     }
