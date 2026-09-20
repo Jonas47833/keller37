@@ -2886,6 +2886,19 @@ const CsSets = {
   windows(x0, y0, cols, rows, dx, dy, fill, cls = '') { let s = ''; for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) s += `<rect class="${cls}" x="${x0 + c * dx}" y="${y0 + r * dy}" width="10" height="14" fill="${fill}" style="animation-delay:${((r * cols + c) * 0.37) % 3}s"/>`; return s; },
   SETS: {},
   define(id, def) { this.SETS[id] = def; },
+  /* Hafen bei Nacht (Möwe) oder am Morgen (Sonne steigt) – eine Definition für beide Kulissen */
+  hafen(morgen) {
+    return {
+      life: morgen ? ['life-wave', 'life-sun'] : ['life-wave', 'life-gull'],
+      back() { const S = CsSets; return S.svg(`${morgen ? '<circle class="life-sun" cx="820" cy="200" r="46" fill="#ffb060" opacity=".9"/>' : '<circle cx="840" cy="70" r="28" fill="#e8e6d0" opacity=".8"/>'}
+      <path d="M120 300 L120 60 L260 60 M120 100 L200 60 M120 140 L200 60 M120 180 L200 60" stroke="#333" stroke-width="8" fill="none"/>
+      <path d="M560 300 L560 90 L700 90 M560 130 L640 90 M560 170 L640 90" stroke="#333" stroke-width="8" fill="none"/>
+      ${S.rect(300, 240, 120, 60, '#5a2a2a')}${S.rect(420, 240, 120, 60, '#2a4a5a')}${S.rect(360, 180, 120, 60, '#5a5a2a')}
+      ${S.rect(0, 300, 1000, 100, morgen ? '#c46a3a' : '#0a1a33')}<g class="life-wave"><path d="M-100 320 q25 -6 50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0" fill="none" stroke="${morgen ? '#ffd090' : '#5aa0d0'}" stroke-width="2" opacity=".6"/></g>
+      ${morgen ? '' : '<path class="life-gull" d="M0 0 q8 -8 16 0 q8 -8 16 0" fill="none" stroke="#ddd" stroke-width="2" style="transform:translate(200px,120px)"/>'}`); },
+      front() { return ''; },
+    };
+  },
 };
 CsSets.define('bar', {
   life: ['life-neon', 'life-smoke'],
@@ -2925,18 +2938,8 @@ CsSets.define('gasse', {
   front() { let r = ''; for (let i = 0; i < 40; i++) r += `<path d="M${i * 26 + (i % 3) * 7} ${-400 + (i * 53) % 400} l-6 30" stroke="#9ab" stroke-width="1.5" opacity=".35"/>`;
     return CsSets.svg(`<g class="life-rain">${r}<g transform="translate(0 400)">${r}</g></g>`); },
 });
-const hafen = (morgen) => ({
-  life: morgen ? ['life-wave', 'life-sun'] : ['life-wave', 'life-gull'],
-  back() { const S = CsSets; return S.svg(`${morgen ? '<circle class="life-sun" cx="820" cy="200" r="46" fill="#ffb060" opacity=".9"/>' : '<circle cx="840" cy="70" r="28" fill="#e8e6d0" opacity=".8"/>'}
-      <path d="M120 300 L120 60 L260 60 M120 100 L200 60 M120 140 L200 60 M120 180 L200 60" stroke="#333" stroke-width="8" fill="none"/>
-      <path d="M560 300 L560 90 L700 90 M560 130 L640 90 M560 170 L640 90" stroke="#333" stroke-width="8" fill="none"/>
-      ${S.rect(300, 240, 120, 60, '#5a2a2a')}${S.rect(420, 240, 120, 60, '#2a4a5a')}${S.rect(360, 180, 120, 60, '#5a5a2a')}
-      ${S.rect(0, 300, 1000, 100, morgen ? '#c46a3a' : '#0a1a33')}<g class="life-wave"><path d="M-100 320 q25 -6 50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0" fill="none" stroke="${morgen ? '#ffd090' : '#5aa0d0'}" stroke-width="2" opacity=".6"/></g>
-      ${morgen ? '' : '<path class="life-gull" d="M0 0 q8 -8 16 0 q8 -8 16 0" fill="none" stroke="#ddd" stroke-width="2" style="transform:translate(200px,120px)"/>'}`); },
-  front() { return ''; },
-});
-CsSets.define('hafen', hafen(false));
-CsSets.define('hafen-morgen', hafen(true));
+CsSets.define('hafen', CsSets.hafen(false));
+CsSets.define('hafen-morgen', CsSets.hafen(true));
 CsSets.define('klinik', {
   life: ['life-ekg', 'life-flicker'],
   back() { const S = CsSets; return S.svg(`<rect class="life-flicker" x="380" y="20" width="240" height="14" rx="4" fill="#f4fff8"/>
@@ -11540,6 +11543,7 @@ if (typeof CsSets !== 'undefined') {
     }
     T.ok(CsSets.SETS.gasse.front().includes('life-rain'), 'Regen im Vordergrund');
     T.ok(CsSets.SETS['hafen-morgen'].back().includes('life-sun') && !CsSets.SETS.hafen.back().includes('life-sun'), 'Sonne nur am Morgen');
+    T.ok(typeof CsSets.hafen === 'function' && typeof hafen === 'undefined', 'hafen(morgen) lebt in CsSets, nicht als Global');
   });
 }
 
