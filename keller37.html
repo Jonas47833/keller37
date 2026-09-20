@@ -225,6 +225,7 @@ body.cs-open .toast { max-width: 300px; }
 .invest-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .chalk.inv { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .chalk.inv .dim { font-size: .85rem; }
+.chalk.inv .inv-form, .chalk.inv .inv-running { margin-top: auto; } /* Trickbetrug hat eine Textzeile mehr – Eingabe und Knopf trotzdem bündig unten */
 .inv-running { font-family: var(--font-mono); font-size: .85rem; color: var(--gold-2); border: 1px dashed rgba(201,162,39,.5); border-radius: 6px; padding: 8px 10px; text-align: center; }
 .tickets { display: flex; flex-wrap: wrap; gap: 10px; min-height: 40px; }
 .ticket { background: #f6e6b3; color: var(--paper-ink); font-family: var(--font-mono); font-size: .85rem; padding: 8px 12px; border: 1px dashed #8a6d1a; transform: rotate(-1deg); animation: popIn .25s ease both; }
@@ -866,7 +867,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .wheel-panel .status, .wheel-panel .bet-bar { grid-column: 1 / -1; }
 .wheel-stage { position: relative; width: min(360px, 80vw); aspect-ratio: 1; margin: 0 auto; }
 .wheel-stage::before { content: ""; position: absolute; inset: -10px; border-radius: 50%; background: repeating-conic-gradient(var(--gold) 0deg 7.5deg, var(--bronze) 7.5deg 15deg); z-index: 0; }
-.wheel-lights { position: absolute; inset: -6px; border-radius: 50%; background: repeating-conic-gradient(transparent 0deg 13deg, rgba(241,223,168,.9) 13deg 15deg); -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 8px), #000 calc(50% - 7px)); mask: radial-gradient(circle, transparent 0 calc(50% - 8px), #000 calc(50% - 7px)); opacity: .35; z-index: 1; pointer-events: none; }
+.wheel-lights { position: absolute; inset: -6px; border-radius: 50%; background: repeating-conic-gradient(transparent 0deg 13deg, rgba(241,223,168,.9) 13deg 15deg); -webkit-mask: radial-gradient(circle closest-side, transparent 0 calc(100% - 8px), #000 calc(100% - 7px)); mask: radial-gradient(circle closest-side, transparent 0 calc(100% - 8px), #000 calc(100% - 7px)); opacity: .35; z-index: 1; pointer-events: none; }
 /* Performance: Das Rad dreht auf dem Compositor, aber seine Bounding-Box ändert sich mit jedem Winkel. Ohne festen Clip
    sortiert Chrome bei jedem Main-Thread-Frame (Kontostand-Zähler!) die Layer neu und malt Wallet + Seite komplett neu –
    auf dem Handy ruckelt genau deshalb der Spin-Start. Der Wrapper hält die Box stabil; 30 px Luft für den Glow (28 px),
@@ -3722,7 +3723,7 @@ UI.register('craps', {
 });
 /* ---- Glücksrad ---- */
 const Wheel = {
-  root: null, spinning: false, gen: 0, turns: 0,
+  root: null, spinning: false, gen: 0, turns: 0, tickRaf: null,
   alive(gen) { return !!this.root && this.gen === gen; },
   label(m) { return m === 0 ? '☠ BANKROTT' : m === 0.5 ? 'HÄLFTE' : `×${m}`; },
   build() {
@@ -3733,9 +3734,21 @@ const Wheel = {
     /* Beschriftung: unrotiert zeigt .seg nach rechts (90° im Uhrzeigersinn von oben), daher −90 */
     S.forEach((m, i) => el.append(h('div', { class: `seg ${RoyalRules.wheelTone(m)}`, 'data-mult': m, style: `transform: rotate(${i * step + step / 2 - 90}deg)` }, this.label(m))));
   },
-  /* Zeiger steht oben (0°). Segment i liegt im conic-gradient bei i*step … (i+1)*step im Uhrzeigersinn ab oben, Mitte bei i*step + step/2.
-     rotate(R) dreht das Rad im Uhrzeigersinn, ein Punkt bei Winkel a landet bei a + R. Damit die Segmentmitte unter dem Zeiger liegt: R = −(i*step + step/2). */
-  angleFor(index) { const step = 360 / RoyalRules.WHEEL.SEGMENTS.length; return -(index * step + step / 2); },
+  angleFor(index) { return RoyalRules.wheelAngleOf(index); },
+  /* Klick immer dann, wenn am Bildschirm ein neues Segment unter den Zeiger rutscht – gelesen aus dem echten, vom Browser
+     interpolierten Winkel, damit der Ton der Kurve folgt (schnell am Anfang, einzelne Klicks am Ende). Nach oben auf ~20/s
+     gedeckelt, sonst verschmelzen die ersten Umdrehungen zu einem Brummen. */
+  tickUntil(el, gen, until) {
+    if (this.tickRaf) cancelAnimationFrame(this.tickRaf);
+    let last = RoyalRules.wheelIndexAt(RoyalRules.wheelMatrixAngle(getComputedStyle(el).transform)), lastAt = 0;
+    const frame = (now) => {
+      if (!this.alive(gen) || now >= until) { this.tickRaf = null; return; }
+      const idx = RoyalRules.wheelIndexAt(RoyalRules.wheelMatrixAngle(getComputedStyle(el).transform));
+      if (idx !== last) { last = idx; if (now - lastAt >= 50) { lastAt = now; SFX.play('click'); } }
+      this.tickRaf = requestAnimationFrame(frame);
+    };
+    this.tickRaf = requestAnimationFrame(frame);
+  },
   async spin() {
     if (this.spinning || !this.root) return;
     const bet = Game.readBet('wheelBet');
@@ -3756,7 +3769,7 @@ const Wheel = {
       el.classList.add('spinning'); qs('.wheel-stage', this.root).classList.add('spinning');
       el.classList.toggle('snap', reduced);
       el.style.transform = `rotate(${this.turns * 360 + this.angleFor(index)}deg)`;
-      if (!reduced) { let n = 0; const t = setInterval(() => { if (!this.alive(gen) || ++n > 28) return clearInterval(t); SFX.play('click'); }, 150); }
+      if (!reduced) this.tickUntil(el, gen, performance.now() + 4600);
       await wait(reduced ? 200 : 4600);
       el.classList.remove('spinning'); const stage = qs('.wheel-stage', this.root); if (stage) stage.classList.remove('spinning');
       const mult = RoyalRules.WHEEL.SEGMENTS[index];
@@ -5778,6 +5791,13 @@ const RoyalRules = {
   wheelSpin(rng) { return Math.floor(rng() * RoyalRules.WHEEL.SEGMENTS.length); },
   wheelPayout(index, bet) { return Math.round(bet * RoyalRules.WHEEL.SEGMENTS[index]); },
   wheelDelta(index, bet) { return RoyalRules.wheelPayout(index, bet) - bet; },
+  /* Zeiger steht oben (0°). Segment i liegt im conic-gradient bei i*step … (i+1)*step im Uhrzeigersinn ab oben, Mitte bei i*step + step/2.
+     rotate(R) dreht das Rad im Uhrzeigersinn, ein Punkt bei Winkel a landet bei a + R. Segmentmitte unter dem Zeiger: R = −(i*step + step/2). */
+  wheelAngleOf(index) { const step = 360 / RoyalRules.WHEEL.SEGMENTS.length; return -(index * step + step / 2); },
+  /* Umkehrung: welches Segment liegt bei Drehung R unter dem Zeiger? a = −R (mod 360) */
+  wheelIndexAt(deg) { const n = RoyalRules.WHEEL.SEGMENTS.length; return Math.floor((((-deg) % 360) + 360) % 360 / (360 / n)) % n; },
+  /* Drehwinkel (Grad, im Uhrzeigersinn) aus getComputedStyle().transform – 'matrix(a, b, c, d, e, f)' */
+  wheelMatrixAngle(str) { const m = /matrix\(([^,]+),([^,]+)/.exec(str || ''); return m ? Math.atan2(+m[2], +m[1]) * 180 / Math.PI : 0; },
   /* Glück: Bankrott rückt auf das nächste Nicht-Bankrott-Segment; Pech: ein Gewinn rückt auf das nächste Bankrott-Segment */
   wheelLuckOverride(index, luck, rng) {
     const S = RoyalRules.WHEEL.SEGMENTS;
@@ -9070,6 +9090,21 @@ T.test('wheelSpin / wheelPayout / wheelDelta', () => {
   T.eq(RoyalRules.wheelDelta(iH, 500), -250);
   T.eq(RoyalRules.wheelDelta(S.indexOf(1), 500), 0);
 });
+T.test('wheelIndexAt / wheelAngleOf: Segment unter dem Zeiger für eine Drehung, Hinweg = Rückweg', () => {
+  const S = RoyalRules.WHEEL.SEGMENTS, step = 360 / S.length;
+  T.eq(RoyalRules.wheelIndexAt(0), 0, 'ohne Drehung liegt Segment 0 unter dem Zeiger');
+  T.eq(RoyalRules.wheelIndexAt(-step), 1, 'um ein Segment gegen den Uhrzeigersinn → Segment 1');
+  T.eq(RoyalRules.wheelIndexAt(step / 2), S.length - 1, 'halbes Segment im Uhrzeigersinn → letztes Segment');
+  T.eq(RoyalRules.wheelIndexAt(-5 * 360 - step * 3 - step / 2), 3, 'mehrere Umdrehungen zählen nicht');
+  T.eq(RoyalRules.wheelIndexAt(1e6 * 360 - 0.01), 0, 'große Winkel bleiben stabil');
+  T.eq(RoyalRules.wheelIndexAt(0.01), S.length - 1, 'minimal im Uhrzeigersinn → letztes Segment rutscht unter den Zeiger');
+  for (let i = 0; i < S.length; i++) T.eq(RoyalRules.wheelIndexAt(RoyalRules.wheelAngleOf(i)), i, `angleOf(${i}) liegt unter dem Zeiger`);
+  T.eq(RoyalRules.wheelAngleOf(0), -step / 2);
+  T.eq(RoyalRules.wheelMatrixAngle('matrix(1, 0, 0, 1, 0, 0)'), 0);
+  T.ok(Math.abs(RoyalRules.wheelMatrixAngle('matrix(0, 1, -1, 0, 0, 0)') - 90) < 1e-9, '90° im Uhrzeigersinn');
+  T.ok(Math.abs(RoyalRules.wheelMatrixAngle('matrix(0.70710678, -0.70710678, 0.70710678, 0.70710678, 0, 0)') + 45) < 1e-6, '−45°');
+  T.eq(RoyalRules.wheelMatrixAngle('none'), 0);
+});
 T.test('wheelLuckOverride: Bankrott rückt auf das nächste Nicht-Bankrott-Segment', () => {
   const S = RoyalRules.WHEEL.SEGMENTS;
   const i0 = S.indexOf(0);
@@ -11167,6 +11202,34 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       const lights = getComputedStyle(qs('.wheel-lights', root)).animationName;
       T.ok(!matchMedia('(hover: hover)').matches || lights === 'wheelLights', 'Lichterkranz reagiert auf .wheel-stage.spinning');
       stage.classList.remove('spinning');
+      const mask = getComputedStyle(qs('.wheel-lights', root)).maskImage || getComputedStyle(qs('.wheel-lights', root)).webkitMaskImage;
+      T.ok(/closest-side/.test(mask), 'Lichterkranz-Maske misst am Radius (closest-side), nicht an der Ecke – sonst ragen die Lichter 60 px ins Rad');
+    } finally {
+      State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
+      UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide();
+    }
+  });
+  T.test('Anlagen: Eingabe und Knopf aller drei Karten auf gleicher Höhe (Trickbetrug hat eine Textzeile mehr)', async () => {
+    const keep = { s: State.s, mode: State.mode, save: State.save, cur: UI.current };
+    State.save = () => {};
+    try {
+      State.mode = 'free'; State.s = State.fresh(); State.s.investments = [];
+      await UI.show('invest');
+      const cards = qsa('.chalk.inv', qs('#stage'));
+      T.eq(cards.length, 3);
+      qs('.invest-grid', qs('#stage')).style.gridTemplateColumns = 'repeat(3, 1fr)'; /* Headless-Viewport ist schmal – Desktop-Reihe erzwingen */
+      const rect = (el) => el.getBoundingClientRect();
+      const span = (xs) => Math.max(...xs) - Math.min(...xs);
+      const tops = cards.map((c) => Math.round(rect(c).top));
+      T.ok(span(tops) <= 1, `drei Karten in einer Reihe (Viewport ${innerWidth} px): ${tops.join('/')}`);
+      T.ok(span(cards.map((c) => Math.round(rect(c).height))) <= 1, 'Karten gleich hoch');
+      const forms = cards.map((c) => qs('.inv-form', c));
+      T.ok(forms.every((f) => !f.classList.contains('hidden')), 'alle Formulare sichtbar');
+      const bottoms = forms.map((f) => Math.round(rect(f).bottom));
+      T.ok(span(bottoms) <= 1, `Formulare bündig unten: ${bottoms.join('/')}`);
+      const inputs = cards.map((c) => Math.round(rect(qs('.bet-field', c)).top));
+      T.ok(span(inputs) <= 1, `Eingabefelder auf gleicher Höhe: ${inputs.join('/')}`);
     } finally {
       State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
