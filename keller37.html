@@ -3140,10 +3140,12 @@ const Cutscene = {
     void els.root.offsetWidth; // Stil mit abgeschalteten Transitions übernehmen – Transitions enden am Zielwert
     els.root.classList.remove('cs-snap');
   },
-  /* Kopfposition GEOMETRISCH aus dem Figuren-Kasten (nur Verschiebung, bei "far" zusätzlich Skalierung – nie die
-     Körperdrehung) plus Zielpose und Blickrichtung berechnet, nie gemessen: so ist sie unabhängig von einer gerade
-     laufenden Bewegung (Weg, Hinlegen). Die Konstanten folgen dem Figuren-Rig (Schädel-Pfad, Dreh-Pivot 50 %/95,6 %,
-     85°) und müssen mit ihm zusammen aktualisiert werden.
+  /* Kopfposition GEOMETRISCH aus dem inneren Rig-Kasten (.cs-fig-inner: der Kasten, in dem die Teil-SVGs liegen –
+     inkl. klein-Versatz "top: 15 %", nur Blickrichtungs-Spiegelung und ggf. Schwanken, dessen Mitte gleich bleibt;
+     vom äußeren .cs-fig kommen Verschiebung und bei "far" die Skalierung – nie die Körperdrehung) plus Zielpose und
+     Blickrichtung berechnet, nie gemessen: so ist sie unabhängig von einer gerade laufenden Bewegung (Weg, Hinlegen).
+     Die Konstanten folgen dem Figuren-Rig (Schädel-Pfad, Dreh-Pivot 50 %/95,6 %, 85°) und müssen mit ihm zusammen
+     aktualisiert werden; alle Prozentwerte beziehen sich auf den inneren Kasten.
      - Stehend (jede Pose außer "down"): Kastenoberkante = Blasenanker (y), Schädelmitte bei 27,2 % der Kastenhöhe
        (viewBox des Schädel-Pfads y 22…76 → Mitte 49 von 180).
      - Liegend ("down"): Der Körper dreht sich 85° um (50 %, 95,6 %). Aus Pivot (50,172) und Schädelmitte (50,49)
@@ -3151,7 +3153,7 @@ const Cutscene = {
        dy' = 172 − 123·cos85° ≈ 161,3 (= 0,896·Kastenhöhe). */
   _headAt(els, fig) {
     const R = els.root.getBoundingClientRect();
-    const b = fig.el.getBoundingClientRect();
+    const b = (qs('.cs-fig-inner', fig.el) || fig.el).getBoundingClientRect();
     const facing = parseFloat(fig.el.style.getPropertyValue('--face')) || 1;
     const down = fig.pose === 'down';
     const x = b.left + b.width / 2 + (down ? facing * 0.681 * b.height : 0);
@@ -3188,7 +3190,7 @@ const Cutscene = {
       els.skip.style.display = isLast ? 'none' : '';
       els.name.textContent = who.name; els.bubble.style.setProperty('--c', who.color); // Sprecher sofort bekannt (Blase erscheint nach dem Auftritt)
       // vor _stage messen: "wide" holt nur dann Wartezeit, wenn die Welt gerade noch gezoomt ist (_stage setzt das gleich synchron zurück)
-      const moving = plan.enter.length > 0 || plan.exit.length > 0 || (plan.cam === 'wide' && !!els.world.style.transform);
+      const moving = plan.enter.some((e) => (plan.cast.find((c) => c.who === e.who) || {}).pose !== 'down') || plan.exit.length > 0 || (plan.cam === 'wide' && !!els.world.style.transform); // liegende Auftritte laufen nicht (siehe _stage) – keine Leerwartezeit
       const speaker = this._stage(els, p, plan, instant);
       this._fx(els, p.fx, ctx, false);
       if (p.sfx) SFX.play(p.sfx);
@@ -12085,7 +12087,8 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     Cutscene.instant = true;
     Cutscene.define('test.cam', [
       { bg: 'gasse', who: 'du', mood: 'dead', cast: ['du'], pose: 'down', cam: 'close', text: 'Am Boden.' },
-      { bg: 'gasse', who: 'raeuber', mood: 'angry', cam: 'close', text: 'Steh auf.' },
+      { bg: 'gasse', who: 'kevin', mood: 'angry', cam: 'close', text: 'Steh auf.' },
+      { bg: 'gasse', who: 'kevin', mood: 'dead', pose: 'down', cam: 'close', text: 'Auch am Boden.' },
     ]);
     const root = qs('#cutscene');
     const checkZoom = (label) => {
@@ -12108,7 +12111,9 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       await wait(40);
       checkZoom('Panel 1 (liegend)');
       root.click(); await wait(40);
-      checkZoom('Panel 2 (andere Figur, Welt schon gezoomt)');
+      checkZoom('Panel 2 (klein-Figur stehend, Welt schon gezoomt)');
+      root.click(); await wait(40);
+      checkZoom('Panel 3 (klein-Figur liegend)');
       root.click(); await done;
       T.ok(!Cutscene.active, 'Szene beendet');
     } finally { Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.cam']; }
