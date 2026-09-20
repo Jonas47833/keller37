@@ -180,7 +180,7 @@ Geldfluss:
 - Story 2 „Der Kater" und Story 3 „Die Wäsche": `start.unlocked.doors` → alle sechs.
 - Story-Probe (`STORY_PROBE`) bleibt unverändert.
 - `DevRules.KELLER_SCREENS` (Gruppierung im Admin-Panel) bekommt `'poker'` nach `'blackjack'`.
-- **Nicht** in `GangRules.KELLER_DOORS`, `GangRules.REPAIR`, `Mugging.CASINO`: Der Tisch ist in Story 3 kein Überfallziel, bringt keine Nachtkasse und kann nicht zertrümmert werden; die Balance dort bleibt unangetastet.
+- **Nicht** in `GangRules.KELLER_DOORS`/`GangRules.REPAIR` (Story 3: kein Überfallziel, keine Nachtkasse, nicht zertrümmerbar), **aber** in `Mugging.CASINO`, weil diese Liste die Überfälle im freien Spiel beim Betreten einer Keller-Tür steuert und Poker nicht die einzige sichere Tür sein soll.
 - Die zwei Selftests, die `unlocked.doors` exakt vergleichen (Story 2/3 Start), werden um `'poker'` ergänzt.
 
 ## 7. Tests

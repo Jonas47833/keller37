@@ -293,7 +293,7 @@ body.cs-open .toast { max-width: 300px; }
 .pcard.bust { animation: bustSlide .6s ease .2s both; }
 /* Poker: Karten zum Tausch markieren */
 #pkPlayerCards .pcard { cursor: pointer; transition: transform .2s; }
-#pkPlayerCards .pcard.picked { transform: translateY(-12px); }
+#pkPlayerCards .pcard.picked .inner { transform: translateY(-12px); }
 #pkPlayerCards .pcard.picked .face { box-shadow: 0 0 0 3px var(--gold-2), 0 4px 8px rgba(0,0,0,.6); }
 .pk-note { font-family: var(--font-mono); font-size: .8rem; color: var(--dim); margin-left: 8px; letter-spacing: 0; }
 /* -- Roulette -- */
@@ -4350,7 +4350,8 @@ const Poker = {
   async deal() {
     if (this.inRound || !this.root) return;
     const ante = Game.readBet('pkBet');
-    if (!Rules.checkSpin(State.s, 3 * ante, Perks.mods()).ok) { UI.toast({ icon: '♠️', title: 'Zu wenig für diesen Tisch', text: `Du brauchst 3× Ante (${UI.fmt(3 * ante)}).`, tone: 'loss' }); SFX.play('lose'); return; }
+    const chk = Rules.checkSpin(State.s, 3 * ante, Perks.mods());
+    if (!chk.ok && chk.reason === 'funds') { UI.toast({ icon: '♠️', title: 'Zu wenig für diesen Tisch', text: `Du brauchst 3× Ante (${UI.fmt(3 * ante)}).`, tone: 'loss' }); SFX.play('lose'); return; }
     if (!Game.beginSpin(ante)) return;
     const gen = this.gen;
     this.inRound = true; this.busy = true;
@@ -4361,6 +4362,7 @@ const Poker = {
     try {
       qs('#pkPlayerCards', this.root).innerHTML = ''; qs('#pkWirtCards', this.root).innerHTML = '';
       qs('#pkWirtDraw', this.root).textContent = ''; qs('#pkTell', this.root).classList.add('hidden');
+      qs('#pkHandName', this.root).textContent = '–';
       qs('#btnPkDraw', this.root).textContent = 'Behalten';
       this.show('pkDrawControls');
       this.renderPot(round);
@@ -4521,7 +4523,7 @@ UI.register('poker', {
       if (!Poker.busy) Poker.drop(Poker.round);
       UI.toast({ icon: '♠️', title: 'Hand aufgegeben', text: 'Einsatz verfallen.', tone: 'loss' });
     }
-    Poker.root = null; Poker.inRound = false; Poker.busy = false;
+    Poker.root = null; Poker.inRound = false; Poker.busy = false; Poker.round = null;
   },
 });
 </script>
@@ -5406,7 +5408,7 @@ Bus.on('newgame.request', async () => {
 const Mugging = {
   force: null,     // Dev-Parameter ?mug=1|junkie|jugend|cousin – erzwingt den nächsten Überfall
   running: false,
-  CASINO: ['roulette', 'slots', 'horses', 'russian', 'blackjack'],
+  CASINO: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker'],
   TYPES: {
     junkie: {
       name: 'Der Junkie', emoji: '🧟',
@@ -7513,7 +7515,7 @@ const STORY_SCHULD = {
   varMax: { vertrauen: 10, ruf: 10 },
   hud: [{ var: 'schuld', label: '🕶️ Vito', fmt: 'money', tone: 'danger' }, { var: 'vertrauen', label: '🤝', max: 10 }, { var: 'ruf', label: '🔥 Ruf', max: 10 }],
   goal: (s) => `Ziel: Vito ${UI.fmt(s.story.vars.schuld)} bis Tag 30`,
-  lockReason: { roulette: 'Vito sagt nein', blackjack: 'Vito sagt nein', russian: 'Igor hat keine Zeit' },
+  lockReason: { roulette: 'Vito sagt nein', blackjack: 'Vito sagt nein', poker: 'Vito sagt nein', russian: 'Igor hat keine Zeit' },
   intro: 'schuld.intro',
   scenes: {
     /* ---- Intro ---- */
@@ -9159,12 +9161,16 @@ T.test('PokerRules.wirtDraw: Paar hält, Zwei Paare eins, Drilling zwei, fertige
   T.eq(D(P('K♣', '7♠', '7♥', '7♦', '2♠')), [0, 4], 'Drilling → die zwei anderen');
   T.eq(D(P('5♠', '6♥', '7♦', '8♣', '9♠')), [], 'Straße bleibt');
   T.eq(D(P('K♥', '9♥', '7♥', '4♥', '2♥')), [], 'Flush bleibt');
+  T.eq(D(P('7♠', '7♥', '7♦', 'K♣', 'K♠')), [], 'Full House bleibt');
+  T.eq(D(P('7♠', '7♥', '7♦', '7♣', 'K♠')), [], 'Vierling bleibt');
+  T.eq(D(P('5♥', '6♥', '7♥', '8♥', '9♥')), [], 'Straight Flush bleibt');
 });
 T.test('PokerRules.wirtDraw: Flush-Draw, offener Straßen-Draw, Müll', () => {
   const D = PokerRules.wirtDraw;
   T.eq(D(P('K♥', '9♥', '7♠', '4♥', '2♥')), [2], 'vier Herz → die eine Pik weg');
   T.eq(D(P('5♠', '6♥', '7♦', '8♣', 'K♠')), [4], '5-6-7-8 → König weg');
   T.eq(D(P('2♠', 'A♥', '5♦', '9♣', 'K♠')), [0, 2, 3], 'Müll → drei niedrigste (2, 5, 9)');
+  T.eq(D(P('2♠', '7♥', '8♦', '9♣', '10♠')), [0], '7-8-9-10 → Zwei weg (oberes Fenster)');
 });
 T.test('PokerRules.wirtAct: stark erhöht/setzt, mittel geht mit/setzt, schwach blufft nur per rng', () => {
   const A = PokerRules.wirtAct;
@@ -9189,7 +9195,7 @@ T.test('PokerRules.luckOverride: Glück zieht bei Nicht-Verbesserung neu, Pech b
   T.eq(PokerRules.luckOverride(muell, muell, drawFn, 20, seq(0.5)), null, 'Glück 20 bei rng 0,5 → kein Neuzug');
 });
 
-T.test('Story.DOORS und Story 1 Kapitel 2/4 enthalten poker', () => {
+T.test('Story 1 Kapitel 2/4 und Dev-Panel enthalten poker', () => {
   T.ok(STORY_SCHULD.chapters.find((c) => c.id === 'k2').unlock.doors.includes('poker'));
   T.ok(STORY_SCHULD.chapters.find((c) => c.id === 'k4').unlock.doors.includes('poker'));
   T.ok(DevRules.KELLER_SCREENS.includes('poker'));
