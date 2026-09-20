@@ -19,7 +19,7 @@ Nicht Teil dieser Spec: Jackpot-Nebenwette, neuer Skill, Story-Szenen am Stud-Ti
 - **Ante** = Wert des Einsatzfelds, **100 € bis 1.000 €** (`StudRules.ANTE = { MIN: 100, MAX: 1000 }`). Außerhalb des Bereichs: Toast „Einsatz – Zwischen 100 € und 1.000 €." (Craps-Konvention), keine Hand.
 - **Bet = 2 × Ante**, fest. Maximales Risiko pro Hand: 3× Ante.
 - Vor dem Geben: `Rules.checkSpin(State.s, 3 * ante, Perks.mods())` (Ante + Bet inkl. Zinsen/Medikamente). Bei `reason === 'funds'` Toast „Zu wenig für diesen Tisch – du brauchst 3× Ante."; andere Gründe wie überall über `Game.beginSpin`.
-- Einsatzfeld: `Game.bindBet(root, 'studBet', () => Math.min(StudRules.ANTE.MAX, Math.floor(Rules.maxBet(State.s, Perks.mods()) / 3)))`, Chips 100 / 250 / 500 / MAX, Startwert 100.
+- Einsatzfeld wie an den anderen Royal-Tischen: nur lesbares `bet-view`-Feld, feste Chips **100 / 250 / 500 / 1000** (`Game.bindBet(root, 'studBet')`), Startwert 100.
 
 ### 2.2 Ablauf einer Hand
 
@@ -113,7 +113,7 @@ Aufbau wie `tpl-poker` (Filz-Tisch, `bj-panel`), Royal-Zone färbt über `body[d
 - Bogen `#studArc`: „Ante · –" / „Ante 200 €" / „Ante 200 € · Bet 400 €".
 - Spieler-Reihe: Karten `#studPlayerCards`, Label „Du" + `<span class="hand-val" id="studHandName">–</span>`.
 - Status `#studStatus`.
-- `#studBetControls`: `bet-field` mit `#studBet` (value 100, min 100), Chips 100/250/500/MAX, `#btnStudDeal` „Geben".
+- `#studBetControls`: `bet-field bet-view` mit `#studBet` (value 100, min 100, readonly), Chips 100/250/500/1000, `#btnStudDeal` „Geben".
 - `#studCallControls` (hidden): `#btnStudCall` „Mitgehen (400 €)" (Betrag wird gesetzt), `#btnStudFold` „Passen".
 - `#studBack` „← Lobby" (`btn ghost sm`, wie `#crapsBack`).
 
@@ -135,7 +135,7 @@ Beträge über `UI.fmt`. Gewinn-Status mit Klasse `win`, Verlust `loss` (bestehe
 
 ### 4.4 Modul `Stud`
 
-Nach dem Muster von `Poker`: `root, gen, round, busy, forceDeck, alive(gen), drop(round)`, Methoden `deal()`, `call()`, `fold()`, `showdown(round)`, `finish(round, outcome, net)`, `onKey(e)` (Enter = Geben bzw. Mitgehen, Esc = Passen bei laufender Hand, sonst Lobby), `show(group)` für die Button-Leisten.
+Nach dem Muster von `Poker`: `root, gen, round, busy, forceDeck, alive(gen), drop(round)`, Methoden `deal()`, `call()`, `fold()`, `showdown(round)`, `finish(round, outcome, net)`, `onKey(e)` (Leertaste = Geben bzw. Mitgehen, wie an den anderen Royal-Tischen; Esc bleibt der globale Rückweg), `show(group)` für die Button-Leisten.
 
 `UI.register('stud', { template: 'tpl-stud', mount, unmount })`: `unmount` bricht eine laufende Hand ab (`drop` → `Game.forfeit()`, Toast „Hand aufgegeben · Einsatz verfallen"), außer während `busy` (Showdown läuft zu Ende, Auszahlung erfolgt ohne Screen). `Stud.round = null` danach.
 
