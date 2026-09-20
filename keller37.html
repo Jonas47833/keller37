@@ -2237,12 +2237,12 @@ document.addEventListener('keydown', () => SFX.init(), { capture: true });
 <script id="ui">
 /* ================= UI – Router, Wallet, Seitenleiste, Toasts, Money-Counter ================= */
 const Actions = {
-  finance: () => UI.show('finance'),
-  invest: () => UI.show('invest'),
-  life: () => UI.show('life'),
-  vito: () => UI.show('vito'),
-  stadt: () => UI.show('stadt'),
-  skills: () => UI.show('skills'),
+  finance: () => UI.go('finance'),
+  invest: () => UI.go('invest'),
+  life: () => UI.go('life'),
+  vito: () => UI.go('vito'),
+  stadt: () => UI.go('stadt'),
+  skills: () => UI.go('skills'),
 };
 
 const UI = {
@@ -2262,6 +2262,11 @@ const UI = {
     el.style.setProperty('--zf', ms + 'ms');
     el.classList.toggle('on', on);
     return wait(ms);
+  },
+  /* Vom Spieler gewählter Screen-Wechsel – im Royal fragt Sylvie ggf. nach (Royal.confirmLeave) */
+  async go(id) {
+    if (typeof Royal !== 'undefined' && !(await Royal.confirmLeave(id))) return;
+    await this.show(id);
   },
   async show(id) {
     if (this.busy) return;
@@ -2427,9 +2432,9 @@ const UI = {
     const w = qs('#wallet');
     w.innerHTML = '';
     w.append(
-      h('button', { class: 'brand neon', id: 'brand', style: '--neon: var(--neon-amber)', title: 'Zurück in den Gang', onclick: () => { if (State.mode === 'story' && Story.s && Story.s.phase === 'morning') UI.show(UI.screens.has('jobs') ? 'jobs' : 'hub'); else UI.show('hub'); } },
+      h('button', { class: 'brand neon', id: 'brand', style: '--neon: var(--neon-amber)', title: 'Zurück in den Gang', onclick: () => { if (State.mode === 'story' && Story.s && Story.s.phase === 'morning') UI.go(UI.screens.has('jobs') ? 'jobs' : 'hub'); else UI.go('hub'); } },
         'Keller 37', h('span', { class: 'brand-sub', id: 'brandSub' }, 'Gast im Casino Royal')),
-      h('div', { class: 'wallet-mid' }, h('div', { class: 'luck', id: 'luck' }), h('button', { class: 'lv-badge', id: 'lvBadge', title: 'Skills', onclick: () => UI.show('skills') }), h('div', { class: 'notes', id: 'notes' })),
+      h('div', { class: 'wallet-mid' }, h('div', { class: 'luck', id: 'luck' }), h('button', { class: 'lv-badge', id: 'lvBadge', title: 'Skills', onclick: () => UI.go('skills') }), h('div', { class: 'notes', id: 'notes' })),
       h('div', { class: 'wallet-right' },
         h('button', { class: 'icon-btn', id: 'mute', title: 'Ton an/aus', onclick: () => { SFX.setMuted(!State.meta.muted); UI.renderWallet(); } }, '🔊'),
         h('button', { class: 'icon-btn', id: 'newgame', title: 'Neues Spiel', onclick: () => Bus.emit('newgame.request', {}) }, '↺'),
@@ -2452,7 +2457,7 @@ const UI = {
         if (typeof Story !== 'undefined' && Story.fightActive()) return;
         if (e.key !== 'Escape' || !qs('#cutscene').hidden || !qs('#title').hidden || !UI.current) return;
         const home = State.mode === 'story' && Story.s && Story.s.phase === 'morning' && UI.screens.has('jobs') ? 'jobs' : 'hub';
-        if (UI.current.id !== home) UI.show(home);
+        if (UI.current.id !== home) UI.go(home);
       });
     }
   },
@@ -3467,6 +3472,14 @@ const Royal = {
     if (typeof Story !== 'undefined') await Story.hook('royal:guest');
   },
   line() { return State.s.flags.royalGuest ? this.SYLVIE.guest : this.SYLVIE.first; },
+  /* Vom Spieler ausgelöstes Verlassen (Seitenleiste, Logo, Esc, „Zurück in die Stadt“): Sylvie fragt nach, wenn der
+     Rückweg wieder Eintritt kostet. true = weitergehen. Systemwechsel (Story, Feierabend, Admin-Panel) laufen nicht hier durch. */
+  async confirmLeave(target) {
+    if (!UI.current || RoyalRules.zoneFor(UI.current.id) !== 'royal' || RoyalRules.zoneFor(target) === 'royal') return true;
+    if (Cutscene.active || UI.busy) return false;
+    if (!RoyalRules.leaveNeedsConfirm(State.s)) return true;
+    return (await Cutscene.play('royal.leave', { fee: UI.fmt(RoyalRules.ENTRY_FEE) })) === 'yes';
+  },
   /* Goldregen über der Bühne (Gast des Hauses); Handy/Reduced-Motion: weniger Partikel */
   goldRain(n = 30) {
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -3484,13 +3497,17 @@ UI.register('royal', {
   mount(root) {
     qs('#royalLine', root).textContent = Royal.line();
     qsa('.portal, .door', root).forEach((d) => d.addEventListener('click', () => { SFX.play('click'); UI.show(d.dataset.screen); }));
-    qs('#royalLeave', root).addEventListener('click', () => { SFX.play('click'); UI.show('stadt'); });
+    qs('#royalLeave', root).addEventListener('click', () => { SFX.play('click'); UI.go('stadt'); });
     if (typeof Story !== 'undefined') Story.decorateHub(root);
   },
 });
 Cutscene.define('royal.first', [
   { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Willkommen. Sie sind neu. Man sieht es an den Schuhen, nicht am Auto.' },
   { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Drei Tische. Höhere Einsätze, bessere Beleuchtung, dieselbe Mathematik. Viel Vergnügen.' },
+]);
+Cutscene.define('royal.leave', [
+  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Sie gehen? Der Eintritt gilt nicht für den Rückweg – die nächsten {{fee}} nehmen wir wieder an der Tür.',
+    choices: [{ label: 'Bleiben', value: 'no', cls: 'solid' }, { label: 'Gehen', value: 'yes', cls: 'red' }] },
 ]);
 Cutscene.define('royal.guest', [
   { bg: 'royal', who: 'sylvie', mood: 'happy', text: '{{amount}} in einer Runde. Sie sind ab jetzt Gast des Hauses – der Eintritt entfällt.' },
@@ -5675,6 +5692,8 @@ const RoyalRules = {
     if (s.story && s.story.royalPaidDay != null && s.story.royalPaidDay === s.story.day) return 0;
     return RoyalRules.ENTRY_FEE;
   },
+  /* Vor dem Verlassen des Royal nachfragen, wenn der Rückweg wieder Eintritt kostet (Gast / heute bezahlt: frei) */
+  leaveNeedsConfirm(s) { return RoyalRules.entryFee(s) > 0; },
   /* ---- Mega Seven: 5 Walzen × 3 Reihen, 5 feste Linien ---- */
   MEGA: {
     SYMBOLS: ['🍒', '🔔', 'BAR', '💎', '7️⃣', '⭐'],
@@ -9129,6 +9148,13 @@ T.test('RoyalRules.leberTone/deckelMarks', () => {
   T.eq([0, 49, 50, 100, 400, 450, 9999].map(RoyalRules.deckelMarks), [0, 0, 1, 2, 8, 8, 8]);
 });
 /* ---- RoyalRules: Eintritt ---- */
+T.test('RoyalRules.leaveNeedsConfirm: nachfragen, wenn der Rückweg wieder Eintritt kostet', () => {
+  const base = (o) => Object.assign(State.fresh(), { car: 'audiA3' }, o);
+  T.eq(RoyalRules.leaveNeedsConfirm(base({})), true, 'Freies Spiel: jeder Eintritt kostet');
+  T.eq(RoyalRules.leaveNeedsConfirm(base({ flags: { royalGuest: true } })), false, 'Gast des Hauses: frei');
+  T.eq(RoyalRules.leaveNeedsConfirm(base({ story: { day: 4, royalPaidDay: 4 } })), false, 'Story: heute schon bezahlt');
+  T.eq(RoyalRules.leaveNeedsConfirm(base({ story: { day: 5, royalPaidDay: 4 } })), true, 'Story: neuer Tag, neuer Eintritt');
+});
 T.test('RoyalRules.canEnter / entryFee', () => {
   T.eq(RoyalRules.canEnter(base()), { ok: false, reason: 'car', text: 'Parkservice only – zu Fuß kommt hier keiner rein.' });
   T.eq(RoyalRules.canEnter(base({ car: 'audiA3' })), { ok: true });
@@ -11206,6 +11232,39 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.ok(/closest-side/.test(mask), 'Lichterkranz-Maske misst am Radius (closest-side), nicht an der Ecke – sonst ragen die Lichter 60 px ins Rad');
     } finally {
       State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
+      UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide();
+    }
+  });
+  T.test('Royal verlassen: Sylvie fragt nach, wenn der Rückweg kostet – „Bleiben“ bleibt, „Gehen“ geht, Gast ohne Nachfrage', async () => {
+    const keep = { s: State.s, mode: State.mode, save: State.save, cur: UI.current, play: Cutscene.play };
+    State.save = () => {};
+    const played = []; let answer = 'no';
+    Cutscene.play = async (id, ctx) => { played.push([id, ctx && ctx.fee]); return answer; };
+    try {
+      State.mode = 'free'; State.s = State.fresh(); State.s.car = 'audiA3'; State.s.balance = 5000;
+      await UI.show('royal');
+      T.eq(document.body.dataset.zone, 'royal');
+      qs('#royalLeave').click(); await wait(50);
+      T.eq(played, [['royal.leave', '100 €']], 'Szene mit Eintrittspreis gespielt');
+      T.eq(UI.current.id, 'royal', '„Bleiben“: kein Wechsel');
+      answer = 'yes';
+      await UI.go('stadt');
+      T.eq(UI.current.id, 'stadt', '„Gehen“: Wechsel');
+      T.eq(played.length, 2);
+      await UI.go('hub');
+      T.eq(played.length, 2, 'außerhalb des Royal keine Nachfrage');
+      T.eq(UI.current.id, 'hub');
+      State.s.flags.royalGuest = true;
+      await UI.show('royal');
+      await UI.go('life');
+      T.eq(played.length, 2, 'Gast des Hauses: keine Nachfrage');
+      T.eq(UI.current.id, 'life');
+      await UI.show('wheel'); await UI.go('royal');
+      T.eq(played.length, 2, 'Wechsel innerhalb des Royal: keine Nachfrage');
+      T.eq(UI.current.id, 'royal');
+    } finally {
+      Cutscene.play = keep.play; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
       UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide();
     }
