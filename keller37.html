@@ -8254,6 +8254,7 @@ const DuelStage = {
   unmount() {
     if (!this.mounted) return;
     cancelAnimationFrame(this.raf); this.raf = 0;
+    clearTimeout(this.flashTimer); clearTimeout(this.downTimer);
     if (this.ro) { this.ro.disconnect(); this.ro = null; }
     for (const el of [this.world, this.fx, this.fig, this.gun, this.tag, this.flashEl]) if (el) el.remove();
     this.root = this.world = this.fx = this.back = this.fig = this.gun = this.tag = this.flashEl = null;
@@ -8261,11 +8262,18 @@ const DuelStage = {
   },
   resize() {
     if (!this.mounted) return;
-    this.W = this.root.clientWidth; this.H = this.root.clientHeight;
+    const w = this.root.clientWidth, h = this.root.clientHeight;
+    if (w === this.W && h === this.H && this.back) return; // unveränderte Größe: nicht neu vorrendern
+    this.W = w; this.H = h;
     for (const c of [this.world, this.fx]) { c.width = Math.round(this.W * this.dpr); c.height = Math.round(this.H * this.dpr); }
     this.back = document.createElement('canvas'); this.back.width = this.world.width; this.back.height = this.world.height;
     this.drawBackdrop(this.back.getContext('2d'));
     this.draw();
+  },
+  /* Viewport-Koordinaten → Bühnenpixel: die Seite zoomt .body auf großen Bildschirmen (zoom 1.15–1.65), Rechtecke kommen dann gezoomt zurück */
+  toStage(clientX, clientY) {
+    const R = this.root.getBoundingClientRect(), z = R.width / this.W || 1;
+    return { x: (clientX - R.left) / z, y: (clientY - R.top) / z };
   },
   /* Kulisse einmal vorrendern: Himmel, Wand-Silhouetten, Boden mit Fluchtpunkt */
   drawBackdrop(ctx) {
@@ -8304,10 +8312,13 @@ const DuelStage = {
   /* Rechteck der Figur in Bühnenkoordinaten (für die Trefferprüfung) */
   foeBox() {
     if (!this.mounted) return { left: 0, top: 0, width: 0, height: 0 };
-    const r = this.fig.getBoundingClientRect(), R = this.root.getBoundingClientRect();
-    return { left: r.left - R.left, top: r.top - R.top, width: r.width, height: r.height };
+    const r = this.fig.getBoundingClientRect(), a = this.toStage(r.left, r.top), b = this.toStage(r.right, r.bottom);
+    return { left: a.x, top: a.y, width: b.x - a.x, height: b.y - a.y };
   },
-  gunTip() { const r = this.gun.getBoundingClientRect(), R = this.root.getBoundingClientRect(); return { x: r.left - R.left + r.width * 0.3, y: r.top - R.top + r.height * 0.12 }; },
+  gunTip() {
+    const r = this.gun.getBoundingClientRect(), a = this.toStage(r.left, r.top), b = this.toStage(r.right, r.bottom);
+    return { x: a.x + (b.x - a.x) * 0.3, y: a.y + (b.y - a.y) * 0.12 };
+  },
   foeHand() { const b = this.foeBox(); return { x: b.left + b.width * 0.9, y: b.top + b.height * 0.42 }; },
   /* Eigener Schuss: Rückstoß, Mündungsfeuer, Hülse, Spur – Treffer: Blut am Gegner; daneben: Funken am Tippunkt; Fehlschuss (kein Punkt): in den Boden */
   shot({ x = null, y = null, hit = false, early = false } = {}) {
@@ -8325,8 +8336,8 @@ const DuelStage = {
     if (!this.mounted) return;
     this.fig.dataset.pose = 'hit';
     const b = this.foeBox();
-    setTimeout(() => { if (this.mounted) { this.fig.dataset.pose = 'down'; this.burst(b.left + b.width / 2, b.top + b.height, 'dust', 16); this.stains.push({ x: b.left + b.width * 0.6, y: b.top + b.height - 4, r: b.width * 0.35 }); } }, 220);
-    if (!this.reduced) { this.timeScale = 0.3; this.slowUntil = this.t + 500; this.fig.style.setProperty('--fall', '1.2s'); } // Zeitlupe: Partikel langsamer, Fall länger
+    this.downTimer = setTimeout(() => { if (this.mounted) { this.fig.dataset.pose = 'down'; this.burst(b.left + b.width / 2, b.top + b.height, 'dust', 16); this.stains.push({ x: b.left + b.width * 0.6, y: b.top + b.height - 4, r: b.width * 0.35 }); } }, 220);
+    if (!this.reduced) { this.timeScale = 0.3; this.slowUntil = this.t + 150; this.fig.style.setProperty('--fall', '1.2s'); } // Zeitlupe (Bühnen-Uhr): Partikel langsamer, Fall länger
   },
   /* Gegner schießt: sein Mündungsfeuer, Ruck, roter Rand, Tropfen über die Kamera */
   foeShoots() {
@@ -8357,8 +8368,8 @@ const DuelStage = {
   loop(now) {
     if (!this.mounted) return;
     const raw = this.last ? Math.min(50, now - this.last) : 16; this.last = now;
-    if (this.slowUntil && now >= this.slowUntil) { this.slowUntil = 0; this.timeScale = 1; }
     const dt = raw * this.timeScale; this.t += dt;
+    if (this.slowUntil && this.t >= this.slowUntil) { this.slowUntil = 0; this.timeScale = 1; }
     for (const p of this.parts) { p.age += dt; const s = dt / 1000; p.vy += (p.g || 0) * s; p.x += p.vx * s; p.y += p.vy * s; }
     this.parts = this.parts.filter((p) => p.age < p.ttl);
     if (!this.reduced) { this.lamp = 0.85 + Math.random() * 0.15; if (Math.random() < 0.04) this.lamp = 0.4; if (this.parts.length < 60 && Math.random() < 0.3) this.spawn({ x: Math.random() * this.W, y: this.H * 0.2 + Math.random() * this.H * 0.5, vx: 8 + Math.random() * 10, vy: -4 + Math.random() * 8, g: 0, ttl: 4000, size: 1.5, color: 'rgba(220,210,180,.35)', kind: 'dust' }); }
@@ -8366,7 +8377,7 @@ const DuelStage = {
     this.raf = requestAnimationFrame((n) => this.loop(n));
   },
   draw() {
-    if (!this.mounted) return;
+    if (!this.mounted || !this.W || !this.H) return;
     const W = this.W, H = this.H, S = this.SETS[this.set];
     const wc = this.world.getContext('2d'), fc = this.fx.getContext('2d');
     wc.setTransform(1, 0, 0, 1, 0, 0); wc.drawImage(this.back, 0, 0);
@@ -13288,6 +13299,13 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       DuelStage.foeShoots(); T.ok(DuelStage.redUntil > DuelStage.t && DuelStage.shakeUntil > DuelStage.t && DuelStage.parts.some((p) => p.kind === 'drop'), 'Gegnerschuss: roter Rand, Ruck, Tropfen');
       DuelStage.flash('ZIEH!'); T.eq([qs('.duel-flash', host).textContent, qs('.duel-flash', host).classList.contains('on')], ['ZIEH!', true]);
       T.eq(DuelStage.SET_BY_KIND, { tutorial: 'bahnhof', hinterhalt: 'gasse', finale: 'keller', dev: 'gasse' });
+      // .body zoomt auf großen Bildschirmen (1.15–1.65) – getBoundingClientRect() kommt dann gezoomt zurück, this.W/H nicht: toStage() muss das herausrechnen
+      host.style.zoom = '1.5'; void host.offsetWidth;
+      const hr = host.getBoundingClientRect();
+      T.ok(Math.abs(DuelStage.foeBox().width - qs('.duel-foe', host).getBoundingClientRect().width / 1.5) <= 2, 'foeBox(): Zoom herausgerechnet');
+      const stagePt = DuelStage.toStage(hr.left + 150, hr.top + 60);
+      T.ok(Math.abs(stagePt.x - 100) <= 1 && Math.abs(stagePt.y - 40) <= 1, 'toStage(): Viewport- → Bühnenkoordinaten');
+      host.style.zoom = ''; void host.offsetWidth;
       DuelStage.unmount(); T.eq([DuelStage.mounted, DuelStage.raf, host.children.length], [false, 0, 0], 'abgebaut');
       DuelStage.mount(host, { set: 'nirgendwo', weapon: 0, reduced: true }); T.eq(DuelStage.set, 'gasse', 'unbekannte Kulisse → gasse');
       DuelStage.enter('anabi', 0, 1, 'Anabi Stash'); DuelStage.signal(); T.eq(DuelStage.flashUntil, 0, 'reduced: kein Blitz');
