@@ -1342,7 +1342,8 @@ async def scenario_kater(cdp):
     front = await cdp.eval("StoryRules.gate(Story.story, State.s, 'royal')", await_promise=False)
     record("kater: erstes Bier hebt den Zitter-Tag auf", zitter is not True and front is None, "zitter=%s gate=%s" % (zitter, front))
     # Sofortiges Ende aus dem sleep-Hook heraus (Plan-1-Review, Critical #1): Leber 1 → Entzugsnacht −2 → „Bett" mitten in Story.night();
-    # danach „Nächste Story" → Die Schuld muss unberührt an Tag 1/morning starten (kein Tag-2-Sprung, keine fremden seen-IDs).
+    # danach gibt es keine „Nächste Story": Die Wäsche ist nach dem Bett-Ende gesperrt, und ein stiller Rückfall in Die Schuld
+    # soll nicht mehr passieren – „Und jetzt?" bietet nur „Zum Titel".
     await cdp.eval("State.s.story.vars.leber = 1; State.s.story.vars.pegel = 0; State.s.story.phase = 'evening'; State.save();")
     sleeping = await cdp.eval("Story.sleeping", await_promise=False)
     cs = await cdp.eval("__pt.cutsceneActive()", await_promise=False)
@@ -1350,24 +1351,26 @@ async def scenario_kater(cdp):
     await cdp.eval("Story.night()", await_promise=False)
     ended = None
     shot_done = False
+    final_labels = None
     for _ in range(80):
         if await cdp.eval("__pt.cutsceneActive()", await_promise=False):
             if not shot_done and await cdp.eval("(State.meta.storyRuns.kater || {}).last", await_promise=False) == "bett":
                 await cdp.screenshot("kater-ende-bett.png"); shot_done = True
-            await cdp.advance_cutscene(max_steps=3, label_hint="Nächste Story")
+            labels = await cdp.eval("[...document.querySelectorAll('.cs-choices button')].map(b => b.textContent)", await_promise=False) or []
+            if "Zum Titel" in labels:
+                final_labels = labels
+            await cdp.advance_cutscene(max_steps=3, label_hint="Zum Titel")
         ended = await cdp.eval("(State.meta.storyRuns.kater || {}).last", await_promise=False)
-        nxt = await cdp.eval("State.s.story && State.s.story.id", await_promise=False)
-        if ended == "bett" and nxt == "schuld" and not await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+        on_title = await cdp.eval("document.querySelector('#title').hidden === false", await_promise=False)
+        if ended == "bett" and on_title and not await cdp.eval("__pt.cutsceneActive()", await_promise=False):
             break
         await asyncio.sleep(0.15)
     record("kater: Ende Bett aus der Entzugsnacht", ended == "bett", "last=%s" % ended)
     trophy = await cdp.eval("Achievements.has('endeBett')", await_promise=False)
     record("kater: Trophaee endeBett vergeben", trophy is True, "trophy=%s" % trophy)
-    # Nach „Nächste Story" laeuft das Intro von Die Schuld und deren Tag-1-Morgen -- erst abwarten
-    await settle()
-    await cdp.wait_for("UI.current && UI.current.id === 'jobs' && !UI.busy", timeout=4.0)
-    nxt_state = await cdp.eval("State.s.story ? [State.s.story.id, State.s.story.day, State.s.story.phase, State.s.story.seen.length, Story.finishing, Story.sleeping] : null", await_promise=False)
-    record("kater: Folgestory startet sauber an Tag 1", nxt_state == ["schuld", 1, "morning", 0, False, False], "state=%s" % nxt_state)
+    record("kater: nach dem Bett-Ende keine Naechste Story (Waesche gesperrt), nur Zum Titel", final_labels == ["Zum Titel"], "labels=%s" % final_labels)
+    on_title = await cdp.eval("document.querySelector('#title').hidden === false && !(State.s.story && State.s.story.id === 'schuld' && State.s.story.day === 1 && State.mode === 'story')", await_promise=False)
+    record("kater: landet auf dem Titel statt still in Die Schuld", on_title, "on_title=%s" % on_title)
     # Story-Therapie (Review-Fix #1): Life.therapy() darf im Kater NICHT die Anwalt-Szene therapy.done (Dr. Schmalz)
     # spielen, sondern nur die Doc-Szene kater.therapie aus dem buy:therapy-Hook. Dazu Story-Zustand direkt setzen.
     await cdp.navigate(URL_BASE + "?fresh&story=kater&prev=doc&day=12")
@@ -1575,25 +1578,27 @@ async def scenario_stash(cdp):
     await cdp.eval("Story.s.vars.zorn = 2; Story.s.vars.ziel = 20000; Story.s.vars.rueckgabe = 11000; Story.s.vars.woche = 1; State.s.balance = 0; Story.s.phase = 'evening'; State.save(); Story.renderDaybar();", await_promise=False)
     await cdp.eval("Story.night()", await_promise=False)
     await cdp.wait_for("__pt.cutsceneActive()", timeout=4.0)
-    await cdp.advance_cutscene(max_steps=14)
-    await asyncio.sleep(0.5)
+    # Abrechnung/Kanal-Ende/Insider (fuer "stash" schon vergeben, siehe oben) bis zur Abschlussfrage durchklicken – ohne sie
+    # zu beantworten. Die Wäsche ist die letzte Story: statt „Und jetzt?" + „Nächste Story" steht „Fortsetzung folgt…"
+    # mit nur „Zum Titel" – kein Sprung in eine alte Story.
+    final = None
+    for _ in range(120):
+        if not await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+            await asyncio.sleep(0.15); continue
+        labels = await cdp.eval("[...document.querySelectorAll('.cs-choices button')].map(b => b.textContent)", await_promise=False) or []
+        if "Zum Titel" in labels:
+            final = {"labels": labels, "text": await cdp.eval("(document.querySelector('#cutscene .cs-text')||{}).textContent", await_promise=False)}
+            await cdp.screenshot("stash-ende-fortsetzung.png")
+            break
+        await cdp.eval("__pt.advance(null)", await_promise=False)
+        await asyncio.sleep(0.15)
     k = await cdp.eval("({ last: (State.meta.storyRuns.stash || {}).last, ended: Story.s ? Story.s.ended : null })", await_promise=False)
     record("stash: Abrechnung ohne Geld bei Zorn 2 → Kanal sofort", k["last"] == "kanal", str(k))
-    # Ende/Insider (fuer "stash" schon vergeben, siehe oben)/„Und jetzt?“ durchklicken -- „Nächste Story“
-    # ist ohne label_hint die erste Wahl (siehe __pt.advance in PAGE_HELPERS).
-    await cdp.advance_cutscene(max_steps=20)
-    await cdp.wait_for("State.mode === 'story' && Story.s && Story.s.id !== 'stash' && Story.s.day === 1", timeout=8.0)
-    nxt = await cdp.eval(
-        "({ id: Story.s.id, day: Story.s.day, "
-        "zorn: (Story.s.vars.zorn === undefined ? null : Story.s.vars.zorn), "
-        "ended: (Story.s.ended === undefined ? null : Story.s.ended) })",
-        await_promise=False,
-    )
-    record(
-        "stash: nach dem Kanal startet die nächste Story sauber (Tag 1, kein Zorn)",
-        nxt is not None and nxt["id"] != "stash" and nxt["day"] == 1 and nxt["zorn"] is None and nxt["ended"] is None,
-        str(nxt),
-    )
+    record("stash: letzte Story endet mit Fortsetzung folgt... und nur Zum Titel", final is not None and final["labels"] == ["Zum Titel"] and "Fortsetzung folgt" in (final["text"] or ""), str(final))
+    await cdp.advance_cutscene(max_steps=3, label_hint="Zum Titel")
+    await cdp.wait_for("document.querySelector('#title').hidden === false", timeout=8.0)
+    on_title = await cdp.eval("document.querySelector('#title').hidden === false", await_promise=False)
+    record("stash: danach der Titel, keine andere Story gestartet", on_title, "on_title=%s" % on_title)
 
 
 async def scenario_roulette_chips(cdp):

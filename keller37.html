@@ -642,7 +642,7 @@ div#title[hidden] { display: none; }
 .title-trophies-panel .btn { margin-top: 10px; }
 @media (max-width: 760px) { .title-neon { font-size: 3rem; } .title-doors { grid-template-columns: 1fr; } .title-door { height: 170px; } }
 /* -- Story: Tagesleiste, Sperren, Nacht -- */
-body.mode-story #newgame, body.mode-story #toTitle { display: none; }
+body.mode-story #newgame { display: none; }
 .daybar { position: sticky; top: 58px; z-index: 19; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 6px 20px; background: rgba(20,17,12,.95); border-bottom: 1px solid rgba(201,162,39,.25); font-family: var(--font-display); letter-spacing: .08em; }
 .day-count { font-size: 1.6rem; color: var(--gold-2); }
 .day-count .day-label, .day-count .day-of { font-size: 1rem; color: var(--dim); }
@@ -662,7 +662,7 @@ body.mode-story #newgame, body.mode-story #toTitle { display: none; }
 .door.locked .chalk-tag { color: #ffb3b3; }
 #nightfade { position: fixed; inset: 0; z-index: 85; background: #000; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 4rem; letter-spacing: .2em; color: #fff; text-shadow: 0 0 20px var(--neon-amber); opacity: 0; pointer-events: none; transition: opacity .35s; }
 #nightfade.on { opacity: 1; pointer-events: auto; }
-@media (max-width: 760px) { .daybar { top: 0; position: static; padding: 6px 12px; gap: 8px; } .day-count { font-size: 1.3rem; } .day-goal { width: 100%; margin-left: 0; order: 5; } .daybar #btnTitleBack { margin-left: auto; } .daybar .btn.sm { min-height: 42px; } }
+@media (max-width: 760px) { .daybar { top: 0; position: static; padding: 6px 12px; gap: 8px; } .day-count { font-size: 1.3rem; } .day-goal { width: 100%; margin-left: 0; order: 5; } .daybar .btn.sm { min-height: 42px; } }
 /* -- Jobbörse -- */
 .pinboard { position: relative; background-image: radial-gradient(rgba(0,0,0,.18) 1px, transparent 1.5px), radial-gradient(circle at 20% 30%, #a8783f 0, #8a5e2e 40%, #6e4a22 100%); background-size: 6px 6px, auto; border: 10px solid #4a3520; border-radius: 6px; padding: 22px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px; min-height: 260px; box-shadow: inset 0 0 40px rgba(0,0,0,.5); }
 .jobnote { position: relative; background: var(--paper); color: var(--paper-ink); padding: 26px 14px 14px; font-family: var(--font-mono); box-shadow: 3px 4px 10px rgba(0,0,0,.6); transform: rotate(-1.5deg); display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: transform .15s; }
@@ -1268,7 +1268,6 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     <button class="btn solid sm" id="btnSleep">💤 Schlafen</button>
     <button class="btn ghost sm" id="btnBoard">📌 Pinnwand</button>
     <div class="day-goal" id="dayGoal"></div>
-    <button class="icon-btn" id="btnTitleBack" title="Zum Titel">🚪</button>
   </div>
 </template>
 <template id="tpl-jobs">
@@ -5505,12 +5504,22 @@ const StoryRules = {
     const oldest = cands.filter((st) => last(st) === min);
     return oldest[Math.floor(rng() * oldest.length)].id;
   },
-  /* „Nächste Story“ nach einem Ende: die nächste in Definitionsreihenfolge mit erfüllter Voraussetzung, sonst pickStory */
+  /* „Nächste Story“ nach einem Ende: die nächste in Definitionsreihenfolge mit erfüllter Voraussetzung, sonst null.
+     Kein Rückfall auf pickStory – nach der letzten Story (oder bei gesperrter Fortsetzung) landet niemand still in einer alten Story. */
   nextStory(stories, storyRuns, currentId) {
     const list = stories.filter((st) => !st.dev);
     const idx = list.findIndex((st) => st.id === currentId);
     for (let i = idx + 1; i < list.length; i++) if (StoryRules.requirementMet(list[i], storyRuns)) return list[i].id;
-    return StoryRules.pickStory(list, storyRuns, Math.random);
+    return null;
+  },
+  /* Abschlussfrage nach dem Ende: mit Fortsetzung „Nächste Story“/„Zum Titel“; nach der letzten Story „Fortsetzung folgt…“;
+     ist die Fortsetzung wegen des Endes gesperrt, bleibt nur „Zum Titel“ (dort kann man neu wählen) */
+  endingChoice(stories, storyRuns, currentId) {
+    const list = stories.filter((st) => !st.dev);
+    const next = StoryRules.nextStory(list, storyRuns, currentId);
+    const isLast = list.findIndex((st) => st.id === currentId) === list.length - 1;
+    const title = { label: 'Zum Titel', value: 'title', cls: 'ghost' };
+    return { next, text: isLast ? 'Fortsetzung folgt…' : 'Und jetzt?', choices: next ? [{ label: 'Nächste Story', value: 'next', cls: 'red' }, title] : [title] };
   },
   prevEndings(storyRuns) {
     const out = {};
@@ -6445,16 +6454,14 @@ const Story = {
     Cutscene.define('story.ending.tmp', panels);
     await Cutscene.play('story.ending.tmp', this.ctx({ stats }));
     if (typeof Perks !== 'undefined') await Perks.offerInsider(this.story.id);
-    Cutscene.define('story.ending.choice', [
-      { bg: last.bg || 'hafen', who: 'du', text: 'Und jetzt?',
-        choices: [{ label: 'Nächste Story', value: 'next', cls: 'red' }, { label: 'Zum Titel', value: 'title', cls: 'ghost' }] },
-    ]);
+    const ask = StoryRules.endingChoice(Stories.list(), State.meta.storyRuns, this.story.id);
+    Cutscene.define('story.ending.choice', [{ bg: last.bg || 'hafen', who: 'du', text: ask.text, choices: ask.choices }]);
     const choice = await Cutscene.play('story.ending.choice', this.ctx({ stats }));
     await Bus.emit('story:ended', { id: this.story.id, ending: end.id });
     /* Ab hier beginnt die nächste Story bzw. der Titel – deren sofortige Enden dürfen nicht mehr unterdrückt werden
        (checkImmediate hält `finishing` sonst, bis enter('newstory') samt Intro/Morgen der NÄCHSTEN Story zurückkehrt). */
     this.finishing = false;
-    if (choice === 'next') { this.forcedNext = StoryRules.nextStory(Stories.list(), State.meta.storyRuns, this.story.id); return this.enter('newstory'); }
+    if (choice === 'next' && ask.next) { this.forcedNext = ask.next; return this.enter('newstory'); }
     const c = await Title.show();
     if (c) await Modes.enter(c);
   },
@@ -6557,7 +6564,6 @@ const Story = {
     if (!qs('.daybar', slot)) {
       slot.appendChild(qs('#tpl-daybar').content.cloneNode(true));
       qs('#btnSleep', slot).addEventListener('click', () => { SFX.play('click'); Story.night(); });
-      qs('#btnTitleBack', slot).addEventListener('click', () => Title.open());
       qs('#btnBoard', slot).addEventListener('click', () => { SFX.play('click'); UI.show('jobs'); });
     }
     qs('#dayNum', slot).textContent = this.s.day;
@@ -9444,13 +9450,31 @@ T.test('StoryRules.validate: prevEndings ohne requires bzw. ohne lockText melden
   const ok = Object.assign({}, STORY_PROBE, { id: 'x', requires: 'k', lockText: 'x', prevEndings: ['a'] });
   T.eq(StoryRules.validate(ok, Object.keys(STORY_PROBE.scenes), ['spueler', 'post'], ['k', 'x'], { k: kater }), [], 'requires + prevEndings + lockText: keine dieser Fehler');
 });
-T.test('StoryRules.nextStory: Reihenfolge, Voraussetzung, sonst pickStory', () => {
+T.test('StoryRules.nextStory: nächste in Reihenfolge mit erfüllter Voraussetzung, sonst null (kein Rückfall in eine alte Story)', () => {
   const a = { id: 'a' }, b = { id: 'b', requires: 'a' }, c = { id: 'c' };
   const runs = { a: { lastPlayed: 9, endings: ['x'] } };
   T.eq(StoryRules.nextStory([a, b, c], runs, 'a'), 'b');
   T.eq(StoryRules.nextStory([a, b, c], { a: { lastPlayed: 9, endings: [] } }, 'a'), 'c', 'b gesperrt → nächste in Reihenfolge');
-  T.eq(StoryRules.nextStory([a, b, c], Object.assign({ c: { lastPlayed: 1, endings: ['y'] } }, runs), 'c'), 'b', 'nach der letzten: pickStory (b nie gespielt)');
-  T.eq(StoryRules.nextStory([a], { a: { lastPlayed: 1, endings: ['x'] } }, 'a'), 'a', 'einzige Story wiederholt sich');
+  T.eq(StoryRules.nextStory([a, b, c], Object.assign({ c: { lastPlayed: 1, endings: ['y'] } }, runs), 'c'), null, 'nach der letzten: nichts');
+  T.eq(StoryRules.nextStory([a], { a: { lastPlayed: 1, endings: ['x'] } }, 'a'), null, 'einzige Story: nichts');
+  T.eq(StoryRules.nextStory([a, b], { a: { lastPlayed: 1, endings: [] } }, 'a'), null, 'einzige Folgestory gesperrt: nichts');
+});
+T.test('StoryRules.endingChoice: „Nächste Story“ nur wenn es eine gibt, nach der letzten „Fortsetzung folgt…“', () => {
+  const a = { id: 'a' }, b = { id: 'b', requires: 'a', prevEndings: ['gut'] };
+  const done = (id, e) => ({ [id]: { lastPlayed: 1, endings: [e], last: e } });
+  const withNext = StoryRules.endingChoice([a, b], done('a', 'gut'), 'a');
+  T.eq(withNext.next, 'b');
+  T.eq(withNext.text, 'Und jetzt?');
+  T.eq(withNext.choices.map((c) => c.value), ['next', 'title']);
+  const locked = StoryRules.endingChoice([a, b], done('a', 'schlecht'), 'a');
+  T.eq(locked.next, null, 'Folgestory wegen Ende gesperrt');
+  T.eq(locked.text, 'Und jetzt?');
+  T.eq(locked.choices.map((c) => c.value), ['title'], 'nur „Zum Titel“, kein Sprung in eine andere Story');
+  const last = StoryRules.endingChoice([a, b], Object.assign(done('a', 'gut'), done('b', 'x')), 'b');
+  T.eq(last.next, null);
+  T.eq(last.text, 'Fortsetzung folgt…', 'nach der letzten Story');
+  T.eq(last.choices.map((c) => c.value), ['title']);
+  T.eq(StoryRules.endingChoice([a, b, { id: 'd', dev: true }], Object.assign(done('a', 'gut'), done('b', 'x')), 'b').text, 'Fortsetzung folgt…', 'Dev-Storys zählen nicht als Fortsetzung');
 });
 T.test('StoryRules.prevEndings: letztes Ende je Story', () => {
   T.eq(StoryRules.prevEndings({}), {});
@@ -11267,6 +11291,21 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       Cutscene.play = keep.play; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
       UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide();
+    }
+  });
+  T.test('Tür-Knopf „Zum Titel“ sitzt in Story und freiem Spiel gleich: oben rechts neben dem Kontostand, nicht in der Tagesleiste', () => {
+    const wasStory = document.body.classList.contains('mode-story');
+    try {
+      const btn = qs('#toTitle'), bal = qs('#balance');
+      T.ok(btn && bal && btn.nextElementSibling === bal, 'direkt links vom Kontostand');
+      document.body.classList.remove('mode-free'); document.body.classList.add('mode-story');
+      T.eq(getComputedStyle(btn).display, getComputedStyle(qs('#mute')).display, 'Story: sichtbar wie der Ton-Knopf');
+      T.eq(getComputedStyle(qs('#newgame')).display, 'none', 'Story: „Neues Spiel“ bleibt weg');
+      document.body.classList.remove('mode-story'); document.body.classList.add('mode-free');
+      T.ok(getComputedStyle(btn).display !== 'none', 'Frei: sichtbar');
+      T.eq(qs('#tpl-daybar').content.querySelector('#btnTitleBack'), null, 'kein zweiter Tür-Knopf in der Tagesleiste');
+    } finally {
+      document.body.classList.toggle('mode-story', wasStory); document.body.classList.toggle('mode-free', !wasStory);
     }
   });
   T.test('Anlagen: Eingabe und Knopf aller drei Karten auf gleicher Höhe (Trickbetrug hat eine Textzeile mehr)', async () => {
