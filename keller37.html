@@ -7779,10 +7779,10 @@ const STORY_SCHULD = {
   scenes: {
     /* ---- Intro ---- */
     'schuld.intro': [
-      { bg: 'keller', who: 'du', mood: 'shock', text: 'Beton. Kalt. Ein Zettel vor meinem Gesicht: 50.000 €. Ich erinnere mich an nichts.' },
-      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Gestern Nacht hast du an meinem Tisch gesessen. Mit meinem Geld. Du warst sehr mutig. Fünfzigtausend mutig.' },
-      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Dreißig Tage. Dann liegt es hier auf dem Tisch – in Raten oder am Stück, mir egal. Ich bin kein Unmensch.' },
-      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Hier. Fünfzig Euro und eine Schürze. Die Spülküche ist hinten links, der Postmeister sucht Leute. Morgens arbeiten, abends spielen – so läuft das hier.' },
+      { bg: 'keller', who: 'du', mood: 'shock', cast: ['du'], pose: 'down', cam: 'close', text: 'Beton. Kalt. Ein Zettel vor meinem Gesicht: 50.000 €. Ich erinnere mich an nichts.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', pose: 'point', text: 'Gestern Nacht hast du an meinem Tisch gesessen. Mit meinem Geld. Du warst sehr mutig. Fünfzigtausend mutig.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', cam: 'close', text: 'Dreißig Tage. Dann liegt es hier auf dem Tisch – in Raten oder am Stück, mir egal. Ich bin kein Unmensch.' },
+      { bg: 'bar', who: 'wirt', mood: 'calm', pose: 'point', text: 'Hier. Fünfzig Euro und eine Schürze. Die Spülküche ist hinten links, der Postmeister sucht Leute. Morgens arbeiten, abends spielen – so läuft das hier.' },
     ],
     /* ---- Kapitel ---- */
     'schuld.k2': [
@@ -7810,10 +7810,10 @@ const STORY_SCHULD = {
       { bg: 'hinterzimmer', who: 'vito', mood: 'angry', text: 'Igor. Der Revolver. Kein Einsatz – nur eine Erinnerung daran, wem dein Kopf gehört.' },
     ],
     'schuld.duelLost': [
-      { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Streifschuss. Vito wollte dich nicht tot, nur wach. Fünfhundert fürs Nähen. Ich schreib es dir auf – ach nein, du zahlst jetzt.' },
+      { bg: 'klinik', who: 'doc', mood: 'calm', look: { du: { hurt: 'pflaster' } }, text: 'Streifschuss. Vito wollte dich nicht tot, nur wach. Fünfhundert fürs Nähen. Ich schreib es dir auf – ach nein, du zahlst jetzt.' },
     ],
     'schuld.duelWon': [
-      { bg: 'keller', who: 'igor', mood: 'calm', text: '…Du hast nicht gezittert. Das merke ich mir.' },
+      { bg: 'keller', who: 'igor', mood: 'calm', cam: 'close', text: '…Du hast nicht gezittert. Das merke ich mir.' },
     ],
     /* ---- Kurier ---- */
     'schuld.kurier.polizei': [
@@ -7856,14 +7856,14 @@ const STORY_SCHULD = {
     ],
     /* ---- Enden ---- */
     'schuld.ende.ehrlich': [
-      { bg: 'hafen', who: 'vito', mood: 'calm', text: 'Fünfzigtausend. Auf den Cent. Weißt du, wie viele Leute das je geschafft haben?' },
+      { bg: 'hafen', who: 'vito', mood: 'calm', cam: 'close', text: 'Fünfzigtausend. Auf den Cent. Weißt du, wie viele Leute das je geschafft haben?' },
       { bg: 'hafen', who: 'vito', mood: 'calm', text: 'Keiner. Die Frist war nie zum Zahlen da. Sie war da, um zu sehen, was du tust, wenn du keine Wahl hast.' },
-      { bg: 'hafen', who: 'vito', mood: 'happy', text: 'Verschwinde, bevor ich dich mag. Und komm nicht zurück. Ehrlich gemeint – als Kompliment.' },
+      { bg: 'hafen', who: 'vito', mood: 'happy', pose: 'point', text: 'Verschwinde, bevor ich dich mag. Und komm nicht zurück. Ehrlich gemeint – als Kompliment.' },
     ],
     'schuld.ende.doc': [
       { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Tag dreißig. {{schuld}} offen. Ich sagte, ich bin kein Unmensch. Ich sagte nicht, dass der Doc keiner ist.' },
-      { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'blackout', text: 'Zwei Nieren, ein Hobby. Zähl rückwärts von zehn.' },
-      { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Er wacht wieder auf. Irgendwann. Das war deine Geschichte.' },
+      { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'blackout', pose: { who: 'du', pose: 'down' }, text: 'Zwei Nieren, ein Hobby. Zähl rückwärts von zehn.' },
+      { bg: 'klinik', who: 'doc', mood: 'calm', cam: 'close', text: 'Er wacht wieder auf. Irgendwann. Das war deine Geschichte.' },
     ],
     /* ---- Kapitel 3/4 ---- */
     'schuld.k3': [
@@ -7902,7 +7902,7 @@ const STORY_SCHULD = {
       { bg: 'keller', who: 'igor', mood: 'calm', text: 'Ich arbeite für Vito, seit ich zwölf bin. Ich habe nie gefragt, was in dem Buch steht. Vielleicht sollte ich.' },
     ],
     'schuld.k4': [
-      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Letzte Woche. Ich zähle mit. Alle Tische sind offen, jede Tür. Nutz sie – oder nutz sie nicht. Am Tag dreißig sitzen wir hier.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', cam: 'close', text: 'Letzte Woche. Ich zähle mit. Alle Tische sind offen, jede Tür. Nutz sie – oder nutz sie nicht. Am Tag dreißig sitzen wir hier.' },
     ],
     'schuld.croupierJob': [
       { bg: 'hinterzimmer', who: 'vito', mood: 'happy', text: 'Du bist an der Tür der Beste, den ich je hatte. Also nehme ich dich von der Tür. Der Tisch. Karten, Kessel, Tageskasse. Ab morgen.' },
@@ -7915,7 +7915,7 @@ const STORY_SCHULD = {
       { bg: 'strasse', who: 'kevin', mood: 'happy', text: 'Wenn du willst, sag es mir nachts. Ich frag jeden Abend einmal. Nur einmal.' },
     ],
     'schuld.fluchtFrage': [
-      { bg: 'strasse', who: 'kevin', mood: 'calm', text: 'Heute Nacht? Fähre um vier. Danach fragt keiner mehr nach {{schuld}}.',
+      { bg: 'strasse', who: 'kevin', mood: 'calm', cam: 'close', text: 'Heute Nacht? Fähre um vier. Danach fragt keiner mehr nach {{schuld}}.',
         choices: [
           { label: 'Heute Nacht', value: 'ja', cls: 'red', effects: [{ flag: 'fluchtHeute' }] },
           { label: 'Noch nicht', value: 'nein', cls: 'ghost' },
@@ -7925,7 +7925,7 @@ const STORY_SCHULD = {
       { bg: 'keller', who: 'igor', mood: 'angry', text: 'Kevin redet zu viel. Papiere, Hafen, Fähre. Vito weiß es noch nicht. Ich noch nicht lange. Enttäusch mich nicht.' },
     ],
     'schuld.sturzFrage': [
-      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Du hast das Buch. Du hast den Safe. Igor steht hinter dir. Jetzt oder nie – morgen ist Vito wieder vorsichtig.',
+      { bg: 'bar', who: 'wirt', mood: 'calm', enter: 'igor', text: 'Du hast das Buch. Du hast den Safe. Igor steht hinter dir. Jetzt oder nie – morgen ist Vito wieder vorsichtig.',
         choices: [
           { label: 'Jetzt', value: 'jetzt', cls: 'red', effects: [{ flag: 'sturzJetzt' }] },
           { label: 'Noch einen Tag', value: 'warten', cls: 'ghost' },
@@ -7978,7 +7978,7 @@ const STORY_SCHULD = {
           { label: 'Kasse rein, Klappe zu', value: 'zu', cls: 'ghost', effects: [{ var: 'vertrauen', add: 1 }] },
         ] },
     ],
-    'schuld.croup.safe2': [{ bg: 'hinterzimmer', who: 'du', mood: 'shock', text: 'Neben dem Geld: Fotos. Zwölf Leute, jeder unterm Tisch, jeder mit einem Datum. Und eine Quittung vom Doc. Ich schließe den Safe. Drei-sieben.' }],
+    'schuld.croup.safe2': [{ bg: 'hinterzimmer', who: 'du', mood: 'shock', cast: ['du'], cam: 'close', text: 'Neben dem Geld: Fotos. Zwölf Leute, jeder unterm Tisch, jeder mit einem Datum. Und eine Quittung vom Doc. Ich schließe den Safe. Drei-sieben.' }],
     /* ---- Doc-Assistent ---- */
     'schuld.doc.niere': [
       { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Ein Patient, zwei Nieren, kein Geld. Er schläft. Halt die Schale.',
@@ -7997,17 +7997,17 @@ const STORY_SCHULD = {
     ],
     /* ---- Enden ---- */
     'schuld.ende.sturz': [
-      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Tag der Abrechnung. Setz dich. Igor, die Tür.' },
-      { bg: 'hinterzimmer', who: 'igor', mood: 'calm', text: 'Nein. Heute nicht. Das Buch, Vito. Der Safe. Zwölf Namen. Ich habe nie gefragt. Jetzt frage ich.' },
-      { bg: 'hinterzimmer', who: 'vito', mood: 'shock', fx: 'blackout', text: 'Du… weißt nicht, was du tust. Igor. IGOR.' },
-      { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Vito ist durch die Hintertür. Der Keller gehört jetzt dem, der die Schlüssel hat – mir. Und du fängst morgen an. Als Croupier. Der Kessel läuft, wie er läuft.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', cast: ['du', 'vito', 'igor'], text: 'Tag der Abrechnung. Setz dich. Igor, die Tür.' },
+      { bg: 'hinterzimmer', who: 'igor', mood: 'calm', pose: 'point', text: 'Nein. Heute nicht. Das Buch, Vito. Der Safe. Zwölf Namen. Ich habe nie gefragt. Jetzt frage ich.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'shock', fx: 'blackout', cam: 'close', text: 'Du… weißt nicht, was du tust. Igor. IGOR.' },
+      { bg: 'bar', who: 'wirt', mood: 'happy', pose: 'hands-up', text: 'Vito ist durch die Hintertür. Der Keller gehört jetzt dem, der die Schlüssel hat – mir. Und du fängst morgen an. Als Croupier. Der Kessel läuft, wie er läuft.' },
     ],
     'schuld.ende.taxi': (ctx) => {
       const panels = [
-        { bg: 'strasse', who: 'kevin', mood: 'calm', text: 'Vier Uhr. Papiere im Handschuhfach. Neuer Name, klingt nach Zahnarzt. Fahr.' },
+        { bg: 'strasse', who: 'kevin', mood: 'calm', cam: 'close', text: 'Vier Uhr. Papiere im Handschuhfach. Neuer Name, klingt nach Zahnarzt. Fahr.' },
       ];
       if (ctx.flags.chantalKennt && !ctx.flags.komplize) panels.push({ bg: 'hafen', who: 'chantal', mood: 'happy', text: 'Rutsch rüber. Ehrlich jetzt – dachtest du, ich bleibe hier? Ich bin die Nächste auf der Liste. Fahr.' });
-      panels.push({ bg: 'hafen', who: 'du', mood: 'calm', text: 'Die Fähre legt ab. Das Handy vibriert. Eine Nachricht, unbekannte Nummer: „Ich bin kein Unmensch. Aber ich habe Zeit. – V."' });
+      panels.push({ bg: 'hafen', who: 'du', mood: 'calm', cast: ['du'], text: 'Die Fähre legt ab. Das Handy vibriert. Eine Nachricht, unbekannte Nummer: „Ich bin kein Unmensch. Aber ich habe Zeit. – V."' });
       return panels;
     },
   },
@@ -8119,18 +8119,18 @@ const STORY_KATER = {
         ],
       }[prev];
       return start.concat([
-        { bg: 'standesamt', who: 'chantal', mood: 'happy', text: 'Ja. Natürlich ja. Ich hab die Vollmacht schon vorbereitet – für die Flitterwochen, Schatz. Man muss ja an alles denken.' },
+        { bg: 'standesamt', who: 'chantal', mood: 'happy', cam: 'close', text: 'Ja. Natürlich ja. Ich hab die Vollmacht schon vorbereitet – für die Flitterwochen, Schatz. Man muss ja an alles denken.' },
         { bg: 'standesamt', who: 'schmalz', mood: 'calm', text: 'Kraft des mir verliehenen Amtes. Gütertrennung? Nein? Wie Sie meinen. Unterschreiben Sie da, da und da.' },
-        { bg: 'villa', who: 'du', mood: 'happy', text: 'Villa mit Hafenblick, Mercedes vor der Tür, Filialleiter bei Krause. Dreißig Tage. Was soll schon passieren.' },
+        { bg: 'villa', who: 'du', mood: 'happy', cast: ['du'], pose: 'hands-up', text: 'Villa mit Hafenblick, Mercedes vor der Tür, Filialleiter bei Krause. Dreißig Tage. Was soll schon passieren.' },
       ]);
     },
     'kater.absturz': [
-      { bg: 'villa', who: 'du', mood: 'shock', text: 'Der Wecker ist weg. Das Bett ist weg. Der Zettel auf dem Boden: „Danke für alles. Wirklich alles. – C.-M."' },
-      { bg: 'bank', who: 'krause', mood: 'calm', text: 'Ihre Frau hat die Vollmacht genutzt. Konto, Wagen, Villa – alles rechtens. Und die Filiale… Sie verstehen, das Vertrauen.' },
+      { bg: 'villa', who: 'du', mood: 'shock', cast: ['du'], cam: 'close', text: 'Der Wecker ist weg. Das Bett ist weg. Der Zettel auf dem Boden: „Danke für alles. Wirklich alles. – C.-M."' },
+      { bg: 'bank', who: 'krause', mood: 'calm', pose: 'point', text: 'Ihre Frau hat die Vollmacht genutzt. Konto, Wagen, Villa – alles rechtens. Und die Filiale… Sie verstehen, das Vertrauen.' },
       { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Setz dich. Das erste schreib ich an. Das zweite zahlst du. Du siehst aus, als bräuchtest du drei.' },
     ],
     'kater.k2': [
-      { bg: 'strasse', who: 'du', mood: 'shock', text: 'Tag vier. Null auf dem Konto, kein Auto, kein Schlüssel. Der Wirt hat einen Deckel für mich angelegt. Ich hab ihn nicht drum gebeten.' },
+      { bg: 'strasse', who: 'du', mood: 'shock', cast: ['du'], text: 'Tag vier. Null auf dem Konto, kein Auto, kein Schlüssel. Der Wirt hat einen Deckel für mich angelegt. Ich hab ihn nicht drum gebeten.' },
       { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Pinnwand ist da hinten. Spülen, Post, Taxi. Und drei Bier am Tag – nicht meine Regel, deine Hände haben das entschieden.' },
     ],
     'kater.entzug': [
@@ -8146,7 +8146,7 @@ const STORY_KATER = {
     ],
     'kater.doc.angebot': [
       { bg: 'bar', who: 'doc', mood: 'calm', text: 'Drei Bier für zwanzig Prozent Glück. Ein Brownie für vierzig. Rechne selbst, du warst Filialleiter.' },
-      { bg: 'bar', who: 'doc', mood: 'calm', text: 'Dreihundert das Stück, für dich. Deine Leber bezahlt den Rest.',
+      { bg: 'bar', who: 'doc', mood: 'calm', pose: 'point', text: 'Dreihundert das Stück, für dich. Deine Leber bezahlt den Rest.',
         choices: [{ label: 'Nein, danke', value: 'nein', cls: 'ghost', effects: [{ var: 'docNein', add: 1 }, { flag: 'docAbgelehnt' }] }, { label: 'Was kostet das?', value: 'ja', cls: 'red', effects: [{ flag: 'sucht' }, { price: { brownie: 300, therapy: 8000 } }] }] },
     ],
     'kater.doc.angebot2': [
@@ -8205,7 +8205,7 @@ const STORY_KATER = {
     ],
     /* Casino Royal */
     'kater.sylvie': [
-      { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Gast des Hauses. Ich weiß, was Sie vorhaben. Vierzigtausend für einen Keller – ich zahle mehr, wenn Sie es nicht schaffen.' },
+      { bg: 'royal', who: 'sylvie', mood: 'calm', cam: 'close', text: 'Gast des Hauses. Ich weiß, was Sie vorhaben. Vierzigtausend für einen Keller – ich zahle mehr, wenn Sie es nicht schaffen.' },
     ],
     'kater.k4': [
       { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Letzte Runde. Zehn Tage. Sylvie hat ein Angebot gemacht, ich hab noch nicht Ja gesagt. Ich hab auch noch nicht Nein gesagt.' },
@@ -8224,8 +8224,8 @@ const STORY_KATER = {
       ];
     },
     'kater.chantal': [
-      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Sie steht vor dem Keller. Ohne Mantel, ohne den anderen. „Ich hab gehört, du hast wieder Geld. Ich hab gehört, du kaufst was."' },
-      { bg: 'strasse', who: 'chantal', mood: 'happy', text: '„Lass mich rein. Ich kann Kasse. Ich kann alles, was mit Kasse zu tun hat, das weißt du."',
+      { bg: 'strasse', who: 'du', mood: 'calm', cast: ['du'], text: 'Sie steht vor dem Keller. Ohne Mantel, ohne den anderen. „Ich hab gehört, du hast wieder Geld. Ich hab gehört, du kaufst was."' },
+      { bg: 'strasse', who: 'chantal', mood: 'happy', cam: 'close', text: '„Lass mich rein. Ich kann Kasse. Ich kann alles, was mit Kasse zu tun hat, das weißt du."',
         choices: [{ label: 'Reinlassen', value: 'rein', cls: 'pink', effects: [{ flag: 'chantalZurueck' }] }, { label: 'Rauswerfen', value: 'raus', cls: 'red', effects: [{ flag: 'chantalWeg' }] }] },
     ],
     'kater.chantal.sucht': [
@@ -8235,34 +8235,34 @@ const STORY_KATER = {
       { bg: 'royal', who: 'du', mood: 'calm', text: 'Der Türsteher hebt die Hand. Sie zittern. Wir haben eine Hausordnung – kommen Sie wieder, wenn die Hände still sind.' },
     ],
     'kater.ende.bett': [
-      { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'blackout', text: 'Zähl rückwärts von zehn. Du kommst nicht bis sieben. Das ist in Ordnung. Die Niere war ein Vorschuss – das hier ist die Rate.' },
-      { bg: 'klinik', who: 'du', mood: 'calm', text: 'Der Wirt bringt Blumen. Er stellt sie neben das Bett, in dem niemand mehr liegt. Der Deckel? „Ich hab ihn zerrissen. Er hätte eh nicht gezahlt."' },
+      { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'blackout', pose: { who: 'du', pose: 'down' }, text: 'Zähl rückwärts von zehn. Du kommst nicht bis sieben. Das ist in Ordnung. Die Niere war ein Vorschuss – das hier ist die Rate.' },
+      { bg: 'klinik', who: 'du', mood: 'calm', cast: ['wirt'], cam: 'wide', text: 'Der Wirt bringt Blumen. Er stellt sie neben das Bett, in dem niemand mehr liegt. Der Deckel? „Ich hab ihn zerrissen. Er hätte eh nicht gezahlt."' },
     ],
     'kater.ende.wirt': (ctx) => {
       const panels = [
-        { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Der Schlüssel. Unter dem Tresen, wo er immer lag. Ich bleib Gast – der Hocker am Ende ist meiner, das steht im Vertrag, den du nicht gelesen hast.' },
+        { bg: 'bar', who: 'wirt', mood: 'happy', pose: 'hands-up', text: 'Der Schlüssel. Unter dem Tresen, wo er immer lag. Ich bleib Gast – der Hocker am Ende ist meiner, das steht im Vertrag, den du nicht gelesen hast.' },
         { bg: 'keller', who: 'du', mood: 'calm', text: 'Igor nickt. Einmal. Das ist bei Igor ein Handschlag.' },
       ];
       if (ctx.raw.flags.chantalZurueck) panels.push({ bg: 'bar', who: 'chantal', mood: 'happy', text: 'Sie steht hinter dem Tresen. Sie hat die Kasse schon geöffnet. „Nur gucken, Schatz. Vorerst."' });
       panels.push({ bg: 'royal', who: 'du', mood: 'calm', text: 'Blumen von Madame Sylvie. Karte: „Herzlichen Glückwunsch. Ich habe Zeit." Dieselbe Handschrift wie auf einem anderen Zettel.' });
-      panels.push({ bg: 'bar', who: 'du', mood: 'happy', text: 'Der Ort, an dem ich alles verloren habe. Er gehört mir. Der Kessel läuft, wie er läuft. Erstes Bier geht aufs Haus. Mein Haus.' });
+      panels.push({ bg: 'bar', who: 'du', mood: 'happy', cam: 'close', text: 'Der Ort, an dem ich alles verloren habe. Er gehört mir. Der Kessel läuft, wie er läuft. Erstes Bier geht aufs Haus. Mein Haus.' });
       return panels;
     },
     'kater.ende.nuechtern': [
       { bg: 'strasse', who: 'du', mood: 'calm', text: 'Tag dreißig. Ich gehe am Keller vorbei. Die Tür steht offen, der Wirt winkt. Ich winke zurück. Ich bleibe nicht stehen.' },
-      { bg: 'hafen-morgen', who: 'du', mood: 'happy', text: 'Kein Keller, kein Bier, kein Glück im Glas. Nur Hände, die nicht zittern. Es ist weniger, als ich wollte. Es ist mehr, als ich hatte.' },
+      { bg: 'hafen-morgen', who: 'du', mood: 'happy', cast: ['du'], walk: { who: 'du', to: 'mid' }, text: 'Kein Keller, kein Bier, kein Glück im Glas. Nur Hände, die nicht zittern. Es ist weniger, als ich wollte. Es ist mehr, als ich hatte.' },
     ],
     'kater.ende.brownie': [
-      { bg: 'bar', who: 'doc', mood: 'happy', text: 'Partner. Du sitzt an der Bar und wartest. Auf den Nächsten, der gerade seine Frau verloren hat. Du erkennst sie am Zettel in der Hand.' },
+      { bg: 'bar', who: 'doc', mood: 'happy', pose: 'point', text: 'Partner. Du sitzt an der Bar und wartest. Auf den Nächsten, der gerade seine Frau verloren hat. Du erkennst sie am Zettel in der Hand.' },
       { bg: 'bar', who: 'du', mood: 'calm', text: 'Dreihundert das Stück. Für ihn. Die Leber bezahlt den Rest, das weiß ich besser als jeder. Ich sage es ihm nicht.' },
     ],
     'kater.ende.taxi': [
-      { bg: 'strasse', who: 'chantal', mood: 'happy', text: 'Vier Uhr. Das Taxi wartet. Sie hat die Kasse, den Deckel-Zettel und die Vollmacht – die alte gilt noch, hat Dr. Schmalz gesagt.' },
-      { bg: 'hafen', who: 'du', mood: 'shock', text: 'Die Fähre legt ab. Das Handy vibriert. Unbekannte Nummer: „Danke für alles. Wirklich alles. Wieder. – C.-M."' },
+      { bg: 'strasse', who: 'chantal', mood: 'happy', cam: 'close', text: 'Vier Uhr. Das Taxi wartet. Sie hat die Kasse, den Deckel-Zettel und die Vollmacht – die alte gilt noch, hat Dr. Schmalz gesagt.' },
+      { bg: 'hafen', who: 'du', mood: 'shock', cast: ['du'], text: 'Die Fähre legt ab. Das Handy vibriert. Unbekannte Nummer: „Danke für alles. Wirklich alles. Wieder. – C.-M."' },
     ],
     'kater.ende.stammgast': [
       { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Verkauft. An Sylvie. Sie lässt alles, wie es ist – nur die Preise nicht. Dein Hocker bleibt, sagt sie. Sie mag Stammgäste. Die sind berechenbar.' },
-      { bg: 'bar', who: 'du', mood: 'calm', text: 'Das erste Bier geht aufs Haus. Es ist nicht mehr mein Haus. Es war nie meins. Der Kessel läuft, wie er läuft.' },
+      { bg: 'bar', who: 'du', mood: 'calm', cam: 'close', text: 'Das erste Bier geht aufs Haus. Es ist nicht mehr mein Haus. Es war nie meins. Der Kessel läuft, wie er läuft.' },
     ],
   },
   chapters: [
@@ -8563,15 +8563,15 @@ const STORY_STASH = {
       }[prev];
       return [
         ...start,
-        { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Jeden Montag bringt jemand eine Tasche. Du spielst das Geld durch die Tische – nicht verstecken, spielen. Sonntag zahlst du zurück, mit zehn Prozent obendrauf. Was du gewinnst, gehört dir.' },
+        { bg: 'keller', who: 'anabi', mood: 'calm', pose: 'point', text: 'Jeden Montag bringt jemand eine Tasche. Du spielst das Geld durch die Tische – nicht verstecken, spielen. Sonntag zahlst du zurück, mit zehn Prozent obendrauf. Was du gewinnst, gehört dir.' },
         { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Und der Umsatz muss stimmen. Geld, das nur rumliegt, ist nicht gewaschen. Geld, das gesetzt wurde, schon. Frag nicht, warum. Frag den Finanzbeamten.' },
-        { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Dreimal enttäuschst du mich – dann fährt Igor dich an den Kanal. Er ist ein guter Fahrer. Willkommen im Geschäft.' },
+        { bg: 'keller', who: 'anabi', mood: 'calm', cam: 'close', pause: 500, text: 'Dreimal enttäuschst du mich – dann fährt Igor dich an den Kanal. Er ist ein guter Fahrer. Willkommen im Geschäft.' },
       ];
     },
     'stash.tisch': [
       { bg: 'keller', who: 'du', mood: 'calm', text: 'Sieben Uhr morgens. Vier Männer tragen einen Tisch die Treppe runter. Grünes Tuch, Goldrand, ein Schuh für acht Decks.' },
-      { bg: 'keller', who: 'stumme', mood: 'calm', text: '…' },
-      { bg: 'keller', who: 'du', mood: 'calm', text: 'Der Croupier sagt nichts. Er nickt Richtung Hinterzimmer. Baccarat, fünfhundert Minimum. Anabis Tisch. Deine Umsätze.' },
+      { bg: 'keller', who: 'stumme', mood: 'calm', pause: 800, text: '…' },
+      { bg: 'keller', who: 'du', mood: 'calm', pose: { who: 'stumme', pose: 'point' }, text: 'Der Croupier sagt nichts. Er nickt Richtung Hinterzimmer. Baccarat, fünfhundert Minimum. Anabis Tisch. Deine Umsätze.' },
     ],
     'stash.k2': [
       { bg: 'bahnhof', who: 'du', mood: 'calm', text: 'Seit dem Tisch im Hinterzimmer steht nachts jemand vor deiner Tür. Kapuzen, Bahnhofsviertel, andere Gang. Sie wissen, wem der Keller wirklich gehört.' },
@@ -8626,8 +8626,8 @@ const STORY_STASH = {
       ];
     },
     'stash.hinterhalt': (ctx) => [
-      { bg: 'gasse', who: 'du', mood: 'calm', text: `Heimweg. ${ctx.raw.vars.hinterhaltN === 1 ? 'Einer' : ctx.raw.vars.hinterhaltN === 2 ? 'Zwei' : 'Drei'} von den Bahnhof-Jungs. Kapuzen, Hände in den Taschen. Deine Hand geht ans Handschuhfach.` },
-      { bg: 'gasse', who: 'du', mood: 'calm', text: 'Keiner sagt was. So läuft das hier. Wer zuerst zieht, redet danach.' },
+      { bg: 'gasse', who: 'du', mood: 'calm', cast: ['du'], cam: 'close', text: `Heimweg. ${ctx.raw.vars.hinterhaltN === 1 ? 'Einer' : ctx.raw.vars.hinterhaltN === 2 ? 'Zwei' : 'Drei'} von den Bahnhof-Jungs. Kapuzen, Hände in den Taschen. Deine Hand geht ans Handschuhfach.` },
+      { bg: 'gasse', who: 'du', mood: 'calm', cam: 'shake', text: 'Keiner sagt was. So läuft das hier. Wer zuerst zieht, redet danach.' },
     ],
     'stash.hinterhalt.raub': (ctx) => [
       { bg: 'gasse', who: 'du', mood: 'shock', text: `Heimweg. ${ctx.raw.vars.hinterhaltN === 1 ? 'Einer' : 'Ein paar'} von den Bahnhof-Jungs. Du hast Fäuste. Sie haben mehr.` },
@@ -8640,7 +8640,7 @@ const STORY_STASH = {
     ],
     'stash.tutorial': [
       { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Da läuft ein Junge vom Bahnhof mit meiner Tasche herum. Er glaubt, sie gehört ihm. Erklär ihm das Gegenteil.' },
-      { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Hier. Meine Pistole – geliehen, nicht geschenkt. Warte, bis er zieht. Dann sei schneller. Das ist die ganze Kunst.' },
+      { bg: 'keller', who: 'anabi', mood: 'calm', pose: 'point', text: 'Hier. Meine Pistole – geliehen, nicht geschenkt. Warte, bis er zieht. Dann sei schneller. Das ist die ganze Kunst.' },
     ],
     'stash.tutorial.won': [
       { bg: 'bahnhof', who: 'anabi', mood: 'happy', text: 'Er liegt, du stehst. Der Bahnhof hat es gesehen. Das ist Ruf. Ruf ist Geld, das man nicht zählen muss.' },
@@ -8650,9 +8650,9 @@ const STORY_STASH = {
       { bg: 'bahnhof', who: 'anabi', mood: 'calm', text: 'Er ist weg, die Tasche auch, du hast ein Loch in der Jacke. Meine Pistole – danke. Nächstes Mal zieh nicht, bevor er zieht. Oder zieh schneller danach. Eins von beidem.' },
     ],
     'stash.angebot': [
-      { bg: 'bahnhof', who: 'du', mood: 'calm', text: 'Kessler wartet an der Unterführung. Allein. Das ist entweder Respekt oder eine Falle. Bei Kessler ist es meistens beides.' },
+      { bg: 'bahnhof', who: 'du', mood: 'calm', cast: ['du'], text: 'Kessler wartet an der Unterführung. Allein. Das ist entweder Respekt oder eine Falle. Bei Kessler ist es meistens beides.' },
       { bg: 'bahnhof', who: 'kessler', mood: 'calm', text: 'Du hast meine Jungs hingelegt. Zweimal. Ich könnte sauer sein. Ich bin lieber praktisch: Wasch für uns, dann lassen wir dich in Ruhe.' },
-      { bg: 'bahnhof', who: 'kessler', mood: 'calm', text: 'Keine Überfälle mehr, keine Hinterhalte. Dafür wächst dein Umsatzziel – zwei Herren wollen waschen. Und Anabi erfährt es. Irgendwann. Dann brauchst du uns wirklich.',
+      { bg: 'bahnhof', who: 'kessler', mood: 'calm', cam: 'close', text: 'Keine Überfälle mehr, keine Hinterhalte. Dafür wächst dein Umsatzziel – zwei Herren wollen waschen. Und Anabi erfährt es. Irgendwann. Dann brauchst du uns wirklich.',
         choices: [{ label: 'Annehmen', value: 'ja', cls: 'red', effects: [{ flag: 'bahnhof' }] }, { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ flag: 'bahnhofNein' }] }] },
     ],
     'stash.igor': (ctx) => {
@@ -8684,7 +8684,7 @@ const STORY_STASH = {
       { bg: 'keller', who: 'anabi', mood: 'angry', text: 'Ein Zettel an einen Polizisten. Ein Zettel. Ich zähl das als Enttäuschung. Du weißt, wie ich zähle.' },
     ],
     'stash.razzia': [
-      { bg: 'bar', who: 'brandt', mood: 'calm', text: 'Drei Belege. Der Rest ist ein Datum. Sagen Sie „heute Nacht“, dann steht in einer Stunde ein Bus vor der Tür – und Sie stehen hinter mir, nicht vor mir.',
+      { bg: 'bar', who: 'brandt', mood: 'calm', cam: 'close', text: 'Drei Belege. Der Rest ist ein Datum. Sagen Sie „heute Nacht“, dann steht in einer Stunde ein Bus vor der Tür – und Sie stehen hinter mir, nicht vor mir.',
         choices: [{ label: 'Heute Nacht', value: 'ja', cls: 'red', effects: [{ flag: 'razzia' }] }, { label: 'Noch nicht', value: 'nein', cls: 'ghost' }] },
     ],
     'stash.abloese': (ctx) => [
@@ -8696,11 +8696,11 @@ const STORY_STASH = {
         choices: [{ label: 'Zahlen', value: 'zahlen', cls: 'blue', effects: [{ call: 'kreditZahlen' }] }, { label: 'Doch nicht', value: 'nein', cls: 'ghost' }] },
     ],
     'stash.flucht': [
-      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Der Wagen ist vollgetankt. Dreißigtausend im Kofferraum reichen für eine Grenze und ein Jahr. Der Keller bleibt hier. Anabi auch. Dein Name im Grundbuch – auch.',
+      { bg: 'strasse', who: 'du', mood: 'calm', cast: ['du'], text: 'Der Wagen ist vollgetankt. Dreißigtausend im Kofferraum reichen für eine Grenze und ein Jahr. Der Keller bleibt hier. Anabi auch. Dein Name im Grundbuch – auch.',
         choices: [{ label: 'Abhauen', value: 'ja', cls: 'red', effects: [{ flag: 'flucht' }] }, { label: 'Bleiben', value: 'nein', cls: 'ghost' }] },
     ],
     'stash.finale': (ctx) => [
-      { bg: 'keller', who: 'du', mood: 'calm', text: `Anabi sitzt am Tisch im Hinterzimmer. ${ctx.raw.flags.igor ? 'Igor steht an der Tür und guckt weg.' : 'Igor steht an der Tür und guckt nicht weg.'} Kessler wartet draußen – für danach. Für dich gibt es nur jetzt.`,
+      { bg: 'keller', who: 'du', mood: 'calm', cast: ['du', 'anabi'], pause: 600, text: `Anabi sitzt am Tisch im Hinterzimmer. ${ctx.raw.flags.igor ? 'Igor steht an der Tür und guckt weg.' : 'Igor steht an der Tür und guckt nicht weg.'} Kessler wartet draußen – für danach. Für dich gibt es nur jetzt.`,
         choices: [{ label: 'Los', value: 'los', cls: 'red', effects: [{ call: 'finale' }] }, { label: 'Nicht heute', value: 'nein', cls: 'ghost' }] },
     ],
     'stash.kontrolle': [
@@ -8721,32 +8721,32 @@ const STORY_STASH = {
       { bg: 'strasse', who: 'du', mood: 'calm', text: 'Friseur, zweiter Stock. Er will erst nicht, dann doch, dann schneidet er dir umsonst die Haare. Anabi hat seine Liste, du hast eine neue Frisur.' },
     ],
     'stash.ende.kanal': [
-      { bg: 'keller', who: 'anabi', mood: 'calm', fx: 'blackout', text: 'Dreimal. Ich hab es dir gesagt. Igor – der Wagen.' },
-      { bg: 'hafen', who: 'igor', mood: 'calm', text: 'Er fährt langsam. Anabi sitzt hinten und sagt nichts. Der Kanal ist ruhig um diese Zeit.' },
-      { bg: 'hafen', who: 'du', mood: 'calm', text: 'Der Keller bekommt einen neuen Strohmann. Er wird auch nicht rechnen können.' },
+      { bg: 'keller', who: 'anabi', mood: 'calm', fx: 'blackout', pose: 'point', enter: 'igor', text: 'Dreimal. Ich hab es dir gesagt. Igor – der Wagen.' },
+      { bg: 'hafen', who: 'igor', mood: 'calm', cast: ['igor', 'anabi', 'du'], text: 'Er fährt langsam. Anabi sitzt hinten und sagt nichts. Der Kanal ist ruhig um diese Zeit.' },
+      { bg: 'hafen', who: 'du', mood: 'calm', cast: [], text: 'Der Keller bekommt einen neuen Strohmann. Er wird auch nicht rechnen können.' },
     ],
     'stash.ende.krieg': [
-      { bg: 'keller', who: 'du', mood: 'calm', fx: 'flash', text: 'Anabi liegt neben seinem Tisch. Die Sonnenbrille ist heil geblieben. Sonst nichts.' },
-      { bg: 'keller', who: 'kessler', mood: 'happy', text: 'Schnellste Hand der Stadt. Der Keller gehört dir. Und uns. Aber wir sind bessere Partner – wir klopfen wenigstens.' },
+      { bg: 'keller', who: 'du', mood: 'calm', fx: 'flash', cast: ['du', 'anabi'], pose: { who: 'anabi', pose: 'down' }, sfx: 'gunshot', cam: 'shake', text: 'Anabi liegt neben seinem Tisch. Die Sonnenbrille ist heil geblieben. Sonst nichts.' },
+      { bg: 'keller', who: 'kessler', mood: 'happy', pose: 'point', text: 'Schnellste Hand der Stadt. Der Keller gehört dir. Und uns. Aber wir sind bessere Partner – wir klopfen wenigstens.' },
       { bg: 'keller', who: 'du', mood: 'calm', text: 'Neuer Herr, alte Tasche. Die Wäsche läuft weiter. Nur die Hand am Kofferraum ist jetzt deine.' },
     ],
     'stash.ende.kommissar': (ctx) => [
-      { bg: 'keller', who: 'du', mood: 'calm', fx: 'flash', text: 'Blaulicht die Treppe runter. Anabi in Handschellen, der Stumme sagt zum ersten Mal ein Wort, und es ist kein schönes.' },
+      { bg: 'keller', who: 'du', mood: 'calm', fx: 'flash', cast: ['du', 'anabi', 'brandt'], pose: { who: 'anabi', pose: 'hands-up' }, text: 'Blaulicht die Treppe runter. Anabi in Handschellen, der Stumme sagt zum ersten Mal ein Wort, und es ist kein schönes.' },
       ...(ctx.raw.flags.igor ? [{ bg: 'keller', who: 'igor', mood: 'calm', text: 'Ich hab gewusst, dass du es bist. Ich hab nichts gesagt.' }] : []),
-      { bg: 'keller', who: 'brandt', mood: 'calm', text: 'Der Keller ist Beweismittel. Sie sind frei. Nur nicht hier. Ein Taxi wartet – ich hab es bezahlt. Das erste Mal, dass die Stadt Ihnen etwas schuldet.' },
+      { bg: 'keller', who: 'brandt', mood: 'calm', pose: 'point', text: 'Der Keller ist Beweismittel. Sie sind frei. Nur nicht hier. Ein Taxi wartet – ich hab es bezahlt. Das erste Mal, dass die Stadt Ihnen etwas schuldet.' },
     ],
     'stash.ende.abloese': [
       { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Er zählt nach. Zweimal. Dann nickt er dem Stummen zu, und vier Männer tragen den Tisch die Treppe hoch.' },
       { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Sauber. Du bist der Erste, der sich freigekauft hat. Ich erzähl das niemandem. Es wäre schlecht fürs Geschäft.' },
-      { bg: 'keller', who: 'du', mood: 'happy', text: 'Der Keller gehört dir. Wirklich. Der Wirt trinkt sein Freibier und sagt, er hätte es gewusst.' },
+      { bg: 'keller', who: 'du', mood: 'happy', cam: 'close', text: 'Der Keller gehört dir. Wirklich. Der Wirt trinkt sein Freibier und sagt, er hätte es gewusst.' },
     ],
     'stash.ende.flucht': [
-      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Nachts über die Grenze. Im Rückspiegel ein Schein über der Stadt – der Keller brennt. Nicht deine Schuld, sagt niemand.' },
-      { bg: 'hafen-morgen', who: 'du', mood: 'calm', text: 'Neuer Name, altes Spiel. Irgendwo gibt es immer einen Keller.' },
+      { bg: 'strasse', who: 'du', mood: 'calm', cast: ['du'], text: 'Nachts über die Grenze. Im Rückspiegel ein Schein über der Stadt – der Keller brennt. Nicht deine Schuld, sagt niemand.' },
+      { bg: 'hafen-morgen', who: 'du', mood: 'calm', walk: { who: 'du', to: 'mid' }, text: 'Neuer Name, altes Spiel. Irgendwo gibt es immer einen Keller.' },
     ],
     'stash.ende.strohmann': [
       { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Woche fünf. Die Tasche ist größer. Fünfzigtausend. Du weißt, wie es geht.' },
-      { bg: 'keller', who: 'du', mood: 'calm', text: 'Dein Name steht im Grundbuch. Seiner steht auf dir. Der Stumme nickt. Die Wäsche läuft.' },
+      { bg: 'keller', who: 'du', mood: 'calm', cam: 'close', text: 'Dein Name steht im Grundbuch. Seiner steht auf dir. Der Stumme nickt. Die Wäsche läuft.' },
     ],
   },
 };
