@@ -291,6 +291,11 @@ body.cs-open .toast { max-width: 300px; }
 .pcard .back { background: repeating-linear-gradient(45deg, #7a2a2a 0 4px, #5a1a1a 4px 8px); border: 4px solid #fdfaf0; transform: rotateY(180deg); }
 .pcard.bust .face { box-shadow: 0 0 18px 4px rgba(255,59,59,.7); }
 .pcard.bust { animation: bustSlide .6s ease .2s both; }
+/* Poker: Karten zum Tausch markieren */
+#pkPlayerCards .pcard { cursor: pointer; transition: transform .2s; }
+#pkPlayerCards .pcard.picked .inner { transform: translateY(-12px); }
+#pkPlayerCards .pcard.picked .face { box-shadow: 0 0 0 3px var(--gold-2), 0 4px 8px rgba(0,0,0,.6); }
+.pk-note { font-family: var(--font-mono); font-size: .8rem; color: var(--dim); margin-left: 8px; letter-spacing: 0; }
 /* -- Roulette -- */
 .roulette-top { display: flex; gap: 24px; align-items: center; justify-content: center; flex-wrap: wrap; }
 .wheel-box { position: relative; width: 320px; height: 320px; flex: 0 0 auto; }
@@ -1041,6 +1046,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     <div class="door" data-screen="horses" style="--neon: var(--neon-green)"><div class="sign">Rennbahn</div><div class="glyph">🏇</div><div class="chalk-tag">Quote 4.0</div><div class="knob"></div></div>
     <div class="door" data-screen="russian" style="--neon: var(--neon-blue)"><div class="sign">Igor</div><div class="glyph">🔫</div><div class="chalk-tag">Duell · 1 Kugel</div><div class="knob"></div></div>
     <div class="door" data-screen="blackjack" style="--neon: var(--neon-green)"><div class="sign">Black Jack</div><div class="glyph">🃏</div><div class="chalk-tag">bis 21</div><div class="knob"></div></div>
+    <div class="door" data-screen="poker" style="--neon: var(--neon-green)"><div class="sign">Poker</div><div class="glyph">♠️</div><div class="chalk-tag">Draw · gegen den Wirt</div><div class="knob"></div></div>
     <div class="door" data-screen="hinterzimmer" style="--neon: var(--gold-2)" hidden><div class="sign">Hinterzimmer</div><div class="glyph">🂡</div><div class="chalk-tag">Baccarat · 500–10.000 €</div><div class="knob"></div></div>
     <div class="door day" data-screen="postman" style="--neon: var(--day)"><div class="sign">Ausgang</div><div class="glyph">📬</div><div class="chalk-tag">Post austragen</div><div class="knob"></div></div>
     <div class="door day" data-screen="stadt" style="--neon: var(--day)"><div class="sign">Stadt</div><div class="glyph">🏙️</div><div class="chalk-tag">Autohaus · INTERSPORT</div><div class="knob"></div></div>
@@ -1188,6 +1194,41 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     <div class="bet-bar hidden" id="bjActionControls">
       <button class="btn green" id="btnHit">Hit</button>
       <button class="btn red" id="btnStand">Stand</button>
+    </div>
+  </div>
+</template>
+<template id="tpl-poker">
+  <div class="panel bj-panel felt">
+    <div class="bj-table">
+      <div class="bj-hand dealer">
+        <div class="hand-label">Der Wirt <span class="pk-note" id="pkWirtDraw"></span> <span class="insider-hint hidden" id="pkTell"></span></div>
+        <div class="cards" id="pkWirtCards"></div>
+      </div>
+      <div class="bj-arc" id="pkPot">Pot · –</div>
+      <div class="bj-hand player">
+        <div class="cards" id="pkPlayerCards"></div>
+        <div class="hand-label">Du <span class="hand-val" id="pkHandName">–</span></div>
+      </div>
+    </div>
+    <div class="status" id="pkStatus">Ante setzen</div>
+    <div class="bet-bar" id="pkBetControls">
+      <div class="bet-field"><button data-step="-5">−</button><input type="number" id="pkBet" value="10" min="1"><button data-step="5">+</button></div>
+      <button class="chip" data-chip="10" data-v="10">10</button>
+      <button class="chip" data-chip="25" data-v="25">25</button>
+      <button class="chip" data-chip="50" data-v="50">50</button>
+      <button class="chip" data-chip="max" data-v="max">MAX</button>
+      <button class="btn solid" id="btnPkDeal">Geben</button>
+    </div>
+    <div class="bet-bar hidden" id="pkDrawControls">
+      <button class="btn green" id="btnPkDraw">Behalten</button>
+    </div>
+    <div class="bet-bar hidden" id="pkBetRound">
+      <button class="btn green" id="btnPkBet">Setzen</button>
+      <button class="btn ghost" id="btnPkCheck">Checken</button>
+    </div>
+    <div class="bet-bar hidden" id="pkCallRound">
+      <button class="btn green" id="btnPkCall">Mitgehen</button>
+      <button class="btn red" id="btnPkFold">Aussteigen</button>
     </div>
   </div>
 </template>
@@ -1732,7 +1773,7 @@ const Rules = {
     while (s > 21 && aces > 0) { s -= 10; aces--; }
     return s;
   },
-  dealerShouldHit(hand) { return Rules.handSum(hand) < 17; },
+  dealerShouldHit(hand, stand = 17) { return Rules.handSum(hand) < stand; },
   bjOutcome(pSum, dSum) {
     if (pSum > 21) return 'bust';
     if (dSum > 21 || pSum > dSum) return 'win';
@@ -1935,6 +1976,7 @@ Object.assign(Rules, {
     bankRateAdd: 0, bankLimitAdd: 0, mafiaSpins: Rules.MAFIA_SPINS, mafiaMult: 3, investRateMult: 1,
     mugChanceMult: 1, fightAdd: 0, walletMult: 1,
     postTimeAdd: 0, postPayAdd: 0, postLetters: 15,
+    pokerPeekDraw: false, pokerTell: false, bjDealerStand: 17,
   },
   /* Wie ein Schlüssel gestapelt wird: add = Summe, mult = Produkt, max = Maximum, set = letzter Wert */
   MOD_STACK: {
@@ -1946,6 +1988,7 @@ Object.assign(Rules, {
     bankRateAdd: 'add', bankLimitAdd: 'add', mafiaSpins: 'max', mafiaMult: 'set', investRateMult: 'mult',
     mugChanceMult: 'mult', fightAdd: 'add', walletMult: 'mult',
     postTimeAdd: 'add', postPayAdd: 'add', postLetters: 'max',
+    pokerPeekDraw: 'set', pokerTell: 'set', bjDealerStand: 'max',
   },
   SKILLS: [
     { id: 'pokerface', name: 'Pokerface', icon: '🃏', light: 'Blackjack: natürlicher Blackjack zahlt 3:2, Push bringt +10 %', shadow: 'Bier gibt kein Glück', mods: { bjNatural: 1.5, bjPushBonus: 0.1, beerLuckMult: 0 } },
@@ -1956,6 +1999,7 @@ Object.assign(Rules, {
     { id: 'verhandler', name: 'Verhandler', icon: '🤝', light: 'Bank-Zinsen −2 %, Vito-Frist 7 Spins', shadow: 'Anlagen zahlen 10 % weniger', mods: { bankRateAdd: -0.02, mafiaSpins: 7, investRateMult: 0.9 } },
     { id: 'strassenkoeter', name: 'Straßenköter', icon: '🐕', light: 'Kampfchance +15 %, Brieftasche ×2', shadow: 'Bank-Limit −1.000 €', mods: { fightAdd: 0.15, walletMult: 2, bankLimitAdd: -1000 } },
     { id: 'brieftraeger', name: 'Briefträgerherz', icon: '📬', light: 'Postbote +1 s und +5 € pro Brief', shadow: 'Slots: Paare zahlen nichts', mods: { postTimeAdd: 1, postPayAdd: 5, slotPairMult: 0 }, excludes: ['zockerhaende'] },
+    { id: 'kartenhai', name: 'Kartenhai', icon: '🦈', light: 'Poker: du siehst, wie viele Karten der Wirt tauschen wird, bevor du tauschst', shadow: 'Blackjack: Dealer zieht bis 18', mods: { pokerPeekDraw: true, bjDealerStand: 18 } },
   ],
   INSIDER: [
     { id: 'stallbursche', name: 'Stallbursche', icon: '🐴', text: 'Vor jedem Rennen ist ein Pferd markiert, das sicher nicht gewinnt.', capped: true, mods: { horseLoserMarked: true } },
@@ -1965,6 +2009,7 @@ Object.assign(Rules, {
     { id: 'bankinsider', name: 'Bankinsider', icon: '🏦', text: 'Zinsen −3 %, Limit +2.000 €.', capped: false, mods: { bankRateAdd: -0.03, bankLimitAdd: 2000 } },
     { id: 'vitosneffe', name: 'Vitos Neffe', icon: '🕶️', text: 'Vito-Frist 8 Spins, Rechnung ×2 statt ×3, Überfälle halb so oft.', capped: false, mods: { mafiaSpins: 8, mafiaMult: 2, mugChanceMult: 0.5 } },
     { id: 'postmeister', name: 'Postmeister', icon: '📮', text: 'Postbote: 20 Briefe pro Schicht, +5 € pro Brief.', capped: false, mods: { postLetters: 20, postPayAdd: 5 } },
+    { id: 'wirtstell', name: 'Wirts Tell', icon: '🧔', text: 'Poker: der Wirt kratzt sich am Bart, wenn er nichts auf der Hand hat.', capped: true, mods: { pokerTell: true } },
   ],
   xpLevel(xp) {
     let level = 1;
@@ -2302,6 +2347,17 @@ const UI = {
   shownBalance: 0,
   tweenId: null,
   fmt(n) { return Math.round(n).toLocaleString('de-DE') + ' €'; },
+  /* Spielkarte für Blackjack, Baccarat, Poker – hidden = Rückseite oben */
+  cardEl(c, hidden = false) {
+    const red = ['♥', '♦'].includes(c.suit);
+    return h('div', { class: `pcard dealing${hidden ? ' hidden-card' : ''}` },
+      h('div', { class: 'inner' },
+        h('div', { class: `face${red ? ' red' : ''}` },
+          h('span', { class: 'corner tl' }, c.val, h('br'), c.suit),
+          h('span', { class: 'pip' }, c.suit),
+          h('span', { class: 'corner br' }, c.val, h('br'), c.suit)),
+        h('div', { class: 'back' })));
+  },
   register(id, def) { this.screens.set(id, def); },
   mobile() { return window.matchMedia('(max-width: 760px)').matches; },
   /* Gold-Vorhang beim Zonenwechsel Keller ↔ Royal; Reduced-Motion: sofort */
@@ -4008,7 +4064,7 @@ const Baccarat = {
       const cards = side === 'p' ? hand.player : hand.banker;
       if (!cards[i]) continue;
       if (!this.alive(gen)) return;
-      (side === 'p' ? p : b).append(Blackjack.cardEl(cards[i]));
+      (side === 'p' ? p : b).append(UI.cardEl(cards[i]));
       SFX.play('cardSlide');
       qs(side === 'p' ? '#bacPlayerVal' : '#bacBankerVal', this.root).textContent = BaccaratRules.total(cards.slice(0, i + 1));
       await wait(reduced ? 60 : 420);
@@ -4244,19 +4300,9 @@ UI.register('slots', {
 const Blackjack = {
   root: null, deck: [], pHand: [], dHand: [], bet: 0, dealing: false, inRound: false, gen: 0, round: null,
   alive(gen) { return !!this.root && this.gen === gen; },
-  cardEl(c, hidden = false) {
-    const red = ['♥', '♦'].includes(c.suit);
-    return h('div', { class: `pcard dealing${hidden ? ' hidden-card' : ''}` },
-      h('div', { class: 'inner' },
-        h('div', { class: `face${red ? ' red' : ''}` },
-          h('span', { class: 'corner tl' }, c.val, h('br'), c.suit),
-          h('span', { class: 'pip' }, c.suit),
-          h('span', { class: 'corner br' }, c.val, h('br'), c.suit)),
-        h('div', { class: 'back' })));
-  },
   async dealTo(elId, card, hidden = false) {
     if (!this.round || !this.alive(this.round.gen)) return;
-    qs('#' + elId, this.root).append(this.cardEl(card, hidden));
+    qs('#' + elId, this.root).append(UI.cardEl(card, hidden));
     SFX.play('cardSlide');
     await wait(240);
   },
@@ -4334,7 +4380,8 @@ const Blackjack = {
         await wait(550);
         this.updateVals(true);
       }
-      while (Rules.dealerShouldHit(round.dHand)) {
+      const stand = Perks.mods().bjDealerStand;
+      while (Rules.dealerShouldHit(round.dHand, stand)) {
         const c = round.deck.pop();
         round.dHand.push(c);
         await this.dealTo('dealerCards', c);
@@ -4386,7 +4433,7 @@ UI.register('blackjack', {
     Blackjack.gen++;
     Blackjack.root = root;
     const mods = Perks.mods();
-    qs('#bjArc', root).textContent = `${mods.bjNatural === 1.5 ? 'Blackjack zahlt 3:2' : 'Blackjack zahlt 1:1'} · Dealer zieht bis 17`;
+    qs('#bjArc', root).textContent = `${mods.bjNatural === 1.5 ? 'Blackjack zahlt 3:2' : 'Blackjack zahlt 1:1'} · Dealer zieht bis ${mods.bjDealerStand}`;
     Game.bindBet(root, 'bjBet');
     qs('#btnDeal', root).addEventListener('click', () => Blackjack.start());
     qs('#btnHit', root).addEventListener('click', () => Blackjack.hit());
@@ -4400,6 +4447,215 @@ UI.register('blackjack', {
       UI.toast({ icon: '🃏', title: 'Hand aufgegeben', text: 'Einsatz verfallen.', tone: 'loss' });
     }
     Blackjack.root = null; Blackjack.inRound = false; Blackjack.dealing = false;
+  },
+});
+</script>
+
+<script id="game-poker">
+/* ================= POKER – Five-Card Draw gegen den Wirt, eine Setzrunde ================= */
+const Poker = {
+  root: null, gen: 0, round: null, inRound: false, busy: false,
+  forceDeck: null, // Dev/Test: festes Deck für die nächste Runde (pop() zieht vom Ende)
+  GROUPS: ['pkBetControls', 'pkDrawControls', 'pkBetRound', 'pkCallRound'],
+  alive(gen) { return !!this.root && this.gen === gen; },
+  /* Runde ohne Abrechnung fallen lassen (Screen verlassen) – Einsätze sind bereits abgezogen */
+  drop(round) { if (round && !round.done) { round.done = true; Game.forfeit(); } },
+  show(group) { for (const g of this.GROUPS) qs('#' + g, this.root).classList.toggle('hidden', g !== group); },
+  status(html) { qs('#pkStatus', this.root).innerHTML = html; },
+  renderPot(round) { qs('#pkPot', this.root).textContent = `Pot · ${UI.fmt(round.pot)}`; },
+  renderHandName(round) { qs('#pkHandName', this.root).textContent = PokerRules.evaluate(round.pHand).name; },
+  playerCard(round, i) {
+    const el = UI.cardEl(round.pHand[i]);
+    el.addEventListener('click', () => this.toggle(i));
+    return el;
+  },
+  toggle(i) {
+    const r = this.round;
+    if (!r || r.phase !== 'draw' || this.busy) return;
+    if (r.picked.has(i)) r.picked.delete(i);
+    else if (r.picked.size < 3) r.picked.add(i);
+    else return;
+    SFX.play('click');
+    qsa('#pkPlayerCards .pcard', this.root)[i].classList.toggle('picked', r.picked.has(i));
+    qs('#btnPkDraw', this.root).textContent = r.picked.size ? `Tauschen (${r.picked.size})` : 'Behalten';
+  },
+  async deal() {
+    if (this.inRound || !this.root) return;
+    const ante = Game.readBet('pkBet');
+    const chk = Rules.checkSpin(State.s, 3 * ante, Perks.mods());
+    if (!chk.ok && chk.reason === 'funds') { UI.toast({ icon: '♠️', title: 'Zu wenig für diesen Tisch', text: `Du brauchst 3× Ante (${UI.fmt(3 * ante)}).`, tone: 'loss' }); SFX.play('lose'); return; }
+    if (!Game.beginSpin(ante)) return;
+    const gen = this.gen;
+    this.inRound = true; this.busy = true;
+    const deck = this.forceDeck ? this.forceDeck.slice() : Rules.newDeck(Math.random);
+    this.forceDeck = null;
+    const round = { deck, pHand: [], wHand: [], ante, pot: 2 * ante, playerIn: ante, picked: new Set(), phase: 'deal', gen, run: Game.run, done: false };
+    this.round = round;
+    try {
+      qs('#pkPlayerCards', this.root).innerHTML = ''; qs('#pkWirtCards', this.root).innerHTML = '';
+      qs('#pkWirtDraw', this.root).textContent = ''; qs('#pkTell', this.root).classList.add('hidden');
+      qs('#pkHandName', this.root).textContent = '–';
+      qs('#btnPkDraw', this.root).textContent = 'Behalten';
+      this.show('pkDrawControls');
+      this.renderPot(round);
+      this.status('Welche Karten tauschen? (bis zu 3)');
+      for (let i = 0; i < 5; i++) round.pHand.push(round.deck.pop());
+      for (let i = 0; i < 5; i++) round.wHand.push(round.deck.pop());
+      for (let i = 0; i < 5; i++) {
+        if (!this.alive(gen)) break;
+        qs('#pkPlayerCards', this.root).append(this.playerCard(round, i));
+        qs('#pkWirtCards', this.root).append(UI.cardEl(round.wHand[i], true));
+        SFX.play('cardSlide');
+        await wait(180);
+      }
+      if (this.alive(gen)) {
+        this.renderHandName(round);
+        if (Perks.mods().pokerPeekDraw) qs('#pkWirtDraw', this.root).textContent = `wird ${PokerRules.wirtDraw(round.wHand).length} tauschen`; // Kartenhai
+      }
+      round.phase = 'draw';
+    } finally {
+      if (this.gen === gen) this.busy = false;
+      else this.drop(round);
+    }
+  },
+  async draw() {
+    const round = this.round;
+    if (!round || round.phase !== 'draw' || this.busy) return;
+    const gen = this.gen;
+    this.busy = true; round.phase = 'drawing';
+    try {
+      const idx = [...round.picked].sort((a, b) => a - b);
+      const before = PokerRules.evaluate(round.pHand);
+      const drawFn = () => { for (const i of idx) round.pHand[i] = round.deck.pop(); return round.pHand; };
+      drawFn();
+      const mods = Perks.mods();
+      const luck = Rules.effectiveLuck(Rules.luck(State.s, mods), round.ante);
+      if (idx.length) PokerRules.luckOverride(before, PokerRules.evaluate(round.pHand), drawFn, luck, Math.random);
+      for (const i of idx) {
+        if (!this.alive(gen)) break;
+        const cards = qsa('#pkPlayerCards .pcard', this.root);
+        cards[i].replaceWith(this.playerCard(round, i));
+        SFX.play('cardSlide');
+        await wait(180);
+      }
+      /* Wirt tauscht verdeckt */
+      const wIdx = PokerRules.wirtDraw(round.wHand);
+      for (const i of wIdx) round.wHand[i] = round.deck.pop();
+      if (this.alive(gen)) {
+        this.renderHandName(round);
+        qs('#pkWirtDraw', this.root).textContent = `tauscht ${wIdx.length}`;
+        await wait(400);
+        const tell = qs('#pkTell', this.root);
+        if (mods.pokerTell) {
+          tell.classList.remove('hidden');
+          if (!Rules.effectiveInsider(true, round.ante)) tell.textContent = `🧔 Wirts Tell: wirkt bis ${UI.fmt(Rules.INSIDER_CAP)}`;
+          else tell.textContent = PokerRules.evaluate(round.wHand).rank === 0 ? '🧔 Der Wirt kratzt sich am Bart' : '🧔 Der Wirt trinkt einen Schluck';
+        }
+        this.status('Setzen oder checken?');
+        this.show('pkBetRound');
+      }
+      round.phase = 'bet';
+    } finally {
+      if (this.gen === gen) this.busy = false;
+      else this.drop(round);
+    }
+  },
+  /* playerBets: true = Setzen (1× Ante), false = Checken */
+  async bet(playerBets) {
+    const round = this.round;
+    if (!round || round.phase !== 'bet' || this.busy) return;
+    const gen = this.gen;
+    this.busy = true; round.phase = 'wirt';
+    try {
+      if (playerBets) { Game.applyDelta(-round.ante, { quiet: true }); round.pot += round.ante; round.playerIn += round.ante; }
+      if (this.alive(gen)) { this.renderPot(round); this.show(null); this.status(playerBets ? 'Du setzt. Der Wirt überlegt…' : 'Du checkst. Der Wirt überlegt…'); }
+      await wait(500);
+      const act = PokerRules.wirtAct(round.wHand, playerBets ? 'facingBet' : 'checked', Math.random);
+      if (act === 'fold') return await this.finish(round, 'win', false);
+      if (act === 'check') return await this.showdown(round);
+      if (act === 'call') { round.pot += round.ante; return await this.showdown(round); }
+      /* bet oder raise: Wirt legt 1× Ante (bei raise zusätzlich zum Call) */
+      round.pot += act === 'raise' ? 2 * round.ante : round.ante;
+      if (this.alive(gen)) {
+        this.renderPot(round);
+        this.status(act === 'raise' ? `Der Wirt erhöht auf ${UI.fmt(2 * round.ante)}. Mitgehen?` : `Der Wirt setzt ${UI.fmt(round.ante)}. Mitgehen?`);
+        this.show('pkCallRound');
+      }
+      round.phase = 'answer';
+    } finally {
+      if (this.gen === gen) this.busy = false;
+      else this.drop(round);
+    }
+  },
+  /* call: true = Mitgehen (1× Ante), false = Aussteigen */
+  async answer(call) {
+    const round = this.round;
+    if (!round || round.phase !== 'answer' || this.busy) return;
+    const gen = this.gen;
+    this.busy = true; round.phase = 'end';
+    try {
+      if (!call) return await this.finish(round, 'lose', false);
+      Game.applyDelta(-round.ante, { quiet: true }); round.pot += round.ante; round.playerIn += round.ante;
+      if (this.alive(gen)) this.renderPot(round);
+      await this.showdown(round);
+    } finally {
+      if (this.gen === gen) this.busy = false;
+      else this.drop(round);
+    }
+  },
+  async showdown(round) {
+    if (this.alive(round.gen)) {
+      this.show(null);
+      this.status('Showdown');
+      const cards = qsa('#pkWirtCards .pcard', this.root);
+      for (let i = 0; i < cards.length; i++) { cards[i].classList.remove('hidden-card'); SFX.play('cardSlide'); await wait(160); }
+      await wait(400);
+    }
+    const c = PokerRules.compare(PokerRules.evaluate(round.pHand), PokerRules.evaluate(round.wHand));
+    await this.finish(round, c > 0 ? 'win' : c < 0 ? 'lose' : 'split', true);
+  },
+  async finish(round, outcome, showdown) {
+    if (round.done) return;
+    round.done = true;
+    const payout = PokerRules.payout(round.pot, outcome);
+    const net = payout - round.playerIn;
+    const pe = PokerRules.evaluate(round.pHand), we = showdown ? PokerRules.evaluate(round.wHand) : null;
+    if (this.alive(round.gen)) {
+      const msg = !showdown
+        ? (outcome === 'win' ? `<span class="win">Der Wirt wirft hin · +${UI.fmt(net)}</span>` : `<span class="loss">Aufgegeben · −${UI.fmt(round.playerIn)}</span>`)
+        : outcome === 'win' ? `<span class="win">${pe.name} schlägt ${we.name} · +${UI.fmt(net)}</span>`
+        : outcome === 'lose' ? `<span class="loss">${we.name} schlägt ${pe.name} · −${UI.fmt(round.playerIn)}</span>`
+        : `Geteilt · ${pe.name} gegen ${we.name}`;
+      this.status(msg);
+      this.show('pkBetControls');
+    }
+    if (this.gen === round.gen) { this.inRound = false; this.busy = false; }
+    await Bus.emit('poker:result', { outcome, showdown, player: pe, wirt: we, pot: round.pot, ante: round.ante });
+    await Game.settle(net, { from: this.alive(round.gen) ? qs('#pkPlayerCards', this.root) : null, game: 'poker', bet: round.playerIn, run: round.run });
+  },
+};
+
+UI.register('poker', {
+  template: 'tpl-poker',
+  mount(root) {
+    Poker.gen++;
+    Poker.root = root;
+    Game.bindBet(root, 'pkBet', () => Math.max(1, Math.floor(Rules.maxBet(State.s, Perks.mods()) / 3)));
+    qs('#btnPkDeal', root).addEventListener('click', () => Poker.deal());
+    qs('#btnPkDraw', root).addEventListener('click', () => Poker.draw());
+    qs('#btnPkBet', root).addEventListener('click', () => Poker.bet(true));
+    qs('#btnPkCheck', root).addEventListener('click', () => Poker.bet(false));
+    qs('#btnPkCall', root).addEventListener('click', () => Poker.answer(true));
+    qs('#btnPkFold', root).addEventListener('click', () => Poker.answer(false));
+  },
+  unmount() {
+    Poker.gen++;
+    if (Poker.inRound) {
+      /* Zwischen zwei Aktionen verlassen: Runde sofort fallen lassen. Läuft noch eine Kette (busy), räumt die selbst auf. */
+      if (!Poker.busy) Poker.drop(Poker.round);
+      UI.toast({ icon: '♠️', title: 'Hand aufgegeben', text: 'Einsatz verfallen.', tone: 'loss' });
+    }
+    Poker.root = null; Poker.inRound = false; Poker.busy = false; Poker.round = null;
   },
 });
 </script>
@@ -5140,6 +5396,7 @@ const Achievements = {
     { id: 'strassenkaempfer', title: 'Straßenkämpfer', icon: '🥊', desc: 'Fünf Räuber verprügelt.' },
     { id: 'vollausgestattet', title: 'Vollausgestattet', icon: '🏁', desc: 'Top-Auto und Carbon-Sprinter.' },
     { id: 'royalHigh', title: 'High Roller', icon: '🎩', desc: 'Einzelgewinn von 5.000 € im Casino Royal.' },
+    { id: 'fullhouse', title: 'Full House', icon: '🏠', desc: 'Mit Full House oder besser den Showdown gewonnen.' },
     { id: 'fuenfSiebener', title: 'Fünf Siebener', icon: '7️⃣', desc: 'Fünf 7️⃣ auf einer Linie bei Mega Seven.' },
     { id: 'gegenDieWand', title: 'Gegen die Wand', icon: '🎡', desc: 'Bankrott am Glücksrad mit 5.000 € Einsatz.' },
     { id: 'natural', title: 'Natural', icon: '🂡', desc: 'Fünf Naturals in einer Sitzung am Tisch im Hinterzimmer.' },
@@ -5198,6 +5455,7 @@ Bus.on('spin:before', ({ bet }) => { if (bet >= 500) Achievements.unlock('highRo
 Bus.on('slots:result', ({ res }) => { if (res.every((s) => s === '7️⃣')) Achievements.unlock('jackpot'); });
 Bus.on('roulette:result', ({ hits }) => { if ((hits || []).some((x) => x.win && x.bet.type === 'number')) Achievements.unlock('plein'); });
 Bus.on('rr:result', ({ victim }) => { if (victim === 'igor') Achievements.unlock('igor'); });
+Bus.on('poker:result', ({ outcome, showdown, player }) => { if (showdown && outcome === 'win' && player.rank >= 6) Achievements.unlock('fullhouse'); });
 Bus.on('beer', ({ beers }) => { if (beers >= 3) Achievements.unlock('regular'); });
 Bus.on('kidney.sold', () => Achievements.unlock('donor'));
 Bus.on('house.bought', () => Achievements.unlock('owner'));
@@ -5282,7 +5540,7 @@ Bus.on('newgame.request', async () => {
 const Mugging = {
   force: null,     // Dev-Parameter ?mug=1|junkie|jugend|cousin – erzwingt den nächsten Überfall
   running: false,
-  CASINO: ['roulette', 'slots', 'horses', 'russian', 'blackjack'],
+  CASINO: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker'],
   TYPES: {
     junkie: {
       name: 'Der Junkie', emoji: '🧟',
@@ -6089,6 +6347,84 @@ const BaccaratRules = {
 };
 </script>
 
+<script id="poker-rules">
+/* ================= POKER – Five-Card Draw gegen den Wirt (rein, kein DOM) ================= */
+const PokerRules = {
+  ORDER: ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'],
+  NAMES: ['High Card', 'Paar', 'Zwei Paare', 'Drilling', 'Straße', 'Flush', 'Full House', 'Vierling', 'Straight Flush'],
+  value(c) { return PokerRules.ORDER.indexOf(c.val) + 2; },
+  /* rank 0–8; tiebreak: Gruppen nach Häufigkeit, dann Wert absteigend (Paar → [Paar, Kicker…]); Straße/Straight Flush nur die höchste Karte (A-2-3-4-5 → 5) */
+  evaluate(cards) {
+    const R = PokerRules;
+    const vals = cards.map(R.value).sort((a, b) => b - a);
+    const flush = cards.every((c) => c.suit === cards[0].suit);
+    const counts = {};
+    for (const v of vals) counts[v] = (counts[v] || 0) + 1;
+    const groups = Object.entries(counts).map(([v, n]) => ({ v: +v, n })).sort((a, b) => b.n - a.n || b.v - a.v);
+    let straightHigh = 0;
+    if (groups.length === 5) {
+      if (vals[0] - vals[4] === 4) straightHigh = vals[0];
+      else if (vals.join() === '14,5,4,3,2') straightHigh = 5;
+    }
+    const out = (rank, tiebreak) => ({ rank, name: R.NAMES[rank], tiebreak });
+    if (straightHigh && flush) return out(8, [straightHigh]);
+    if (groups[0].n === 4) return out(7, groups.map((g) => g.v));
+    if (groups[0].n === 3 && groups[1].n === 2) return out(6, groups.map((g) => g.v));
+    if (flush) return out(5, vals);
+    if (straightHigh) return out(4, [straightHigh]);
+    if (groups[0].n === 3) return out(3, groups.map((g) => g.v));
+    if (groups[0].n === 2 && groups[1].n === 2) return out(2, groups.map((g) => g.v));
+    if (groups[0].n === 2) return out(1, groups.map((g) => g.v));
+    return out(0, vals);
+  },
+  compare(a, b) {
+    if (a.rank !== b.rank) return a.rank > b.rank ? 1 : -1;
+    for (let i = 0; i < a.tiebreak.length; i++) if (a.tiebreak[i] !== b.tiebreak[i]) return a.tiebreak[i] > b.tiebreak[i] ? 1 : -1;
+    return 0;
+  },
+  WIRT: { BLUFF_RAISE: 0.2, BLUFF_BET: 0.3 },
+  /* Indizes, die der Wirt tauscht (max. 3): fertige Hand nichts; Paar/Zwei Paare/Drilling den Rest; Vier-Flush oder offener Vierer-Straßen-Draw die eine; sonst die drei niedrigsten */
+  wirtDraw(hand) {
+    const R = PokerRules;
+    const e = R.evaluate(hand);
+    if (e.rank >= 4) return [];
+    const vals = hand.map(R.value);
+    if (e.rank >= 1) {
+      const keep = e.rank === 2 ? e.tiebreak.slice(0, 2) : [e.tiebreak[0]];
+      return hand.map((c, i) => i).filter((i) => !keep.includes(vals[i]));
+    }
+    const suits = {};
+    hand.forEach((c) => { suits[c.suit] = (suits[c.suit] || 0) + 1; });
+    const fs = Object.keys(suits).find((s) => suits[s] === 4);
+    if (fs) return [hand.findIndex((c) => c.suit !== fs)];
+    const sorted = hand.map((c, i) => ({ v: vals[i], i })).sort((a, b) => a.v - b.v);
+    for (let start = 0; start <= 1; start++) {
+      const run = sorted.slice(start, start + 4);
+      if (run.every((x, k) => k === 0 || x.v === run[k - 1].v + 1)) return [sorted[start === 0 ? 4 : 0].i];
+    }
+    return sorted.slice(0, 3).map((x) => x.i).sort((a, b) => a - b);
+  },
+  /* situation: 'facingBet' (Spieler hat gesetzt) oder 'checked'; rng nur in der schwachen Klasse (Bluff) */
+  wirtAct(hand, situation, rng) {
+    const rank = PokerRules.evaluate(hand).rank;
+    const facing = situation === 'facingBet';
+    if (rank >= 2) return facing ? 'raise' : 'bet';
+    if (rank === 1) return facing ? 'call' : 'bet';
+    if (facing) return rng() < PokerRules.WIRT.BLUFF_RAISE ? 'raise' : 'fold';
+    return rng() < PokerRules.WIRT.BLUFF_BET ? 'bet' : 'check';
+  },
+  /* Bruttobetrag aus dem Pot für den Spieler */
+  payout(pot, outcome) { return outcome === 'win' ? pot : outcome === 'split' ? Math.ceil(pot / 2) : 0; },
+  /* Glück: keine Verbesserung durch den Tausch → mit luck % einmal neu ziehen (drawFn liefert die neue Hand). Pech: eine Verbesserung wird mit |luck| % zurückgezogen. Sonst null. */
+  luckOverride(before, after, drawFn, luck, rng) {
+    const improved = PokerRules.compare(after, before) > 0;
+    if (luck > 0 && !improved && rng() * 100 < luck) return drawFn();
+    if (luck < 0 && improved && Rules.pech(luck, rng)) return drawFn();
+    return null;
+  },
+};
+</script>
+
 <script id="gang-rules">
 /* ================= GANG – Waffen, Duell, Kurier (rein, kein DOM); Wochen-/Wäsche-Logik der Story 3 folgt unten ================= */
 const GangRules = {
@@ -6231,7 +6567,7 @@ const DevRules = {
     for (const list of Object.values(story.jobEffects || {})) effs(list);
     return [...out].sort();
   },
-  KELLER_SCREENS: ['hub', 'roulette', 'slots', 'horses', 'russian', 'blackjack', 'hinterzimmer', 'postman', 'finance', 'invest', 'life', 'skills'],
+  KELLER_SCREENS: ['hub', 'roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker', 'hinterzimmer', 'postman', 'finance', 'invest', 'life', 'skills'],
   ROYAL_SCREENS: ['royal', 'megaslots', 'craps', 'wheel'],
   STORY_SCREENS: ['jobs', 'vito'],
   groupScreens(ids) {
@@ -6383,7 +6719,7 @@ const Stories = {
 };
 
 const Story = {
-  DOORS: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'postman', 'hinterzimmer'],
+  DOORS: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker', 'postman', 'hinterzimmer'],
   ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'], royal: ['royal'], megaslots: ['royal'], craps: ['royal'], wheel: ['royal'] },
   story: null,
   allowOnce: null,
@@ -7355,7 +7691,7 @@ const STORY_SCHULD = {
   varMax: { vertrauen: 10, ruf: 10 },
   hud: [{ var: 'schuld', label: '🕶️ Vito', fmt: 'money', tone: 'danger' }, { var: 'vertrauen', label: '🤝', max: 10 }, { var: 'ruf', label: '🔥 Ruf', max: 10 }],
   goal: (s) => `Ziel: Vito ${UI.fmt(s.story.vars.schuld)} bis Tag 30`,
-  lockReason: { roulette: 'Vito sagt nein', blackjack: 'Vito sagt nein', russian: 'Igor hat keine Zeit' },
+  lockReason: { roulette: 'Vito sagt nein', blackjack: 'Vito sagt nein', poker: 'Vito sagt nein', russian: 'Igor hat keine Zeit' },
   intro: 'schuld.intro',
   scenes: {
     /* ---- Intro ---- */
@@ -7594,9 +7930,9 @@ const STORY_SCHULD = {
   },
   chapters: [
     { id: 'k1', title: 'Der Zettel', when: { day: { gte: 1 } } },
-    { id: 'k2', title: 'Kleine Fische', when: { day: { gte: 6 } }, intro: 'schuld.k2', unlock: { jobs: ['kurier', 'praktikant', 'taxi'], doors: ['roulette', 'blackjack', 'russian'], rooms: ['bank'] } },
+    { id: 'k2', title: 'Kleine Fische', when: { day: { gte: 6 } }, intro: 'schuld.k2', unlock: { jobs: ['kurier', 'praktikant', 'taxi'], doors: ['roulette', 'blackjack', 'russian', 'poker'], rooms: ['bank'] } },
     { id: 'k3', title: 'Die Tür', when: { day: { gte: 13 } }, intro: 'schuld.k3', unlock: { jobs: ['docassi'], rooms: ['invest'] } },
-    { id: 'k4', title: 'Abrechnung', when: { day: { gte: 21 } }, intro: 'schuld.k4', unlock: { doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack'] } },
+    { id: 'k4', title: 'Abrechnung', when: { day: { gte: 21 } }, intro: 'schuld.k4', unlock: { doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker'] } },
   ],
   events: [
     { id: 'chantal3', when: { day: { eq: 3 } }, once: true, at: 'night', scene: 'schuld.chantal3', effects: [{ flag: 'chantalKennt' }] },
@@ -7661,7 +7997,7 @@ const STORY_KATER = {
   hudRender: 'kater',
   start: {
     balance: 2000,
-    unlocked: { jobs: ['filialleiter'], doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack'], rooms: ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal'] },
+    unlocked: { jobs: ['filialleiter'], doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker'], rooms: ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal'] },
     vars: { pegel: 0, leber: 100, deckel: 0, bierHeute: 0, brownieHeute: 0, docNein: 0 },
   },
   varMax: { pegel: 3, leber: 100 },
@@ -7927,7 +8263,7 @@ const STORY_STASH = {
   lockText: '„Der Kater“ endete im Bett beim Doc. Wer tot ist, wäscht nichts mehr.',
   start: {
     balance: 5000,
-    unlocked: { jobs: ['eintreiber'], doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack'], rooms: ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal'] },
+    unlocked: { jobs: ['eintreiber'], doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker'], rooms: ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal'] },
     vars: { woche: 0, umsatz: 0, umsatzRoyal: 0, umsatzHinterzimmer: 0, umsatzTotal: 0, ziel: 0, rueckgabe: 0, lieferung: 0, zorn: 0, kredit: 0, belege: 0, belegeOffen: 0, uebergeben: 0, ruf: 0, igorBiere: 0, eintreiberWoche: 0, abrechnungenOk: 0, ausgang: 0, anabiErfaehrt: 0 },
   },
   varMax: { zorn: 3 },
@@ -8956,10 +9292,12 @@ T.test('handSum: Ass-Logik', () => {
   T.eq(Rules.handSum(H('K', 'Q', '5')), 25);
   T.eq(Rules.handSum([]), 0);
 });
-T.test('dealerShouldHit: unter 17', () => {
+T.test('dealerShouldHit: unter 17, mit Kartenhai unter 18', () => {
   T.ok(Rules.dealerShouldHit(H('K', '6')));
   T.ok(!Rules.dealerShouldHit(H('K', '7')));
   T.ok(!Rules.dealerShouldHit(H('A', '6')), 'Soft 17 steht');
+  T.ok(Rules.dealerShouldHit(H('K', '7'), 18), '17 zieht bei Stand 18');
+  T.ok(!Rules.dealerShouldHit(H('K', '8'), 18), '18 steht bei Stand 18');
 });
 T.test('bjOutcome', () => {
   T.eq(Rules.bjOutcome(22, 18), 'bust');
@@ -8968,6 +9306,77 @@ T.test('bjOutcome', () => {
   T.eq(Rules.bjOutcome(18, 18), 'push');
   T.eq(Rules.bjOutcome(17, 18), 'dealer');
 });
+
+/* ---- Poker ---- */
+const P = (...cs) => cs.map((s) => ({ val: s.slice(0, -1), suit: s.slice(-1) }));
+T.test('PokerRules.evaluate: jeder Rang', () => {
+  const E = PokerRules.evaluate;
+  T.eq(E(P('A♠', '9♥', '7♦', '4♣', '2♠')), { rank: 0, name: 'High Card', tiebreak: [14, 9, 7, 4, 2] });
+  T.eq(E(P('9♠', '9♥', 'A♦', '4♣', '2♠')), { rank: 1, name: 'Paar', tiebreak: [9, 14, 4, 2] });
+  T.eq(E(P('9♠', '9♥', '4♦', '4♣', 'A♠')), { rank: 2, name: 'Zwei Paare', tiebreak: [9, 4, 14] });
+  T.eq(E(P('7♠', '7♥', '7♦', 'K♣', '2♠')), { rank: 3, name: 'Drilling', tiebreak: [7, 13, 2] });
+  T.eq(E(P('5♠', '6♥', '7♦', '8♣', '9♠')), { rank: 4, name: 'Straße', tiebreak: [9] });
+  T.eq(E(P('A♠', '2♥', '3♦', '4♣', '5♠')), { rank: 4, name: 'Straße', tiebreak: [5] }, 'Rad-Straße zählt 5 hoch');
+  T.eq(E(P('K♥', '9♥', '7♥', '4♥', '2♥')), { rank: 5, name: 'Flush', tiebreak: [13, 9, 7, 4, 2] });
+  T.eq(E(P('7♠', '7♥', '7♦', 'K♣', 'K♠')), { rank: 6, name: 'Full House', tiebreak: [7, 13] });
+  T.eq(E(P('7♠', '7♥', '7♦', '7♣', 'K♠')), { rank: 7, name: 'Vierling', tiebreak: [7, 13] });
+  T.eq(E(P('5♥', '6♥', '7♥', '8♥', '9♥')), { rank: 8, name: 'Straight Flush', tiebreak: [9] });
+  T.eq(E(P('10♠', 'J♠', 'Q♠', 'K♠', 'A♠')), { rank: 8, name: 'Straight Flush', tiebreak: [14] }, 'Royal = höchste Straight Flush');
+});
+T.test('PokerRules.compare: Rang, dann Kicker, Gleichstand 0', () => {
+  const E = PokerRules.evaluate, C = PokerRules.compare;
+  T.eq(C(E(P('9♠', '9♥', 'A♦', '4♣', '2♠')), E(P('A♠', 'K♥', '7♦', '4♣', '2♠'))), 1, 'Paar schlägt High Card');
+  T.eq(C(E(P('9♠', '9♥', 'A♦', '4♣', '2♠')), E(P('9♦', '9♣', 'K♦', '4♥', '2♥'))), 1, 'Kicker Ass schlägt König');
+  T.eq(C(E(P('9♠', '9♥', 'K♦', '4♣', '2♠')), E(P('9♦', '9♣', 'K♥', '4♥', '2♥'))), 0, 'identische Werte = Gleichstand');
+  T.eq(C(E(P('5♠', '6♥', '7♦', '8♣', '9♠')), E(P('K♥', '9♥', '7♥', '4♥', '2♥'))), -1, 'Flush schlägt Straße');
+});
+T.test('PokerRules.wirtDraw: Paar hält, Zwei Paare eins, Drilling zwei, fertige Hand nichts', () => {
+  const D = PokerRules.wirtDraw;
+  T.eq(D(P('9♠', '4♥', '9♥', 'A♦', '2♠')), [1, 3, 4], 'Paar → die drei anderen');
+  T.eq(D(P('9♠', '9♥', '4♦', 'A♣', '4♠')), [3], 'Zwei Paare → der Kicker');
+  T.eq(D(P('K♣', '7♠', '7♥', '7♦', '2♠')), [0, 4], 'Drilling → die zwei anderen');
+  T.eq(D(P('5♠', '6♥', '7♦', '8♣', '9♠')), [], 'Straße bleibt');
+  T.eq(D(P('K♥', '9♥', '7♥', '4♥', '2♥')), [], 'Flush bleibt');
+  T.eq(D(P('7♠', '7♥', '7♦', 'K♣', 'K♠')), [], 'Full House bleibt');
+  T.eq(D(P('7♠', '7♥', '7♦', '7♣', 'K♠')), [], 'Vierling bleibt');
+  T.eq(D(P('5♥', '6♥', '7♥', '8♥', '9♥')), [], 'Straight Flush bleibt');
+});
+T.test('PokerRules.wirtDraw: Flush-Draw, offener Straßen-Draw, Müll', () => {
+  const D = PokerRules.wirtDraw;
+  T.eq(D(P('K♥', '9♥', '7♠', '4♥', '2♥')), [2], 'vier Herz → die eine Pik weg');
+  T.eq(D(P('5♠', '6♥', '7♦', '8♣', 'K♠')), [4], '5-6-7-8 → König weg');
+  T.eq(D(P('2♠', 'A♥', '5♦', '9♣', 'K♠')), [0, 2, 3], 'Müll → drei niedrigste (2, 5, 9)');
+  T.eq(D(P('2♠', '7♥', '8♦', '9♣', '10♠')), [0], '7-8-9-10 → Zwei weg (oberes Fenster)');
+});
+T.test('PokerRules.wirtAct: stark erhöht/setzt, mittel geht mit/setzt, schwach blufft nur per rng', () => {
+  const A = PokerRules.wirtAct;
+  const stark = P('9♠', '9♥', '4♦', '4♣', 'A♠'), mittel = P('9♠', '9♥', 'A♦', '4♣', '2♠'), schwach = P('A♠', '9♥', '7♦', '4♣', '2♠');
+  T.eq(A(stark, 'facingBet', seq(0.99)), 'raise'); T.eq(A(stark, 'checked', seq(0.99)), 'bet');
+  T.eq(A(mittel, 'facingBet', seq(0.99)), 'call'); T.eq(A(mittel, 'checked', seq(0.99)), 'bet');
+  T.eq(A(schwach, 'facingBet', seq(0.1)), 'raise', 'Bluff unter 0,2'); T.eq(A(schwach, 'facingBet', seq(0.5)), 'fold');
+  T.eq(A(schwach, 'checked', seq(0.2)), 'bet', 'Bluff unter 0,3'); T.eq(A(schwach, 'checked', seq(0.9)), 'check');
+});
+T.test('PokerRules.payout: win Pot, lose 0, split aufgerundete Hälfte', () => {
+  T.eq(PokerRules.payout(60, 'win'), 60); T.eq(PokerRules.payout(60, 'lose'), 0); T.eq(PokerRules.payout(25, 'split'), 13);
+});
+T.test('PokerRules.luckOverride: Glück zieht bei Nicht-Verbesserung neu, Pech bei Verbesserung', () => {
+  const E = PokerRules.evaluate;
+  const muell = E(P('A♠', '9♥', '7♦', '4♣', '2♠')), paar = E(P('9♠', '9♥', 'A♦', '4♣', '2♠'));
+  const neu = P('K♠', 'K♥', '3♦', '4♣', '2♠');
+  let calls = 0; const drawFn = () => { calls++; return neu; };
+  T.eq(PokerRules.luckOverride(muell, muell, drawFn, 100, seq(0.5)), neu, 'keine Verbesserung + Glück → Neuzug'); T.eq(calls, 1);
+  T.eq(PokerRules.luckOverride(muell, paar, drawFn, 100, seq(0.5)), null, 'Verbesserung + Glück → nichts'); T.eq(calls, 1);
+  T.eq(PokerRules.luckOverride(muell, paar, drawFn, -100, seq(0.5)), neu, 'Verbesserung + Pech → Neuzug'); T.eq(calls, 2);
+  T.eq(PokerRules.luckOverride(muell, muell, drawFn, 0, seq(0.0)), null, 'ohne Glück nie'); T.eq(calls, 2);
+  T.eq(PokerRules.luckOverride(muell, muell, drawFn, 20, seq(0.5)), null, 'Glück 20 bei rng 0,5 → kein Neuzug');
+});
+
+T.test('Story 1 Kapitel 2/4 und Dev-Panel enthalten poker', () => {
+  T.ok(STORY_SCHULD.chapters.find((c) => c.id === 'k2').unlock.doors.includes('poker'));
+  T.ok(STORY_SCHULD.chapters.find((c) => c.id === 'k4').unlock.doors.includes('poker'));
+  T.ok(DevRules.KELLER_SCREENS.includes('poker'));
+});
+
 T.test('bjDelta', () => {
   T.eq(Rules.bjDelta('win', 10), 10); T.eq(Rules.bjDelta('bust', 10), -10);
   T.eq(Rules.bjDelta('dealer', 10), -10); T.eq(Rules.bjDelta('push', 10), 0);
@@ -10263,7 +10672,7 @@ T.test('STORY_KATER: Start – Flitterwochen', () => {
   const s = katerState();
   T.eq(s.story.vars, { pegel: 0, leber: 100, deckel: 0, bierHeute: 0, brownieHeute: 0, docNein: 0 });
   T.eq(s.story.unlocked.jobs, ['filialleiter']);
-  T.eq(s.story.unlocked.doors, ['roulette', 'slots', 'horses', 'russian', 'blackjack']);
+  T.eq(s.story.unlocked.doors, ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker']);
   T.eq(s.story.unlocked.rooms, ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal']);
   T.eq(s.story.prices, { brownie: 1000, therapy: 5000 });
   T.eq(s.story.disabled, ['tinder', 'house', 'dealer']);
@@ -10716,7 +11125,7 @@ T.test('STORY_STASH ist gültig, setzt Der Kater voraus, nicht nach Bett', () =>
 T.test('STORY_STASH: Start, Tag-1-Morgen je Vorgängerende (Kredit, trocken, Brownie), Auto, Hinterzimmer sichtbar', () => {
   const s = stashState();
   T.eq(s.story.unlocked.jobs, ['eintreiber']);
-  T.eq(s.story.unlocked.doors, ['roulette', 'slots', 'horses', 'russian', 'blackjack']);
+  T.eq(s.story.unlocked.doors, ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker']);
   T.eq(s.story.unlocked.rooms, ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal']);
   T.eq(s.story.disabled, ['tinder', 'house', 'dealer', 'brownie']);
   T.eq(s.story.vars.zorn, 0); T.eq(s.story.vars.woche, 0);
@@ -11763,7 +12172,7 @@ T.test('xpLevel: Schwellen und Punkte', () => {
   T.eq(Rules.xpLevel(9999), { level: 6, next: null, points: 3 });
 });
 T.test('Kataloge: Skills mit Licht/Schatten, mods-Schlüssel bekannt', () => {
-  T.eq(Rules.SKILLS.length, 8); T.eq(Rules.INSIDER.length, 7);
+  T.eq(Rules.SKILLS.length, 9); T.eq(Rules.INSIDER.length, 8);
   for (const sk of Rules.SKILLS) { T.ok(sk.light && sk.shadow, sk.id); for (const k of Object.keys(sk.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${sk.id}.${k}`); }
   for (const ins of Rules.INSIDER) { T.ok(ins.text && typeof ins.capped === 'boolean', ins.id); for (const k of Object.keys(ins.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${ins.id}.${k}`); }
   T.eq(Rules.INSIDER_CAP, 250); T.eq(Rules.MAX_SKILLS, 3); T.eq(Rules.RESPEC_PRICE, 2000);
@@ -11786,6 +12195,13 @@ T.test('mods: Skills und Insider stapeln', () => {
   T.eq(k.maxBeers, 4); T.eq(k.brownieSpins, 6); T.eq(k.postTimeAdd, -1); T.eq(k.postPayAdd, 5); T.eq(k.postLetters, 20);
   T.eq(Rules.mods(base({ skills: ['unbekannt'] })), Rules.NEUTRAL_MODS, 'unbekannte IDs ignoriert');
 });
+T.test('mods: Kartenhai und Wirts Tell; neutral aus', () => {
+  const n = Rules.mods(base(), { insider: [] });
+  T.eq([n.pokerPeekDraw, n.pokerTell, n.bjDealerStand], [false, false, 17]);
+  const m = Rules.mods(base({ skills: ['kartenhai'] }), { insider: ['wirtstell'] });
+  T.eq([m.pokerPeekDraw, m.pokerTell, m.bjDealerStand], [true, true, 18]);
+  T.ok(Rules.SKILLS.some((k) => k.id === 'kartenhai') && Rules.INSIDER.some((i) => i.id === 'wirtstell' && i.capped));
+});
 T.test('canPickSkill / skillPointsFree', () => {
   T.eq(Rules.skillPointsFree(base({ xp: 0, skills: [] })), 0);
   T.eq(Rules.skillPointsFree(base({ xp: 60, skills: [] })), 1);
@@ -11801,8 +12217,8 @@ T.test('insiderDraw: 3 ungezogene, weniger wenn Pool kleiner', () => {
   const all = Rules.INSIDER.map((i) => i.id);
   const d = Rules.insiderDraw({ insider: [] }, seq(0, 0, 0));
   T.eq(d.length, 3); T.ok(new Set(d).size === 3, 'verschieden'); d.forEach((id) => T.ok(all.includes(id)));
-  const d2 = Rules.insiderDraw({ insider: all.slice(0, 5) }, seq(0, 0));
-  T.eq(d2.length, 2); d2.forEach((id) => T.ok(!all.slice(0, 5).includes(id), 'nie gewählte'));
+  const d2 = Rules.insiderDraw({ insider: all.slice(0, 6) }, seq(0, 0));
+  T.eq(d2.length, 2); d2.forEach((id) => T.ok(!all.slice(0, 6).includes(id), 'nie gewählte'));
   T.eq(Rules.insiderDraw({ insider: all }, seq(0)), []);
 });
 T.test('insiderCapText: gedeckelte Insider nennen die 250 €, freie „wirkt immer"', () => {

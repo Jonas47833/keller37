@@ -1710,7 +1710,7 @@ async def _scenario_perks_body(cdp):
     await asyncio.sleep(0.4)
     pulsing = await cdp.eval("document.querySelector('#lvBadge').classList.contains('point')", await_promise=False)
     n = await cdp.eval("document.querySelectorAll('#skillCards .btn').length", await_promise=False)
-    record("perks: Level 2 -> Badge pulsiert, 8 Skills waehlbar", pulsing is True and n == 8, "pulsing=%s buttons=%s" % (pulsing, n))
+    record("perks: Level 2 -> Badge pulsiert, 9 Skills waehlbar", pulsing is True and n == 9, "pulsing=%s buttons=%s" % (pulsing, n))
     await cdp.screenshot("skills.png")
     # Zusaetzliche XP auf Level 4 (110 XP gesamt = 2 Skill-Punkte), damit nach dem Pick von
     # Zockerhaende noch ein Punkt frei ist -- sonst meldet canPickSkill fuer Brieftraegerherz
@@ -1908,6 +1908,64 @@ async def scenario_royal_look(cdp):
     record("fassade: Zitter-Tag zeigt Tuersteher", door.get("gated") and door.get("doorman") and "zittern" in (door.get("txt") or "").lower(), door)
 
 
+async def scenario_poker(cdp):
+    """Poker: Tuer im Hub, festes Deck (Full House gegen Paar), Setzen -> Showdown, Kontostand und Achievement."""
+    await cdp.navigate(URL_BASE + "?fresh&mode=free&screen=hub")
+    await asyncio.sleep(0.8)
+    await cdp.inject_helpers()
+    door = await cdp.eval("!!document.querySelector('.door[data-screen=\"poker\"]')", await_promise=False)
+    record("poker: Tuer im Keller-Hub", door is True)
+    await cdp.eval("UI.show('poker'); 0", await_promise=False)
+    await asyncio.sleep(0.6)
+    # Deck: pop() zieht vom Ende -> zuerst 5 Spielerkarten (Full House K/3), dann 5 Wirtkarten (Paar 9),
+    # dann die 3 Tauschkarten des Wirts (junk: er behaelt nur das Paar) -> Ergebnis deterministisch.
+    await cdp.eval(r"""(function(){
+      const C = (val, suit) => ({ val, suit });
+      const player = [C('K','♠'), C('K','♥'), C('K','♦'), C('3','♣'), C('3','♠')];
+      const wirt = [C('9','♠'), C('9','♥'), C('2','♦'), C('5','♣'), C('7','♠')];
+      const junk = [C('4','♥'), C('6','♦'), C('J','♣')];
+      const used = [...player, ...wirt, ...junk];
+      const rest = Rules.newDeck(Math.random).filter(c => !used.some(x => x.val === c.val && x.suit === c.suit));
+      Poker.forceDeck = [...rest, ...junk.slice().reverse(), ...wirt.slice().reverse(), ...player.slice().reverse()];
+      State.s.balance = 1000; State.save(); UI.setBalance(1000, {animate:false});
+    })(); 0""", await_promise=False)
+    await cdp.click("#btnPkDeal")
+    await cdp.wait_for("Poker.round && Poker.round.phase === 'draw'", timeout=5.0)
+    bal = await cdp.eval("State.s.balance", await_promise=False)
+    n_player = await cdp.eval("document.querySelectorAll('#pkPlayerCards .pcard').length", await_promise=False)
+    n_hidden = await cdp.eval("document.querySelectorAll('#pkWirtCards .pcard.hidden-card').length", await_promise=False)
+    hand = await cdp.eval("document.querySelector('#pkHandName').textContent", await_promise=False)
+    record("poker: Geben bucht Ante ab, 5 offen / 5 verdeckt, Handname", bal == 990 and n_player == 5 and n_hidden == 5 and hand == "Full House", "bal=%s player=%s hidden=%s hand=%s" % (bal, n_player, n_hidden, hand))
+    await cdp.screenshot("poker.png")
+    await cdp.click("#btnPkDraw")   # Behalten
+    await cdp.wait_for("Poker.round && Poker.round.phase === 'bet'", timeout=5.0)
+    wdraw = await cdp.eval("document.querySelector('#pkWirtDraw').textContent", await_promise=False)
+    record("poker: Wirt tauscht 3 (Paar haelt)", wdraw == "tauscht 3", wdraw)
+    await cdp.click("#btnPkBet")    # Setzen -> Wirt hat Paar 9 -> geht mit -> Showdown
+    await cdp.wait_for("!Poker.inRound", timeout=8.0)
+    await asyncio.sleep(0.6)
+    bal = await cdp.eval("State.s.balance", await_promise=False)
+    ach = await cdp.eval("Achievements.has('fullhouse')", await_promise=False)
+    status = await cdp.eval("document.querySelector('#pkStatus').textContent", await_promise=False)
+    # Pot 40 (2 Antes + Setzen + Call), Spieler-Einsatz 20 -> 1000 + 20
+    record("poker: Showdown gewonnen (Full House schlaegt Paar), Kontostand +20, Achievement", bal == 1020 and ach is True and "Full House" in status and "Paar" in status, "bal=%s ach=%s status=%s" % (bal, ach, status))
+    # Aussteigen mitten in der Runde: Screen verlassen -> Einsatz weg, Toast
+    await cdp.click("#btnPkDeal")
+    await cdp.wait_for("Poker.round && Poker.round.phase === 'draw'", timeout=5.0)
+    before = await cdp.eval("State.s.balance", await_promise=False)
+    await cdp.eval("UI.show('hub'); 0", await_promise=False)
+    await asyncio.sleep(0.5)
+    after = await cdp.eval("State.s.balance", await_promise=False)
+    in_round = await cdp.eval("Poker.inRound", await_promise=False)
+    record("poker: Screen verlassen laesst die Hand fallen (Ante weg)", after == before and in_round is False, "before=%s after=%s inRound=%s" % (before, after, in_round))
+    # Story 1: Poker erst ab Kapitel 2 offen
+    await cdp.navigate(URL_BASE + "?fresh&story=schuld")
+    await asyncio.sleep(1.5)
+    await cdp.inject_helpers()
+    locked = await cdp.eval("Story.isLocked('poker')", await_promise=False)
+    record("poker: in Story 1 Tag 1 gesperrt", locked is True, "locked=%s" % locked)
+
+
 async def main():
     cdp = CDP()
     cdp.launch(mobile=MOBILE)
@@ -1937,6 +1995,7 @@ async def main():
         await scenario_story_stadt(cdp)
         await scenario_roulette_chips(cdp)
         await scenario_perks(cdp)
+        await scenario_poker(cdp)
     finally:
         n_errors = len(cdp.console_errors)
         for e in cdp.console_errors:
