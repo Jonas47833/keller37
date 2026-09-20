@@ -1371,6 +1371,10 @@ async def scenario_kater(cdp):
     record("kater: nach dem Bett-Ende keine Naechste Story (Waesche gesperrt), nur Zum Titel", final_labels == ["Zum Titel"], "labels=%s" % final_labels)
     on_title = await cdp.eval("document.querySelector('#title').hidden === false && !(State.s.story && State.s.story.id === 'schuld' && State.s.story.day === 1 && State.mode === 'story')", await_promise=False)
     record("kater: landet auf dem Titel statt still in Die Schuld", on_title, "on_title=%s" % on_title)
+    # Frueher startete hier „Naechste Story" Die Schuld und stempelte ihr lastPlayed; seit dem Titel-Ende bleibt Die Schuld
+    # in diesem Lauf ungespielt (0) und stuende bei der Titel-Wahl weiter unten gleichauf mit Die Waesche (Zufall).
+    # Den Stempel deshalb ausdruecklich setzen: Die Schuld gilt als gespielt, Die Waesche als nie gespielt.
+    await cdp.eval("State.meta.storyRuns.schuld = Object.assign({ lastPlayed: 0, endings: [] }, State.meta.storyRuns.schuld || {}, { lastPlayed: Date.now() }); State.saveMeta(); 0", await_promise=False)
     # Story-Therapie (Review-Fix #1): Life.therapy() darf im Kater NICHT die Anwalt-Szene therapy.done (Dr. Schmalz)
     # spielen, sondern nur die Doc-Szene kater.therapie aus dem buy:therapy-Hook. Dazu Story-Zustand direkt setzen.
     await cdp.navigate(URL_BASE + "?fresh&story=kater&prev=doc&day=12")
@@ -1813,6 +1817,29 @@ async def scenario_royal_look(cdp):
                lines: document.querySelectorAll('#megaLinesSvg polyline').length, cls: document.querySelector('.mega-machine').classList.contains('free') };
     })()""")
     record("mega: Freispiel-Banner und goldene Gewinnlinie", mega and mega.get("banner") and mega.get("free", 0) > 0 and mega.get("lines", 0) >= 1 and mega.get("cls"), mega)
+    # Echte Walzen: waehrend des Drehs laufen Streifen (rolling), Ergebnis landet in den Zielzellen; Freispiel-Trigger zeigt das Banner
+    await cdp.eval("MegaSlots.freeLeft = 0; MegaSlots.freeRun = null; MegaSlots.syncFree(); State.s.balance = 20000; State.save();", await_promise=False)
+    await cdp.eval("window.__mega = MegaSlots.spin(); 0", await_promise=False)
+    rolling = await cdp.wait_for("document.querySelectorAll('.mega-reel.rolling').length === 5 && document.querySelector('.mega-machine').classList.contains('rolling')", timeout=1.5)
+    free_banner = await cdp.wait_for("document.querySelector('#megaBanner').classList.contains('show') && document.querySelector('#megaBanner').classList.contains('free')", timeout=6.0)
+    scat = await cdp.eval("document.querySelectorAll('.mega-grid .cell.scatter').length", await_promise=False)
+    await cdp.eval("__mega", timeout=15)
+    landed = await cdp.eval("(function(){ const t = [['🍒','💎','⭐'],['🍒','BAR','⭐'],['🍒','🔔','⭐'],['BAR','🍒','7️⃣'],['💎','7️⃣','BAR']]; for (let r=0;r<5;r++) for (let w=0;w<3;w++) { const el = document.querySelector('.cell[data-reel=\"'+r+'\"][data-row=\"'+w+'\"]'); if (!el || el.textContent !== t[r][w]) return false; } return document.querySelectorAll('.mega-reel.rolling').length === 0; })()", await_promise=False)
+    record("mega: Walzenstreifen laufen, Freispiel-Banner mit Sternen, Ziel landet", rolling and free_banner and scat == 3 and landed, "rolling=%s banner=%s scatter=%s landed=%s" % (rolling, free_banner, scat, landed))
+    # Spannung + Big Win: 💎 auf Walze 0-2 der Mittellinie → letzte zwei Walzen laufen laenger (tense), 💎×5 = 2.000 € = 20× → BIG WIN
+    await cdp.eval("MegaSlots.freeLeft = 0; MegaSlots.freeRun = null; MegaSlots.syncFree(); RoyalRules.megaRoll = function(){ return [['🍒','💎','BAR'],['🔔','💎','🍒'],['BAR','💎','🔔'],['🍒','💎','BAR'],['🔔','💎','🍒']]; }; window.__mega = MegaSlots.spin(); 0", await_promise=False)
+    tense = await cdp.wait_for("document.querySelector('.mega-machine').classList.contains('tense') && document.querySelectorAll('.mega-reel.rolling').length === 2", timeout=3.0)
+    big = await cdp.wait_for("document.querySelector('#megaBanner').classList.contains('show') && document.querySelector('#megaBanner').classList.contains('big')", timeout=8.0)
+    title = await cdp.eval("document.querySelector('#megaBanner .mb-title').textContent", await_promise=False)
+    res = await cdp.eval("__mega", timeout=15)
+    record("mega: Spannung nach drei Diamanten, dann BIG WIN-Banner", tense and big and title == "BIG WIN" and res and res.get("tier") == "big" and res.get("payout") == 2000, "tense=%s big=%s title=%s res=%s" % (tense, big, title, res))
+    # Auto-Spin: drei Runden am Stueck mit Nieten, dann von selbst Schluss; Knopf zeigt waehrenddessen Stopp (n)
+    await cdp.eval("RoyalRules.megaRoll = function(){ return [['🍒','🔔','BAR'],['🔔','BAR','🍒'],['💎','🍒','🔔'],['🍒','🔔','BAR'],['🔔','BAR','🍒']]; }; RoyalRules.MEGA.AUTO_ROUNDS = 3; State.s.balance = 5000; UI.setBalance(5000, {animate:false}); window.__auto = MegaSlots.autoToggle(); 0", await_promise=False)
+    stop_lbl = await cdp.wait_for("document.querySelector('#btnMegaAuto').textContent === 'Stopp (3)'", timeout=1.0)
+    await cdp.eval("__auto", timeout=30)
+    auto_done = await cdp.eval("({ auto: MegaSlots.auto, lbl: document.querySelector('#btnMegaAuto').textContent, bal: State.s.balance, spinning: MegaSlots.spinning })", await_promise=False)
+    await cdp.eval("RoyalRules.MEGA.AUTO_ROUNDS = 10; MegaSlots.syncAuto();", await_promise=False)
+    record("mega: Auto-Spin dreht 3 Runden und stoppt", stop_lbl and auto_done and auto_done.get("auto") == 0 and auto_done.get("lbl") == "Auto ×3" and auto_done.get("bal") == 4700 and not auto_done.get("spinning"), "stop=%s %s" % (stop_lbl, auto_done))
     # Glücksrad: Bankrott -> Blackout-Klasse + Sylvie-Toast
     # Die Blackout-Klasse liegt nur zwischen dem 4.6s-Dreh-Wait und dem 900ms-Timeout danach an
     # (~4.6-5.5s); ein einzelner fester sleep(4.8) traf dieses Fenster unter Last (viele vorige

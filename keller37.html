@@ -622,7 +622,7 @@ body[data-zone="royal"] .panel { background: var(--panel); border: 1px solid var
 body.dev-open #toasts { z-index: 99; }
 /* -- Reduced Motion -- */
 @media (prefers-reduced-motion: reduce) {
-  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running::before, .plate.hit, .plate.broken, .taxi-road.running::before, .brake-flash.on, .ticket-pop, .mega-grid .cell.spin, .die.rolling, .lv-badge.point { animation: none !important; }
+  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running::before, .plate.hit, .plate.broken, .taxi-road.running::before, .brake-flash.on, .ticket-pop, .mega-reel.landed .strip, .mega-grid .cell.scatter, .mega-lights, .die.rolling, .lv-badge.point { animation: none !important; }
   .strip.spinning { animation: none !important; filter: none; }
   .stage, .stage.leaving, .stage.entering { transition: none; animation: none; }
   #wheelCanvas { transition-duration: .3s; }
@@ -808,7 +808,42 @@ body.mode-story #newgame { display: none; }
 .mega-grid { display: grid; grid-template-columns: repeat(5, var(--cell)); gap: var(--gap); background: #0a0a0a; padding: var(--pad); border: 1px solid var(--bronze); }
 .mega-grid .cell { width: var(--cell); height: var(--cell); display: flex; align-items: center; justify-content: center; font-size: calc(var(--cell) * .5); background: var(--ivory); color: #2a2418; border: 1px solid var(--gold); font-family: var(--font-display); font-weight: 700; }
 .mega-grid .cell.bar { font-size: calc(var(--cell) * .3); letter-spacing: .05em; }
-.mega-grid .cell.spin { animation: megaFlicker .12s linear infinite; }
+/* Walzen: jedes Fenster zeigt 3 Zellen eines längeren Streifens; der Streifen fährt per transform (Compositor) nach oben
+   durch und landet mit leichtem Nachwippen (Bezier > 1 – dafür liegt ein Puffersymbol hinter dem Ziel). */
+.mega-reel { position: relative; width: var(--cell); height: calc(var(--cell) * 3 + var(--gap) * 2); overflow: hidden; }
+.mega-reel .strip { display: flex; flex-direction: column; gap: var(--gap); will-change: transform; }
+.mega-reel .strip .cell { flex: 0 0 var(--cell); }
+.mega-reel.rolling .strip { transition: transform var(--dur, 2s) cubic-bezier(.18, .72, .28, 1.09); filter: blur(1.2px); }
+.mega-reel.landed .strip { animation: megaLand .32s ease-out; }
+@keyframes megaLand { 0% { transform: translateY(-5px); } 50% { transform: translateY(3px); } 100% { transform: translateY(0); } }
+.mega-reel::before, .mega-reel::after { content: ""; position: absolute; left: 0; right: 0; height: 14px; z-index: 1; pointer-events: none; }
+.mega-reel::before { top: 0; background: linear-gradient(rgba(0,0,0,.55), transparent); }
+.mega-reel::after { bottom: 0; background: linear-gradient(transparent, rgba(0,0,0,.55)); }
+/* Spannung: nach der dritten Walze glüht die Maschine, die letzten zwei Walzen laufen länger */
+.mega-machine.tense { box-shadow: inset 0 0 0 4px #141216, inset 0 0 0 5px var(--bronze), var(--shadow), 0 0 26px 4px rgba(241,223,168,.45); }
+.mega-machine.tense .mega-reel.rolling { box-shadow: inset 0 0 0 2px var(--gold-2); }
+.mega-grid .cell.scatter { animation: megaScatter .5s ease-in-out 4; }
+@keyframes megaScatter { 50% { transform: scale(1.18) rotate(-8deg); } }
+/* Lauflicht um den Rahmen: zwei Lagen mit versetztem Muster, nur die Deckkraft wechselt (kein Neuzeichnen) */
+.mega-lights { position: absolute; inset: 3px; pointer-events: none; z-index: 2; opacity: .35; padding: 3px;
+  background: repeating-linear-gradient(90deg, var(--gold-2) 0 6px, transparent 6px 18px);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; }
+.mega-lights.alt { background-position: 9px 0; opacity: 0; }
+.mega-machine .mega-lights { animation: megaLightsA 1.2s steps(1) infinite; }
+.mega-machine .mega-lights.alt { animation: megaLightsB 1.2s steps(1) infinite; }
+.mega-machine.rolling .mega-lights, .mega-machine.free .mega-lights { animation-duration: .3s; }
+.mega-machine.rolling .mega-lights.alt, .mega-machine.free .mega-lights.alt { animation-duration: .3s; }
+@keyframes megaLightsA { 0% { opacity: .55; } 50% { opacity: .12; } }
+@keyframes megaLightsB { 0% { opacity: .12; } 50% { opacity: .55; } }
+/* Gewinn-Banner über den Walzen: BIG WIN / MEGA WIN / FREISPIELE, Betrag zählt hoch */
+.mega-banner { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; pointer-events: none; opacity: 0; transform: scale(.7); transition: opacity .25s, transform .3s cubic-bezier(.2,1.4,.4,1); background: rgba(10,9,12,.72); }
+.mega-banner.show { opacity: 1; transform: scale(1); }
+.mega-banner .mb-title { font-family: var(--font-display); font-weight: 700; font-size: 2rem; letter-spacing: .25em; color: var(--gold-2); text-shadow: 0 0 18px var(--gold-2), 0 0 40px rgba(241,223,168,.6); white-space: nowrap; }
+.mega-banner.mega .mb-title { font-size: 2.4rem; color: #fff; animation: megaPulse .5s ease-in-out infinite alternate; }
+@media (max-width: 760px) { .mega-banner .mb-title { font-size: 1.5rem; } .mega-banner.mega .mb-title { font-size: 1.8rem; } .mega-banner .mb-amount { font-size: 1.3rem; } }
+.mega-banner .mb-amount { font-family: var(--font-mono); font-size: 1.6rem; color: #fff; text-shadow: 0 0 12px var(--gold-2); }
+.mega-banner.free .mb-title { color: var(--ivory); }
+@keyframes megaPulse { to { transform: scale(1.08); } }
 .mega-grid .cell.hit { position: relative; box-shadow: 0 0 0 3px var(--gold-2), 0 0 18px var(--gold-2); animation: hitBase .6s step-end 3; }
 .mega-grid .cell.hit::after { content: ""; position: absolute; inset: -1px; pointer-events: none; box-shadow: 0 0 22px 6px var(--gold-2); animation: hitGlow .6s ease 3; }
 .mega-lines-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
@@ -818,12 +853,13 @@ body.mode-story #newgame { display: none; }
 .mega-free { position: absolute; left: 0; right: 0; top: 0; z-index: 3; padding: 8px; text-align: center; background: #0b0a0c; border-bottom: 1px solid var(--gold); font-family: var(--font-display); font-weight: 700; letter-spacing: .2em; color: var(--gold); transform: translateY(-100%); transition: transform .35s ease; }
 .mega-free.show { transform: translateY(0); }
 .mega-machine.free .mega-grid .cell { border-color: var(--gold-2); box-shadow: inset 0 0 0 1px var(--gold-2); }
-@keyframes megaFlicker { 0% { opacity: .6; } 100% { opacity: 1; } }
-@media (hover: hover) { .mega-grid .cell.spin { filter: blur(2px); }
+.mega-lines-svg polyline:nth-child(2) { animation-delay: .3s; } .mega-lines-svg polyline:nth-child(3) { animation-delay: .6s; } .mega-lines-svg polyline:nth-child(4) { animation-delay: .9s; } .mega-lines-svg polyline:nth-child(5) { animation-delay: 1.2s; }
+@media (prefers-reduced-motion: reduce) { .mega-reel.rolling .strip { transition: none; filter: none; } .mega-reel.landed .strip, .mega-grid .cell.scatter, .mega-lights, .mega-banner.mega .mb-title { animation: none; } .mega-banner { transition: none; } }
+@media (hover: hover) {
   .mega-machine .slot-head { background: linear-gradient(100deg, var(--gold-2) 0 40%, #fff 50%, var(--gold-2) 60% 100%) 0 0 / 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: royalSheenText 6s linear infinite; will-change: transform; } }
 @keyframes royalSheenText { 0%, 80% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 @media (max-width: 760px) { .mega-panel { grid-template-columns: 1fr; } .mega-panel .paytable { justify-self: center; } .mega-machine { --cell: 50px; --gap: 5px; --pad: 8px; } }
-@media (prefers-reduced-motion: reduce) { .mega-machine .slot-head { animation: none; } .mega-lines-svg polyline { animation: none; stroke-dashoffset: 0; } .mega-free { transition: none; } .mega-grid .cell.spin { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .mega-machine .slot-head { animation: none; } .mega-lines-svg polyline { animation: none; stroke-dashoffset: 0; } .mega-free { transition: none; } }
 /* Casino Royal – Craps */
 .craps-panel { align-items: stretch; }
 .craps-table { position: relative; background: radial-gradient(ellipse at 50% 30%, #1f6b4a, #0e3d2a 70%, #082416); border: 6px solid #141216; border-radius: 80px / 30px; padding: 18px 26px 22px; box-shadow: 0 0 0 2px var(--gold), var(--shadow); }
@@ -1366,9 +1402,11 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
 <template id="tpl-megaslots">
   <div class="panel mega-panel">
     <div class="mega-machine">
+      <div class="mega-lights" aria-hidden="true"></div><div class="mega-lights alt" aria-hidden="true"></div>
       <div class="mega-free" id="megaFree">FREISPIELE ×2 · noch <span id="megaFreeLeft">0</span></div>
       <div class="slot-head">Mega Seven</div>
       <div class="mega-reels"><div class="mega-grid" id="megaGrid"></div><svg class="mega-lines-svg" id="megaLinesSvg" aria-hidden="true"></svg></div>
+      <div class="mega-banner" id="megaBanner" aria-live="polite"><div class="mb-title"></div><div class="mb-amount"></div></div>
       <div class="mega-lines" id="megaLines"></div>
     </div>
     <div class="chalk paytable">
@@ -1391,6 +1429,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
       <button class="chip" data-chip="500" data-v="50">500</button>
       <button class="chip" data-chip="1000" data-v="max">1000</button>
       <button class="btn solid" id="btnMega">Drehen</button>
+      <button class="btn ghost" id="btnMegaAuto" title="10 Runden am Stück – stoppt bei Big Win">Auto ×10</button>
       <button class="btn ghost sm" id="megaBack">← Lobby</button>
     </div>
   </div>
@@ -2196,11 +2235,11 @@ const SFX = {
     src.start(t0);
     src.stop(t0 + dur + 0.02);
   },
-  play(name) {
+  play(name, arg) {
     if (!this.ctx || this.muted) return;
     const f = this.LIB[name];
     if (!f) { console.warn('[sfx] unbekannt:', name); return; }
-    try { f.call(this); } catch (e) { console.error('[sfx]', name, e); }
+    try { f.call(this, arg); } catch (e) { console.error('[sfx]', name, e); }
   },
   loop(name, ms) {
     this.stop(name);
@@ -2221,6 +2260,12 @@ const SFX = {
     reelSpin() { this.noise({ dur: 0.12, vol: 0.08, freq: 600 }); },
     reelStop() { this.noise({ dur: 0.08, vol: 0.2, freq: 1200 }); this.tone({ freq: 300, type: 'square', dur: 0.08, vol: 0.15 }); },
     ballTick() { this.tone({ freq: 2600, type: 'square', dur: 0.012, vol: 0.08 }); },
+    /* Mega Seven: Walzenstopp mit steigender Tonhöhe (i = 0…4), Trommelwirbel-Tick, Fanfaren */
+    megaStop(i = 0) { this.noise({ dur: 0.07, vol: 0.22, freq: 1400 }); this.tone({ freq: 240 + i * 55, type: 'square', dur: 0.09, vol: 0.16 }); },
+    megaTick() { this.tone({ freq: 1800, type: 'square', dur: 0.015, vol: 0.06 }); },
+    bigWin() { [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone({ freq: f, type: 'triangle', dur: 0.3, vol: 0.22, delay: i * 0.08 })); this.noise({ dur: 0.3, vol: 0.08, freq: 3000, type: 'highpass', delay: 0.4 }); },
+    megaWin() { [392, 523, 659, 784, 1047, 1319, 1568].forEach((f, i) => { this.tone({ freq: f, type: 'triangle', dur: 0.45, vol: 0.22, delay: i * 0.1 }); this.tone({ freq: f / 2, type: 'square', dur: 0.4, vol: 0.06, delay: i * 0.1 }); }); },
+    countTick() { this.tone({ freq: 1400 + Math.random() * 300, type: 'square', dur: 0.02, vol: 0.05 }); },
     whinny() { this.tone({ freq: 900, type: 'sawtooth', dur: 0.35, vol: 0.12, slide: -500 }); this.noise({ dur: 0.3, vol: 0.05, freq: 2000, type: 'highpass' }); },
     gallop() { this.noise({ dur: 0.05, vol: 0.12, freq: 250 }); this.noise({ dur: 0.05, vol: 0.1, freq: 250, delay: 0.09 }); },
     heartbeat() { this.tone({ freq: 60, type: 'sine', dur: 0.12, vol: 0.5 }); this.tone({ freq: 50, type: 'sine', dur: 0.15, vol: 0.4, delay: 0.16 }); },
@@ -3528,18 +3573,45 @@ Bus.on('win', ({ amount, game }) => Royal.onWin(amount, game));
 
 /* ---- Mega Seven ---- */
 const MegaSlots = {
-  root: null, spinning: false, gen: 0, freeLeft: 0, lastBet: 0, freeRun: null, freeTotal: 0,
+  root: null, spinning: false, gen: 0, freeLeft: 0, lastBet: 0, freeRun: null, freeTotal: 0, auto: 0, bannerTimer: null, countRaf: null,
   alive(gen) { return !!this.root && this.gen === gen; },
   /* Freispiele gehören zum Spielstand, in dem sie gewonnen wurden: anderer State.s (Moduswechsel, Neues Spiel) → verfallen */
   checkFreeRun() { if (this.freeRun !== State.s) { this.freeLeft = 0; this.freeRun = null; } },
   cellText(sym) { return sym === 'BAR' ? 'BAR' : sym; },
-  render(grid, opts = {}) {
+  cell(sym, reel, row) { return h('div', { class: 'cell' + (sym === 'BAR' ? ' bar' : ''), 'data-reel': reel, 'data-row': row }, this.cellText(sym)); },
+  /* Fünf Walzenfenster, jedes mit einem Streifen aus den drei sichtbaren Zellen */
+  render(grid) {
     const g = qs('#megaGrid', this.root); if (!g) return;
     g.innerHTML = '';
-    for (let row = 0; row < 3; row++) for (let reel = 0; reel < 5; reel++) {
-      const sym = grid[reel][row];
-      g.append(h('div', { class: 'cell' + (sym === 'BAR' ? ' bar' : '') + (opts.spin && opts.spin.includes(reel) ? ' spin' : ''), 'data-reel': reel, 'data-row': row }, this.cellText(sym)));
+    for (let reel = 0; reel < 5; reel++) {
+      const strip = h('div', { class: 'strip' }, ...[0, 1, 2].map((row) => this.cell(grid[reel][row], reel, row)));
+      g.append(h('div', { class: 'mega-reel', 'data-reel': reel }, strip));
     }
+  },
+  shownGrid() { return [0, 1, 2, 3, 4].map((reel) => [0, 1, 2].map((row) => { const el = qs(`.cell[data-reel="${reel}"][data-row="${row}"]`, this.root); return el && el.classList.contains('bar') ? 'BAR' : (el ? el.textContent : '🍒'); })); },
+  /* Eine Walze losfahren lassen: Streifen = sichtbar + Füller + Ziel + Puffer, dann per Transition bis zum Ziel */
+  startReel(reel, target, ms, reduced) {
+    const win = qs(`.mega-reel[data-reel="${reel}"]`, this.root); if (!win) return;
+    const shown = this.shownGrid()[reel];
+    const filler = reduced ? 0 : RoyalRules.megaFillerCount(ms);
+    const syms = RoyalRules.megaStrip(shown, target, filler, Math.random);
+    const strip = h('div', { class: 'strip' }, ...syms.map((sym, i) => this.cell(sym, reel, i - RoyalRules.megaStripOffset(filler))));
+    win.innerHTML = ''; win.append(strip);
+    win.classList.remove('landed');
+    if (reduced) return;
+    const cs = getComputedStyle(qs('.mega-machine', this.root));
+    const step = parseFloat(cs.getPropertyValue('--cell')) + parseFloat(cs.getPropertyValue('--gap'));
+    void strip.offsetHeight; /* Startposition festschreiben, sonst gibt es keine Transition */
+    win.style.setProperty('--dur', `${ms}ms`);
+    win.classList.add('rolling');
+    strip.style.transform = `translateY(${-RoyalRules.megaStripOffset(filler) * step}px)`;
+  },
+  /* Walze steht: nur noch die drei Zielzellen im Fenster, kurzes Nachwippen */
+  landReel(reel, target, reduced) {
+    const win = qs(`.mega-reel[data-reel="${reel}"]`, this.root); if (!win) return;
+    win.classList.remove('rolling'); win.style.removeProperty('--dur');
+    win.innerHTML = ''; win.append(h('div', { class: 'strip' }, ...[0, 1, 2].map((row) => this.cell(target[row], reel, row))));
+    if (!reduced) win.classList.add('landed');
   },
   markHits(lines) {
     for (const w of lines) for (let r = 0; r < w.count; r++) {
@@ -3547,6 +3619,7 @@ const MegaSlots = {
       const el = qs(`.cell[data-reel="${r}"][data-row="${row}"]`, this.root); if (el) el.classList.add('hit');
     }
   },
+  markScatters() { qsa('.mega-grid .cell', this.root).forEach((el) => { if (el.textContent === RoyalRules.MEGA.SCATTER) el.classList.add('scatter'); }); },
   clearLines() { const svg = qs('#megaLinesSvg', this.root); if (svg) svg.innerHTML = ''; },
   /* Goldene Polylinie je Gewinnlinie über den getroffenen Zellen; Maße aus den CSS-Variablen der Maschine */
   drawLines(lines) {
@@ -3561,6 +3634,30 @@ const MegaSlots = {
       svg.append(pl);
     }
   },
+  /* Banner: 'big' | 'mega' | 'free'; Betrag zählt hoch (Münz-Ticken), bei Mega zusätzlich Goldregen und Rütteln */
+  showBanner(kind, amount, { instant = false } = {}) {
+    const b = qs('#megaBanner', this.root); if (!b) return;
+    clearTimeout(this.bannerTimer); if (this.countRaf) cancelAnimationFrame(this.countRaf);
+    const reduced = instant || matchMedia('(prefers-reduced-motion: reduce)').matches;
+    b.className = `mega-banner show ${kind}`;
+    qs('.mb-title', b).textContent = kind === 'mega' ? 'MEGA WIN' : kind === 'big' ? 'BIG WIN' : `${amount} FREISPIELE`;
+    const amt = qs('.mb-amount', b);
+    if (kind === 'free') { amt.textContent = `×${RoyalRules.MEGA.FREE_MULT} auf alles`; }
+    else if (reduced) { amt.textContent = UI.fmt(amount); }
+    else {
+      const dur = kind === 'mega' ? 2200 : 1300, t0 = performance.now(); let lastTick = 0;
+      const frame = (now) => {
+        const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+        amt.textContent = UI.fmt(Math.round(amount * e));
+        if (now - lastTick > 70 && p < 1) { lastTick = now; SFX.play('countTick'); }
+        this.countRaf = p < 1 ? requestAnimationFrame(frame) : null;
+      };
+      this.countRaf = requestAnimationFrame(frame);
+    }
+    if (kind === 'mega' && !instant) { Royal.goldRain(60); UI.shake(qs('.mega-machine', this.root)); }
+    if (!instant) this.bannerTimer = setTimeout(() => this.hideBanner(), kind === 'mega' ? 3600 : kind === 'big' ? 2600 : 1800);
+  },
+  hideBanner() { clearTimeout(this.bannerTimer); if (this.countRaf) { cancelAnimationFrame(this.countRaf); this.countRaf = null; } const b = qs('#megaBanner', this.root); if (b) b.classList.remove('show'); },
   syncFree() {
     this.checkFreeRun();
     if (!this.root) return;
@@ -3569,21 +3666,47 @@ const MegaSlots = {
     qs('#megaFreeLeft', this.root).textContent = this.freeLeft;
     const b = qs('#btnMega', this.root); if (b) b.textContent = this.freeLeft > 0 ? `Freispiel (${this.freeLeft})` : 'Drehen';
   },
+  syncAuto() {
+    const b = qs('#btnMegaAuto', this.root); if (!b) return;
+    b.textContent = this.auto > 0 ? `Stopp (${this.auto})` : `Auto ×${RoyalRules.MEGA.AUTO_ROUNDS}`;
+    b.classList.toggle('red', this.auto > 0);
+  },
+  /* Auto-Spin: Runden am Stück, gleicher Einsatz; Freispiele laufen mit und kosten keine Runde; Big/Mega Win, fehlendes Geld
+     oder ein Screen-Wechsel beenden die Serie. Ein zweiter Klick stoppt nach der laufenden Runde. */
+  async autoToggle() {
+    if (this.auto > 0) { this.auto = 0; this.syncAuto(); return; }
+    if (this.spinning) return;
+    this.auto = RoyalRules.MEGA.AUTO_ROUNDS; this.syncAuto();
+    const gen = this.gen;
+    while (this.auto > 0 && this.alive(gen)) {
+      const res = await this.spin();
+      if (!res || !this.alive(gen) || this.auto === 0) break;
+      if (!res.free) this.auto--;
+      if (!RoyalRules.megaAutoContinue(this.auto, res.tier)) break;
+      this.syncAuto();
+      await wait(res.tier === 'win' ? 900 : 450);
+    }
+    this.auto = 0; this.syncAuto();
+  },
+  /* Ein Dreh. Liefert { tier, free, payout } oder false, wenn er nicht gestartet ist (Einsatz ungültig, kein Geld, läuft schon). */
   async spin() {
-    if (this.spinning || !this.root) return;
+    if (this.spinning || !this.root) return false;
     this.checkFreeRun();
     const free = this.freeLeft > 0;
     const bet = free ? this.lastBet : Game.readBet('megaBet');
-    if (!free && !RoyalRules.MEGA.BETS.includes(bet)) { UI.toast({ icon: '🎰', title: 'Einsatz', text: 'Hier gilt 100, 250, 500 oder 1.000 €.', tone: 'loss' }); return; }
+    if (!free && !RoyalRules.MEGA.BETS.includes(bet)) { UI.toast({ icon: '🎰', title: 'Einsatz', text: 'Hier gilt 100, 250, 500 oder 1.000 €.', tone: 'loss' }); return false; }
     /* Freispiel: kein Einsatz, kein beginSpin (checkSpin verlangt bet > 0) – nur die Runde als laufend markieren; settle() räumt sie wieder ab */
-    if (free) { if (Game.settling) return; Game.inFlight++; }
-    else if (!Game.beginSpin(bet)) return;
+    if (free) { if (Game.settling) return false; Game.inFlight++; }
+    else if (!Game.beginSpin(bet)) return false;
     const run = State.s, gen = this.gen;
     this.spinning = true;
+    let tier = 'none', payout = 0;
+    const machine = qs('.mega-machine', this.root);
     try {
       qs('#btnMega', this.root).disabled = true;
       if (free) this.freeLeft--;
       this.lastBet = bet;
+      this.hideBanner();
       qs('#megaStatus', this.root).textContent = free ? 'Freispiel läuft…' : 'Walzen laufen…';
       qs('#megaLines', this.root).textContent = '';
       this.clearLines();
@@ -3591,20 +3714,24 @@ const MegaSlots = {
       const mods = Perks.mods();
       grid = RoyalRules.megaLuckOverride(grid, Rules.effectiveLuck(Rules.luck(State.s, mods), bet), Math.random);
       const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const shown = RoyalRules.megaRoll(Math.random);
-      this.render(shown, { spin: [0, 1, 2, 3, 4] });
+      const tense = RoyalRules.megaAnticipation(grid);
+      const stops = RoyalRules.megaStops(tense, reduced);
+      machine.classList.add('rolling'); machine.classList.remove('tense');
+      for (let i = 0; i < 5; i++) this.startReel(i, grid[i], stops[i], reduced);
       SFX.loop('reelSpin', 120);
-      const stops = reduced ? [100, 150, 200, 250, 300] : [700, 1050, 1400, 1750, 2100];
       for (let i = 0; i < 5; i++) {
         await wait(stops[i] - (i ? stops[i - 1] : 0));
         if (!this.alive(gen)) break;
-        shown[i] = grid[i];
-        this.render(shown, { spin: [1, 2, 3, 4].filter((k) => k > i) });
-        SFX.play('reelStop');
+        this.landReel(i, grid[i], reduced);
+        SFX.play('megaStop', i);
+        if (i === 2 && tense) { machine.classList.add('tense'); SFX.loop('heartbeat', 700); }
       }
-      SFX.stop('reelSpin');
+      SFX.stop('reelSpin'); SFX.stop('heartbeat');
+      if (this.alive(gen)) machine.classList.remove('rolling', 'tense');
       const w = RoyalRules.megaWin(grid, bet, free);
+      payout = w.payout;
       const delta = RoyalRules.megaDelta(bet, w.payout, free);
+      tier = RoyalRules.megaWinTier(w.payout, bet);
       const lastFree = free && this.freeLeft === 0;
       if (free) this.freeTotal += w.payout; else this.freeTotal = 0;
       if (w.freeSpins) { this.freeLeft = Math.min(RoyalRules.MEGA.FREE_MAX, this.freeLeft + w.freeSpins); this.freeRun = run; }
@@ -3616,30 +3743,36 @@ const MegaSlots = {
         st.innerHTML = w.payout > 0 ? `<span class="win">Auszahlung ${UI.fmt(w.payout)}${free ? ' (Freispiel ×2)' : ''}</span>` : `<span class="loss">${free ? 'Freispiel · nichts' : `Niete · −${UI.fmt(bet)}`}</span>`;
         if (lastFree && !w.freeSpins) st.innerHTML += ` · <span class="win">Freispiele vorbei · +${UI.fmt(this.freeTotal)}</span>`;
         this.syncFree();
+        if (tier === 'mega') { SFX.play('megaWin'); this.showBanner('mega', w.payout); await wait(reduced ? 300 : 2400); }
+        else if (tier === 'big') { SFX.play('bigWin'); this.showBanner('big', w.payout); await wait(reduced ? 300 : 1600); }
+        else if (w.payout > 0) SFX.play('cash');
+        if (w.freeSpins && this.alive(gen)) { this.markScatters(); SFX.play('unlock'); this.showBanner('free', w.freeSpins); await wait(reduced ? 200 : 1400); }
       }
       if (w.lines.some((l) => l.sym === '7️⃣' && l.count === 5)) Achievements.unlock('fuenfSiebener');
-      await Bus.emit('megaslots:result', { delta, bet: free ? 0 : bet, detail: { grid, lines: w.lines, scatters: w.scatters, free, freeLeft: this.freeLeft } });
+      await Bus.emit('megaslots:result', { delta, bet: free ? 0 : bet, detail: { grid, lines: w.lines, scatters: w.scatters, free, freeLeft: this.freeLeft, tier } });
       await Game.settle(delta, { from: this.alive(gen) ? qs('.mega-machine', this.root) : null, game: 'megaslots', bet: free ? 0 : bet, run });
     } finally {
-      SFX.stop('reelSpin');
+      SFX.stop('reelSpin'); SFX.stop('heartbeat');
       if (this.gen === gen) { this.spinning = false; const b = qs('#btnMega', this.root); if (b) b.disabled = false; this.syncFree(); }
     }
+    return { tier, free, payout };
   },
   onKey(e) { if (e.code === 'Space' && qs('#cutscene').hidden && !e.repeat) { e.preventDefault(); MegaSlots.spin(); } },
 };
 UI.register('megaslots', {
   template: 'tpl-megaslots',
   mount(root) {
-    MegaSlots.gen++; MegaSlots.root = root;
+    MegaSlots.gen++; MegaSlots.root = root; MegaSlots.auto = 0;
     MegaSlots.render([['🍒', '7️⃣', '💎'], ['🔔', '7️⃣', 'BAR'], ['💎', '7️⃣', '🍒'], ['BAR', '7️⃣', '🔔'], ['🍒', '7️⃣', '💎']]);
     MegaSlots.clearLines();
     Game.bindBet(root, 'megaBet');
     qs('#btnMega', root).addEventListener('click', () => MegaSlots.spin());
+    qs('#btnMegaAuto', root).addEventListener('click', () => { SFX.play('click'); MegaSlots.autoToggle(); });
     qs('#megaBack', root).addEventListener('click', () => { SFX.play('click'); UI.show('royal'); });
     document.addEventListener('keydown', MegaSlots.onKey);
-    MegaSlots.syncFree();
+    MegaSlots.syncFree(); MegaSlots.syncAuto();
   },
-  unmount() { MegaSlots.gen++; document.removeEventListener('keydown', MegaSlots.onKey); SFX.stop('reelSpin'); MegaSlots.root = null; MegaSlots.spinning = false; },
+  unmount() { MegaSlots.gen++; MegaSlots.auto = 0; MegaSlots.hideBanner(); document.removeEventListener('keydown', MegaSlots.onKey); SFX.stop('reelSpin'); SFX.stop('heartbeat'); MegaSlots.root = null; MegaSlots.spinning = false; },
 });
 /* ---- Craps ---- */
 const Craps = {
@@ -5723,6 +5856,10 @@ const RoyalRules = {
     PAY: { '🍒': [0, 0, 0, 2, 5, 10], '🔔': [0, 0, 0, 3, 10, 25], BAR: [0, 0, 0, 5, 20, 50], '💎': [0, 0, 0, 10, 40, 100], '7️⃣': [0, 0, 0, 20, 100, 500] },
     BETS: [100, 250, 500, 1000],
     FREE_SPINS: 5, FREE_MULT: 2, FREE_MAX: 15, SCATTER: '⭐',
+    BIG_MULT: 10, MEGA_MULT: 50, AUTO_ROUNDS: 10,
+    /* Präsentation: Stoppzeiten der Walzen (ms ab Start), Zuschlag je Spannungs-Walze, Symbole pro Sekunde auf dem Streifen */
+    STOPS: [900, 1200, 1500, 1800, 2100], STOPS_REDUCED: [80, 130, 180, 230, 280], TENSE_EXTRA: 1300, STRIP_SPEED: 9,
+    TENSE_SYMBOLS: ['7️⃣', '💎'],
   },
   megaSymbol(rng) {
     const M = RoyalRules.MEGA;
@@ -5774,6 +5911,39 @@ const RoyalRules = {
     return best || grid;
   },
   megaDelta(bet, payout, free) { return free ? payout : payout - bet; },
+  /* Gewinnstufe für die Feier: 'none' | 'win' | 'big' (≥ BIG_MULT × Einsatz) | 'mega' (≥ MEGA_MULT × Einsatz) */
+  megaWinTier(payout, bet) {
+    const M = RoyalRules.MEGA;
+    if (payout <= 0) return 'none';
+    if (payout >= bet * M.MEGA_MULT) return 'mega';
+    if (payout >= bet * M.BIG_MULT) return 'big';
+    return 'win';
+  },
+  /* Spannung: Nach drei Walzen sind Freispiele (zwei ⭐) oder ein großer Treffer (7️⃣/💎 dreimal auf einer Linie) in Reichweite –
+     dann laufen die letzten zwei Walzen länger. Das Ergebnis steht beim Start fest, die Entscheidung fällt also vorab. */
+  megaAnticipation(grid) {
+    const M = RoyalRules.MEGA;
+    let stars = 0;
+    for (let reel = 0; reel < 3; reel++) for (let row = 0; row < 3; row++) if (grid[reel][row] === M.SCATTER) stars++;
+    if (stars >= 2) return true;
+    return M.LINES.some((rows) => { const a = grid[0][rows[0]]; return M.TENSE_SYMBOLS.includes(a) && grid[1][rows[1]] === a && grid[2][rows[2]] === a; });
+  },
+  megaStops(tense, reduced) {
+    const M = RoyalRules.MEGA;
+    if (reduced) return M.STOPS_REDUCED.slice();
+    return M.STOPS.map((t, i) => t + (tense && i >= 3 ? M.TENSE_EXTRA * (i - 2) : 0));
+  },
+  /* Walzenstreifen: erst die drei sichtbaren Symbole (nahtloser Start), dann Füller, dann das Ziel, dann ein Puffer für das Nachwippen */
+  megaFillerCount(ms) { return Math.max(6, Math.round(ms / 1000 * RoyalRules.MEGA.STRIP_SPEED)); },
+  megaStrip(shown, target, filler, rng) {
+    const out = shown.slice(0, 3);
+    for (let i = 0; i < filler; i++) out.push(RoyalRules.megaSymbol(rng));
+    out.push(...target.slice(0, 3), RoyalRules.megaSymbol(rng));
+    return out;
+  },
+  megaStripOffset(filler) { return filler + 3; },
+  /* Auto-Spin: weiter, solange Runden übrig sind und kein Big/Mega Win zu feiern ist (Freispiele laufen mit, kosten keine Runde) */
+  megaAutoContinue(left, tier) { return left > 0 && tier !== 'big' && tier !== 'mega'; },
   /* ---- Craps: Pass Line + Field ---- */
   CRAPS: { MIN: 50, MAX: 2000, FIELD: { 2: 2, 3: 1, 4: 1, 9: 1, 10: 1, 11: 1, 12: 2 } },
   crapsRoll(rng) { return [Math.floor(rng() * 6) + 1, Math.floor(rng() * 6) + 1]; },
@@ -9114,6 +9284,53 @@ T.test('WHEEL: 24 Segmente, Verteilung, Erwartungswert 93,75 %', () => {
   T.eq(S.reduce((a, b) => a + b, 0) / 24, 0.9375);
   S.forEach((v, i) => { if (v === 0) T.ok(S[(i + 1) % 24] !== 0 || S[(i + 2) % 24] !== 0, `Bankrott ${i} hat binnen 2 Schritten ein Nicht-Bankrott-Segment`); });
 });
+T.test('megaWinTier: Gewinnstufe nach Vielfachem des Einsatzes', () => {
+  T.eq(RoyalRules.megaWinTier(0, 100), 'none');
+  T.eq(RoyalRules.megaWinTier(40, 100), 'win');
+  T.eq(RoyalRules.megaWinTier(999, 100), 'win');
+  T.eq(RoyalRules.megaWinTier(1000, 100), 'big', 'ab 10×');
+  T.eq(RoyalRules.megaWinTier(4999, 100), 'big');
+  T.eq(RoyalRules.megaWinTier(5000, 100), 'mega', 'ab 50×');
+  T.eq(RoyalRules.megaWinTier(10000, 1000), 'big', 'Freispiel: lastBet zählt');
+});
+T.test('megaAnticipation: Spannung, wenn nach drei Walzen Freispiele oder ein großer Treffer möglich sind', () => {
+  const g = (c0, c1, c2, c3 = ['🍒', '🔔', 'BAR'], c4 = ['🍒', '🔔', 'BAR']) => [c0, c1, c2, c3, c4];
+  T.eq(RoyalRules.megaAnticipation(g(['🍒', '🔔', 'BAR'], ['🍒', '🔔', 'BAR'], ['🍒', '🔔', 'BAR'])), false, 'nichts los');
+  T.eq(RoyalRules.megaAnticipation(g(['⭐', '🔔', 'BAR'], ['🍒', '⭐', 'BAR'], ['🍒', '🔔', 'BAR'])), true, 'zwei Sterne auf Walzen 0–2');
+  T.eq(RoyalRules.megaAnticipation(g(['⭐', '🔔', 'BAR'], ['🍒', '🔔', 'BAR'], ['🍒', '🔔', 'BAR'], ['⭐', '🍒', '🔔'])), false, 'zweiter Stern erst auf Walze 3 – zu spät zum Zittern');
+  T.eq(RoyalRules.megaAnticipation(g(['7️⃣', '🔔', 'BAR'], ['7️⃣', '🔔', 'BAR'], ['7️⃣', '🔔', 'BAR'])), true, 'drei Siebener auf Linie 2 (Reihe 0)');
+  T.eq(RoyalRules.megaAnticipation(g(['🍒', '💎', 'BAR'], ['🔔', '💎', 'BAR'], ['🍒', '💎', 'BAR'])), true, 'drei Diamanten auf der Mittellinie');
+  T.eq(RoyalRules.megaAnticipation(g(['🍒', 'BAR', '🔔'], ['🍒', 'BAR', '🔔'], ['🍒', 'BAR', '🔔'])), false, 'Kirschen/BAR reichen nicht');
+  T.eq(RoyalRules.megaAnticipation(g(['7️⃣', '🔔', 'BAR'], ['🔔', '7️⃣', 'BAR'], ['🍒', '🔔', '7️⃣'])), true, 'Siebener auf der V-Linie (Reihen 0-1-2) zählen auch');
+  T.eq(RoyalRules.megaAnticipation(g(['7️⃣', '🔔', 'BAR'], ['🔔', '7️⃣', 'BAR'], ['7️⃣', '🔔', 'BAR'])), false, 'Siebener verstreut, keine Linie');
+});
+T.test('megaStops: Stoppzeiten versetzt, mit Spannung laufen Walze 4 und 5 deutlich länger', () => {
+  const s = RoyalRules.megaStops(false, false);
+  T.eq(s.length, 5);
+  for (let i = 1; i < 5; i++) T.ok(s[i] > s[i - 1], 'aufsteigend');
+  const t = RoyalRules.megaStops(true, false);
+  T.eq(t.slice(0, 3), s.slice(0, 3), 'erste drei gleich');
+  T.ok(t[3] - t[2] >= 1000 && t[4] - t[3] >= 1000, 'Spannung: ≥ 1 s je Walze');
+  const r = RoyalRules.megaStops(true, true);
+  T.ok(r[4] <= 400, 'Reduced Motion: schnell, auch mit Spannung');
+});
+T.test('megaStrip: Streifen = sichtbare 3 + Füller + Ziel-3 + 1 Puffer', () => {
+  const seq = (...xs) => { let i = 0; return () => xs[i++ % xs.length]; };
+  const strip = RoyalRules.megaStrip(['🍒', '🔔', 'BAR'], ['7️⃣', '7️⃣', '7️⃣'], 4, seq(0.01));
+  T.eq(strip.length, 3 + 4 + 3 + 1);
+  T.eq(strip.slice(0, 3), ['🍒', '🔔', 'BAR'], 'beginnt mit dem, was gerade zu sehen ist');
+  T.eq(strip.slice(7, 10), ['7️⃣', '7️⃣', '7️⃣'], 'Ziel an Position Füller + 3');
+  T.eq(RoyalRules.megaStripOffset(4), 7, 'Verschiebung in Zellen bis zum Ziel');
+  T.ok(RoyalRules.megaFillerCount(2100) >= 12 && RoyalRules.megaFillerCount(4200) > RoyalRules.megaFillerCount(2100), 'längere Walzen = mehr Symbole');
+});
+T.test('megaAutoContinue: Auto-Spin läuft weiter, bis Runden aus sind oder ein großer Gewinn feiert', () => {
+  T.eq(RoyalRules.megaAutoContinue(5, 'none'), true);
+  T.eq(RoyalRules.megaAutoContinue(5, 'win'), true);
+  T.eq(RoyalRules.megaAutoContinue(0, 'none'), false, 'Runden aus');
+  T.eq(RoyalRules.megaAutoContinue(5, 'big'), false, 'Big Win stoppt');
+  T.eq(RoyalRules.megaAutoContinue(5, 'mega'), false, 'Mega Win stoppt');
+  T.eq(RoyalRules.MEGA.AUTO_ROUNDS, 10);
+});
 T.test('wheelSpin / wheelPayout / wheelDelta', () => {
   T.eq(RoyalRules.wheelSpin(seq(0)), 0);
   T.eq(RoyalRules.wheelSpin(seq(0.999)), 23);
@@ -11318,6 +11535,54 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.eq(qs('#tpl-daybar').content.querySelector('#btnTitleBack'), null, 'kein zweiter Tür-Knopf in der Tagesleiste');
     } finally {
       document.body.classList.toggle('mode-story', wasStory); document.body.classList.toggle('mode-free', !wasStory);
+    }
+  });
+  T.test('Mega Seven: echte Walzenstreifen, Banner, Lauflicht und Auto-Spin-Knopf', async () => {
+    const keep = { s: State.s, mode: State.mode, save: State.save, cur: UI.current, roll: RoyalRules.megaRoll, luck: RoyalRules.megaLuckOverride, spin: MegaSlots.spin };
+    State.save = () => {};
+    try {
+      State.mode = 'free'; State.s = State.fresh(); State.s.balance = 50000;
+      await UI.show('megaslots');
+      const root = qs('#stage');
+      const reels = qsa('.mega-reel', root);
+      T.eq(reels.length, 5, 'fünf Walzenfenster');
+      T.ok(reels.every((r) => qsa('.strip > .cell', r).length === 3), 'je drei sichtbare Zellen');
+      T.ok(qs('.cell[data-reel="4"][data-row="2"]', root), 'Zellen weiter über Walze/Reihe adressierbar (Gewinnlinien)');
+      T.eq(getComputedStyle(reels[0]).overflow, 'hidden', 'Fenster schneidet den Streifen');
+      T.ok(qs('#megaBanner', root) && !qs('#megaBanner', root).classList.contains('show'), 'Banner vorhanden, verborgen');
+      T.eq(qsa('.mega-lights', root).length, 2, 'zwei Lichtlagen (Attract-Mode)');
+      T.eq(qs('#btnMegaAuto', root).textContent, 'Auto ×10');
+      MegaSlots.showBanner('big', 1500, { instant: true });
+      const b = qs('#megaBanner', root);
+      T.ok(b.classList.contains('show') && b.classList.contains('big'), 'Banner big sichtbar');
+      T.eq(qs('.mb-title', b).textContent, 'BIG WIN');
+      T.eq(qs('.mb-amount', b).textContent, UI.fmt(1500));
+      MegaSlots.hideBanner();
+      T.ok(!b.classList.contains('show'));
+      /* Auto-Spin: Knopf schaltet um; Schleife endet sofort, wenn spin() nicht startet */
+      MegaSlots.spin = async () => false;
+      await MegaSlots.autoToggle();
+      T.eq(MegaSlots.auto, 0, 'Schleife beendet, Runden zurückgesetzt');
+      T.eq(qs('#btnMegaAuto', root).textContent, 'Auto ×10');
+      MegaSlots.spin = keep.spin;
+      /* Ein echter Dreh mit festem Ergebnis: Walzen landen auf dem Zielgitter, Linie gezeichnet, keine Spannungs-/Roll-Klassen mehr */
+      const target = [['🍒', '🍒', '💎'], ['BAR', '🍒', '⭐'], ['🔔', '🍒', 'BAR'], ['💎', '🔔', '🍒'], ['🍒', '💎', '🔔']];
+      RoyalRules.megaRoll = () => target.map((c) => c.slice()); RoyalRules.megaLuckOverride = (g) => g;
+      qs('#megaBet', root).value = '100';
+      const res = await MegaSlots.spin();
+      T.eq(res && res.tier, 'win', 'spin() meldet die Gewinnstufe');
+      const cells = [0, 1, 2, 3, 4].map((r) => [0, 1, 2].map((row) => qs(`.cell[data-reel="${r}"][data-row="${row}"]`, root).textContent));
+      T.eq(cells, target.map((c) => c.map((x) => x === 'BAR' ? 'BAR' : x)), 'Zielgitter sichtbar');
+      T.eq(qsa('#megaLinesSvg polyline', root).length, 1, 'eine Gewinnlinie');
+      const m = qs('.mega-machine', root);
+      T.ok(!m.classList.contains('rolling') && !m.classList.contains('tense'), 'Roll-/Spannungsklassen wieder weg');
+      T.eq(qsa('.mega-reel.rolling', root).length, 0);
+      T.eq(State.s.balance, 50000 - 100 + 40, 'Auszahlung 🍒×3 auf Linie 1 = 2 × 20 €');
+    } finally {
+      RoyalRules.megaRoll = keep.roll; RoyalRules.megaLuckOverride = keep.luck; MegaSlots.spin = keep.spin;
+      State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
+      UI.setBalance(State.s.balance, { animate: false }); UI.renderWallet(); UI.renderSide();
     }
   });
   T.test('Anlagen: Eingabe und Knopf aller drei Karten auf gleicher Höhe (Trickbetrug hat eine Textzeile mehr)', async () => {
