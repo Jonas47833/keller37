@@ -4350,7 +4350,7 @@ const Poker = {
   async deal() {
     if (this.inRound || !this.root) return;
     const ante = Game.readBet('pkBet');
-    if (State.s.balance < 3 * ante) { UI.toast({ icon: '♠️', title: 'Zu wenig für diesen Tisch', text: `Du brauchst 3× Ante (${UI.fmt(3 * ante)}).`, tone: 'loss' }); SFX.play('lose'); return; }
+    if (!Rules.checkSpin(State.s, 3 * ante, Perks.mods()).ok) { UI.toast({ icon: '♠️', title: 'Zu wenig für diesen Tisch', text: `Du brauchst 3× Ante (${UI.fmt(3 * ante)}).`, tone: 'loss' }); SFX.play('lose'); return; }
     if (!Game.beginSpin(ante)) return;
     const gen = this.gen;
     this.inRound = true; this.busy = true;
