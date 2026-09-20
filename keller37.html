@@ -169,11 +169,12 @@ body.cs-open .toast { max-width: 300px; }
 /* ==== 5. CUTSCENE – Bühne ==== */
 #cutscene { position: fixed; inset: 0; z-index: 80; background: #000; overflow: hidden; animation: fadeIn .3s ease both; }
 #cutscene[hidden] { display: none; }
+#cutscene.shake { animation: fadeIn .3s ease both, shake .35s ease both; } /* fx/cam "shake": ID-Regel oben schlägt .shake – fadeIn bleibt an Stelle 0, damit sie nicht neu anläuft */
 /* Welt = alles, was die Kamera zoomt: Himmel, Kulisse, Boden, Figuren, Vordergrund */
 .cs-world { position: absolute; inset: 0; contain: paint; transform-origin: 50% 50%; transition: transform .6s ease; }
 .cs-world.cs-fade { animation: csFade .5s ease both; }
 .cs-sky, .cs-back, .cs-actors, .cs-front { position: absolute; inset: 0; }
-.cs-front { pointer-events: none; }
+.cs-front { pointer-events: none; z-index: 2; } /* vor den Figuren (z 1, fern 0), hinter Blase und Streifen (5) */
 .cs-sky::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(0,0,0,.7) 100%); }
 .cs-sky.bar { background: linear-gradient(180deg, #3a1f0c 0%, #1a0d05 60%, #000 100%); }
 .cs-sky.hinterzimmer { background: radial-gradient(circle at 50% 20%, #5a3a12 0%, #1e1207 40%, #000 100%); }
@@ -3126,7 +3127,7 @@ const Cutscene = {
       f.el.classList.remove('talking'); // Skip mitten im Tippen: der alte Sprecher würde sonst weiter den Mund bewegen
       if (c.who === plan.speaker) speaker = f;
     }
-    if (plan.cam === 'shake') UI.shake(els.world);
+    if (plan.cam === 'shake') UI.shake(els.root); // die ganze Bühne, nicht die Welt: deren Transform trägt den Zoom, den die shake-Keyframes überschrieben
     else if (plan.cam === 'wide') els.world.style.transform = '';
     return speaker;
   },
@@ -12281,6 +12282,37 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       root.click(); await done3;
       T.ok(!Cutscene.active, 'Szene beendet');
     } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; for (const id of ['test.fall', 'test.liegt', 'test.pause']) delete Cutscene.SCENES[id]; }
+  });
+  T.test('Cutscene-Bühne: cam shake wackelt das Overlay und lässt den Zoom stehen; Vordergrund liegt vor den Figuren', async () => {
+    const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
+    State.save = () => {}; State.s = State.fresh();
+    Cutscene.instant = true;
+    Cutscene.define('test.shakezoom', [
+      { bg: 'gasse', who: 'du', mood: 'calm', cam: 'close', text: 'Nah.' },
+      { bg: 'gasse', who: 'du', mood: 'angry', cam: 'shake', text: 'Wackel.' },
+    ]);
+    const root = qs('#cutscene');
+    try {
+      const done = Cutscene.play('test.shakezoom', {});
+      await wait(40);
+      const world = qs('.cs-world', root);
+      T.ok(world.style.transform.includes('scale(1.8)'), 'Panel 1: Kamera close');
+      T.ok(!root.classList.contains('shake'), 'Panel 1: kein Wackeln');
+      root.click(); await wait(40);
+      T.ok(world.style.transform.includes('scale(1.8)'), 'Panel 2: Zoom bleibt trotz shake stehen');
+      T.ok(root.classList.contains('shake'), 'Panel 2: #cutscene wackelt');
+      T.eq(getComputedStyle(root).animationName, 'fadeIn, shake', '#cutscene.shake schlägt die ID-Regel, fadeIn bleibt an Stelle 0');
+      T.ok(!world.classList.contains('shake'), 'Welt selbst wackelt nicht');
+      /* Vordergrund (Regen) vor den Figuren: nur per z-index prüfbar – .cs-front hat pointer-events: none, elementFromPoint überspringt es */
+      const front = qs('.cs-front', root);
+      T.eq(getComputedStyle(front).zIndex, '2', '.cs-front z-index 2');
+      T.ok(qs('.life-rain', front), 'Regen im Vordergrund');
+      T.eq(getComputedStyle(qs('.cs-fig', root)).zIndex, '1', 'Figur z-index 1 (unter dem Vordergrund)');
+      T.eq(getComputedStyle(qs('.cs-bubble', root)).zIndex, '5', 'Blase z-index 5 (über dem Vordergrund)');
+      T.ok(front.compareDocumentPosition(qs('.cs-actors', root)) & Node.DOCUMENT_POSITION_PRECEDING, 'Vordergrund folgt den Figuren im DOM');
+      root.click(); await done;
+      T.ok(!Cutscene.active, 'Szene beendet');
+    } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.shakezoom']; }
   });
   T.test('Cutscene-Keyframes (cs*) animieren nur transform oder opacity', () => {
     let n = 0;
