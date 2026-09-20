@@ -4319,6 +4319,213 @@ UI.register('blackjack', {
 });
 </script>
 
+<script id="game-poker">
+/* ================= POKER – Five-Card Draw gegen den Wirt, eine Setzrunde ================= */
+const Poker = {
+  root: null, gen: 0, round: null, inRound: false, busy: false,
+  forceDeck: null, // Dev/Test: festes Deck für die nächste Runde (pop() zieht vom Ende)
+  GROUPS: ['pkBetControls', 'pkDrawControls', 'pkBetRound', 'pkCallRound'],
+  alive(gen) { return !!this.root && this.gen === gen; },
+  /* Runde ohne Abrechnung fallen lassen (Screen verlassen) – Einsätze sind bereits abgezogen */
+  drop(round) { if (round && !round.done) { round.done = true; Game.forfeit(); } },
+  show(group) { for (const g of this.GROUPS) qs('#' + g, this.root).classList.toggle('hidden', g !== group); },
+  status(html) { qs('#pkStatus', this.root).innerHTML = html; },
+  renderPot(round) { qs('#pkPot', this.root).textContent = `Pot · ${UI.fmt(round.pot)}`; },
+  renderHandName(round) { qs('#pkHandName', this.root).textContent = PokerRules.evaluate(round.pHand).name; },
+  playerCard(round, i) {
+    const el = UI.cardEl(round.pHand[i]);
+    el.addEventListener('click', () => this.toggle(i));
+    return el;
+  },
+  toggle(i) {
+    const r = this.round;
+    if (!r || r.phase !== 'draw' || this.busy) return;
+    if (r.picked.has(i)) r.picked.delete(i);
+    else if (r.picked.size < 3) r.picked.add(i);
+    else return;
+    SFX.play('click');
+    qsa('#pkPlayerCards .pcard', this.root)[i].classList.toggle('picked', r.picked.has(i));
+    qs('#btnPkDraw', this.root).textContent = r.picked.size ? `Tauschen (${r.picked.size})` : 'Behalten';
+  },
+  async deal() {
+    if (this.inRound || !this.root) return;
+    const ante = Game.readBet('pkBet');
+    if (State.s.balance < 3 * ante) { UI.toast({ icon: '♠️', title: 'Zu wenig für diesen Tisch', text: `Du brauchst 3× Ante (${UI.fmt(3 * ante)}).`, tone: 'loss' }); SFX.play('lose'); return; }
+    if (!Game.beginSpin(ante)) return;
+    const gen = this.gen;
+    this.inRound = true; this.busy = true;
+    const deck = this.forceDeck ? this.forceDeck.slice() : Rules.newDeck(Math.random);
+    this.forceDeck = null;
+    const round = { deck, pHand: [], wHand: [], ante, pot: 2 * ante, playerIn: ante, picked: new Set(), phase: 'deal', gen, run: Game.run, done: false };
+    this.round = round;
+    try {
+      qs('#pkPlayerCards', this.root).innerHTML = ''; qs('#pkWirtCards', this.root).innerHTML = '';
+      qs('#pkWirtDraw', this.root).textContent = ''; qs('#pkTell', this.root).classList.add('hidden');
+      qs('#btnPkDraw', this.root).textContent = 'Behalten';
+      this.show('pkDrawControls');
+      this.renderPot(round);
+      this.status('Welche Karten tauschen? (bis zu 3)');
+      for (let i = 0; i < 5; i++) round.pHand.push(round.deck.pop());
+      for (let i = 0; i < 5; i++) round.wHand.push(round.deck.pop());
+      for (let i = 0; i < 5; i++) {
+        if (!this.alive(gen)) break;
+        qs('#pkPlayerCards', this.root).append(this.playerCard(round, i));
+        qs('#pkWirtCards', this.root).append(UI.cardEl(round.wHand[i], true));
+        SFX.play('cardSlide');
+        await wait(180);
+      }
+      if (this.alive(gen)) {
+        this.renderHandName(round);
+        if (Perks.mods().pokerPeekDraw) qs('#pkWirtDraw', this.root).textContent = `wird ${PokerRules.wirtDraw(round.wHand).length} tauschen`; // Kartenhai
+      }
+      round.phase = 'draw';
+    } finally {
+      if (this.gen === gen) this.busy = false;
+      else this.drop(round);
+    }
+  },
+  async draw() {
+    const round = this.round;
+    if (!round || round.phase !== 'draw' || this.busy) return;
+    const gen = this.gen;
+    this.busy = true; round.phase = 'drawing';
+    try {
+      const idx = [...round.picked].sort((a, b) => a - b);
+      const before = PokerRules.evaluate(round.pHand);
+      const drawFn = () => { for (const i of idx) round.pHand[i] = round.deck.pop(); return round.pHand; };
+      drawFn();
+      const mods = Perks.mods();
+      const luck = Rules.effectiveLuck(Rules.luck(State.s, mods), round.ante);
+      if (idx.length) PokerRules.luckOverride(before, PokerRules.evaluate(round.pHand), drawFn, luck, Math.random);
+      for (const i of idx) {
+        if (!this.alive(gen)) break;
+        const cards = qsa('#pkPlayerCards .pcard', this.root);
+        cards[i].replaceWith(this.playerCard(round, i));
+        SFX.play('cardSlide');
+        await wait(180);
+      }
+      /* Wirt tauscht verdeckt */
+      const wIdx = PokerRules.wirtDraw(round.wHand);
+      for (const i of wIdx) round.wHand[i] = round.deck.pop();
+      if (this.alive(gen)) {
+        this.renderHandName(round);
+        qs('#pkWirtDraw', this.root).textContent = `tauscht ${wIdx.length}`;
+        await wait(400);
+        const tell = qs('#pkTell', this.root);
+        if (mods.pokerTell) {
+          tell.classList.remove('hidden');
+          if (!Rules.effectiveInsider(true, round.ante)) tell.textContent = `🧔 Wirts Tell: wirkt bis ${UI.fmt(Rules.INSIDER_CAP)}`;
+          else tell.textContent = PokerRules.evaluate(round.wHand).rank === 0 ? '🧔 Der Wirt kratzt sich am Bart' : '🧔 Der Wirt trinkt einen Schluck';
+        }
+        this.status('Setzen oder checken?');
+        this.show('pkBetRound');
+      }
+      round.phase = 'bet';
+    } finally {
+      if (this.gen === gen) this.busy = false;
+      else this.drop(round);
+    }
+  },
+  /* playerBets: true = Setzen (1× Ante), false = Checken */
+  async bet(playerBets) {
+    const round = this.round;
+    if (!round || round.phase !== 'bet' || this.busy) return;
+    const gen = this.gen;
+    this.busy = true; round.phase = 'wirt';
+    try {
+      if (playerBets) { Game.applyDelta(-round.ante, { quiet: true }); round.pot += round.ante; round.playerIn += round.ante; }
+      if (this.alive(gen)) { this.renderPot(round); this.show(null); this.status(playerBets ? 'Du setzt. Der Wirt überlegt…' : 'Du checkst. Der Wirt überlegt…'); }
+      await wait(500);
+      const act = PokerRules.wirtAct(round.wHand, playerBets ? 'facingBet' : 'checked', Math.random);
+      if (act === 'fold') return await this.finish(round, 'win', false);
+      if (act === 'check') return await this.showdown(round);
+      if (act === 'call') { round.pot += round.ante; return await this.showdown(round); }
+      /* bet oder raise: Wirt legt 1× Ante (bei raise zusätzlich zum Call) */
+      round.pot += act === 'raise' ? 2 * round.ante : round.ante;
+      if (this.alive(gen)) {
+        this.renderPot(round);
+        this.status(act === 'raise' ? `Der Wirt erhöht auf ${UI.fmt(2 * round.ante)}. Mitgehen?` : `Der Wirt setzt ${UI.fmt(round.ante)}. Mitgehen?`);
+        this.show('pkCallRound');
+      }
+      round.phase = 'answer';
+    } finally {
+      if (this.gen === gen) this.busy = false;
+      else this.drop(round);
+    }
+  },
+  /* call: true = Mitgehen (1× Ante), false = Aussteigen */
+  async answer(call) {
+    const round = this.round;
+    if (!round || round.phase !== 'answer' || this.busy) return;
+    const gen = this.gen;
+    this.busy = true; round.phase = 'end';
+    try {
+      if (!call) return await this.finish(round, 'lose', false);
+      Game.applyDelta(-round.ante, { quiet: true }); round.pot += round.ante; round.playerIn += round.ante;
+      if (this.alive(gen)) this.renderPot(round);
+      await this.showdown(round);
+    } finally {
+      if (this.gen === gen) this.busy = false;
+      else this.drop(round);
+    }
+  },
+  async showdown(round) {
+    if (this.alive(round.gen)) {
+      this.show(null);
+      this.status('Showdown');
+      const cards = qsa('#pkWirtCards .pcard', this.root);
+      for (let i = 0; i < cards.length; i++) { cards[i].classList.remove('hidden-card'); SFX.play('cardSlide'); await wait(160); }
+      await wait(400);
+    }
+    const c = PokerRules.compare(PokerRules.evaluate(round.pHand), PokerRules.evaluate(round.wHand));
+    await this.finish(round, c > 0 ? 'win' : c < 0 ? 'lose' : 'split', true);
+  },
+  async finish(round, outcome, showdown) {
+    if (round.done) return;
+    round.done = true;
+    const payout = PokerRules.payout(round.pot, outcome);
+    const net = payout - round.playerIn;
+    const pe = PokerRules.evaluate(round.pHand), we = showdown ? PokerRules.evaluate(round.wHand) : null;
+    if (this.alive(round.gen)) {
+      const msg = !showdown
+        ? (outcome === 'win' ? `<span class="win">Der Wirt wirft hin · +${UI.fmt(net)}</span>` : `<span class="loss">Aufgegeben · −${UI.fmt(round.playerIn)}</span>`)
+        : outcome === 'win' ? `<span class="win">${pe.name} schlägt ${we.name} · +${UI.fmt(net)}</span>`
+        : outcome === 'lose' ? `<span class="loss">${we.name} schlägt ${pe.name} · −${UI.fmt(round.playerIn)}</span>`
+        : `Geteilt · ${pe.name} gegen ${we.name}`;
+      this.status(msg);
+      this.show('pkBetControls');
+    }
+    if (this.gen === round.gen) { this.inRound = false; this.busy = false; }
+    await Bus.emit('poker:result', { outcome, showdown, player: pe, wirt: we, pot: round.pot, ante: round.ante });
+    await Game.settle(net, { from: this.alive(round.gen) ? qs('#pkPlayerCards', this.root) : null, game: 'poker', bet: round.playerIn, run: round.run });
+  },
+};
+
+UI.register('poker', {
+  template: 'tpl-poker',
+  mount(root) {
+    Poker.gen++;
+    Poker.root = root;
+    Game.bindBet(root, 'pkBet', () => Math.max(1, Math.floor(Rules.maxBet(State.s, Perks.mods()) / 3)));
+    qs('#btnPkDeal', root).addEventListener('click', () => Poker.deal());
+    qs('#btnPkDraw', root).addEventListener('click', () => Poker.draw());
+    qs('#btnPkBet', root).addEventListener('click', () => Poker.bet(true));
+    qs('#btnPkCheck', root).addEventListener('click', () => Poker.bet(false));
+    qs('#btnPkCall', root).addEventListener('click', () => Poker.answer(true));
+    qs('#btnPkFold', root).addEventListener('click', () => Poker.answer(false));
+  },
+  unmount() {
+    Poker.gen++;
+    if (Poker.inRound) {
+      /* Zwischen zwei Aktionen verlassen: Runde sofort fallen lassen. Läuft noch eine Kette (busy), räumt die selbst auf. */
+      if (!Poker.busy) Poker.drop(Poker.round);
+      UI.toast({ icon: '♠️', title: 'Hand aufgegeben', text: 'Einsatz verfallen.', tone: 'loss' });
+    }
+    Poker.root = null; Poker.inRound = false; Poker.busy = false;
+  },
+});
+</script>
+
 <script id="game-roulette">
 /* ================= ROULETTE ================= */
 const Roulette = {
