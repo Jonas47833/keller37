@@ -1234,7 +1234,7 @@ async def scenario_kater(cdp):
     await asyncio.sleep(0.7)
     await cdp.inject_helpers()
     await cdp.wait_for("__pt.cutsceneActive() && document.querySelector('#cutscene .cs-name')", timeout=2.0)
-    first_bg = await cdp.eval("(document.querySelector('#cutscene .cs-bg')||{}).className || ''", await_promise=False)
+    first_bg = await cdp.eval("(document.querySelector('#cutscene .cs-sky')||{}).className || ''", await_promise=False)
     first_who = await cdp.eval("(document.querySelector('#cutscene .cs-name')||{}).textContent", await_promise=False)
     await cdp.advance_cutscene(max_steps=20)
     # Tag-1-Morgen (einrichten/niereWeg) laeuft nach dem Intro fire-and-forget bis zur Pinnwand
@@ -1865,7 +1865,7 @@ async def scenario_royal_look(cdp):
     # Rueckweg kostet (freies Spiel, kein Gast): Sylvie fragt nach. "Bleiben" -> Royal, nochmal + "Gehen" -> Stadt
     await cdp.click("#royalLeave")
     asked = await cdp.wait_for("__pt.cutsceneActive() && document.querySelectorAll('.cs-choices button').length === 2", timeout=4.0)
-    text = await cdp.eval("document.querySelector('.cs-box').textContent", await_promise=False) or ""
+    text = await cdp.eval("document.querySelector('.cs-bubble').textContent", await_promise=False) or ""
     labels = await cdp.eval("[...document.querySelectorAll('.cs-choices button')].map(b => b.textContent)", await_promise=False)
     record("royal: Verlassen fragt nach (Sylvie, 100 EUR, Bleiben/Gehen)", asked and "100" in text and labels == ["Bleiben", "Gehen"], "asked=%s labels=%s" % (asked, labels))
     await cdp.eval("__pt.advance('Bleiben')", await_promise=False)

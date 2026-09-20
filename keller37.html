@@ -166,50 +166,175 @@ body.cs-open .toast { max-width: 300px; }
 .floatnum.up { color: var(--gold-2); }
 .floatnum.down { color: var(--neon-red); }
 .shake { animation: shake .35s ease both; }
-/* ==== 5. CUTSCENE ==== */
-#cutscene { position: fixed; inset: 0; z-index: 80; display: flex; flex-direction: column; justify-content: flex-end; background: #000; overflow: hidden; animation: fadeIn .3s ease both; }
+/* ==== 5. CUTSCENE – Bühne ==== */
+#cutscene { position: fixed; inset: 0; z-index: 80; background: #000; overflow: hidden; animation: fadeIn .3s ease both; }
 #cutscene[hidden] { display: none; }
-.cs-bg { position: absolute; inset: 0; transition: background 1s; }
-.cs-bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(0,0,0,.8) 100%); }
-.cs-bg .prop { position: absolute; font-size: 6rem; opacity: .22; filter: blur(1px) grayscale(.4); }
-.cs-bg.bar { background: linear-gradient(180deg, #3a1f0c 0%, #1a0d05 60%, #000 100%); }
-.cs-bg.hinterzimmer { background: radial-gradient(circle at 50% 20%, #5a3a12 0%, #1e1207 40%, #000 100%); }
-.cs-bg.standesamt { background: linear-gradient(180deg, #f3e6c8 0%, #c9b58f 60%, #6b5b3f 100%); }
-.cs-bg.villa { background: linear-gradient(180deg, #0a1636 0%, #16244d 50%, #0a0f1f 100%); }
-.cs-bg.hafen { background: linear-gradient(180deg, #02050f 0%, #0a1a33 55%, #041020 100%); }
-.cs-bg.hafen-morgen { background: linear-gradient(180deg, #2c2a4a 0%, #c4573b 45%, #f0a35a 70%, #3b2a2a 100%); }
-.cs-bg.klinik { background: linear-gradient(180deg, #0d3b3f 0%, #0a2224 60%, #020a0b 100%); }
-.cs-bg.bank { background: linear-gradient(180deg, #0c1f33 0%, #123a5c 50%, #06131f 100%); }
-.cs-bg.strasse { background: linear-gradient(180deg, #7fb2e5 0%, #c7d7e3 50%, #5b5b4d 100%); }
-.cs-bg.keller { background: radial-gradient(circle at 50% 10%, #4a4a3a 0%, #151512 40%, #000 100%); }
-.cs-bg.bahnhof { background: linear-gradient(180deg, #05070d 0%, #1a2233 45%, #3b3a2a 100%); }
-.cs-bg.pfandleihe { background: linear-gradient(180deg, #2a2418 0%, #14110a 60%, #000 100%); }
-.cs-money { position: absolute; top: 16px; left: 20px; z-index: 3; font-family: var(--font-mono); font-size: 1.3rem; font-weight: 700; color: var(--gold-2); background: rgba(0,0,0,.5); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(201,162,39,.4); }
+#cutscene.shake { animation: fadeIn .3s ease both, shake .35s ease both; } /* fx/cam "shake": ID-Regel oben schlägt .shake – fadeIn bleibt an Stelle 0, damit sie nicht neu anläuft */
+/* Welt = alles, was die Kamera zoomt: Himmel, Kulisse, Boden, Figuren, Vordergrund */
+.cs-world { position: absolute; inset: 0; contain: paint; transform-origin: 50% 50%; transition: transform .6s ease; }
+.cs-world.cs-fade { animation: csFade .5s ease both; }
+.cs-sky, .cs-back, .cs-actors, .cs-front { position: absolute; inset: 0; }
+.cs-front { pointer-events: none; z-index: 2; } /* vor den Figuren (z 1, fern 0), hinter Blase und Streifen (5) */
+.cs-sky::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(0,0,0,.7) 100%); }
+.cs-sky.bar { background: linear-gradient(180deg, #3a1f0c 0%, #1a0d05 60%, #000 100%); }
+.cs-sky.hinterzimmer { background: radial-gradient(circle at 50% 20%, #5a3a12 0%, #1e1207 40%, #000 100%); }
+.cs-sky.standesamt { background: linear-gradient(180deg, #f3e6c8 0%, #c9b58f 60%, #6b5b3f 100%); }
+.cs-sky.villa { background: linear-gradient(180deg, #0a1636 0%, #16244d 50%, #0a0f1f 100%); }
+.cs-sky.hafen { background: linear-gradient(180deg, #02050f 0%, #0a1a33 55%, #041020 100%); }
+.cs-sky.hafen-morgen { background: linear-gradient(180deg, #2c2a4a 0%, #c4573b 45%, #f0a35a 70%, #3b2a2a 100%); }
+.cs-sky.klinik { background: linear-gradient(180deg, #0d3b3f 0%, #0a2224 60%, #020a0b 100%); }
+.cs-sky.bank { background: linear-gradient(180deg, #0c1f33 0%, #123a5c 50%, #06131f 100%); }
+.cs-sky.strasse { background: linear-gradient(180deg, #7fb2e5 0%, #c7d7e3 50%, #5b5b4d 100%); }
+.cs-sky.keller { background: radial-gradient(circle at 50% 10%, #4a4a3a 0%, #151512 40%, #000 100%); }
+.cs-sky.bahnhof { background: linear-gradient(180deg, #05070d 0%, #1a2233 45%, #3b3a2a 100%); }
+.cs-sky.pfandleihe { background: linear-gradient(180deg, #2a2418 0%, #14110a 60%, #000 100%); }
+.cs-sky.gasse { background: linear-gradient(180deg, #05070d 0%, #1a1e2a 60%, #2a2a26 100%); }
+.cs-sky.autohaus { background: linear-gradient(180deg, #1a1e26 0%, #2a2e38 100%); }
+.cs-sky.intersport { background: linear-gradient(180deg, #dfe6ee 0%, #b8c4d0 100%); }
+.cs-sky.royal { background: radial-gradient(circle at 50% 0%, #3a0a10 0%, #12060a 60%, #000 100%); }
+.cs-set { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cs-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 12%; background: linear-gradient(#1a1610, #0a0806); border-top: 1px solid rgba(255,255,255,.08); }
+/* Figuren: Position nur per transform (--x in px, von der Engine gesetzt). Aufbau: .cs-fig (Platz) > .cs-fig-inner (Blickrichtung --face,
+   Schwanken) > .cs-body (Atmen, Umfallen, Zucken) > acht gestapelte Teil-SVGs (Beine, Rumpf, Arme, Kopf, Augen, Mund) mit derselben viewBox.
+   Drehpunkte in Prozent der Figur (100×180 Einheiten): Schulter (21|79 %, 45.6 %), Hüfte (38|61 %, 65.6 %), Hals (50 %, 34.4 %), Standlinie (50 %, 95.6 %). */
+.cs-fig { position: absolute; left: 0; bottom: 12%; height: min(42vh, 380px); aspect-ratio: 5 / 9; --x: 0px; --face: 1; transform: translateX(calc(var(--x) - 50%)); transition: transform .6s ease; filter: drop-shadow(0 8px 8px rgba(0,0,0,.7)); z-index: 1; }
+.cs-fig.walking { will-change: transform; }
+.cs-fig.far { transform: translateX(calc(var(--x) - 50%)) translateY(-25%) scale(.6); z-index: 0; }
+.cs-fig::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 120%; height: 24px; transform: translateX(-50%); background: radial-gradient(ellipse, rgba(201,162,39,.35), transparent 70%); opacity: 0; transition: opacity .4s; z-index: -1; }
+.cs-fig.speaking::after { opacity: 1; }
+.cs-fig-inner { position: absolute; inset: 0; transform: scaleX(var(--face)); transform-origin: 50% 50%; }
+.cs-fig-inner.klein { top: 15%; }
+.cs-fig-inner.sway { animation: csSway 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+.cs-body { position: absolute; inset: 0; transform-origin: 50% 95.6%; }
+.cs-fig .part { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+.cs-fig .m { opacity: 0; }
+.mood-calm .m-calm, .mood-angry .m-angry, .mood-happy .m-happy, .mood-shock .m-shock, .mood-dead .m-dead { opacity: 1; }
+.cs-fig .eyes { animation: csBlink 4s infinite; transform-origin: 50% 26.7%; }
+.cs-fig .ember { animation: csGlow 1.4s infinite; }
+.cs-fig.talking .mouth { animation: csMouth .25s steps(2) infinite; transform-origin: 50% 33.9%; }
+/* Posen */
+.cs-fig[data-pose="idle"] .cs-body { animation: csBreathe 3s ease-in-out infinite; }
+.cs-fig[data-pose="talk"] .cs-body { animation: csNod .5s ease-in-out infinite; }
+.cs-fig[data-pose="talk"] .armR { animation: csTalkArm 1.2s ease-in-out infinite; }
+.cs-fig .armL, .cs-fig .armR, .cs-fig .legL, .cs-fig .legR { transition: transform .3s ease; }
+.cs-fig .armL { transform-origin: 21% 45.6%; } .cs-fig .armR { transform-origin: 79% 45.6%; }
+.cs-fig .legL { transform-origin: 38% 65.6%; } .cs-fig .legR { transform-origin: 61% 65.6%; }
+.cs-fig.speaking .mood-happy .cs-body { animation: bounce .7s infinite; }   /* nach talk: froher Sprecher wippt statt zu nicken */
+.cs-fig[data-pose="point"] .armR { transform: rotate(-70deg); }
+.cs-fig[data-pose="arms-crossed"] .armL { transform: rotate(-75deg); }
+.cs-fig[data-pose="arms-crossed"] .armR { transform: rotate(75deg); }
+.cs-fig[data-pose="hands-up"] .armL { transform: rotate(160deg); }
+.cs-fig[data-pose="hands-up"] .armR { transform: rotate(-160deg); }
+.cs-fig[data-pose="walk"] .legL, .cs-fig[data-pose="walk"] .armR { animation: csStepA .4s ease-in-out infinite alternate; }
+.cs-fig[data-pose="walk"] .legR, .cs-fig[data-pose="walk"] .armL { animation: csStepB .4s ease-in-out infinite alternate; }
+.cs-fig[data-pose="down"] .cs-body { animation: csFall var(--fall, .5s) ease-in forwards; } /* Keyframe statt Transition: startet auch, wenn vorher csBreathe/csNod lief; --fall: 0s = liegend gefunden */
+.cs-fig[data-pose="flinch"] .cs-body { animation: csFlinch .4s ease both; }
+@keyframes csFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes csBlink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+@keyframes csGlow { 50% { opacity: .4; } }
+@keyframes csSway { 0%, 100% { transform: scaleX(var(--face)) rotate(-2deg); } 50% { transform: scaleX(var(--face)) rotate(2deg); } }
+@keyframes csMouth { from { transform: scaleY(1); } to { transform: scaleY(2.2); } }
+@keyframes csBreathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.02); } }
+@keyframes csNod { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-1.5deg); } }
+@keyframes csTalkArm { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-35deg); } }
+@keyframes csStepA { from { transform: rotate(-20deg); } to { transform: rotate(20deg); } }
+@keyframes csStepB { from { transform: rotate(20deg); } to { transform: rotate(-20deg); } }
+@keyframes csFall { from { transform: rotate(0); } to { transform: rotate(85deg); } }
+@keyframes csFlinch { 0% { transform: translateX(0) rotate(0); } 30% { transform: translateX(-12px) rotate(-8deg); } 100% { transform: translateX(-4px) rotate(-3deg); } }
+/* Sprechblase, Ausruf, Streifen */
+.cs-bubble { position: absolute; z-index: 5; max-width: min(460px, 70%); background: #f4efe2; color: #1a1208; border-radius: 14px; border-left: 5px solid var(--c, #8b1e1e); padding: 10px 14px 18px; box-shadow: 0 6px 18px rgba(0,0,0,.6); animation: popIn .18s ease both; --tail: 40px; }
+.cs-bubble[hidden] { display: none; }
+.cs-bubble::after { content: ""; position: absolute; left: var(--tail); bottom: -12px; margin-left: -10px; border: 10px solid transparent; border-top-color: #f4efe2; border-bottom: 0; }
+.cs-bubble.narrator { background: rgba(12,12,10,.92); color: var(--text); border: 1px solid var(--gold); }
+.cs-bubble.narrator::after { display: none; }
+.cs-name { font-family: var(--font-display); letter-spacing: .14em; font-size: .8rem; color: #5a3020; margin-bottom: 4px; }
+.cs-bubble.narrator .cs-name { color: var(--gold-2); }
+.cs-text { font-size: 1.05rem; line-height: 1.5; }
+.cs-next { position: absolute; right: 12px; bottom: 4px; color: #8b1e1e; animation: bob 1s infinite; font-size: .9rem; }
+.cs-shout { position: absolute; z-index: 6; font-family: var(--font-display); font-size: 2.6rem; letter-spacing: .06em; color: #fff; text-shadow: 0 0 14px var(--neon-red), 0 0 30px var(--neon-red); opacity: 0; pointer-events: none; transform: translate(-50%, -110%) rotate(-8deg); }
+.cs-shout.on { animation: csShout .9s ease both; }
+@keyframes csShout { 0% { opacity: 0; transform: translate(-50%, -110%) rotate(-8deg) scale(.4); } 15% { opacity: 1; transform: translate(-50%, -110%) rotate(-8deg) scale(1.15); } 25% { transform: translate(-50%, -110%) rotate(-8deg) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -130%) rotate(-8deg) scale(1); } }
+.cs-bar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; align-items: flex-end; gap: 12px; padding: 12px 16px; pointer-events: none; }
+.cs-bar > * { pointer-events: auto; }
+.cs-bar-mid { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.cs-money { font-family: var(--font-mono); font-size: 1.3rem; font-weight: 700; color: var(--gold-2); background: rgba(0,0,0,.5); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(201,162,39,.4); }
 .cs-money.up { animation: pulseGold .6s ease both; }
 .cs-money.down { animation: pulseRed .6s ease both; }
-.cs-stage { position: relative; z-index: 2; display: flex; align-items: flex-end; gap: 24px; padding: 0 6vw 4vh; max-width: 1100px; width: 100%; margin: 0 auto; }
-.cs-portrait { flex: 0 0 auto; width: 170px; height: 170px; border-radius: 50%; border: 5px solid var(--c, var(--gold)); background: radial-gradient(circle at 40% 35%, #3a3a33, #0d0d0b);
-  display: flex; align-items: center; justify-content: center; font-size: 6rem; box-shadow: 0 0 30px rgba(0,0,0,.8), 0 0 24px var(--c, var(--gold)); margin-bottom: 10px; }
-.cs-portrait.calm { animation: breathe 3s ease-in-out infinite; }
-.cs-portrait.angry { animation: shake .5s infinite; }
-.cs-portrait.happy { animation: bounce .7s infinite; }
-.cs-portrait.shock { animation: shockZoom .5s ease both; }
-.cs-portrait.dead { filter: grayscale(1) brightness(.6); transform: rotate(12deg); }
-.cs-box { flex: 1; --c: var(--gold); background: rgba(12,12,10,.92); border: 2px solid var(--c); border-radius: 10px; padding: 18px 22px 26px; min-height: 150px; position: relative; box-shadow: 0 0 40px rgba(0,0,0,.8); }
-.cs-name { font-family: var(--font-display); letter-spacing: .14em; font-size: 1.3rem; color: var(--c); margin-bottom: 8px; text-shadow: 0 0 10px var(--c); }
-.cs-text { font-size: 1.15rem; line-height: 1.55; min-height: 3.2em; }
-.cs-next { position: absolute; right: 16px; bottom: 8px; color: var(--c); animation: bob 1s infinite; font-size: 1.1rem; }
-.cs-choices { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
-.cs-choices:empty { display: none; }
-.cs-skip { position: absolute; top: 16px; right: 20px; z-index: 3; background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.2); color: var(--dim); font-family: var(--font-display); letter-spacing: .1em; padding: 6px 12px; border-radius: 4px; }
+.cs-skip { background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.2); color: var(--dim); font-family: var(--font-display); letter-spacing: .1em; padding: 6px 12px; border-radius: 4px; }
 .cs-skip:hover { color: var(--text); border-color: var(--text); }
+.cs-choices { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.cs-choices:empty { display: none; }
+.cs-extra:empty { display: none; }
+.cs-stats { display: grid; grid-template-columns: 1fr auto; gap: 4px 20px; font-family: var(--font-mono); background: rgba(12,12,10,.92); border: 1px solid var(--gold); border-radius: 8px; padding: 10px 14px; }
+.cs-stats span:nth-child(even) { text-align: right; color: var(--gold-2); }
 .cs-flash { position: absolute; inset: 0; background: #fff; z-index: 4; pointer-events: none; opacity: 0; }
 .cs-flash.on { animation: flash .18s ease both; }
 .cs-black { position: absolute; inset: 0; background: #000; z-index: 4; pointer-events: none; opacity: 0; transition: opacity .5s; }
 .cs-black.on { opacity: 1; }
 .cs-particle { position: absolute; z-index: 3; pointer-events: none; animation: particleUp 1.6s ease-out both; }
-.cs-stats { margin-top: 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 20px; font-family: var(--font-mono); }
-.cs-stats span:nth-child(even) { text-align: right; color: var(--gold-2); }
+/* Sofort-Modus (Tests, Skip, reduced-motion): keine Wege, keine Überblendung */
+.cs-instant .cs-fig, .cs-instant .cs-world { transition: none !important; }
+.cs-instant .cs-world.cs-fade { animation: none; }
+.cs-snap .cs-fig, .cs-snap .cs-world { transition: none !important; }
+.cs-instant .cs-fig .part, .cs-snap .cs-fig .part { transition: none !important; }
+.cs-instant .cs-fig[data-pose="down"] .cs-body { animation-duration: 0s !important; } /* Sofort-Modus: liegt sofort (Snap beendet einen laufenden Fall per getAnimations().finish(), siehe _snap) */
+/* Kulissen-Leben – ausschließlich transform/opacity */
+.life-neon { animation: csFlicker 3s infinite; }
+.life-flicker { animation: csFlicker 4s infinite; }
+.life-smoke { animation: csSmoke 4s ease-in-out infinite; }
+.life-blink { animation: csBlinkLight 2s steps(2) infinite; }
+.life-swing { animation: csSwing 5s ease-in-out infinite; }
+.life-candle { animation: csCandle .8s ease-in-out infinite alternate; }
+.life-car { animation: csCar 9s linear infinite; }
+.life-rain { animation: csRain .7s linear infinite; }
+.life-cat { animation: csCat 14s linear infinite; }
+.life-wave { animation: csWave 3s ease-in-out infinite; }
+.life-gull { animation: csGull 12s linear infinite; }
+.life-sun { animation: csSun 30s linear both; }
+.life-ekg { animation: csPulse 1.2s ease-in-out infinite; }
+.life-ticker { animation: csTicker 3s steps(1) infinite; }
+.life-dust { animation: csDust 4s linear infinite; }
+.life-city { animation: csTicker 3s steps(1) infinite; }
+.life-shimmer { animation: csShimmer 2s linear infinite; }
+.life-train { animation: csTrain 12s linear infinite; }
+.life-tick { animation: csTick 60s steps(60) infinite; }
+.life-sway { animation: csLean 4s ease-in-out infinite; }
+.life-spot { animation: csSpot 6s ease-in-out infinite; }
+.life-glitter { animation: csGlitter 1.6s ease-in-out infinite; }
+@keyframes csFlicker { 0%, 92%, 100% { opacity: 1; } 94% { opacity: .3; } 96% { opacity: 1; } 98% { opacity: .5; } }
+@keyframes csSmoke { 0% { transform: translateY(0); opacity: .25; } 100% { transform: translateY(-40px); opacity: 0; } }
+@keyframes csBlinkLight { 50% { opacity: .4; } }
+@keyframes csSwing { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@keyframes csCandle { from { transform: scale(1); } to { transform: scale(.85, 1.1); } }
+@keyframes csCar { 0%, 55% { transform: translateX(0); } 100% { transform: translateX(1300px); } }
+@keyframes csRain { from { transform: translateY(0); } to { transform: translateY(400px); } }
+@keyframes csCat { 0%, 70% { transform: translateX(-60px); } 90%, 100% { transform: translateX(1100px); } }
+@keyframes csWave { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(50px); } }
+@keyframes csGull { from { transform: translate(200px, 120px); } to { transform: translate(900px, 80px); } }
+@keyframes csSun { from { transform: translateY(80px); } to { transform: translateY(0); } }
+@keyframes csPulse { 50% { opacity: .4; } }
+@keyframes csTicker { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes csDust { 0% { transform: translate(0, 0); opacity: 0; } 50% { opacity: .8; } 100% { transform: translate(-20px, 40px); opacity: 0; } }
+@keyframes csShimmer { from { transform: translateX(0); } to { transform: translateX(70px); } }
+@keyframes csTrain { 0%, 60% { transform: translateX(0); } 100% { transform: translateX(2200px); } }
+@keyframes csTick { to { transform: rotate(360deg); } }
+@keyframes csLean { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+@keyframes csSpot { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
+@keyframes csGlitter { 50% { opacity: .2; } }
+/* Hochkant: Kulisse doppelt so breit wie die Bühne zeichnen (zeigt die Mitte), sonst wäre sie nur ein schmaler Streifen am Boden */
+@media (max-aspect-ratio: 4/5) { .cs-set { width: 200%; left: -50%; } }
+@media (max-width: 760px) {
+  .cs-fig { height: min(30vh, 240px); }
+  .cs-bubble { max-width: 70%; padding: 8px 10px 16px; }
+  .cs-text { font-size: .95rem; }
+  .cs-bar { padding: 8px 10px; gap: 8px; }
+  .cs-money { font-size: 1rem; padding: 4px 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #cutscene .cs-set *, .cs-fig, .cs-fig *, .cs-world, .cs-bubble, .cs-shout, .cs-next { animation: none !important; transition: none !important; }
+  .cs-fig-inner { transform: scaleX(var(--face)) !important; }
+  .cs-fig[data-pose="down"] .cs-body { transform: rotate(85deg) !important; } /* ohne csFall (animation: none) läge die Figur sonst nicht – _headAt rechnet aber liegend */
+}
 /* ==== 6. SPIELE & RÄUME ==== */
 /* -- Kredite -- */
 .finance { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -483,10 +608,6 @@ body.cs-open .toast { max-width: 300px; }
   .duel { flex-direction: column; }
   .fighter .face { width: 90px; height: 90px; font-size: 3rem; }
   .house { width: 70px; } .house .roof { border-left-width: 35px; border-right-width: 35px; } .house .wall { width: 64px; height: 50px; font-size: 1.1rem; }
-  .cs-stage { flex-direction: column; align-items: center; padding: 0 4vw 2vh; gap: 10px; }
-  .cs-portrait { width: 110px; height: 110px; font-size: 4rem; margin-bottom: 0; }
-  .cs-text { font-size: 1rem; }
-  .cs-box { width: 100%; }
   #toasts { right: 10px; left: 10px; bottom: 120px; }
   body.cs-open #toasts { top: 70px; bottom: auto; left: 10px; right: 10px; }
   .toast { max-width: none; }
@@ -627,7 +748,7 @@ body[data-zone="royal"] .panel { background: var(--panel); border: 1px solid var
 body.dev-open #toasts { z-index: 99; }
 /* -- Reduced Motion -- */
 @media (prefers-reduced-motion: reduce) {
-  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running::before, .plate.hit, .plate.broken, .taxi-road.running::before, .brake-flash.on, .ticket-pop, .mega-reel.landed .strip, .mega-grid .cell.scatter, .mega-lights, .die.rolling, .lv-badge.point { animation: none !important; }
+  .neon, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running::before, .plate.hit, .plate.broken, .taxi-road.running::before, .brake-flash.on, .ticket-pop, .mega-reel.landed .strip, .mega-grid .cell.scatter, .mega-lights, .die.rolling, .lv-badge.point { animation: none !important; }
   .strip.spinning { animation: none !important; filter: none; }
   .stage, .stage.leaving, .stage.entering { transition: none; animation: none; }
   #wheelCanvas { transition-duration: .3s; }
@@ -766,13 +887,6 @@ body.mode-story #newgame { display: none; }
 .gear-card .btn { margin-top: auto; font-size: .95rem; padding: 8px 18px; }
 .gear-card .reason { margin-top: auto; font-family: var(--font-mono); font-size: .78rem; color: var(--dim); padding: 8px 0; }
 .gear-line { font-family: var(--font-mono); font-size: .78rem; color: var(--gold-2); }
-.cs-bg.autohaus { background: linear-gradient(180deg, #e8eef3 0%, #b9c4cf 45%, #3c4249 46%, #1b1f23 100%); }
-.cs-bg.intersport { background: linear-gradient(180deg, #1a1a1a 0%, #2b2b2b 50%, #ff6a3d 51%, #b03d1c 100%); }
-.cs-bg.royal { background: linear-gradient(180deg, transparent 70%, rgba(0,0,0,.5)), conic-gradient(from 180deg at 50% -5%, transparent 0deg, rgba(201,169,97,.05) 7.5deg, transparent 15deg), radial-gradient(ellipse at 50% 0%, #4a1520 0%, #1c080e 45%, #0b0508 100%); }
-.cs-bg.royal::before { content: ""; position: absolute; left: 50%; top: 4%; width: 220px; height: 60px; transform: translateX(-50%); border: 2px solid #c9a961; border-top: 0; border-radius: 0 0 110px 110px;
-  background: radial-gradient(circle at 10% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 25% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 40% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 50% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 60% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 75% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 90% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px); }
-.cs-bg.royal::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: linear-gradient(180deg, transparent, rgba(0,0,0,.4)), repeating-linear-gradient(45deg, #141216 0 28px, #1a171c 28px 56px); opacity: .7; }
-.cs-portrait.royal-frame { border-color: #c9a961; box-shadow: 0 0 0 3px #0b0a0c, 0 0 0 4px #8a6a2e, 0 0 24px rgba(201,169,97,.4); }
 .gold-drop { position: fixed; top: -5vh; z-index: 79; pointer-events: none; animation: goldDrop 2.2s ease-in both; text-shadow: 0 0 8px rgba(241,223,168,.8); }
 @keyframes goldDrop { from { transform: translateY(0) rotate(0); opacity: 1; } to { transform: translateY(110vh) rotate(360deg); opacity: .2; } }
 .balance.gold-flash { animation: goldFlash .8s ease both; }
@@ -927,7 +1041,6 @@ body.mode-story #newgame { display: none; }
 @keyframes wheelLights { to { opacity: 1; } }
 @media (max-width: 760px) { .wheel-panel { grid-template-columns: 1fr; } .wheel-panel .paytable { justify-self: center; } .wheel .seg { font-size: .6rem; } }
 @media (prefers-reduced-motion: reduce) { .wheel-panel { transition: none; } .wheel-lights { animation: none !important; } }
-.cs-bg.gasse { background: linear-gradient(180deg, #05060a 0%, #14161e 55%, #2a2418 56%, #0d0b07 100%); }
 /* ==== Perks – Level-Badge, Skill-Screen ==== */
 .lv-badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: .8rem; color: var(--gold-2); border: 1px solid rgba(201,162,39,.35); border-radius: 6px; padding: 2px 8px; background: rgba(0,0,0,.3); cursor: pointer; }
 .lv-badge .bar { width: 44px; height: 6px; border-radius: 3px; background: #2a2e26; overflow: hidden; }
@@ -2588,43 +2701,428 @@ UI.register('hub', {
 });
 </script>
 
+<script id="cutscene-director">
+/* ================= CUTSCENE DIRECTOR – Auto-Regie als reine Funktion (DOM-frei, testbar) ================= */
+const CsDirector = {
+  SLOTS: ['left', 'mid', 'right', 'far'],
+  POSES: ['idle', 'talk', 'point', 'arms-crossed', 'hands-up', 'walk', 'down', 'flinch'],
+  CAMS: ['close', 'wide', 'shake'],
+  MOODS: ['calm', 'angry', 'happy', 'shock', 'dead'],
+  HURTS: ['pflaster', 'kruecke'],
+  SIDES: ['left', 'right'],
+  KEYS: ['bg', 'who', 'mood', 'text', 'fx', 'choices', 'cast', 'enter', 'exit', 'walk', 'pose', 'cam', 'shout', 'pause', 'sfx', 'look'],
+  FX: ['flash', 'shake', 'blackout', 'hearts', 'coins', 'drain', 'gain', 'stats', 'insiderCards'],
+  MAX_ON_STAGE: 3,
+  /* Stimmung des Sprechers → Körperhaltung */
+  moodPose(mood) { return { angry: 'point', shock: 'flinch', dead: 'down' }[mood] || 'talk'; },
+  /* Von welcher Seite eine Figur kommt/geht: du von links, alle anderen von rechts */
+  side(who) { return who === 'du' ? 'left' : 'right'; },
+  /* Platz nach Reihenfolge: du links, erstes Gegenüber rechts, drittes mittig */
+  slotFor(who, on) {
+    if (who === 'du') return 'left';
+    const taken = on.filter((f) => f.who !== who).map((f) => f.slot);
+    return taken.includes('right') ? 'mid' : 'right';
+  },
+  facing(slot, speakerSlot) {
+    if (slot === 'left') return 1;
+    if (slot === 'right') return -1;
+    return speakerSlot === 'right' ? 1 : -1;
+  },
+  /* panels → je Panel ein Plan: { bg, bgChange, speaker, cast: [{ who, slot, facing, pose, mood }], enter: [{ who, from }], exit: [who], cam, shout, pause, sfx, look (kumuliert) } */
+  stagePlan(panels) {
+    let on = [];            // Figuren auf der Bühne, in Auftrittsreihenfolge: { who, slot, pose, lastSpoke }
+    let prevBg = null;
+    const look = {};        // look-Schlüssel gelten ab ihrem Panel bis zum Szenenende – kumuliert, damit auch der Skip-Endzustand sie trägt
+    return panels.map((p, i) => {
+      const who = p.who || 'du', bg = p.bg || 'bar';
+      const bgChange = i === 0 || bg !== prevBg;
+      prevBg = bg;
+      if (p.look && typeof p.look === 'object') for (const [w, l] of Object.entries(p.look)) look[w] = Object.assign({}, look[w], l);
+      const enter = [], exit = [];
+      const add = (id, from) => { if (on.some((f) => f.who === id)) return; on.push({ who: id, slot: null, pose: 'idle', lastSpoke: -1 }); enter.push({ who: id, from: from || this.side(id) }); };
+      const remove = (id) => { if (!on.some((f) => f.who === id)) return; on = on.filter((f) => f.who !== id); exit.push(id); };
+      if (bgChange) { for (const f of on) exit.push(f.who); on = []; }   // Kulissenwechsel: alle gehen ab und treten neu auf
+      if (p.cast) {                                                 // explizite Besetzung
+        for (const f of on.map((f) => f.who)) if (!p.cast.includes(f)) remove(f);
+        for (const id of p.cast) add(id);
+      } else {
+        add('du');
+        add(who);
+      }
+      for (const e of [].concat(p.enter || [])) add(typeof e === 'string' ? e : e.who, typeof e === 'string' ? null : e.from);
+      for (const id of [].concat(p.exit || [])) remove(id);
+      if (!p.cast && !on.some((f) => f.who === who)) add(who);
+      while (on.length > this.MAX_ON_STAGE) {                       // die am längsten stumme Nebenfigur geht
+        const cand = on.filter((f) => f.who !== 'du' && f.who !== who).sort((a, b) => a.lastSpoke - b.lastSpoke)[0];
+        if (!cand) break;
+        remove(cand.who);
+      }
+      for (const f of on) if (!f.slot) f.slot = this.slotFor(f.who, on);
+      if (p.walk) { const f = on.find((f) => f.who === p.walk.who); if (f) f.slot = p.walk.to; }
+      const speaker = on.find((f) => f.who === who);
+      if (speaker) speaker.lastSpoke = i;
+      const poseOverride = p.pose && typeof p.pose === 'object' ? p.pose : null;
+      for (const f of on) {
+        const isSpeaker = f.who === who;
+        if (isSpeaker) f.pose = typeof p.pose === 'string' ? p.pose : this.moodPose(p.mood || 'calm');
+        else if (f.pose !== 'down') f.pose = 'idle';
+        if (poseOverride && poseOverride.who === f.who) f.pose = poseOverride.pose;
+        f.mood = isSpeaker ? (p.mood || 'calm') : (f.mood === 'dead' ? 'dead' : 'calm');
+      }
+      const speakerSlot = speaker ? speaker.slot : 'right';
+      return {
+        bg, bgChange, speaker: who,
+        cast: on.map((f) => ({ who: f.who, slot: f.slot, facing: this.facing(f.slot, speakerSlot), pose: f.pose, mood: f.mood })),
+        enter, exit,
+        cam: p.cam || (bgChange && i > 0 ? 'wide' : null),
+        shout: p.shout || null, pause: p.pause || 0, sfx: p.sfx || null,
+        look: Object.fromEntries(Object.entries(look).map(([w, l]) => [w, Object.assign({}, l)])),
+      };
+    });
+  },
+  /* Regie-Schlüssel prüfen: unbekannte Schlüssel, Figuren, Posen, Kameras, Sounds, Kulissen (mit setIds) sind Fehler;
+     pose/walk für eine Figur, die laut Regieplan nicht auf der Bühne steht, ebenfalls (sonst stiller Leerlauf) */
+  validatePanels(id, panels, { castIds = null, sfxIds = null, setIds = null } = {}) {
+    const errs = [];
+    const err = (i, msg) => errs.push(`${id}[${i}]: ${msg}`);
+    const cast = (i, who, where) => { if (typeof who !== 'string' || (castIds && !castIds.includes(who))) err(i, `Figur "${who}" unbekannt (${where})`); };
+    let plan = null;
+    try { plan = this.stagePlan(panels); } catch (e) { err(0, `Regieplan nicht berechenbar: ${e.message}`); }
+    const onStage = (i, who, where) => { if (plan && typeof who === 'string' && !plan[i].cast.some((c) => c.who === who)) err(i, `Figur "${who}" nicht auf der Bühne (${where})`); };
+    panels.forEach((p, i) => {
+      for (const k of Object.keys(p)) if (!this.KEYS.includes(k)) err(i, `Schlüssel "${k}" unbekannt`);
+      if (p.bg != null && setIds && !setIds.includes(p.bg)) err(i, `bg "${p.bg}" unbekannt`);
+      if (p.who != null) cast(i, p.who, 'who');
+      if (p.mood != null && !this.MOODS.includes(p.mood)) err(i, `mood "${p.mood}" unbekannt`);
+      if (p.fx != null && !this.FX.includes(p.fx)) err(i, `fx "${p.fx}" unbekannt`);
+      if (p.cast != null) { if (!Array.isArray(p.cast)) err(i, 'cast muss ein Array sein'); else p.cast.forEach((w) => cast(i, w, 'cast')); }
+      for (const e of [].concat(p.enter || [])) {
+        if (typeof e === 'string') cast(i, e, 'enter');
+        else { cast(i, e && e.who, 'enter'); if (e && e.from != null && !this.SIDES.includes(e.from)) err(i, `enter.from "${e.from}" unbekannt`); }
+      }
+      for (const e of [].concat(p.exit || [])) cast(i, e, 'exit');
+      if (p.walk != null) { cast(i, p.walk.who, 'walk'); onStage(i, p.walk.who, 'walk'); if (!this.SLOTS.includes(p.walk.to)) err(i, `walk.to "${p.walk.to}" unbekannt`); }
+      if (p.pose != null) {
+        const pose = typeof p.pose === 'string' ? p.pose : p.pose.pose;
+        if (typeof p.pose === 'object') { cast(i, p.pose.who, 'pose'); onStage(i, p.pose.who, 'pose'); }
+        if (!this.POSES.includes(pose)) err(i, `pose "${pose}" unbekannt`);
+      }
+      if (p.cam != null && !this.CAMS.includes(p.cam)) err(i, `cam "${p.cam}" unbekannt`);
+      if (p.shout != null && typeof p.shout !== 'string') err(i, 'shout muss Text sein');
+      if (p.pause != null && !(typeof p.pause === 'number' && p.pause >= 0)) err(i, 'pause muss eine Zahl ≥ 0 sein');
+      if (p.sfx != null && sfxIds && !sfxIds.includes(p.sfx)) err(i, `sfx "${p.sfx}" unbekannt`);
+      if (p.look != null) {
+        if (typeof p.look !== 'object') err(i, 'look muss ein Objekt sein');
+        else for (const [w, l] of Object.entries(p.look)) { cast(i, w, 'look'); if (l && l.hurt != null && !this.HURTS.includes(l.hurt)) err(i, `look.hurt "${l.hurt}" unbekannt`); }
+      }
+    });
+    return errs;
+  },
+};
+</script>
+
+<script id="cutscene-cast">
+/* ================= CUTSCENE CAST – Figuren-Register und SVG-Baukasten (DOM-frei: liefert Strings) =================
+   Rig: viewBox 0 0 100 180. Schultern (21,82)/(79,82), Kopfmitte (50,46), Mundmitte (50,61), Standlinie y=172. */
+const CsCast = {
+  CAST: {
+    wirt:        { name: 'Der Wirt',         emoji: '🍺', color: 'var(--neon-amber)', look: { skin: '#e0b08a', cloth: '#3b2a1e', accent: '#c9a227', hair: 'glatze', hairColor: '#555', hat: null,      extra: ['schuerze', 'bart'],               build: 'breit' } },
+    chantal:     { name: 'Chantal-Monique',  emoji: '💅', color: 'var(--neon-pink)',  look: { skin: '#f0c8a8', cloth: '#ff2d95', accent: '#ffd6ea', hair: 'lang',   hairColor: '#f2d16b', hat: null,   extra: ['lippenstift', 'kette'],           build: 'schmal' } },
+    vito:        { name: 'Don Vito',         emoji: '🕶️', color: 'var(--neon-red)',   look: { skin: '#e8b48a', cloth: '#1e1e22', accent: '#b0202a', hair: 'kurz',   hairColor: '#111',    hat: 'fedora', hatColor: '#151515', extra: ['sonnenbrille', 'zigarre', 'krawatte'], build: 'normal' } },
+    igor:        { name: 'Igor',             emoji: '🐻', color: 'var(--neon-blue)',  look: { skin: '#d8a888', cloth: '#2f3a4a', accent: '#1a222c', hair: 'igel',   hairColor: '#222',    hat: null,   extra: ['narbe'],                          build: 'breit' } },
+    doc:         { name: 'Der Doc',          emoji: '🥼', color: '#5fe0d0',           look: { skin: '#e8c8a8', cloth: '#f2f2f2', accent: '#5fe0d0', hair: 'grau',   hairColor: '#b8b8b8', hat: null,   extra: ['brille', 'stethoskop'],           build: 'normal' } },
+    krause:      { name: 'Herr Krause',      emoji: '👔', color: 'var(--neon-blue)',  look: { skin: '#e8c8a8', cloth: '#2a3a5c', accent: '#4cc9f0', hair: 'kurz',   hairColor: '#6a5040', hat: null,   extra: ['brille', 'krawatte'],             build: 'normal' } },
+    makler:      { name: 'Der Makler',       emoji: '🧑‍💼', color: 'var(--gold-2)',    look: { skin: '#e8b48a', cloth: '#6a6a70', accent: '#c9a227', hair: 'kurz',   hairColor: '#3a2414', hat: null,   extra: ['krawatte'],                       build: 'normal' } },
+    schmalz:     { name: 'Dr. Schmalz',      emoji: '⚖️', color: '#c0c0c0',           look: { skin: '#e0b898', cloth: '#111111', accent: '#c0c0c0', hair: 'grau',   hairColor: '#9a9a9a', hat: null,   extra: ['brille'],                         build: 'normal' } },
+    kevin:       { name: 'Kevin',            emoji: '🧢', color: 'var(--neon-purple)', look: { skin: '#e8c8a8', cloth: '#7b2cbf', accent: '#3a1a5c', hair: 'kurz',  hairColor: '#3a2414', hat: 'cap', hatColor: '#111', extra: [],               build: 'klein' } },
+    postmeister: { name: 'Der Postmeister',  emoji: '📬', color: 'var(--day)',        look: { skin: '#e0b08a', cloth: '#f3c623', accent: '#1a1a1a', hair: 'grau',   hairColor: '#b8b8b8', hat: 'kappe', hatColor: '#1a1a1a', extra: ['schnurrbart'], build: 'normal' } },
+    verkaeufer:  { name: 'Der Verkäufer',    emoji: '🤵', color: '#cfd8e3',           look: { skin: '#e8c8a8', cloth: '#cfd8e3', accent: '#1a1a1a', hair: 'kurz',   hairColor: '#111',    hat: null,   extra: ['krawatte'],                       build: 'normal' } },
+    du:          { name: 'Du',               emoji: '🤠', color: '#ffffff',           look: { skin: '#e8b48a', cloth: '#6b4a2a', accent: '#e6e0d0', hair: 'kurz',   hairColor: '#3a2414', hat: 'cap', hatColor: '#8b1e1e', extra: [],            build: 'normal' } },
+    raeuber:     { name: 'Der Räuber',       emoji: '🥷', color: 'var(--neon-red)',   look: { skin: '#e8b48a', cloth: '#111111', accent: '#222',    hair: 'kurz',   hairColor: '#111',    hat: 'muetze', hatColor: '#111', extra: ['maske'],      build: 'normal' } },
+    sylvie:      { name: 'Madame Sylvie',    emoji: '🎩', color: '#e8d5a3',           look: { skin: '#e8c8a8', cloth: '#0b0a0c', accent: '#c9a961', hair: 'lang',   hairColor: '#3a1a1a', hat: 'zylinder', hatColor: '#0b0a0c', extra: ['lippenstift'], build: 'schmal' } },
+    insider:     { name: 'Der Insider',      emoji: '🕵️', color: 'var(--neon-blue)',  look: { skin: '#e8b48a', cloth: '#4a4a52', accent: '#2a2a30', hair: 'kurz',   hairColor: '#222',    hat: 'fedora', hatColor: '#3a3a40', extra: ['sonnenbrille'], build: 'normal' } },
+    anabi:       { name: 'Anabi Stash',      emoji: '🕶️', color: '#d4af37',           look: { skin: '#c89068', cloth: '#111111', accent: '#d4af37', hair: 'kurz',   hairColor: '#111',    hat: null,   extra: ['sonnenbrille', 'kette', 'krawatte'], build: 'normal' } },
+    stumme:      { name: 'Der Stumme',       emoji: '🃏', color: '#8a8a8a',           look: { skin: '#e8c8a8', cloth: '#8a8a8a', accent: '#5a5a5a', hair: 'glatze', hairColor: '#333',    hat: null,   extra: [],                                 build: 'schmal' } },
+    kessler:     { name: 'Kessler',          emoji: '🚬', color: 'var(--neon-red)',   look: { skin: '#e8b48a', cloth: '#5a1a1a', accent: '#2a0a0a', hair: 'kurz',   hairColor: '#111',    hat: null,   extra: ['zigarette', 'narbe'],             build: 'normal' } },
+    brandt:      { name: 'Kommissar Brandt', emoji: '👮', color: 'var(--neon-blue)',  look: { skin: '#e8c8a8', cloth: '#1e3a5c', accent: '#4cc9f0', hair: 'kurz',   hairColor: '#6a5040', hat: 'kappe', hatColor: '#1e3a5c', extra: ['schnurrbart'], build: 'normal' } },
+    kowalski:    { name: 'Kowalski',         emoji: '🔧', color: '#b8a070',           look: { skin: '#e0b08a', cloth: '#3a4a5a', accent: '#b8a070', hair: 'kurz',   hairColor: '#3a2414', hat: null,   extra: ['schnurrbart'],                    build: 'breit' } },
+  },
+  SHOES: { basic: '#f2f2f2', trail: '#ff7a1a', carbon: '#111' },
+  MOODS: ['calm', 'angry', 'happy', 'shock', 'dead'],
+  /* Ausrüstung und Zustand des Protagonisten aus dem Spielstand (einmal pro Szene gelesen) */
+  duParts(s) {
+    if (!s) return {};
+    const inStash = !!(s.story && s.story.id === 'stash');
+    return {
+      shoes: s.shoes && this.SHOES[s.shoes] ? s.shoes : null,
+      weapon: s.weapon || 0,
+      suit: inStash,
+      cheeks: s.beers >= 1 && s.beerTimer > 0,
+      sway: s.beers >= 3 && s.beerTimer > 0,
+      blackEye: !!(s.story && s.story.flags && s.story.flags.blauesAuge),
+      rings: s.mafiaDebt > 0,
+    };
+  },
+  /* opts: { mood, parts (nur du), hurt: 'pflaster'|'kruecke' } → HTML-String.
+     Jedes bewegliche Teil ist ein eigenes <svg> (gleiche viewBox, übereinander gestapelt): CSS-Transforms auf HTML-Elementen laufen
+     auf dem Compositor, Transforms auf SVG-Kindknoten würden die ganze Figur pro Frame neu malen. */
+  figureHtml(who, opts = {}) {
+    const c = this.CAST[who] || this.CAST.du;
+    const look = Object.assign({}, c.look || this.CAST.du.look);
+    if (!c.look) { look.extra = ['emoji']; look.emoji = c.emoji; }
+    const parts = opts.parts || {};
+    if (parts.suit) { look.cloth = '#1e1e22'; look.accent = '#b0202a'; look.extra = [...look.extra, 'krawatte']; }
+    const mood = opts.mood || 'calm';
+    const P = look;
+    const build = { breit: 'translate(50 0) scale(1.22 1) translate(-50 0)', schmal: 'translate(50 0) scale(0.86 1) translate(-50 0)' }[P.build] || '';
+    const armShift = P.build === 'breit' ? 8 : P.build === 'schmal' ? -4 : 0;
+    const shoe = parts.shoes ? this.SHOES[parts.shoes] : '#1c1c1c';
+    const legFill = P.cloth === '#f2f2f2' ? '#cfd8e3' : this.dark(P.cloth);
+    const part = (cls, inner) => `<svg class="part ${cls}" viewBox="0 0 100 180" overflow="visible">${inner}</svg>`;
+    const legL = part('legL', `<rect x="30" y="118" width="17" height="48" rx="4" fill="${legFill}"/><path d="M26 164h24a4 4 0 0 1 0 8H26z" fill="${shoe}"/>`);
+    const legR = part('legR', `<rect x="53" y="118" width="17" height="48" rx="4" fill="${legFill}"/><path d="M50 164h24a4 4 0 0 1 0 8H50z" fill="${shoe}"/>`);
+    const body = part('body', `<g transform="${build}">
+      <path d="M24 74 L76 74 L82 124 L18 124 Z" fill="${P.cloth}"/>
+      <path d="M42 74 L58 74 L52 118 L48 118 Z" fill="${P.accent}"/>
+      ${P.extra.includes('krawatte') ? `<path d="M40 74 L60 74 L54 112 L46 112 Z" fill="#f2f2f2"/><path d="M47 74 L53 74 L55 108 L50 114 L45 108 Z" fill="${P.accent}"/><path d="M40 74 L50 100 L60 74" fill="none" stroke="${this.dark(P.cloth)}" stroke-width="3"/>` : ''}
+      ${P.extra.includes('schuerze') ? `<path d="M30 92 L70 92 L72 124 L28 124 Z" fill="#e6e0d0"/><path d="M30 92 L70 92" stroke="#c9a227" stroke-width="2"/>` : ''}
+      ${P.extra.includes('kette') ? `<path d="M36 76 Q50 96 64 76" fill="none" stroke="#d4af37" stroke-width="3"/>` : ''}
+      ${P.extra.includes('stethoskop') ? `<path d="M38 76 Q50 100 62 76" fill="none" stroke="#333" stroke-width="2.5"/><circle cx="50" cy="100" r="4" fill="#333"/>` : ''}
+    </g><rect x="44" y="62" width="12" height="14" fill="${P.skin}"/>`);
+    const arm = (side) => {
+      const x = side === 'L' ? 14 - armShift : 72 + armShift, cx = side === 'L' ? 21 - armShift : 79 + armShift;
+      return part(`arm${side}`, `<rect x="${x}" y="76" width="14" height="52" rx="7" fill="${P.cloth}"/><circle cx="${cx}" cy="130" r="6" fill="${P.skin}"/>
+        ${side === 'L' && opts.hurt === 'kruecke' ? `<path d="M${cx - 14} 118 L${cx - 14} 172" stroke="#8a6a3a" stroke-width="4"/><path d="M${cx - 22} 118 L${cx - 6} 118" stroke="#8a6a3a" stroke-width="4"/>` : ''}`);
+    };
+    const face = this.face(mood, P, parts, opts.hurt);
+    const hair = this.hair(P);
+    const head = part('head', `${hair.back}<path class="skull" d="M28 46 a22 24 0 0 1 44 0 v10 a22 20 0 0 1 -44 0z" fill="${P.skin}"/>${face.head}${hair.front}${this.extras(P, parts)}${this.hat(P)}`);
+    const eyes = part('eyes', face.eyes);
+    const mouth = part('mouth', face.mouth);
+    const klein = P.build === 'klein' ? ' klein' : '';
+    return `<div class="cs-fig-inner mood-${mood}${parts.sway ? ' sway' : ''}${klein}"><div class="cs-body">${legL}${legR}${body}${arm('L')}${arm('R')}${head}${eyes}${mouth}</div></div>`;
+  },
+  dark(hex) {
+    const n = parseInt(hex.slice(1), 16); if (Number.isNaN(n) || hex.length !== 7) return '#222';
+    const f = (v) => Math.max(0, Math.round(v * 0.7)).toString(16).padStart(2, '0');
+    return `#${f(n >> 16)}${f((n >> 8) & 255)}${f(n & 255)}`;
+  },
+  /* Mimik: alle fünf Stimmungen liegen in den Teilen, CSS zeigt nur .m-<mood>. Liefert { head, eyes, mouth } (Brauen gehören zum Kopf,
+     Augen und Mund sind eigene Teile, damit Blinzeln und Sprechen ohne Neuzeichnen des Kopfes laufen) */
+  face(mood, P, parts, hurt) {
+    const browColor = P.hairColor === '#b8b8b8' || P.hairColor === '#9a9a9a' ? '#777' : P.hairColor;
+    const brow = (d) => `<path d="${d}" fill="none" stroke="${browColor}" stroke-width="2.2" stroke-linecap="round"/>`;
+    const dots = '<circle cx="41" cy="48" r="3.2" fill="#111"/><circle cx="59" cy="48" r="3.2" fill="#111"/>';
+    const mouthColor = P.extra.includes('lippenstift') ? '#c8102e' : '#5a3020';
+    const brows = {
+      calm: brow('M36 41 L46 40') + brow('M54 40 L64 41'),
+      angry: brow('M35 37 L47 43') + brow('M65 37 L53 43'),
+      happy: brow('M35 40 Q41 36 47 39') + brow('M53 39 Q59 36 65 40'),
+      shock: brow('M35 38 Q41 34 47 37') + brow('M53 37 Q59 34 65 38'),
+      dead: brow('M36 40 L46 42') + brow('M54 42 L64 40'),
+    };
+    const eyes = {
+      calm: dots, angry: dots,
+      happy: '<path d="M37 49 Q41 44 45 49" fill="none" stroke="#111" stroke-width="2.4"/><path d="M55 49 Q59 44 63 49" fill="none" stroke="#111" stroke-width="2.4"/>',
+      shock: '<circle cx="41" cy="48" r="5" fill="#fff" stroke="#111" stroke-width="1.5"/><circle cx="59" cy="48" r="5" fill="#fff" stroke="#111" stroke-width="1.5"/><circle cx="41" cy="48" r="2.4" fill="#111"/><circle cx="59" cy="48" r="2.4" fill="#111"/>',
+      dead: '<g fill="none" stroke="#111" stroke-width="2.2"><path d="M37 44 L45 52 M45 44 L37 52"/><path d="M55 44 L63 52 M63 44 L55 52"/></g>',
+    };
+    const mouths = {
+      calm: `<path d="M44 61 Q50 65 56 61" fill="${mouthColor}" stroke="${mouthColor}" stroke-width="2" stroke-linecap="round"/>`,
+      angry: `<path d="M43 63 Q50 58 57 63" fill="none" stroke="${mouthColor}" stroke-width="2.5" stroke-linecap="round"/>`,
+      happy: `<path d="M41 59 Q50 70 59 59z" fill="${mouthColor}"/><path d="M44 60 Q50 63 56 60z" fill="#fff"/>`,
+      shock: '<ellipse cx="50" cy="63" rx="5" ry="6" fill="#3a1a10"/>',
+      dead: `<path d="M44 63 L56 63" stroke="${mouthColor}" stroke-width="2.5" stroke-linecap="round"/>`,
+    };
+    const state = `${parts.cheeks ? '<circle cx="36" cy="56" r="4" fill="#ff6b6b" opacity=".55"/><circle cx="64" cy="56" r="4" fill="#ff6b6b" opacity=".55"/>' : ''}
+      ${parts.rings ? '<path d="M36 53 Q41 56 46 53" fill="none" stroke="#4a3a5a" stroke-width="2" opacity=".7"/><path d="M54 53 Q59 56 64 53" fill="none" stroke="#4a3a5a" stroke-width="2" opacity=".7"/>' : ''}
+      ${parts.blackEye ? '<circle cx="41" cy="48" r="7" fill="#3a2a6a" opacity=".55"/>' : ''}
+      ${hurt === 'pflaster' ? '<rect x="52" y="30" width="16" height="7" rx="2" fill="#e8c8a0" transform="rotate(-20 60 33)"/><rect x="58" y="24" width="7" height="16" rx="2" fill="#e8c8a0" transform="rotate(-20 60 33)"/>' : ''}`;
+    const moodGroups = (map) => this.MOODS.map((m) => `<g class="m m-${m}">${map[m]}</g>`).join('');
+    return { head: moodGroups(brows) + state, eyes: moodGroups(eyes), mouth: moodGroups(mouths) };
+  },
+  hair(P) {
+    const h = P.hairColor || '#3a2414';
+    const front = {
+      kurz: `<path d="M26 44 Q28 18 50 18 Q72 18 74 44 Q68 32 50 30 Q32 32 26 44z" fill="${h}"/>`,
+      grau: `<path d="M26 44 Q28 18 50 18 Q72 18 74 44 Q68 32 50 30 Q32 32 26 44z" fill="${h}"/>`,
+      lang: `<path d="M26 44 Q28 16 50 16 Q72 16 74 44 Q68 30 50 28 Q32 30 26 44z" fill="${h}"/>`,
+      igel: `<path d="M26 44 L30 22 L36 34 L42 18 L48 32 L54 18 L60 32 L66 22 L74 44 Q50 34 26 44z" fill="${h}"/>`,
+      glatze: `<path d="M27 42 Q27 30 33 26 L33 42z" fill="${h}"/><path d="M73 42 Q73 30 67 26 L67 42z" fill="${h}"/>`,
+    }[P.hair] || '';
+    const back = P.hair === 'lang' ? `<path d="M24 40 Q22 90 30 96 L70 96 Q78 90 76 40z" fill="${h}"/>` : '';
+    return { front, back };
+  },
+  hat(P) {
+    const c = P.hatColor || '#111';
+    return {
+      cap: `<path d="M24 30 Q26 8 50 8 Q74 8 76 30z" fill="${c}"/><path d="M20 29 L55 29 Q58 32 55 35 L22 35 Q18 32 20 29z" fill="${this.dark(c)}"/>`,
+      fedora: `<path d="M30 34 Q34 8 50 8 Q66 8 70 34z" fill="${c}"/><path d="M14 34 Q50 26 86 34 L84 40 Q50 34 16 40z" fill="${this.dark(c)}"/><path d="M30 30 L70 30 L70 35 L30 35z" fill="${P.accent}"/>`,
+      zylinder: `<rect x="32" y="2" width="36" height="30" fill="${c}"/><rect x="22" y="30" width="56" height="6" rx="3" fill="${this.dark(c)}"/><rect x="32" y="24" width="36" height="5" fill="${P.accent}"/>`,
+      muetze: `<path d="M26 36 Q26 10 50 10 Q74 10 74 36z" fill="${c}"/><rect x="25" y="30" width="50" height="8" rx="3" fill="${this.dark(c)}"/>`,
+      kappe: `<path d="M26 32 Q26 14 50 14 Q74 14 74 32z" fill="${c}"/><rect x="24" y="30" width="52" height="6" rx="2" fill="${this.dark(c)}"/><path d="M22 35 L56 35 Q58 38 55 41 L24 41 Q20 38 22 35z" fill="#111"/><circle cx="50" cy="24" r="4" fill="${P.accent}"/>`,
+    }[P.hat] || '';
+  },
+  extras(P, parts) {
+    const out = [];
+    for (const e of P.extra) {
+      if (e === 'sonnenbrille') out.push('<rect x="32" y="42" width="14" height="9" rx="2" fill="#050505"/><rect x="54" y="42" width="14" height="9" rx="2" fill="#050505"/><path d="M46 45 L54 45" stroke="#050505" stroke-width="2"/>');
+      if (e === 'brille') out.push('<circle cx="41" cy="48" r="7" fill="none" stroke="#333" stroke-width="1.8"/><circle cx="59" cy="48" r="7" fill="none" stroke="#333" stroke-width="1.8"/><path d="M48 48 L52 48" stroke="#333" stroke-width="1.8"/>');
+      if (e === 'zigarre') out.push('<rect x="58" y="60" width="20" height="4" rx="2" fill="#3a2a1a"/><circle class="ember" cx="79" cy="62" r="3" fill="#ff7a1a"/>');
+      if (e === 'zigarette') out.push('<rect x="57" y="61" width="18" height="2.5" rx="1" fill="#f2f2f2"/><circle class="ember" cx="76" cy="62" r="2" fill="#ff7a1a"/>');
+      if (e === 'narbe') out.push('<path d="M64 40 L68 54" stroke="#a04040" stroke-width="2" stroke-linecap="round"/>');
+      if (e === 'bart') out.push(`<path d="M30 56 Q50 84 70 56 Q66 66 50 68 Q34 66 30 56z" fill="${P.hairColor}"/>`);
+      if (e === 'schnurrbart') out.push(`<path d="M40 57 Q50 53 60 57 Q50 61 40 57z" fill="${P.hairColor}"/>`);
+      if (e === 'maske') out.push('<path d="M28 54 L72 54 L70 68 Q50 76 30 68z" fill="#111"/>');
+      if (e === 'emoji') out.push(`<text x="50" y="58" font-size="40" text-anchor="middle">${P.emoji}</text>`);
+    }
+    return out.join('');
+  },
+};
+</script>
+
+<script id="cutscene-sets">
+/* ================= CUTSCENE SETS – Kulissen-Register (DOM-frei: liefert SVG-Strings) =================
+   Jede Kulisse: { back(): SVG hinter den Figuren, front(): SVG vor den Figuren ('' = keins), life: [Klassen der lebenden Elemente] }
+   Zeichenfläche 1000×400, unten bündig und auf Bühnenbreite skaliert (preserveAspectRatio xMidYMax meet) – hochkant bleibt oben Himmel frei. Die Standlinie der Figuren liegt bei y≈352. */
+const CsSets = {
+  svg(inner, cls = '') { return `<svg class="cs-set ${cls}" viewBox="0 0 1000 400" preserveAspectRatio="xMidYMax meet">${inner}</svg>`; },
+  rect(x, y, w, h, fill, extra = '') { return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" ${extra}/>`; },
+  windows(x0, y0, cols, rows, dx, dy, fill, cls = '') { let s = ''; for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) s += `<rect class="${cls}" x="${x0 + c * dx}" y="${y0 + r * dy}" width="10" height="14" fill="${fill}" style="animation-delay:${((r * cols + c) * 0.37) % 3}s"/>`; return s; },
+  SETS: {},
+  define(id, def) { this.SETS[id] = def; },
+  /* Hafen bei Nacht (Möwe) oder am Morgen (Sonne steigt) – eine Definition für beide Kulissen */
+  hafen(morgen) {
+    return {
+      life: morgen ? ['life-wave', 'life-sun'] : ['life-wave', 'life-gull'],
+      back() { const S = CsSets; return S.svg(`${morgen ? '<circle class="life-sun" cx="820" cy="200" r="46" fill="#ffb060" opacity=".9"/>' : '<circle cx="840" cy="70" r="28" fill="#e8e6d0" opacity=".8"/>'}
+      <path d="M120 300 L120 60 L260 60 M120 100 L200 60 M120 140 L200 60 M120 180 L200 60" stroke="#333" stroke-width="8" fill="none"/>
+      <path d="M560 300 L560 90 L700 90 M560 130 L640 90 M560 170 L640 90" stroke="#333" stroke-width="8" fill="none"/>
+      ${S.rect(300, 240, 120, 60, '#5a2a2a')}${S.rect(420, 240, 120, 60, '#2a4a5a')}${S.rect(360, 180, 120, 60, '#5a5a2a')}
+      ${S.rect(0, 300, 1000, 100, morgen ? '#c46a3a' : '#0a1a33')}<g class="life-wave"><path d="M-100 320 q25 -6 50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0" fill="none" stroke="${morgen ? '#ffd090' : '#5aa0d0'}" stroke-width="2" opacity=".6"/></g>
+      ${morgen ? '' : '<path class="life-gull" d="M0 0 q8 -8 16 0 q8 -8 16 0" fill="none" stroke="#ddd" stroke-width="2" style="transform:translate(200px,120px)"/>'}`); },
+      front() { return ''; },
+    };
+  },
+};
+CsSets.define('bar', {
+  life: ['life-neon', 'life-smoke'],
+  back() { const S = CsSets; let bottles = ''; for (let i = 0; i < 12; i++) bottles += S.rect(230 + i * 46, 120 - (i % 3) * 8, 18, 46 + (i % 3) * 8, ['#7a5a2a', '#3a6a3a', '#6a2a2a', '#c9a227'][i % 4], 'rx="5"');
+    return S.svg(`${S.rect(200, 60, 600, 8, '#5a3a1a')}${S.rect(200, 166, 600, 8, '#5a3a1a')}${bottles}
+      ${S.rect(0, 280, 1000, 60, '#4a2e12')}${S.rect(0, 274, 1000, 8, '#7a5a2a')}
+      <text class="life-neon" x="880" y="60" font-family="monospace" font-size="26" font-weight="700" fill="#ff5c7a" text-anchor="middle" letter-spacing="4">KELLER 37</text>
+      <path class="life-smoke" d="M120 250 Q130 230 120 210 Q110 190 120 170" fill="none" stroke="#fff" stroke-width="3" opacity=".25"/>`); },
+  front() { return ''; },
+});
+CsSets.define('keller', {
+  life: ['life-blink', 'life-swing'],
+  back() { const S = CsSets; let m = ''; for (let i = 0; i < 4; i++) m += `${S.rect(80 + i * 240, 170, 110, 170, '#1e1e1a', 'rx="6"')}<rect class="life-blink" x="${95 + i * 240}" y="185" width="80" height="50" fill="#2a4a3a" style="animation-delay:${i * .5}s"/>${S.rect(95 + i * 240, 250, 80, 20, '#3a3a30')}`;
+    return S.svg(`${m}<g class="life-swing" style="transform-origin:500px 0px"><path d="M500 0 L500 70" stroke="#666" stroke-width="3"/><path d="M470 70 L530 70 L545 100 L455 100z" fill="#8a8a70"/><ellipse cx="500" cy="100" rx="45" ry="6" fill="#fff8d0" opacity=".9"/></g>`); },
+  front() { return ''; },
+});
+CsSets.define('hinterzimmer', {
+  life: ['life-candle', 'life-smoke'],
+  back() { const S = CsSets; return S.svg(`${S.rect(300, 250, 400, 14, '#3a2410')}${S.rect(320, 264, 20, 90, '#2a1a0a')}${S.rect(660, 264, 20, 90, '#2a1a0a')}
+      ${S.rect(560, 214, 12, 36, '#e8e0c0')}<ellipse class="life-candle" cx="566" cy="206" rx="7" ry="14" fill="#ffb347" style="transform-origin:566px 220px"/>
+      <ellipse cx="430" cy="252" rx="26" ry="6" fill="#555"/><path class="life-smoke" d="M430 246 Q440 226 430 206 Q420 186 430 166" fill="none" stroke="#fff" stroke-width="3" opacity=".25"/>`); },
+  front() { return ''; },
+});
+CsSets.define('strasse', {
+  life: ['life-car'],
+  back() { const S = CsSets; let houses = ''; for (let i = 0; i < 5; i++) houses += `${S.rect(i * 210, 60 + (i % 2) * 40, 190, 280 - (i % 2) * 40, ['#2a2a34', '#33333f'][i % 2])}${S.windows(i * 210 + 20, 90 + (i % 2) * 40, 5, 4, 34, 44, '#8a8a60')}`;
+    return S.svg(`${houses}${S.rect(0, 338, 1000, 14, '#555')}${S.rect(760, 120, 6, 220, '#777')}<path d="M740 120 L786 120 L780 100 L746 100z" fill="#999"/><ellipse cx="763" cy="128" rx="70" ry="40" fill="#fff4c0" opacity=".12"/>
+      <g class="life-car"><rect x="-260" y="300" width="160" height="44" rx="10" fill="#111"/><rect x="-230" y="278" width="90" height="30" rx="8" fill="#222"/><circle cx="-230" cy="346" r="12" fill="#333"/><circle cx="-130" cy="346" r="12" fill="#333"/><path d="M-100 314 L60 290 L60 340z" fill="#fff8c0" opacity=".25"/></g>`); },
+  front() { return ''; },
+});
+CsSets.define('gasse', {
+  life: ['life-rain', 'life-cat'],
+  back() { const S = CsSets; return S.svg(`${S.rect(0, 0, 1000, 340, '#14161c')}<circle cx="820" cy="70" r="30" fill="#e8e6d0" opacity=".85"/>
+      ${S.rect(60, 250, 70, 90, '#3a3a40', 'rx="6"')}${S.rect(140, 262, 70, 78, '#3a3a40', 'rx="6"')}${S.rect(55, 244, 80, 10, '#555', 'rx="3"')}
+      <path d="M700 60 L700 340 M760 60 L760 340 M700 120 L760 120 M700 200 L760 200 M700 280 L760 280 M760 120 L820 60" stroke="#444" stroke-width="5" fill="none"/>
+      <g class="life-cat"><path d="M0 340 q10 -20 20 0 l4 -14 l6 12 h20 l6 -12 l4 14 q10 -14 8 0z" fill="#0a0a0a"/></g>`); },
+  front() { let r = ''; for (let i = 0; i < 40; i++) r += `<path d="M${i * 26 + (i % 3) * 7} ${-400 + (i * 53) % 400} l-6 30" stroke="#9ab" stroke-width="1.5" opacity=".35"/>`;
+    return CsSets.svg(`<g class="life-rain">${r}<g transform="translate(0 400)">${r}</g></g>`); },
+});
+CsSets.define('hafen', CsSets.hafen(false));
+CsSets.define('hafen-morgen', CsSets.hafen(true));
+CsSets.define('klinik', {
+  life: ['life-ekg', 'life-flicker'],
+  back() { const S = CsSets; return S.svg(`<rect class="life-flicker" x="380" y="20" width="240" height="14" rx="4" fill="#f4fff8"/>
+      ${S.rect(600, 240, 300, 20, '#cfd8e3')}${S.rect(600, 260, 14, 90, '#889')}${S.rect(886, 260, 14, 90, '#889')}${S.rect(620, 220, 80, 20, '#eef')}
+      ${S.rect(120, 120, 150, 100, '#111', 'rx="6"')}${S.rect(180, 220, 30, 130, '#889')}<polyline class="life-ekg" points="130,170 160,170 170,150 180,195 190,160 200,170 260,170" fill="none" stroke="#5fe0d0" stroke-width="3"/>`); },
+  front() { return ''; },
+});
+CsSets.define('bank', {
+  life: ['life-ticker'],
+  back() { const S = CsSets; let rows = ''; for (let i = 0; i < 4; i++) rows += `<text class="life-ticker" x="720" y="${150 + i * 22}" font-family="monospace" font-size="16" fill="${i % 2 ? '#ff6b6b' : '#5fe0a0'}" style="animation-delay:${i * .7}s">${['DAX  −0,8 %', 'GOLD +1,2 %', 'BTC  −4,1 %', 'K37  +37 %'][i]}</text>`;
+    return S.svg(`${S.rect(0, 230, 1000, 20, '#1a3a5c')}${S.rect(0, 250, 1000, 100, '#123a5c')}${S.rect(700, 120, 220, 110, '#0a1a2a', 'rx="6"')}${rows}
+      ${S.rect(930, 300, 30, 50, '#5a3a1a')}<circle cx="945" cy="280" r="34" fill="#2a6a3a"/><circle cx="920" cy="300" r="22" fill="#2a6a3a"/><circle cx="970" cy="300" r="22" fill="#2a6a3a"/>`); },
+  front() { return ''; },
+});
+CsSets.define('standesamt', {
+  life: ['life-dust'],
+  back() { const S = CsSets; return S.svg(`${S.rect(380, 40, 240, 200, '#f8f4e8')}<path d="M500 40 L500 240 M380 140 L620 140" stroke="#b8a888" stroke-width="8"/>
+      ${S.rect(660, 240, 200, 110, '#8a7050')}<circle cx="710" cy="230" r="22" fill="#ff9ab0"/><circle cx="750" cy="222" r="24" fill="#ffd0a0"/><circle cx="790" cy="230" r="22" fill="#ff9ab0"/>
+      ${S.rect(120, 60, 6, 290, '#777')}<path d="M126 60 L200 80 L126 100z" fill="#c0392b"/><path d="M126 100 L200 120 L126 140z" fill="#f1c40f"/>`); },
+  front() { let d = ''; for (let i = 0; i < 18; i++) d += `<circle class="life-dust" cx="${400 + (i * 61) % 220}" cy="${60 + (i * 37) % 200}" r="2" fill="#fff" style="animation-delay:${(i * .4) % 4}s"/>`; return CsSets.svg(d); },
+});
+CsSets.define('villa', {
+  life: ['life-city', 'life-shimmer'],
+  back() { const S = CsSets; let sky = ''; for (let i = 0; i < 12; i++) sky += `${S.rect(i * 84, 120 + (i * 37) % 90, 70, 300, '#0a1030')}${S.windows(i * 84 + 8, 130 + (i * 37) % 90, 3, 6, 22, 24, '#ffe08a', 'life-city')}`;
+    return S.svg(`<circle cx="880" cy="60" r="26" fill="#f4f0d0"/>${sky}${S.rect(0, 300, 1000, 60, '#1a5a8a')}<g class="life-shimmer"><path d="M0 320 h1000 M0 340 h1000" stroke="#8ad0ff" stroke-width="2" stroke-dasharray="30 40" opacity=".6"/></g>`); },
+  front() { return ''; },
+});
+CsSets.define('bahnhof', {
+  life: ['life-train', 'life-tick'],
+  back() { const S = CsSets; return S.svg(`${S.rect(0, 0, 1000, 340, '#0d1220')}<path d="M0 330 h1000 M0 346 h1000" stroke="#666" stroke-width="4"/>
+      <g class="life-train"><rect x="-1100" y="230" width="1000" height="100" rx="12" fill="#2a2a3a"/>${S.windows(-1080, 250, 20, 1, 50, 0, '#ffd88a')}</g>
+      ${S.rect(120, 60, 8, 280, '#777')}<circle cx="124" cy="60" r="30" fill="#f4f0e0"/><path d="M124 60 L124 40" stroke="#111" stroke-width="3"/><path class="life-tick" d="M124 60 L140 60" stroke="#111" stroke-width="3" style="transform-origin:124px 60px"/>
+      ${S.rect(700, 290, 200, 14, '#5a3a1a')}${S.rect(710, 304, 12, 46, '#333')}${S.rect(878, 304, 12, 46, '#333')}`); },
+  front() { return ''; },
+});
+CsSets.define('pfandleihe', {
+  life: ['life-neon'],
+  back() { const S = CsSets; return S.svg(`${S.rect(200, 200, 600, 140, '#2a2418')}${S.rect(210, 210, 580, 90, '#1a160c')}
+      ${S.rect(240, 250, 60, 40, '#c9a227')}${S.rect(340, 240, 40, 50, '#8a8a8a')}<path d="M440 270 h60 v-14 h-20 v-10 h-24z" fill="#444"/>${S.rect(560, 246, 80, 44, '#5a3a1a')}${S.rect(680, 236, 60, 54, '#333')}
+      <text class="life-neon" x="500" y="80" font-family="monospace" font-size="30" fill="#ffd166" text-anchor="middle" letter-spacing="6">PFAND · GOLD · BARGELD</text>`); },
+  front() { return ''; },
+});
+CsSets.define('autohaus', {
+  life: ['life-sway'],
+  back() { const S = CsSets; return S.svg(`${S.rect(0, 0, 1000, 340, '#1a1e26')}<ellipse cx="500" cy="330" rx="260" ry="26" fill="#2a2e38"/>
+      <g class="life-sway" style="transform-origin:500px 330px"><path d="M300 320 L320 270 L400 240 L600 240 L680 270 L700 320z" fill="#c0392b"/><path d="M400 240 L420 260 L580 260 L600 240z" fill="#8ad"/><circle cx="360" cy="320" r="24" fill="#111"/><circle cx="640" cy="320" r="24" fill="#111"/></g>`); },
+  front() { return ''; },
+});
+CsSets.define('intersport', {
+  life: ['life-spot'],
+  back() { const S = CsSets; let shoes = ''; for (let i = 0; i < 8; i++) shoes += `<path d="M${140 + i * 100} 220 q30 -30 60 -10 l20 10 v14 h-80z" fill="${['#f2f2f2', '#ff7a1a', '#111', '#4cc9f0'][i % 4]}"/>`;
+    return S.svg(`${S.rect(100, 140, 800, 8, '#cfd8e3')}${S.rect(100, 236, 800, 8, '#cfd8e3')}${shoes}<path class="life-spot" d="M500 0 L380 300 L620 300z" fill="#fff" opacity=".08" style="transform-origin:500px 0px"/>`); },
+  front() { return ''; },
+});
+CsSets.define('royal', {
+  life: ['life-glitter'],
+  back() { const S = CsSets; let g = ''; for (let i = 0; i < 9; i++) g += `<circle class="life-glitter" cx="${420 + i * 20}" cy="${110 + Math.abs(i - 4) * 12}" r="5" fill="#fff7d0" style="animation-delay:${i * .2}s"/>`;
+    return S.svg(`${S.rect(0, 0, 220, 340, '#6a0f1a')}${S.rect(780, 0, 220, 340, '#6a0f1a')}${S.rect(240, 0, 40, 340, '#e8dcc0')}${S.rect(720, 0, 40, 340, '#e8dcc0')}
+      <path d="M500 0 L500 60" stroke="#c9a961" stroke-width="4"/><path d="M420 110 Q500 60 580 110" fill="none" stroke="#c9a961" stroke-width="4"/>${g}`); },
+  front() { return ''; },
+});
+</script>
+
 <script id="cutscene-engine">
-/* ================= CUTSCENE – Visual-Novel-Engine ================= */
+/* ================= CUTSCENE – Bühnen-Engine: Kulissen, Figuren, Sprechblase, Regie ================= */
 const Cutscene = {
   active: false,
+  instant: false,           // Dev/Tests: keine Laufwege, kein Tippen, keine Wartezeiten (wie prefers-reduced-motion)
   SKIP: Symbol('skip'),
-  CAST: {
-    wirt: { name: 'Der Wirt', emoji: '🍺', color: 'var(--neon-amber)' },
-    chantal: { name: 'Chantal-Monique', emoji: '💅', color: 'var(--neon-pink)' },
-    vito: { name: 'Don Vito', emoji: '🕶️', color: 'var(--neon-red)' },
-    igor: { name: 'Igor', emoji: '🐻', color: 'var(--neon-blue)' },
-    doc: { name: 'Der Doc', emoji: '🥼', color: '#5fe0d0' },
-    krause: { name: 'Herr Krause', emoji: '👔', color: 'var(--neon-blue)' },
-    makler: { name: 'Der Makler', emoji: '🧑‍💼', color: 'var(--gold-2)' },
-    schmalz: { name: 'Dr. Schmalz', emoji: '⚖️', color: '#c0c0c0' },
-    kevin: { name: 'Kevin', emoji: '🧢', color: 'var(--neon-purple)' },
-    postmeister: { name: 'Der Postmeister', emoji: '📬', color: 'var(--day)' },
-    verkaeufer: { name: 'Der Verkäufer', emoji: '🤵', color: '#cfd8e3' },
-    du: { name: 'Du', emoji: '🤠', color: '#ffffff' },
-    raeuber: { name: 'Der Räuber', emoji: '🥷', color: 'var(--neon-red)' },
-    sylvie: { name: 'Madame Sylvie', emoji: '🎩', color: '#e8d5a3' },
-    insider: { name: 'Der Insider', emoji: '🕵️', color: 'var(--neon-blue)' },
-    anabi: { name: 'Anabi Stash', emoji: '🕶️', color: '#d4af37' },
-    stumme: { name: 'Der Stumme', emoji: '🃏', color: '#8a8a8a' },
-    kessler: { name: 'Kessler', emoji: '🚬', color: 'var(--neon-red)' },
-    brandt: { name: 'Kommissar Brandt', emoji: '👮', color: 'var(--neon-blue)' },
-    kowalski: { name: 'Kowalski', emoji: '🔧', color: '#b8a070' },
-  },
-  PROPS: {
-    bar: ['🍾', '🪑'], hinterzimmer: ['🕯️', '🚬'], standesamt: ['💐', '🔔'], villa: ['🏙️', '🌙'], hafen: ['🏗️', '🌙'],
-    'hafen-morgen': ['🏗️', '🌅'], klinik: ['🩺', '💡'], bank: ['🏧', '🪴'], strasse: ['🏠', '🚗'], keller: ['💡', '🪑'],
-    autohaus: ['🚗', '🪴'], intersport: ['👟', '🏷️'], gasse: ['🗑️', '🌙'],
-    bahnhof: ['🚉', '🌙'], pfandleihe: ['🔫', '🏷️'],
-  },
+  CAST: CsCast.CAST,
+  SETS: CsSets.SETS,
   SCENES: {},
+  WALK_MS: 600,
+  SLOT_X: { left: 0.18, mid: 0.5, right: 0.82, far: 0.5 },
   define(id, panels) { this.SCENES[id] = panels; },
   bind(eventName, sceneId) { Bus.on(eventName, (ctx) => this.play(sceneId, ctx)); },
   fill(text, ctx) { return text.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in ctx ? String(ctx[k]) : `{{${k}}}`)); },
+  quick() { return this.instant || matchMedia('(prefers-reduced-motion: reduce)').matches; },
   async play(id, ctx = {}) {
     const def = this.SCENES[id];
     if (!def) { console.warn('[cutscene] Szene fehlt:', id); return undefined; }
@@ -2637,28 +3135,33 @@ const Cutscene = {
     root.innerHTML = '';
     const els = {
       root,
-      bg: h('div', { class: 'cs-bg' }),
-      flash: h('div', { class: 'cs-flash' }),
-      black: h('div', { class: 'cs-black' }),
+      world: h('div', { class: 'cs-world' }),
+      sky: h('div', { class: 'cs-sky' }), back: h('div', { class: 'cs-back' }), floor: h('div', { class: 'cs-floor' }),
+      actors: h('div', { class: 'cs-actors' }), front: h('div', { class: 'cs-front' }),
+      flash: h('div', { class: 'cs-flash' }), black: h('div', { class: 'cs-black' }),
+      shout: h('div', { class: 'cs-shout' }),
+      bubble: h('div', { class: 'cs-bubble' }),
+      name: h('div', { class: 'cs-name' }), text: h('div', { class: 'cs-text' }), next: h('div', { class: 'cs-next' }, '▼'),
       money: h('div', { class: 'cs-money money-live' }, UI.fmt(UI.shownBalance)),
-      portrait: h('div', { class: 'cs-portrait' }),
-      name: h('div', { class: 'cs-name' }),
-      text: h('div', { class: 'cs-text' }),
-      extra: h('div', { class: 'cs-extra' }),
-      choices: h('div', { class: 'cs-choices' }),
-      next: h('div', { class: 'cs-next' }, '▼'),
+      extra: h('div', { class: 'cs-extra' }), choices: h('div', { class: 'cs-choices' }),
       skip: h('button', { class: 'cs-skip' }, 'Überspringen ⏭'),
+      figs: new Map(), bg: null, parts: CsCast.duParts(State.s), skipping: false,
     };
-    els.box = h('div', { class: 'cs-box' }, els.name, els.text, els.extra, els.choices, els.next);
-    root.append(els.bg, els.flash, els.black, els.money, els.skip, h('div', { class: 'cs-stage' }, els.portrait, els.box));
+    els.bubble.append(els.name, els.text, els.next); els.bubble.hidden = true;
+    els.world.append(els.sky, els.back, els.floor, els.actors, els.front);
+    els.bar = h('div', { class: 'cs-bar' }, els.money, h('div', { class: 'cs-bar-mid' }, els.extra, els.choices), els.skip);
+    root.append(els.world, els.flash, els.black, els.shout, els.bubble, els.bar);
+    root.classList.toggle('cs-instant', this.quick());
     root.hidden = false;
+    const plan = CsDirector.stagePlan(panels);
     let result;
     for (let i = 0; i < panels.length; i++) {
       const isLast = i === panels.length - 1;
-      const r = await this._panel(els, panels[i], ctx, isLast);
+      const r = await this._panel(els, panels[i], plan[i], ctx, isLast);
       if (r === this.SKIP) {
         for (let j = i + 1; j < panels.length - 1; j++) this._fx(els, panels[j].fx, ctx, true);
-        i = panels.length - 2; // nächster Durchlauf zeigt das letzte Panel
+        els.skipping = true; root.classList.add('cs-instant'); els.world.style.transform = ''; // letztes Panel ohne Laufwege in den Endzustand, Kamera zurück
+        i = panels.length - 2;
         continue;
       }
       if (r !== undefined) result = r;
@@ -2671,32 +3174,163 @@ const Cutscene = {
     UI.renderWallet();
     return result;
   },
-  _panel(els, p, ctx, isLast) {
+  offX(side, W) { return side === 'left' ? -0.3 * W : 1.3 * W; },
+  /* Kulisse, Figuren und Kamera eines Panels setzen; liefert die Sprecher-Figur oder null (leere Bühne / Erzähler) */
+  _stage(els, p, plan, instant) {
+    const W = els.actors.clientWidth;
+    if (plan.bg !== els.bg) {
+      const known = !!this.SETS[plan.bg], set = this.SETS[known ? plan.bg : 'bar'];
+      els.sky.className = `cs-sky ${known ? plan.bg : 'bar'}`;
+      els.back.innerHTML = set.back(); els.front.innerHTML = set.front();
+      if (els.bg !== null && !instant) { els.world.classList.remove('cs-fade'); void els.world.offsetWidth; els.world.classList.add('cs-fade'); }
+      els.bg = plan.bg;
+    }
+    for (const who of plan.exit) {
+      const f = els.figs.get(who); if (!f) continue;
+      els.figs.delete(who);
+      for (const t of f.timers || []) clearTimeout(t); f.timers = [];
+      f.el.classList.add('walking'); f.el.classList.remove('speaking'); f.el.dataset.pose = 'walk';
+      f.el.style.setProperty('--x', `${this.offX(CsDirector.side(who), W)}px`);
+      if (instant || plan.bgChange) f.el.remove(); else f.timers.push(setTimeout(() => f.el.remove(), this.WALK_MS)); // beim Kulissenwechsel deckt die Überblendung den Abgang
+    }
+    for (const [who, f] of [...els.figs]) if (!plan.cast.some((c) => c.who === who)) { els.figs.delete(who); f.el.remove(); } // nach Skip/Kulissenwechsel: nur die geplante Besetzung bleibt
+    let speaker = null;
+    for (const c of plan.cast) {
+      let f = els.figs.get(c.who);
+      const entering = plan.enter.find((e) => e.who === c.who);
+      const walking = !!entering && !instant && c.pose !== 'down'; // liegend läuft nie ein – erscheint direkt am Platz
+      if (f) { for (const t of f.timers || []) clearTimeout(t); f.timers = []; } // alte Weg-Timer löschen, sonst überschriebe ein später Timer die Pose dieses Panels
+      const fresh = !f;
+      if (fresh) {
+        f = { who: c.who, el: h('div', { class: 'cs-fig' }), key: null, inner: null, timers: [] };
+        els.figs.set(c.who, f); els.actors.append(f.el);
+        if (c.pose === 'down') f.el.style.setProperty('--fall', '0s'); // liegend gefunden: kein Umfallen (steht sie später auf, fällt sie wieder animiert, siehe unten)
+        if (walking) {
+          f.el.style.setProperty('--x', `${this.offX(entering ? entering.from : CsDirector.side(c.who), W)}px`);
+          void f.el.offsetWidth; // Startposition festschreiben, sonst gibt es keinen Weg zu animieren
+        } else {
+          f.el.style.setProperty('--x', `${this.SLOT_X[c.slot] * W}px`); // liegend oder Sofort-Modus: direkt am Zielplatz, kein Weg
+        }
+      }
+      const look = plan.look[c.who] || {};
+      const key = look.hurt || '';   // Figur wird nur einmal gezeichnet (bzw. bei neuer Verletzung) – ein Stimmungswechsel tauscht nur die Klasse, sonst würde z. B. das Umfallen (calm → dead) nie animiert
+      if (f.key !== key) { f.el.innerHTML = CsCast.figureHtml(c.who, { mood: c.mood, parts: c.who === 'du' ? els.parts : null, hurt: look.hurt }); f.key = key; f.inner = f.el.firstElementChild; }
+      for (const m of CsDirector.MOODS) f.inner.classList.toggle(`mood-${m}`, m === c.mood);
+      if (!fresh && c.pose !== 'down') f.el.style.removeProperty('--fall');
+      f.el.style.setProperty('--x', `${this.SLOT_X[c.slot] * W}px`);
+      f.el.style.setProperty('--face', String(c.facing));
+      f.el.classList.toggle('far', c.slot === 'far');
+      f.pose = c.pose; // Zielpose merken (für _snap und _headAt)
+      f.el.classList.toggle('walking', walking);
+      if (walking) f.timers.push(setTimeout(() => f.el.classList.remove('walking'), this.WALK_MS));
+      f.el.dataset.pose = walking ? 'walk' : c.pose;
+      if (walking) f.timers.push(setTimeout(() => { if (f.el.isConnected) f.el.dataset.pose = c.pose; }, this.WALK_MS));
+      f.el.classList.toggle('speaking', c.who === plan.speaker);
+      f.el.classList.remove('talking'); // Skip mitten im Tippen: der alte Sprecher würde sonst weiter den Mund bewegen
+      if (c.who === plan.speaker) speaker = f;
+    }
+    if (plan.cam === 'shake') UI.shake(els.root); // die ganze Bühne, nicht die Welt: deren Transform trägt den Zoom, den die shake-Keyframes überschrieben
+    else if (plan.cam === 'wide') els.world.style.transform = '';
+    return speaker;
+  },
+  /* Kamera-Zoom auf den Kopf des Sprechers (geometrisch berechnet, auch liegend oder fern) – läuft NACH dem ersten
+     Warten/_snap in _panel, damit Weg und Pose an ihrer Zielposition sind, bevor darauf gezoomt wird. shake/wide
+     bleiben synchron in _stage (siehe oben), weil sie keine laufende Bewegung voraussetzen. */
+  _cam(els, plan, speaker) {
+    if (plan.cam !== 'close' || !speaker) return;
+    const W = els.actors.clientWidth, H = els.actors.clientHeight;
+    /* Zoom auf den Kopf des Sprechers – berechnet (auch liegend oder fern) und in ungezoomte Weltkoordinaten zurückgerechnet,
+       falls die Welt aus dem vorigen Panel schon gezoomt ist */
+    const m = /scale\(([\d.]+)\)/.exec(els.world.style.transform), s = m ? parseFloat(m[1]) : 1;
+    const o = (els.world.style.transformOrigin || '').split(' ').map(parseFloat);
+    const ox = Number.isFinite(o[0]) ? o[0] : W / 2, oy = Number.isFinite(o[1]) ? o[1] : H / 2;
+    const hd = this._headAt(els, speaker);
+    const x = ox + (hd.x - ox) / s, y = oy + (hd.cy - oy) / s;
+    els.world.style.transformOrigin = `${Math.round(x)}px ${Math.round(y)}px`;
+    els.world.style.transform = 'scale(1.8)';
+  },
+  /* Klick während Auftritt/Kamerafahrt: Wege und Zoom sofort zu Ende führen, damit die Blase am Endpunkt gemessen wird */
+  _snap(els) {
+    els.root.classList.add('cs-snap');
+    for (const f of els.figs.values()) {
+      for (const t of f.timers || []) clearTimeout(t);
+      f.timers = []; f.el.classList.remove('walking');
+      if (f.pose) f.el.dataset.pose = f.pose;
+    }
+    void els.root.offsetWidth; // Stil mit abgeschalteten Transitions übernehmen – Transitions enden am Zielwert
+    els.root.classList.remove('cs-snap');
+    for (const f of els.figs.values()) { // laufender Fall (Keyframe, keine Transition): sofort zu Ende – nach dem Klassenwechsel, damit finish() die volle Dauer als Ende nimmt
+      const body = f.pose === 'down' ? qs('.cs-body', f.el) : null;
+      if (body && body.getAnimations) for (const a of body.getAnimations()) a.finish();
+    }
+  },
+  /* Kopfposition GEOMETRISCH aus dem Rig-Kasten plus Zielpose und Blickrichtung berechnet, nie gemessen: so ist sie
+     unabhängig von einer gerade laufenden Bewegung (Weg, Hinlegen, Schwanken). Rig-Kasten = äußerer .cs-fig-Kasten
+     (trägt nur Verschiebung und bei "far" die Skalierung – nie Körperdrehung oder Schwanken), bei klein-Figuren um den
+     CSS-Versatz des inneren Kastens verkleinert (top 15 %, Höhe 85 % – muss zu ".cs-fig-inner.klein { top: 15% }"
+     passen). Der innere Kasten wird bewusst NICHT gemessen: .sway dreht ihn ±2° um die Standlinie, sein Rechteck wäre
+     phasenabhängig. Die Konstanten folgen dem Figuren-Rig (Schädel-Pfad, Dreh-Pivot 50 %/95,6 %, 85°) und müssen mit
+     ihm zusammen aktualisiert werden; alle Prozentwerte beziehen sich auf den (ggf. verkleinerten) Rig-Kasten.
+     - Stehend (jede Pose außer "down"): Kastenoberkante = Blasenanker (y), Schädelmitte bei 27,2 % der Kastenhöhe
+       (viewBox des Schädel-Pfads y 22…76 → Mitte 49 von 180).
+     - Liegend ("down"): Der Körper dreht sich 85° um (50 %, 95,6 %). Aus Pivot (50,172) und Schädelmitte (50,49)
+       folgt dy = -123; nach der 85°-Drehung: dx' = 123·sin85° ≈ 122,5 (= 0,681·Kastenhöhe),
+       dy' = 172 − 123·cos85° ≈ 161,3 (= 0,896·Kastenhöhe). */
+  _headAt(els, fig) {
+    const R = els.root.getBoundingClientRect();
+    const outer = fig.el.getBoundingClientRect(), inner = qs('.cs-fig-inner', fig.el);
+    const klein = !!(inner && inner.classList.contains('klein'));
+    /* Rig-Kasten = äußerer Kasten (schwankt nie), bei klein um den CSS-Versatz (top 15 %, Höhe 85 %) verkleinert – der innere Kasten wird nicht gemessen, weil .sway ihn dreht */
+    const b = klein ? { left: outer.left, width: outer.width, top: outer.top + 0.15 * outer.height, height: 0.85 * outer.height } : outer;
+    const facing = parseFloat(fig.el.style.getPropertyValue('--face')) || 1;
+    const down = fig.pose === 'down';
+    const x = b.left + b.width / 2 + (down ? facing * 0.681 * b.height : 0);
+    const cy = b.top + (down ? 0.896 : 0.272) * b.height;
+    const y = down ? cy - 0.15 * b.height : b.top;
+    const h = 0.30 * b.height;
+    return { x: x - R.left, y: y - R.top, cy: cy - R.top, h, W: R.width, H: R.height };
+  },
+  /* Blase über dem Sprecher; ohne Sprecher (leere Bühne) als Erzähler-Blase oben mittig */
+  _placeBubble(els, speaker, full) {
+    const b = els.bubble;
+    b.hidden = false; b.style.width = ''; b.style.minHeight = '';
+    b.classList.toggle('narrator', !speaker);
+    els.text.textContent = full;                       // volle Größe messen, dann wieder leeren und tippen
+    const bw = b.offsetWidth, bh = b.offsetHeight;
+    b.style.width = `${bw}px`; b.style.minHeight = `${bh}px`;
+    if (!speaker) { b.style.left = `${Math.round((els.root.clientWidth - bw) / 2)}px`; b.style.top = '12%'; return; }
+    const hd = this._headAt(els, speaker);
+    const left = Math.max(8, Math.min(hd.W - bw - 8, Math.round(hd.x - bw / 2)));
+    b.style.left = `${left}px`; b.style.top = `${Math.max(8, Math.round(hd.y - bh - 18))}px`;
+    b.style.setProperty('--tail', `${Math.round(Math.max(18, Math.min(bw - 18, hd.x - left)))}px`);
+  },
+  _shout(els, speaker, text) {
+    const s = els.shout; s.textContent = text;
+    if (speaker) { const hd = this._headAt(els, speaker); s.style.left = `${Math.round(hd.x)}px`; s.style.top = `${Math.round(hd.y)}px`; }
+    else { s.style.left = '50%'; s.style.top = '40%'; }
+    s.classList.remove('on'); void s.offsetWidth; s.classList.add('on');
+  },
+  _panel(els, p, plan, ctx, isLast) {
     return new Promise((resolve) => {
       const who = this.CAST[p.who] || this.CAST.du;
-      els.bg.className = `cs-bg ${p.bg || 'bar'}`;
-      els.bg.innerHTML = '';
-      (this.PROPS[p.bg] || []).forEach((e, i) => els.bg.append(h('span', { class: 'prop', style: `left:${i ? 78 : 12}%; top:${i ? 22 : 30}%` }, e)));
-      els.portrait.className = `cs-portrait ${p.mood || 'calm'}`;
-      els.portrait.classList.toggle('royal-frame', p.bg === 'royal' || p.who === 'sylvie');
-      els.portrait.textContent = who.emoji;
-      els.portrait.style.setProperty('--c', who.color);
-      els.box.style.setProperty('--c', who.color);
-      els.name.textContent = who.name;
-      els.choices.innerHTML = '';
-      els.extra.innerHTML = '';
-      els.next.style.visibility = 'hidden';
+      const instant = this.quick() || els.skipping;
+      els.bubble.hidden = true; els.choices.innerHTML = ''; els.extra.innerHTML = ''; els.next.style.visibility = 'hidden';
       els.skip.style.display = isLast ? 'none' : '';
+      els.name.textContent = who.name; els.bubble.style.setProperty('--c', who.color); // Sprecher sofort bekannt (Blase erscheint nach dem Auftritt)
+      // vor _stage messen: "wide" holt nur dann Wartezeit, wenn die Welt gerade noch gezoomt ist (_stage setzt das gleich synchron zurück)
+      const moving = plan.enter.some((e) => (plan.cast.find((c) => c.who === e.who) || {}).pose !== 'down') || plan.exit.length > 0 || (plan.cam === 'wide' && !!els.world.style.transform); // liegende Auftritte laufen nicht (siehe _stage) – keine Leerwartezeit
+      const speaker = this._stage(els, p, plan, instant);
       this._fx(els, p.fx, ctx, false);
+      if (p.sfx) SFX.play(p.sfx);
       const full = this.fill(p.text || '', ctx);
-      let typing = true, pos = 0, timer = null;
+      let typing = false, started = false, finished = false, showAll = false, pos = 0, timer = null, skipWait = null;
+      const waitOr = (ms) => new Promise((r) => { if (!ms || instant || showAll) return r(); skipWait = r; setTimeout(r, ms); }); // showAll: ein Klick im Auftritt kürzt auch die folgende pause ab
       const renderChoices = () => {
-        for (const c of p.choices) {
-          els.choices.append(h('button', { class: 'btn ' + (c.cls || ''), onclick: (e) => { e.stopPropagation(); SFX.play('click'); done(c.value); } }, c.label));
-        }
+        for (const c of p.choices) els.choices.append(h('button', { class: 'btn ' + (c.cls || ''), onclick: (e) => { e.stopPropagation(); SFX.play('click'); done(c.value); } }, c.label));
       };
       const finish = () => {
         typing = false; clearTimeout(timer); els.text.textContent = full;
+        if (speaker) speaker.el.classList.remove('talking');
         if (p.choices) renderChoices(); else els.next.style.visibility = 'visible';
       };
       const tick = () => {
@@ -2710,16 +3344,37 @@ const Cutscene = {
       };
       const onClick = (e) => {
         if (e.target.closest('.cs-choices') || e.target.closest('.cs-skip')) return;
+        if (!started) { showAll = true; if (skipWait) skipWait(); return; }   // Klick während Auftritt/Pause: Weg abkürzen, Text komplett zeigen (wie Klick ins Tippen)
         if (typing) finish(); else if (!p.choices) done(undefined);
       };
       const onKey = (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onClick({ target: els.text }); } };
       const onSkip = (e) => { e.stopPropagation(); done(this.SKIP); };
       const cleanup = () => { typing = false; clearTimeout(timer); els.root.removeEventListener('click', onClick); document.removeEventListener('keydown', onKey); els.skip.removeEventListener('click', onSkip); };
-      const done = (v) => { cleanup(); resolve(v); };
+      const done = (v) => { if (finished) return; finished = true; cleanup(); resolve(v); };
       els.root.addEventListener('click', onClick);
       document.addEventListener('keydown', onKey);
       els.skip.addEventListener('click', onSkip);
-      if (matchMedia('(prefers-reduced-motion: reduce)').matches) finish(); else tick();
+      (async () => {
+        await waitOr(moving ? this.WALK_MS : 0);
+        if (finished) return;
+        await waitOr(p.pause || 0);
+        if (finished) return;
+        if (showAll) this._snap(els);
+        this._cam(els, plan, speaker);
+        if (plan.cam === 'close' && speaker) {
+          // Kopf erst NACH abgeschlossenem Zoom messen (Blase am Endpunkt), sonst wie oben abkürzbar per Klick
+          await waitOr(instant || showAll ? 0 : this.WALK_MS);
+          if (finished) return;
+          if (showAll) this._snap(els);
+        }
+        if (p.shout) this._shout(els, speaker, p.shout);
+        this._placeBubble(els, speaker, full);
+        started = true;
+        if (instant || showAll) { finish(); return; }
+        typing = true; els.text.textContent = '';
+        if (speaker) speaker.el.classList.add('talking');
+        tick();
+      })();
     });
   },
   _fx(els, fx, ctx, instant) {
@@ -2760,8 +3415,8 @@ const Cutscene = {
 /* ---- Szenen: Intro & Neues Spiel ---- */
 Cutscene.define('intro', [
   { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Neu hier? Fünfzig Euro in der Tasche und dieser Blick. Den kenn ich.' },
-  { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Hier unten gibt es keine Regeln, nur Quoten. Die Bar ist rechts, das Hinterzimmer daneben. Frag nicht, was im Brownie ist.' },
-  { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Die Türen sind da drüben. Viel Glück – du wirst es brauchen.' },
+  { bg: 'bar', who: 'wirt', mood: 'calm', pose: 'point', text: 'Hier unten gibt es keine Regeln, nur Quoten. Die Bar ist rechts, das Hinterzimmer daneben. Frag nicht, was im Brownie ist.' },
+  { bg: 'bar', who: 'wirt', mood: 'happy', cam: 'close', text: 'Die Türen sind da drüben. Viel Glück – du wirst es brauchen.' },
 ]);
 Cutscene.define('newgame.confirm', [
   { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Alles auf Anfang? Konto, Haus, Schulden, Chantal – alles weg. Die Trophäen an der Wand bleiben hängen.',
@@ -3019,12 +3674,12 @@ Cutscene.define('brownie.first', [
 ]);
 Cutscene.define('kidney.offer', [
   { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Ah, der Kandidat. Setz dich. Zwei Nieren, ein Hobby – das geht sich rechnerisch nicht aus.' },
-  { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Zweitausend Euro, bar, Eiswanne inklusive. Dafür schluckst du ab jetzt bei jedem Spin für zwanzig Euro Tabletten. Deal?',
+  { bg: 'klinik', who: 'doc', mood: 'calm', pose: 'point', text: 'Zweitausend Euro, bar, Eiswanne inklusive. Dafür schluckst du ab jetzt bei jedem Spin für zwanzig Euro Tabletten. Deal?',
     choices: [{ label: 'Ja, brauch das Geld', value: 'yes', cls: 'red' }, { label: 'Nein danke', value: 'no', cls: 'ghost' }] },
 ]);
 Cutscene.define('kidney.sold', [
-  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'blackout', text: 'Zähl rückwärts von zehn. Zehn… neun…' },
-  { bg: 'klinik', who: 'doc', mood: 'happy', fx: 'gain', text: 'Wach? Gut. Die Naht hält, meistens. Zweitausend liegen auf dem Nachttisch. Die Meds gehen auf dich.' },
+  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'blackout', pose: { who: 'du', pose: 'down' }, text: 'Zähl rückwärts von zehn. Zehn… neun…' },
+  { bg: 'klinik', who: 'doc', mood: 'happy', fx: 'gain', pose: { who: 'du', pose: 'idle' }, text: 'Wach? Gut. Die Naht hält, meistens. Zweitausend liegen auf dem Nachttisch. Die Meds gehen auf dich.' },
 ]);
 
 /* ---- Kredite ---- */
@@ -3138,16 +3793,16 @@ Cutscene.define('bank.limit', [
 ]);
 Cutscene.define('mafia.loan', [
   { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Setz dich. Du brauchst Geld, ich habe Geld. So einfach ist das Leben manchmal.' },
-  { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Fünf Spins. Dann liegt es hier auf dem Tisch. Ich rede nicht gern über das, was sonst passiert. Der Doc redet gern darüber.' },
-  { bg: 'hinterzimmer', who: 'vito', mood: 'happy', text: 'Ich mag dich. Enttäusch mich nicht.' },
+  { bg: 'hinterzimmer', who: 'vito', mood: 'calm', pose: 'point', text: 'Fünf Spins. Dann liegt es hier auf dem Tisch. Ich rede nicht gern über das, was sonst passiert. Der Doc redet gern darüber.' },
+  { bg: 'hinterzimmer', who: 'vito', mood: 'happy', cam: 'close', pause: 500, text: 'Ich mag dich. Enttäusch mich nicht.' },
 ]);
 Cutscene.define('mafia.lastcall', [
-  { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Noch ein Spin, mein Freund. {{debt}}. Ich habe den Doc schon angerufen – nur zur Sicherheit.' },
+  { bg: 'hinterzimmer', who: 'vito', mood: 'calm', cam: 'close', pause: 600, text: 'Noch ein Spin, mein Freund. {{debt}}. Ich habe den Doc schon angerufen – nur zur Sicherheit.' },
 ]);
 Cutscene.define('mafia.legbreak', [
-  { bg: 'hinterzimmer', who: 'vito', mood: 'angry', fx: 'blackout', text: 'Die Frist ist um. Es tut mir leid. Wirklich. Luigi – das Bein.' },
-  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'shake', text: 'KNACK. Ja, das war das Schienbein. Halt still, ich hab nur noch Zahnseide.' },
-  { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'drain', text: 'Not-OP, Titanplatte, Krücken: {{bill}}. Ich schreib es dir auf den Zettel. Vito lässt grüßen.' },
+  { bg: 'hinterzimmer', who: 'vito', mood: 'angry', fx: 'blackout', pose: 'point', text: 'Die Frist ist um. Es tut mir leid. Wirklich. Luigi – das Bein.' },
+  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'shake', shout: 'KNACK!', cam: 'shake', look: { du: { hurt: 'kruecke' } }, pose: { who: 'du', pose: 'down' }, text: 'KNACK. Ja, das war das Schienbein. Halt still, ich hab nur noch Zahnseide.' },
+  { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'drain', pose: { who: 'du', pose: 'idle' }, text: 'Not-OP, Titanplatte, Krücken: {{bill}}. Ich schreib es dir auf den Zettel. Vito lässt grüßen.' },
 ]);
 Cutscene.bind('mafia.lastcall', 'mafia.lastcall');
 Cutscene.bind('mafia.legbreak', 'mafia.legbreak');
@@ -3290,23 +3945,23 @@ UI.register('life', {
 Bus.on('spin:after', () => Life.render());
 
 Cutscene.define('house.bought', [
-  { bg: 'villa', who: 'makler', mood: 'happy', text: 'Traumlage! Penthouse, Blick auf den Hafen, Nachbarn, die nicht fragen. Hier sind die Schlüssel.' },
-  { bg: 'villa', who: 'makler', mood: 'calm', text: 'Dreißig Euro die Minute wirft die Bude ab – Untermieter, frag nicht welche. Und jetzt: Tinder Gold. Du hast schließlich ein Penthouse.' },
+  { bg: 'villa', who: 'makler', mood: 'happy', pose: 'hands-up', text: 'Traumlage! Penthouse, Blick auf den Hafen, Nachbarn, die nicht fragen. Hier sind die Schlüssel.' },
+  { bg: 'villa', who: 'makler', mood: 'calm', pose: 'point', text: 'Dreißig Euro die Minute wirft die Bude ab – Untermieter, frag nicht welche. Und jetzt: Tinder Gold. Du hast schließlich ein Penthouse.' },
 ]);
 Cutscene.define('tinder.match', [
-  { bg: 'standesamt', who: 'chantal', mood: 'happy', text: 'Ehrlich jetzt – ein Penthouse?! Du bist ja soooo reif. ✨ It’s a match!' },
+  { bg: 'standesamt', who: 'chantal', mood: 'happy', cam: 'close', text: 'Ehrlich jetzt – ein Penthouse?! Du bist ja soooo reif. ✨ It’s a match!' },
   { bg: 'standesamt', who: 'chantal', mood: 'happy', fx: 'hearts', text: 'Ich hab schon das Standesamt gebucht. Meine Follower flippen aus.' },
-  { bg: 'standesamt', who: 'du', mood: 'happy', text: '„Ja, ich will." – Irgendwo in der Ferne lacht ein Anwalt.' },
+  { bg: 'standesamt', who: 'du', mood: 'happy', walk: { who: 'chantal', to: 'mid' }, cam: 'wide', text: '„Ja, ich will." – Irgendwo in der Ferne lacht ein Anwalt.' },
 ]);
 Cutscene.define('divorce', [
-  { bg: 'hafen', who: 'chantal', mood: 'angry', text: 'Ehrlich jetzt, Schatz… es liegt nicht an dir. Es liegt an deinem Kontostand.' },
-  { bg: 'hafen', who: 'schmalz', mood: 'calm', text: 'Dr. Schmalz, Fachanwalt für Familienrecht. Das Penthouse geht an meine Mandantin. Das Konto teilen wir. Fair ist fair.' },
-  { bg: 'hafen', who: 'schmalz', mood: 'calm', fx: 'drain', text: '{{before}} durch zwei macht {{after}}. Ich runde zu ihren Gunsten.' },
+  { bg: 'hafen', who: 'chantal', mood: 'angry', pose: 'point', text: 'Ehrlich jetzt, Schatz… es liegt nicht an dir. Es liegt an deinem Kontostand.' },
+  { bg: 'hafen', who: 'schmalz', mood: 'calm', walk: { who: 'chantal', to: 'far' }, text: 'Dr. Schmalz, Fachanwalt für Familienrecht. Das Penthouse geht an meine Mandantin. Das Konto teilen wir. Fair ist fair.' },
+  { bg: 'hafen', who: 'schmalz', mood: 'calm', fx: 'drain', cam: 'close', text: '{{before}} durch zwei macht {{after}}. Ich runde zu ihren Gunsten.' },
   { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Komm, setz dich. Ab jetzt brauchst du zwei Bier intus, sonst klappst du zusammen. Ärztlicher Rat. Meiner.' },
 ]);
 Cutscene.define('heartbreak.collapse', [
-  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'shake', text: 'Kreislauf! Weniger als zwei Bier bei akutem Liebeskummer – das ist grob fahrlässig.' },
-  { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'drain', text: 'Notarzt, Infusion, ein Brownie zur Beruhigung: {{bill}}. Trink nächstes Mal.' },
+  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'shake', pose: { who: 'du', pose: 'down' }, cam: 'shake', text: 'Kreislauf! Weniger als zwei Bier bei akutem Liebeskummer – das ist grob fahrlässig.' },
+  { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'drain', pose: { who: 'du', pose: 'idle' }, text: 'Notarzt, Infusion, ein Brownie zur Beruhigung: {{bill}}. Trink nächstes Mal.' },
 ]);
 Cutscene.define('therapy.done', [
   { bg: 'hinterzimmer', who: 'schmalz', mood: 'calm', text: 'Fünftausend. Davon gehen viertausendneunhundert an mich und hundert an die Therapeutin. Sie sagt, Sie sollen loslassen.' },
@@ -5233,12 +5888,12 @@ UI.register('russian', {
 });
 
 Cutscene.define('igor.first', () => [
-  { bg: 'keller', who: 'igor', mood: 'calm', text: '…' },
+  { bg: 'keller', who: 'igor', mood: 'calm', pause: 900, cam: 'close', text: '…' },
   ...(State.s.strength >= Rules.MUG.STR_RESPECT ? [{ bg: 'keller', who: 'igor', mood: 'happy', text: 'Respekt. Man hört Dinge. Mein Cousin humpelt noch.' }] : []),
-  { bg: 'keller', who: 'igor', mood: 'calm', text: 'Eine Kugel. Sechs Kammern. Du zuerst. Ich habe Zeit.' },
+  { bg: 'keller', who: 'igor', mood: 'calm', pose: 'point', text: 'Eine Kugel. Sechs Kammern. Du zuerst. Ich habe Zeit.' },
 ]);
 Cutscene.define('rr.headshot', [
-  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'flash', text: 'Streifschuss! Du Glückspilz. Hundert Euro fürs Pflaster – und für meine Nerven.' },
+  { bg: 'klinik', who: 'doc', mood: 'shock', fx: 'flash', look: { du: { hurt: 'pflaster' } }, cam: 'shake', shout: 'PÄNG!', sfx: 'gunshot', text: 'Streifschuss! Du Glückspilz. Hundert Euro fürs Pflaster – und für meine Nerven.' },
 ]);
 </script>
 
@@ -5479,9 +6134,9 @@ Bus.on('story:ended', ({ id, ending }) => {
 <script id="gameover">
 /* ================= GAME OVER & NEUES SPIEL ================= */
 Cutscene.define('gameover', [
-  { bg: 'hafen-morgen', who: 'vito', mood: 'calm', text: 'Schöner Sonnenaufgang, oder? Ich komme gern hierher, wenn ich nachdenken muss. Über Freunde. Über Schulden.' },
-  { bg: 'hafen-morgen', who: 'vito', mood: 'calm', text: 'Die Bank will nichts mehr von dir, ich habe schon etwas von dir, und dein Konto steht bei {{balance}}. Das nennt man ein Ende.' },
-  { bg: 'hafen-morgen', who: 'vito', mood: 'happy', fx: 'stats', text: 'Aber ich bin kein Unmensch. Fünfzig Euro und ein neuer Anfang. Wir sehen uns unten.',
+  { bg: 'hafen-morgen', who: 'vito', mood: 'calm', cast: ['du', 'vito'], text: 'Schöner Sonnenaufgang, oder? Ich komme gern hierher, wenn ich nachdenken muss. Über Freunde. Über Schulden.' },
+  { bg: 'hafen-morgen', who: 'vito', mood: 'calm', cam: 'close', text: 'Die Bank will nichts mehr von dir, ich habe schon etwas von dir, und dein Konto steht bei {{balance}}. Das nennt man ein Ende.' },
+  { bg: 'hafen-morgen', who: 'vito', mood: 'happy', fx: 'stats', cam: 'wide', pose: 'point', text: 'Aber ich bin kein Unmensch. Fünfzig Euro und ein neuer Anfang. Wir sehen uns unten.',
     choices: [{ label: 'Nochmal', value: 'again', cls: 'red' }] },
 ]);
 
@@ -5623,9 +6278,9 @@ const Mugging = {
   },
 };
 Cutscene.define('mug.intro', (ctx) => [
-  { bg: 'gasse', who: 'du', mood: 'calm', text: 'Der kurze Weg zum Keller. Durch die Gasse. Immer durch die Gasse.' },
-  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'flash', text: ctx.type.intro[0] },
-  { bg: 'gasse', who: 'raeuber', mood: 'calm', text: ctx.type.intro[1] + ` Er will ${ctx.loot}.`,
+  { bg: 'gasse', who: 'du', mood: 'calm', cast: ['du'], walk: { who: 'du', to: 'mid' }, text: 'Der kurze Weg zum Keller. Durch die Gasse. Immer durch die Gasse.' },
+  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'flash', enter: { who: 'raeuber', from: 'right' }, pose: 'point', cam: 'shake', shout: 'HEY!', text: ctx.type.intro[0] },
+  { bg: 'gasse', who: 'raeuber', mood: 'calm', cam: 'close', text: ctx.type.intro[1] + ` Er will ${ctx.loot}.`,
     choices: [
       { label: `💪 Kämpfen (${ctx.fight} %)`, value: 'fight', cls: 'red' },
       { label: `👟 Wegrennen (${ctx.flee} %)`, value: 'flee', cls: 'blue' },
@@ -5633,24 +6288,24 @@ Cutscene.define('mug.intro', (ctx) => [
     ] },
 ]);
 Cutscene.define('mug.fightWon', (ctx) => [
-  { bg: 'gasse', who: 'du', mood: 'angry', fx: 'shake', text: ctx.type.fightWon },
-  { bg: 'gasse', who: 'du', mood: 'happy', fx: ctx.wallet !== '0 €' ? 'gain' : undefined, text: ctx.wallet !== '0 €' ? `Seine Brieftasche: ${ctx.wallet}. Finderlohn. Stärke ${ctx.strength}.` : `Nichts verloren. Stärke ${ctx.strength}.` },
+  { bg: 'gasse', who: 'du', mood: 'angry', fx: 'shake', cast: ['du', 'raeuber'], pose: { who: 'raeuber', pose: 'down' }, shout: 'ZACK!', cam: 'shake', text: ctx.type.fightWon },
+  { bg: 'gasse', who: 'du', mood: 'happy', fx: ctx.wallet !== '0 €' ? 'gain' : undefined, cam: 'close', text: ctx.wallet !== '0 €' ? `Seine Brieftasche: ${ctx.wallet}. Finderlohn. Stärke ${ctx.strength}.` : `Nichts verloren. Stärke ${ctx.strength}.` },
 ]);
 Cutscene.define('mug.fightLost', (ctx) => [
-  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'shake', text: ctx.type.fightLost },
-  { bg: 'gasse', who: 'du', mood: 'dead', fx: 'drain', text: `Du hast eingesteckt. Du hast gelernt. Stärke ${ctx.strength}.` },
+  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'shake', pose: 'point', cam: 'shake', shout: 'ZACK!', text: ctx.type.fightLost },
+  { bg: 'gasse', who: 'du', mood: 'dead', fx: 'drain', look: { du: { hurt: 'pflaster' } }, text: `Du hast eingesteckt. Du hast gelernt. Stärke ${ctx.strength}.` },
 ]);
 Cutscene.define('mug.fled', (ctx) => [
-  { bg: 'gasse', who: 'du', mood: 'shock', fx: 'flash', text: ctx.type.fled },
+  { bg: 'gasse', who: 'du', mood: 'shock', fx: 'flash', pose: 'walk', cam: 'shake', text: ctx.type.fled },
   { bg: 'keller', who: 'du', mood: 'happy', text: 'Unten. Alles noch da. Die Beine zittern, das Geld nicht.' },
 ]);
 Cutscene.define('mug.caught', (ctx) => [
-  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'shake', text: ctx.type.caught },
-  { bg: 'gasse', who: 'du', mood: 'dead', fx: 'drain', text: 'Hätte ich mal bezahlt.' },
+  { bg: 'gasse', who: 'raeuber', mood: 'angry', fx: 'shake', pose: 'point', cam: 'shake', text: ctx.type.caught },
+  { bg: 'gasse', who: 'du', mood: 'dead', fx: 'drain', look: { du: { hurt: 'pflaster' } }, text: 'Hätte ich mal bezahlt.' },
 ]);
 Cutscene.define('mug.paid', (ctx) => [
-  { bg: 'gasse', who: 'raeuber', mood: 'calm', fx: 'drain', text: ctx.type.paid },
-  { bg: 'gasse', who: 'du', mood: 'calm', text: 'Kein Kratzer. Kein Stolz. Weiter.' },
+  { bg: 'gasse', who: 'raeuber', mood: 'calm', fx: 'drain', pose: 'point', text: ctx.type.paid },
+  { bg: 'gasse', who: 'du', mood: 'calm', exit: 'raeuber', text: 'Kein Kratzer. Kein Stolz. Weiter.' },
 ]);
 Bus.on('mug:done', () => { if (State.s.stats.fightsWon >= 5) Achievements.unlock('strassenkaempfer'); });
 </script>
@@ -6713,6 +7368,9 @@ const Stories = {
     const errs = [];
     const storyIds = Object.keys(this.all);
     for (const st of Object.values(this.all)) errs.push(...StoryRules.validate(st, sceneIds, jobIds || (st.start.unlocked.jobs), storyIds, this.all));
+    const castIds = Object.keys(Cutscene.CAST), sfxIds = typeof SFX !== 'undefined' && SFX.LIB ? Object.keys(SFX.LIB) : null;
+    const setIds = Object.keys(Cutscene.SETS);
+    for (const [id, def] of Object.entries(Cutscene.SCENES)) if (typeof def !== 'function') errs.push(...CsDirector.validatePanels(id, def, { castIds, sfxIds, setIds }));
     if (errs.length) { errs.forEach((e) => console.error('[story]', e)); UI.toast({ icon: '🐛', title: 'Story-Daten fehlerhaft', text: errs[0], tone: 'loss', ms: 8000 }); }
     return errs;
   },
@@ -7696,10 +8354,10 @@ const STORY_SCHULD = {
   scenes: {
     /* ---- Intro ---- */
     'schuld.intro': [
-      { bg: 'keller', who: 'du', mood: 'shock', text: 'Beton. Kalt. Ein Zettel vor meinem Gesicht: 50.000 €. Ich erinnere mich an nichts.' },
-      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Gestern Nacht hast du an meinem Tisch gesessen. Mit meinem Geld. Du warst sehr mutig. Fünfzigtausend mutig.' },
-      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Dreißig Tage. Dann liegt es hier auf dem Tisch – in Raten oder am Stück, mir egal. Ich bin kein Unmensch.' },
-      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Hier. Fünfzig Euro und eine Schürze. Die Spülküche ist hinten links, der Postmeister sucht Leute. Morgens arbeiten, abends spielen – so läuft das hier.' },
+      { bg: 'keller', who: 'du', mood: 'shock', cast: ['du'], pose: 'down', cam: 'close', text: 'Beton. Kalt. Ein Zettel vor meinem Gesicht: 50.000 €. Ich erinnere mich an nichts.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', pose: 'point', text: 'Gestern Nacht hast du an meinem Tisch gesessen. Mit meinem Geld. Du warst sehr mutig. Fünfzigtausend mutig.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', cam: 'close', text: 'Dreißig Tage. Dann liegt es hier auf dem Tisch – in Raten oder am Stück, mir egal. Ich bin kein Unmensch.' },
+      { bg: 'bar', who: 'wirt', mood: 'calm', pose: 'point', text: 'Hier. Fünfzig Euro und eine Schürze. Die Spülküche ist hinten links, der Postmeister sucht Leute. Morgens arbeiten, abends spielen – so läuft das hier.' },
     ],
     /* ---- Kapitel ---- */
     'schuld.k2': [
@@ -7727,10 +8385,10 @@ const STORY_SCHULD = {
       { bg: 'hinterzimmer', who: 'vito', mood: 'angry', text: 'Igor. Der Revolver. Kein Einsatz – nur eine Erinnerung daran, wem dein Kopf gehört.' },
     ],
     'schuld.duelLost': [
-      { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Streifschuss. Vito wollte dich nicht tot, nur wach. Fünfhundert fürs Nähen. Ich schreib es dir auf – ach nein, du zahlst jetzt.' },
+      { bg: 'klinik', who: 'doc', mood: 'calm', look: { du: { hurt: 'pflaster' } }, text: 'Streifschuss. Vito wollte dich nicht tot, nur wach. Fünfhundert fürs Nähen. Ich schreib es dir auf – ach nein, du zahlst jetzt.' },
     ],
     'schuld.duelWon': [
-      { bg: 'keller', who: 'igor', mood: 'calm', text: '…Du hast nicht gezittert. Das merke ich mir.' },
+      { bg: 'keller', who: 'igor', mood: 'calm', cam: 'close', text: '…Du hast nicht gezittert. Das merke ich mir.' },
     ],
     /* ---- Kurier ---- */
     'schuld.kurier.polizei': [
@@ -7773,14 +8431,14 @@ const STORY_SCHULD = {
     ],
     /* ---- Enden ---- */
     'schuld.ende.ehrlich': [
-      { bg: 'hafen', who: 'vito', mood: 'calm', text: 'Fünfzigtausend. Auf den Cent. Weißt du, wie viele Leute das je geschafft haben?' },
+      { bg: 'hafen', who: 'vito', mood: 'calm', cam: 'close', text: 'Fünfzigtausend. Auf den Cent. Weißt du, wie viele Leute das je geschafft haben?' },
       { bg: 'hafen', who: 'vito', mood: 'calm', text: 'Keiner. Die Frist war nie zum Zahlen da. Sie war da, um zu sehen, was du tust, wenn du keine Wahl hast.' },
-      { bg: 'hafen', who: 'vito', mood: 'happy', text: 'Verschwinde, bevor ich dich mag. Und komm nicht zurück. Ehrlich gemeint – als Kompliment.' },
+      { bg: 'hafen', who: 'vito', mood: 'happy', pose: 'point', text: 'Verschwinde, bevor ich dich mag. Und komm nicht zurück. Ehrlich gemeint – als Kompliment.' },
     ],
     'schuld.ende.doc': [
       { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Tag dreißig. {{schuld}} offen. Ich sagte, ich bin kein Unmensch. Ich sagte nicht, dass der Doc keiner ist.' },
-      { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'blackout', text: 'Zwei Nieren, ein Hobby. Zähl rückwärts von zehn.' },
-      { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Er wacht wieder auf. Irgendwann. Das war deine Geschichte.' },
+      { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'blackout', pose: { who: 'du', pose: 'down' }, text: 'Zwei Nieren, ein Hobby. Zähl rückwärts von zehn.' },
+      { bg: 'klinik', who: 'doc', mood: 'calm', cam: 'close', text: 'Er wacht wieder auf. Irgendwann. Das war deine Geschichte.' },
     ],
     /* ---- Kapitel 3/4 ---- */
     'schuld.k3': [
@@ -7819,7 +8477,7 @@ const STORY_SCHULD = {
       { bg: 'keller', who: 'igor', mood: 'calm', text: 'Ich arbeite für Vito, seit ich zwölf bin. Ich habe nie gefragt, was in dem Buch steht. Vielleicht sollte ich.' },
     ],
     'schuld.k4': [
-      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Letzte Woche. Ich zähle mit. Alle Tische sind offen, jede Tür. Nutz sie – oder nutz sie nicht. Am Tag dreißig sitzen wir hier.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', cam: 'close', text: 'Letzte Woche. Ich zähle mit. Alle Tische sind offen, jede Tür. Nutz sie – oder nutz sie nicht. Am Tag dreißig sitzen wir hier.' },
     ],
     'schuld.croupierJob': [
       { bg: 'hinterzimmer', who: 'vito', mood: 'happy', text: 'Du bist an der Tür der Beste, den ich je hatte. Also nehme ich dich von der Tür. Der Tisch. Karten, Kessel, Tageskasse. Ab morgen.' },
@@ -7832,7 +8490,7 @@ const STORY_SCHULD = {
       { bg: 'strasse', who: 'kevin', mood: 'happy', text: 'Wenn du willst, sag es mir nachts. Ich frag jeden Abend einmal. Nur einmal.' },
     ],
     'schuld.fluchtFrage': [
-      { bg: 'strasse', who: 'kevin', mood: 'calm', text: 'Heute Nacht? Fähre um vier. Danach fragt keiner mehr nach {{schuld}}.',
+      { bg: 'strasse', who: 'kevin', mood: 'calm', cam: 'close', text: 'Heute Nacht? Fähre um vier. Danach fragt keiner mehr nach {{schuld}}.',
         choices: [
           { label: 'Heute Nacht', value: 'ja', cls: 'red', effects: [{ flag: 'fluchtHeute' }] },
           { label: 'Noch nicht', value: 'nein', cls: 'ghost' },
@@ -7842,7 +8500,7 @@ const STORY_SCHULD = {
       { bg: 'keller', who: 'igor', mood: 'angry', text: 'Kevin redet zu viel. Papiere, Hafen, Fähre. Vito weiß es noch nicht. Ich noch nicht lange. Enttäusch mich nicht.' },
     ],
     'schuld.sturzFrage': [
-      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Du hast das Buch. Du hast den Safe. Igor steht hinter dir. Jetzt oder nie – morgen ist Vito wieder vorsichtig.',
+      { bg: 'bar', who: 'wirt', mood: 'calm', enter: 'igor', text: 'Du hast das Buch. Du hast den Safe. Igor steht hinter dir. Jetzt oder nie – morgen ist Vito wieder vorsichtig.',
         choices: [
           { label: 'Jetzt', value: 'jetzt', cls: 'red', effects: [{ flag: 'sturzJetzt' }] },
           { label: 'Noch einen Tag', value: 'warten', cls: 'ghost' },
@@ -7895,7 +8553,7 @@ const STORY_SCHULD = {
           { label: 'Kasse rein, Klappe zu', value: 'zu', cls: 'ghost', effects: [{ var: 'vertrauen', add: 1 }] },
         ] },
     ],
-    'schuld.croup.safe2': [{ bg: 'hinterzimmer', who: 'du', mood: 'shock', text: 'Neben dem Geld: Fotos. Zwölf Leute, jeder unterm Tisch, jeder mit einem Datum. Und eine Quittung vom Doc. Ich schließe den Safe. Drei-sieben.' }],
+    'schuld.croup.safe2': [{ bg: 'hinterzimmer', who: 'du', mood: 'shock', cast: ['du'], cam: 'close', text: 'Neben dem Geld: Fotos. Zwölf Leute, jeder unterm Tisch, jeder mit einem Datum. Und eine Quittung vom Doc. Ich schließe den Safe. Drei-sieben.' }],
     /* ---- Doc-Assistent ---- */
     'schuld.doc.niere': [
       { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Ein Patient, zwei Nieren, kein Geld. Er schläft. Halt die Schale.',
@@ -7914,17 +8572,17 @@ const STORY_SCHULD = {
     ],
     /* ---- Enden ---- */
     'schuld.ende.sturz': [
-      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Tag der Abrechnung. Setz dich. Igor, die Tür.' },
-      { bg: 'hinterzimmer', who: 'igor', mood: 'calm', text: 'Nein. Heute nicht. Das Buch, Vito. Der Safe. Zwölf Namen. Ich habe nie gefragt. Jetzt frage ich.' },
-      { bg: 'hinterzimmer', who: 'vito', mood: 'shock', fx: 'blackout', text: 'Du… weißt nicht, was du tust. Igor. IGOR.' },
-      { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Vito ist durch die Hintertür. Der Keller gehört jetzt dem, der die Schlüssel hat – mir. Und du fängst morgen an. Als Croupier. Der Kessel läuft, wie er läuft.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', cast: ['du', 'vito', 'igor'], text: 'Tag der Abrechnung. Setz dich. Igor, die Tür.' },
+      { bg: 'hinterzimmer', who: 'igor', mood: 'calm', pose: 'point', text: 'Nein. Heute nicht. Das Buch, Vito. Der Safe. Zwölf Namen. Ich habe nie gefragt. Jetzt frage ich.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'shock', fx: 'blackout', cam: 'close', text: 'Du… weißt nicht, was du tust. Igor. IGOR.' },
+      { bg: 'bar', who: 'wirt', mood: 'happy', pose: 'hands-up', text: 'Vito ist durch die Hintertür. Der Keller gehört jetzt dem, der die Schlüssel hat – mir. Und du fängst morgen an. Als Croupier. Der Kessel läuft, wie er läuft.' },
     ],
     'schuld.ende.taxi': (ctx) => {
       const panels = [
-        { bg: 'strasse', who: 'kevin', mood: 'calm', text: 'Vier Uhr. Papiere im Handschuhfach. Neuer Name, klingt nach Zahnarzt. Fahr.' },
+        { bg: 'strasse', who: 'kevin', mood: 'calm', cam: 'close', text: 'Vier Uhr. Papiere im Handschuhfach. Neuer Name, klingt nach Zahnarzt. Fahr.' },
       ];
       if (ctx.flags.chantalKennt && !ctx.flags.komplize) panels.push({ bg: 'hafen', who: 'chantal', mood: 'happy', text: 'Rutsch rüber. Ehrlich jetzt – dachtest du, ich bleibe hier? Ich bin die Nächste auf der Liste. Fahr.' });
-      panels.push({ bg: 'hafen', who: 'du', mood: 'calm', text: 'Die Fähre legt ab. Das Handy vibriert. Eine Nachricht, unbekannte Nummer: „Ich bin kein Unmensch. Aber ich habe Zeit. – V."' });
+      panels.push({ bg: 'hafen', who: 'du', mood: 'calm', cast: ['du'], text: 'Die Fähre legt ab. Das Handy vibriert. Eine Nachricht, unbekannte Nummer: „Ich bin kein Unmensch. Aber ich habe Zeit. – V."' });
       return panels;
     },
   },
@@ -8036,18 +8694,18 @@ const STORY_KATER = {
         ],
       }[prev];
       return start.concat([
-        { bg: 'standesamt', who: 'chantal', mood: 'happy', text: 'Ja. Natürlich ja. Ich hab die Vollmacht schon vorbereitet – für die Flitterwochen, Schatz. Man muss ja an alles denken.' },
+        { bg: 'standesamt', who: 'chantal', mood: 'happy', cam: 'close', text: 'Ja. Natürlich ja. Ich hab die Vollmacht schon vorbereitet – für die Flitterwochen, Schatz. Man muss ja an alles denken.' },
         { bg: 'standesamt', who: 'schmalz', mood: 'calm', text: 'Kraft des mir verliehenen Amtes. Gütertrennung? Nein? Wie Sie meinen. Unterschreiben Sie da, da und da.' },
-        { bg: 'villa', who: 'du', mood: 'happy', text: 'Villa mit Hafenblick, Mercedes vor der Tür, Filialleiter bei Krause. Dreißig Tage. Was soll schon passieren.' },
+        { bg: 'villa', who: 'du', mood: 'happy', cast: ['du'], pose: 'hands-up', text: 'Villa mit Hafenblick, Mercedes vor der Tür, Filialleiter bei Krause. Dreißig Tage. Was soll schon passieren.' },
       ]);
     },
     'kater.absturz': [
-      { bg: 'villa', who: 'du', mood: 'shock', text: 'Der Wecker ist weg. Das Bett ist weg. Der Zettel auf dem Boden: „Danke für alles. Wirklich alles. – C.-M."' },
-      { bg: 'bank', who: 'krause', mood: 'calm', text: 'Ihre Frau hat die Vollmacht genutzt. Konto, Wagen, Villa – alles rechtens. Und die Filiale… Sie verstehen, das Vertrauen.' },
+      { bg: 'villa', who: 'du', mood: 'shock', cast: ['du'], cam: 'close', text: 'Der Wecker ist weg. Das Bett ist weg. Der Zettel auf dem Boden: „Danke für alles. Wirklich alles. – C.-M."' },
+      { bg: 'bank', who: 'krause', mood: 'calm', pose: 'point', text: 'Ihre Frau hat die Vollmacht genutzt. Konto, Wagen, Villa – alles rechtens. Und die Filiale… Sie verstehen, das Vertrauen.' },
       { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Setz dich. Das erste schreib ich an. Das zweite zahlst du. Du siehst aus, als bräuchtest du drei.' },
     ],
     'kater.k2': [
-      { bg: 'strasse', who: 'du', mood: 'shock', text: 'Tag vier. Null auf dem Konto, kein Auto, kein Schlüssel. Der Wirt hat einen Deckel für mich angelegt. Ich hab ihn nicht drum gebeten.' },
+      { bg: 'strasse', who: 'du', mood: 'shock', cast: ['du'], text: 'Tag vier. Null auf dem Konto, kein Auto, kein Schlüssel. Der Wirt hat einen Deckel für mich angelegt. Ich hab ihn nicht drum gebeten.' },
       { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Pinnwand ist da hinten. Spülen, Post, Taxi. Und drei Bier am Tag – nicht meine Regel, deine Hände haben das entschieden.' },
     ],
     'kater.entzug': [
@@ -8063,7 +8721,7 @@ const STORY_KATER = {
     ],
     'kater.doc.angebot': [
       { bg: 'bar', who: 'doc', mood: 'calm', text: 'Drei Bier für zwanzig Prozent Glück. Ein Brownie für vierzig. Rechne selbst, du warst Filialleiter.' },
-      { bg: 'bar', who: 'doc', mood: 'calm', text: 'Dreihundert das Stück, für dich. Deine Leber bezahlt den Rest.',
+      { bg: 'bar', who: 'doc', mood: 'calm', pose: 'point', text: 'Dreihundert das Stück, für dich. Deine Leber bezahlt den Rest.',
         choices: [{ label: 'Nein, danke', value: 'nein', cls: 'ghost', effects: [{ var: 'docNein', add: 1 }, { flag: 'docAbgelehnt' }] }, { label: 'Was kostet das?', value: 'ja', cls: 'red', effects: [{ flag: 'sucht' }, { price: { brownie: 300, therapy: 8000 } }] }] },
     ],
     'kater.doc.angebot2': [
@@ -8122,7 +8780,7 @@ const STORY_KATER = {
     ],
     /* Casino Royal */
     'kater.sylvie': [
-      { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Gast des Hauses. Ich weiß, was Sie vorhaben. Vierzigtausend für einen Keller – ich zahle mehr, wenn Sie es nicht schaffen.' },
+      { bg: 'royal', who: 'sylvie', mood: 'calm', cam: 'close', text: 'Gast des Hauses. Ich weiß, was Sie vorhaben. Vierzigtausend für einen Keller – ich zahle mehr, wenn Sie es nicht schaffen.' },
     ],
     'kater.k4': [
       { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Letzte Runde. Zehn Tage. Sylvie hat ein Angebot gemacht, ich hab noch nicht Ja gesagt. Ich hab auch noch nicht Nein gesagt.' },
@@ -8141,8 +8799,8 @@ const STORY_KATER = {
       ];
     },
     'kater.chantal': [
-      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Sie steht vor dem Keller. Ohne Mantel, ohne den anderen. „Ich hab gehört, du hast wieder Geld. Ich hab gehört, du kaufst was."' },
-      { bg: 'strasse', who: 'chantal', mood: 'happy', text: '„Lass mich rein. Ich kann Kasse. Ich kann alles, was mit Kasse zu tun hat, das weißt du."',
+      { bg: 'strasse', who: 'du', mood: 'calm', cast: ['du'], text: 'Sie steht vor dem Keller. Ohne Mantel, ohne den anderen. „Ich hab gehört, du hast wieder Geld. Ich hab gehört, du kaufst was."' },
+      { bg: 'strasse', who: 'chantal', mood: 'happy', cam: 'close', text: '„Lass mich rein. Ich kann Kasse. Ich kann alles, was mit Kasse zu tun hat, das weißt du."',
         choices: [{ label: 'Reinlassen', value: 'rein', cls: 'pink', effects: [{ flag: 'chantalZurueck' }] }, { label: 'Rauswerfen', value: 'raus', cls: 'red', effects: [{ flag: 'chantalWeg' }] }] },
     ],
     'kater.chantal.sucht': [
@@ -8152,34 +8810,34 @@ const STORY_KATER = {
       { bg: 'royal', who: 'du', mood: 'calm', text: 'Der Türsteher hebt die Hand. Sie zittern. Wir haben eine Hausordnung – kommen Sie wieder, wenn die Hände still sind.' },
     ],
     'kater.ende.bett': [
-      { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'blackout', text: 'Zähl rückwärts von zehn. Du kommst nicht bis sieben. Das ist in Ordnung. Die Niere war ein Vorschuss – das hier ist die Rate.' },
-      { bg: 'klinik', who: 'du', mood: 'calm', text: 'Der Wirt bringt Blumen. Er stellt sie neben das Bett, in dem niemand mehr liegt. Der Deckel? „Ich hab ihn zerrissen. Er hätte eh nicht gezahlt."' },
+      { bg: 'klinik', who: 'doc', mood: 'calm', fx: 'blackout', pose: { who: 'du', pose: 'down' }, text: 'Zähl rückwärts von zehn. Du kommst nicht bis sieben. Das ist in Ordnung. Die Niere war ein Vorschuss – das hier ist die Rate.' },
+      { bg: 'klinik', who: 'du', mood: 'calm', cast: ['wirt'], cam: 'wide', text: 'Der Wirt bringt Blumen. Er stellt sie neben das Bett, in dem niemand mehr liegt. Der Deckel? „Ich hab ihn zerrissen. Er hätte eh nicht gezahlt."' },
     ],
     'kater.ende.wirt': (ctx) => {
       const panels = [
-        { bg: 'bar', who: 'wirt', mood: 'happy', text: 'Der Schlüssel. Unter dem Tresen, wo er immer lag. Ich bleib Gast – der Hocker am Ende ist meiner, das steht im Vertrag, den du nicht gelesen hast.' },
+        { bg: 'bar', who: 'wirt', mood: 'happy', pose: 'hands-up', text: 'Der Schlüssel. Unter dem Tresen, wo er immer lag. Ich bleib Gast – der Hocker am Ende ist meiner, das steht im Vertrag, den du nicht gelesen hast.' },
         { bg: 'keller', who: 'du', mood: 'calm', text: 'Igor nickt. Einmal. Das ist bei Igor ein Handschlag.' },
       ];
       if (ctx.raw.flags.chantalZurueck) panels.push({ bg: 'bar', who: 'chantal', mood: 'happy', text: 'Sie steht hinter dem Tresen. Sie hat die Kasse schon geöffnet. „Nur gucken, Schatz. Vorerst."' });
       panels.push({ bg: 'royal', who: 'du', mood: 'calm', text: 'Blumen von Madame Sylvie. Karte: „Herzlichen Glückwunsch. Ich habe Zeit." Dieselbe Handschrift wie auf einem anderen Zettel.' });
-      panels.push({ bg: 'bar', who: 'du', mood: 'happy', text: 'Der Ort, an dem ich alles verloren habe. Er gehört mir. Der Kessel läuft, wie er läuft. Erstes Bier geht aufs Haus. Mein Haus.' });
+      panels.push({ bg: 'bar', who: 'du', mood: 'happy', cam: 'close', text: 'Der Ort, an dem ich alles verloren habe. Er gehört mir. Der Kessel läuft, wie er läuft. Erstes Bier geht aufs Haus. Mein Haus.' });
       return panels;
     },
     'kater.ende.nuechtern': [
       { bg: 'strasse', who: 'du', mood: 'calm', text: 'Tag dreißig. Ich gehe am Keller vorbei. Die Tür steht offen, der Wirt winkt. Ich winke zurück. Ich bleibe nicht stehen.' },
-      { bg: 'hafen-morgen', who: 'du', mood: 'happy', text: 'Kein Keller, kein Bier, kein Glück im Glas. Nur Hände, die nicht zittern. Es ist weniger, als ich wollte. Es ist mehr, als ich hatte.' },
+      { bg: 'hafen-morgen', who: 'du', mood: 'happy', cast: ['du'], walk: { who: 'du', to: 'mid' }, text: 'Kein Keller, kein Bier, kein Glück im Glas. Nur Hände, die nicht zittern. Es ist weniger, als ich wollte. Es ist mehr, als ich hatte.' },
     ],
     'kater.ende.brownie': [
-      { bg: 'bar', who: 'doc', mood: 'happy', text: 'Partner. Du sitzt an der Bar und wartest. Auf den Nächsten, der gerade seine Frau verloren hat. Du erkennst sie am Zettel in der Hand.' },
+      { bg: 'bar', who: 'doc', mood: 'happy', pose: 'point', text: 'Partner. Du sitzt an der Bar und wartest. Auf den Nächsten, der gerade seine Frau verloren hat. Du erkennst sie am Zettel in der Hand.' },
       { bg: 'bar', who: 'du', mood: 'calm', text: 'Dreihundert das Stück. Für ihn. Die Leber bezahlt den Rest, das weiß ich besser als jeder. Ich sage es ihm nicht.' },
     ],
     'kater.ende.taxi': [
-      { bg: 'strasse', who: 'chantal', mood: 'happy', text: 'Vier Uhr. Das Taxi wartet. Sie hat die Kasse, den Deckel-Zettel und die Vollmacht – die alte gilt noch, hat Dr. Schmalz gesagt.' },
-      { bg: 'hafen', who: 'du', mood: 'shock', text: 'Die Fähre legt ab. Das Handy vibriert. Unbekannte Nummer: „Danke für alles. Wirklich alles. Wieder. – C.-M."' },
+      { bg: 'strasse', who: 'chantal', mood: 'happy', cam: 'close', text: 'Vier Uhr. Das Taxi wartet. Sie hat die Kasse, den Deckel-Zettel und die Vollmacht – die alte gilt noch, hat Dr. Schmalz gesagt.' },
+      { bg: 'hafen', who: 'du', mood: 'shock', cast: ['du'], text: 'Die Fähre legt ab. Das Handy vibriert. Unbekannte Nummer: „Danke für alles. Wirklich alles. Wieder. – C.-M."' },
     ],
     'kater.ende.stammgast': [
       { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Verkauft. An Sylvie. Sie lässt alles, wie es ist – nur die Preise nicht. Dein Hocker bleibt, sagt sie. Sie mag Stammgäste. Die sind berechenbar.' },
-      { bg: 'bar', who: 'du', mood: 'calm', text: 'Das erste Bier geht aufs Haus. Es ist nicht mehr mein Haus. Es war nie meins. Der Kessel läuft, wie er läuft.' },
+      { bg: 'bar', who: 'du', mood: 'calm', cam: 'close', text: 'Das erste Bier geht aufs Haus. Es ist nicht mehr mein Haus. Es war nie meins. Der Kessel läuft, wie er läuft.' },
     ],
   },
   chapters: [
@@ -8480,15 +9138,15 @@ const STORY_STASH = {
       }[prev];
       return [
         ...start,
-        { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Jeden Montag bringt jemand eine Tasche. Du spielst das Geld durch die Tische – nicht verstecken, spielen. Sonntag zahlst du zurück, mit zehn Prozent obendrauf. Was du gewinnst, gehört dir.' },
+        { bg: 'keller', who: 'anabi', mood: 'calm', pose: 'point', text: 'Jeden Montag bringt jemand eine Tasche. Du spielst das Geld durch die Tische – nicht verstecken, spielen. Sonntag zahlst du zurück, mit zehn Prozent obendrauf. Was du gewinnst, gehört dir.' },
         { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Und der Umsatz muss stimmen. Geld, das nur rumliegt, ist nicht gewaschen. Geld, das gesetzt wurde, schon. Frag nicht, warum. Frag den Finanzbeamten.' },
-        { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Dreimal enttäuschst du mich – dann fährt Igor dich an den Kanal. Er ist ein guter Fahrer. Willkommen im Geschäft.' },
+        { bg: 'keller', who: 'anabi', mood: 'calm', cam: 'close', pause: 500, text: 'Dreimal enttäuschst du mich – dann fährt Igor dich an den Kanal. Er ist ein guter Fahrer. Willkommen im Geschäft.' },
       ];
     },
     'stash.tisch': [
       { bg: 'keller', who: 'du', mood: 'calm', text: 'Sieben Uhr morgens. Vier Männer tragen einen Tisch die Treppe runter. Grünes Tuch, Goldrand, ein Schuh für acht Decks.' },
-      { bg: 'keller', who: 'stumme', mood: 'calm', text: '…' },
-      { bg: 'keller', who: 'du', mood: 'calm', text: 'Der Croupier sagt nichts. Er nickt Richtung Hinterzimmer. Baccarat, fünfhundert Minimum. Anabis Tisch. Deine Umsätze.' },
+      { bg: 'keller', who: 'stumme', mood: 'calm', pause: 800, text: '…' },
+      { bg: 'keller', who: 'du', mood: 'calm', pose: { who: 'stumme', pose: 'point' }, text: 'Der Croupier sagt nichts. Er nickt Richtung Hinterzimmer. Baccarat, fünfhundert Minimum. Anabis Tisch. Deine Umsätze.' },
     ],
     'stash.k2': [
       { bg: 'bahnhof', who: 'du', mood: 'calm', text: 'Seit dem Tisch im Hinterzimmer steht nachts jemand vor deiner Tür. Kapuzen, Bahnhofsviertel, andere Gang. Sie wissen, wem der Keller wirklich gehört.' },
@@ -8543,8 +9201,8 @@ const STORY_STASH = {
       ];
     },
     'stash.hinterhalt': (ctx) => [
-      { bg: 'gasse', who: 'du', mood: 'calm', text: `Heimweg. ${ctx.raw.vars.hinterhaltN === 1 ? 'Einer' : ctx.raw.vars.hinterhaltN === 2 ? 'Zwei' : 'Drei'} von den Bahnhof-Jungs. Kapuzen, Hände in den Taschen. Deine Hand geht ans Handschuhfach.` },
-      { bg: 'gasse', who: 'du', mood: 'calm', text: 'Keiner sagt was. So läuft das hier. Wer zuerst zieht, redet danach.' },
+      { bg: 'gasse', who: 'du', mood: 'calm', cast: ['du'], cam: 'close', text: `Heimweg. ${ctx.raw.vars.hinterhaltN === 1 ? 'Einer' : ctx.raw.vars.hinterhaltN === 2 ? 'Zwei' : 'Drei'} von den Bahnhof-Jungs. Kapuzen, Hände in den Taschen. Deine Hand geht ans Handschuhfach.` },
+      { bg: 'gasse', who: 'du', mood: 'calm', cam: 'shake', text: 'Keiner sagt was. So läuft das hier. Wer zuerst zieht, redet danach.' },
     ],
     'stash.hinterhalt.raub': (ctx) => [
       { bg: 'gasse', who: 'du', mood: 'shock', text: `Heimweg. ${ctx.raw.vars.hinterhaltN === 1 ? 'Einer' : 'Ein paar'} von den Bahnhof-Jungs. Du hast Fäuste. Sie haben mehr.` },
@@ -8557,7 +9215,7 @@ const STORY_STASH = {
     ],
     'stash.tutorial': [
       { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Da läuft ein Junge vom Bahnhof mit meiner Tasche herum. Er glaubt, sie gehört ihm. Erklär ihm das Gegenteil.' },
-      { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Hier. Meine Pistole – geliehen, nicht geschenkt. Warte, bis er zieht. Dann sei schneller. Das ist die ganze Kunst.' },
+      { bg: 'keller', who: 'anabi', mood: 'calm', pose: 'point', text: 'Hier. Meine Pistole – geliehen, nicht geschenkt. Warte, bis er zieht. Dann sei schneller. Das ist die ganze Kunst.' },
     ],
     'stash.tutorial.won': [
       { bg: 'bahnhof', who: 'anabi', mood: 'happy', text: 'Er liegt, du stehst. Der Bahnhof hat es gesehen. Das ist Ruf. Ruf ist Geld, das man nicht zählen muss.' },
@@ -8567,9 +9225,9 @@ const STORY_STASH = {
       { bg: 'bahnhof', who: 'anabi', mood: 'calm', text: 'Er ist weg, die Tasche auch, du hast ein Loch in der Jacke. Meine Pistole – danke. Nächstes Mal zieh nicht, bevor er zieht. Oder zieh schneller danach. Eins von beidem.' },
     ],
     'stash.angebot': [
-      { bg: 'bahnhof', who: 'du', mood: 'calm', text: 'Kessler wartet an der Unterführung. Allein. Das ist entweder Respekt oder eine Falle. Bei Kessler ist es meistens beides.' },
+      { bg: 'bahnhof', who: 'du', mood: 'calm', cast: ['du'], text: 'Kessler wartet an der Unterführung. Allein. Das ist entweder Respekt oder eine Falle. Bei Kessler ist es meistens beides.' },
       { bg: 'bahnhof', who: 'kessler', mood: 'calm', text: 'Du hast meine Jungs hingelegt. Zweimal. Ich könnte sauer sein. Ich bin lieber praktisch: Wasch für uns, dann lassen wir dich in Ruhe.' },
-      { bg: 'bahnhof', who: 'kessler', mood: 'calm', text: 'Keine Überfälle mehr, keine Hinterhalte. Dafür wächst dein Umsatzziel – zwei Herren wollen waschen. Und Anabi erfährt es. Irgendwann. Dann brauchst du uns wirklich.',
+      { bg: 'bahnhof', who: 'kessler', mood: 'calm', cam: 'close', text: 'Keine Überfälle mehr, keine Hinterhalte. Dafür wächst dein Umsatzziel – zwei Herren wollen waschen. Und Anabi erfährt es. Irgendwann. Dann brauchst du uns wirklich.',
         choices: [{ label: 'Annehmen', value: 'ja', cls: 'red', effects: [{ flag: 'bahnhof' }] }, { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ flag: 'bahnhofNein' }] }] },
     ],
     'stash.igor': (ctx) => {
@@ -8601,7 +9259,7 @@ const STORY_STASH = {
       { bg: 'keller', who: 'anabi', mood: 'angry', text: 'Ein Zettel an einen Polizisten. Ein Zettel. Ich zähl das als Enttäuschung. Du weißt, wie ich zähle.' },
     ],
     'stash.razzia': [
-      { bg: 'bar', who: 'brandt', mood: 'calm', text: 'Drei Belege. Der Rest ist ein Datum. Sagen Sie „heute Nacht“, dann steht in einer Stunde ein Bus vor der Tür – und Sie stehen hinter mir, nicht vor mir.',
+      { bg: 'bar', who: 'brandt', mood: 'calm', cam: 'close', text: 'Drei Belege. Der Rest ist ein Datum. Sagen Sie „heute Nacht“, dann steht in einer Stunde ein Bus vor der Tür – und Sie stehen hinter mir, nicht vor mir.',
         choices: [{ label: 'Heute Nacht', value: 'ja', cls: 'red', effects: [{ flag: 'razzia' }] }, { label: 'Noch nicht', value: 'nein', cls: 'ghost' }] },
     ],
     'stash.abloese': (ctx) => [
@@ -8613,11 +9271,11 @@ const STORY_STASH = {
         choices: [{ label: 'Zahlen', value: 'zahlen', cls: 'blue', effects: [{ call: 'kreditZahlen' }] }, { label: 'Doch nicht', value: 'nein', cls: 'ghost' }] },
     ],
     'stash.flucht': [
-      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Der Wagen ist vollgetankt. Dreißigtausend im Kofferraum reichen für eine Grenze und ein Jahr. Der Keller bleibt hier. Anabi auch. Dein Name im Grundbuch – auch.',
+      { bg: 'strasse', who: 'du', mood: 'calm', cast: ['du'], text: 'Der Wagen ist vollgetankt. Dreißigtausend im Kofferraum reichen für eine Grenze und ein Jahr. Der Keller bleibt hier. Anabi auch. Dein Name im Grundbuch – auch.',
         choices: [{ label: 'Abhauen', value: 'ja', cls: 'red', effects: [{ flag: 'flucht' }] }, { label: 'Bleiben', value: 'nein', cls: 'ghost' }] },
     ],
     'stash.finale': (ctx) => [
-      { bg: 'keller', who: 'du', mood: 'calm', text: `Anabi sitzt am Tisch im Hinterzimmer. ${ctx.raw.flags.igor ? 'Igor steht an der Tür und guckt weg.' : 'Igor steht an der Tür und guckt nicht weg.'} Kessler wartet draußen – für danach. Für dich gibt es nur jetzt.`,
+      { bg: 'keller', who: 'du', mood: 'calm', cast: ['du', 'anabi'], pause: 600, text: `Anabi sitzt am Tisch im Hinterzimmer. ${ctx.raw.flags.igor ? 'Igor steht an der Tür und guckt weg.' : 'Igor steht an der Tür und guckt nicht weg.'} Kessler wartet draußen – für danach. Für dich gibt es nur jetzt.`,
         choices: [{ label: 'Los', value: 'los', cls: 'red', effects: [{ call: 'finale' }] }, { label: 'Nicht heute', value: 'nein', cls: 'ghost' }] },
     ],
     'stash.kontrolle': [
@@ -8638,32 +9296,32 @@ const STORY_STASH = {
       { bg: 'strasse', who: 'du', mood: 'calm', text: 'Friseur, zweiter Stock. Er will erst nicht, dann doch, dann schneidet er dir umsonst die Haare. Anabi hat seine Liste, du hast eine neue Frisur.' },
     ],
     'stash.ende.kanal': [
-      { bg: 'keller', who: 'anabi', mood: 'calm', fx: 'blackout', text: 'Dreimal. Ich hab es dir gesagt. Igor – der Wagen.' },
-      { bg: 'hafen', who: 'igor', mood: 'calm', text: 'Er fährt langsam. Anabi sitzt hinten und sagt nichts. Der Kanal ist ruhig um diese Zeit.' },
-      { bg: 'hafen', who: 'du', mood: 'calm', text: 'Der Keller bekommt einen neuen Strohmann. Er wird auch nicht rechnen können.' },
+      { bg: 'keller', who: 'anabi', mood: 'calm', fx: 'blackout', pose: 'point', enter: 'igor', text: 'Dreimal. Ich hab es dir gesagt. Igor – der Wagen.' },
+      { bg: 'hafen', who: 'igor', mood: 'calm', cast: ['igor', 'anabi', 'du'], text: 'Er fährt langsam. Anabi sitzt hinten und sagt nichts. Der Kanal ist ruhig um diese Zeit.' },
+      { bg: 'hafen', who: 'du', mood: 'calm', cast: [], text: 'Der Keller bekommt einen neuen Strohmann. Er wird auch nicht rechnen können.' },
     ],
     'stash.ende.krieg': [
-      { bg: 'keller', who: 'du', mood: 'calm', fx: 'flash', text: 'Anabi liegt neben seinem Tisch. Die Sonnenbrille ist heil geblieben. Sonst nichts.' },
-      { bg: 'keller', who: 'kessler', mood: 'happy', text: 'Schnellste Hand der Stadt. Der Keller gehört dir. Und uns. Aber wir sind bessere Partner – wir klopfen wenigstens.' },
+      { bg: 'keller', who: 'du', mood: 'calm', fx: 'flash', cast: ['du', 'anabi'], pose: { who: 'anabi', pose: 'down' }, sfx: 'gunshot', cam: 'shake', text: 'Anabi liegt neben seinem Tisch. Die Sonnenbrille ist heil geblieben. Sonst nichts.' },
+      { bg: 'keller', who: 'kessler', mood: 'happy', pose: 'point', text: 'Schnellste Hand der Stadt. Der Keller gehört dir. Und uns. Aber wir sind bessere Partner – wir klopfen wenigstens.' },
       { bg: 'keller', who: 'du', mood: 'calm', text: 'Neuer Herr, alte Tasche. Die Wäsche läuft weiter. Nur die Hand am Kofferraum ist jetzt deine.' },
     ],
     'stash.ende.kommissar': (ctx) => [
-      { bg: 'keller', who: 'du', mood: 'calm', fx: 'flash', text: 'Blaulicht die Treppe runter. Anabi in Handschellen, der Stumme sagt zum ersten Mal ein Wort, und es ist kein schönes.' },
+      { bg: 'keller', who: 'du', mood: 'calm', fx: 'flash', cast: ['du', 'anabi', 'brandt'], pose: { who: 'anabi', pose: 'hands-up' }, text: 'Blaulicht die Treppe runter. Anabi in Handschellen, der Stumme sagt zum ersten Mal ein Wort, und es ist kein schönes.' },
       ...(ctx.raw.flags.igor ? [{ bg: 'keller', who: 'igor', mood: 'calm', text: 'Ich hab gewusst, dass du es bist. Ich hab nichts gesagt.' }] : []),
-      { bg: 'keller', who: 'brandt', mood: 'calm', text: 'Der Keller ist Beweismittel. Sie sind frei. Nur nicht hier. Ein Taxi wartet – ich hab es bezahlt. Das erste Mal, dass die Stadt Ihnen etwas schuldet.' },
+      { bg: 'keller', who: 'brandt', mood: 'calm', pose: 'point', text: 'Der Keller ist Beweismittel. Sie sind frei. Nur nicht hier. Ein Taxi wartet – ich hab es bezahlt. Das erste Mal, dass die Stadt Ihnen etwas schuldet.' },
     ],
     'stash.ende.abloese': [
       { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Er zählt nach. Zweimal. Dann nickt er dem Stummen zu, und vier Männer tragen den Tisch die Treppe hoch.' },
       { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Sauber. Du bist der Erste, der sich freigekauft hat. Ich erzähl das niemandem. Es wäre schlecht fürs Geschäft.' },
-      { bg: 'keller', who: 'du', mood: 'happy', text: 'Der Keller gehört dir. Wirklich. Der Wirt trinkt sein Freibier und sagt, er hätte es gewusst.' },
+      { bg: 'keller', who: 'du', mood: 'happy', cam: 'close', text: 'Der Keller gehört dir. Wirklich. Der Wirt trinkt sein Freibier und sagt, er hätte es gewusst.' },
     ],
     'stash.ende.flucht': [
-      { bg: 'strasse', who: 'du', mood: 'calm', text: 'Nachts über die Grenze. Im Rückspiegel ein Schein über der Stadt – der Keller brennt. Nicht deine Schuld, sagt niemand.' },
-      { bg: 'hafen-morgen', who: 'du', mood: 'calm', text: 'Neuer Name, altes Spiel. Irgendwo gibt es immer einen Keller.' },
+      { bg: 'strasse', who: 'du', mood: 'calm', cast: ['du'], text: 'Nachts über die Grenze. Im Rückspiegel ein Schein über der Stadt – der Keller brennt. Nicht deine Schuld, sagt niemand.' },
+      { bg: 'hafen-morgen', who: 'du', mood: 'calm', walk: { who: 'du', to: 'mid' }, text: 'Neuer Name, altes Spiel. Irgendwo gibt es immer einen Keller.' },
     ],
     'stash.ende.strohmann': [
       { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Woche fünf. Die Tasche ist größer. Fünfzigtausend. Du weißt, wie es geht.' },
-      { bg: 'keller', who: 'du', mood: 'calm', text: 'Dein Name steht im Grundbuch. Seiner steht auf dir. Der Stumme nickt. Die Wäsche läuft.' },
+      { bg: 'keller', who: 'du', mood: 'calm', cam: 'close', text: 'Dein Name steht im Grundbuch. Seiner steht auf dir. Der Stumme nickt. Die Wäsche läuft.' },
     ],
   },
 };
@@ -11383,6 +12041,168 @@ T.test('STORY_STASH: Abrechnungs-Szene je Ausgang, Lieferung je Woche, keine Stu
   for (const e of STORY_STASH.endings) { const p = STORY_STASH.scenes[e.scene]; const panels = typeof p === 'function' ? p(ctx({})) : p; T.eq(panels[panels.length - 1].choices, undefined, `${e.id}: Ende ohne Wahl`); }
 });
 
+/* ---- Cutscene-Bühne: Regie-Planer, Figuren, Kulissen (DOM-frei) ---- */
+if (typeof CsDirector !== 'undefined') {
+  T.test('stagePlan: du links, Sprecher rechts, Auftritt von der eigenen Seite, Stimmung → Pose', () => {
+    const plan = CsDirector.stagePlan([
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'a' },
+      { bg: 'bar', who: 'du', mood: 'happy', text: 'b' },
+      { bg: 'bar', who: 'vito', mood: 'angry', text: 'c' },
+    ]);
+    T.eq(plan[0].cast.map((c) => `${c.who}@${c.slot}`), ['du@left', 'wirt@right']);
+    T.eq(plan[0].enter, [{ who: 'du', from: 'left' }, { who: 'wirt', from: 'right' }]);
+    T.eq(plan[0].cast[1].pose, 'talk'); T.eq(plan[0].cast[0].pose, 'idle');
+    T.eq(plan[0].cast[0].facing, 1); T.eq(plan[0].cast[1].facing, -1);
+    T.eq(plan[0].speaker, 'wirt'); T.eq(plan[0].bg, 'bar'); T.eq(plan[0].cam, null);
+    T.eq(plan[1].enter, []); T.eq(plan[1].cast[0].pose, 'talk'); T.eq(plan[1].cast[0].mood, 'happy');
+    T.eq(plan[2].enter, [{ who: 'vito', from: 'right' }]); T.eq(plan[2].cast[2].slot, 'mid'); T.eq(plan[2].cast[2].pose, 'point');
+    T.eq(plan[2].cast[1].mood, 'calm', 'Nicht-Sprecher neutral'); T.eq(plan[2].cast[1].pose, 'idle');
+  });
+  T.test('stagePlan: vierte Figur → die am längsten stumme Nebenfigur geht', () => {
+    const plan = CsDirector.stagePlan([
+      { bg: 'bar', who: 'wirt', text: 'a' }, { bg: 'bar', who: 'vito', text: 'b' }, { bg: 'bar', who: 'igor', text: 'c' },
+    ]);
+    T.eq(plan[2].exit, ['wirt']);
+    T.eq(plan[2].cast.map((c) => c.who).sort(), ['du', 'igor', 'vito']);
+    T.eq(plan[2].cast.find((c) => c.who === 'igor').slot, 'right', 'freier Platz rechts');
+  });
+  T.test('stagePlan: Kulissenwechsel → alle treten neu auf, Kamera zurück; cast: [] leert die Bühne; enter/exit/walk/pose/look', () => {
+    const plan = CsDirector.stagePlan([
+      { bg: 'bar', who: 'wirt', text: 'a' },
+      { bg: 'keller', who: 'vito', mood: 'shock', text: 'b', cam: 'close' },
+      { bg: 'keller', who: 'vito', text: 'c', enter: { who: 'igor', from: 'left' }, walk: { who: 'igor', to: 'far' }, pose: { who: 'du', pose: 'arms-crossed' }, look: { du: { hurt: 'pflaster' } }, shout: 'HEY', pause: 300, sfx: 'gunshot' },
+      { bg: 'keller', who: 'vito', text: 'd', exit: 'igor' },
+      { bg: 'strasse', who: 'du', text: 'e', cast: [] },
+    ]);
+    T.eq(plan[1].bgChange, true); T.eq(plan[1].exit.sort(), ['du', 'wirt']); T.eq(plan[1].enter.map((e) => e.who), ['du', 'vito']); T.eq(plan[1].cam, 'close'); T.eq(plan[1].cast[1].pose, 'flinch');
+    T.eq(plan[2].enter, [{ who: 'igor', from: 'left' }]);
+    T.eq(plan[2].cast.find((c) => c.who === 'igor').slot, 'far');
+    T.eq(plan[2].cast.find((c) => c.who === 'du').pose, 'arms-crossed'); T.eq(plan[2].look, { du: { hurt: 'pflaster' } });
+    T.eq([plan[2].shout, plan[2].pause, plan[2].sfx], ['HEY', 300, 'gunshot']);
+    T.eq(plan[3].exit, ['igor']); T.eq(plan[3].cast.length, 2);
+    T.eq(plan[4].cast, []); T.eq(plan[4].exit.sort(), ['du', 'vito']); T.eq(plan[4].cam, 'wide'); T.eq(plan[4].speaker, 'du');
+  });
+  T.test('stagePlan: dead bleibt liegen, Sprecher-Pose überschreibbar, unbekannter Sprecher = du', () => {
+    const plan = CsDirector.stagePlan([{ bg: 'gasse', who: 'du', mood: 'dead', text: 'a' }, { bg: 'gasse', who: 'raeuber', text: 'b' }, { bg: 'gasse', who: 'du', pose: 'hands-up', text: 'c' }, { bg: 'gasse', text: 'd' }]);
+    T.eq(plan[0].cast[0].pose, 'down'); T.eq(plan[1].cast[0].pose, 'down'); T.eq(plan[1].cast[0].mood, 'dead'); T.eq(plan[2].cast[0].pose, 'hands-up');
+    T.eq(plan[3].speaker, 'du');
+  });
+  T.test('validatePanels: gültige Panels ohne Fehler; unbekannte Schlüssel, Figuren, Posen, Kameras, Sounds, look.hurt sind Fehler', () => {
+    const ok = [{ bg: 'bar', who: 'du', mood: 'calm', text: 'x', fx: 'flash', cast: ['du'], enter: { who: 'vito', from: 'right' }, exit: 'igor', walk: { who: 'du', to: 'mid' }, pose: 'point', cam: 'close', shout: 'PÄNG!', pause: 300, sfx: 'gunshot', look: { du: { hurt: 'pflaster' } }, choices: [{ label: 'a', value: 1 }] }];
+    T.eq(CsDirector.validatePanels('ok', ok, { castIds: ['du', 'vito', 'igor'], sfxIds: ['gunshot'] }), []);
+    T.eq(CsDirector.validatePanels('ok', ok), [], 'ohne Listen: nur Struktur');
+    const errs = CsDirector.validatePanels('t', [{ bg: 'bar', who: 'nix', foo: 1, mood: 'sad', fx: 'boom', cam: 'zoom', pose: { who: 'du', pose: 'fly' }, walk: { who: 'du', to: 'oben' }, look: { du: { hurt: 'x' } }, sfx: 'boom', pause: -1, enter: { who: 'du', from: 'oben' } }], { castIds: ['du'], sfxIds: ['gunshot'] });
+    for (const needle of ['"foo"', '"nix"', 'mood "sad"', 'fx "boom"', 'cam "zoom"', 'pose "fly"', 'walk.to "oben"', 'look.hurt "x"', 'sfx "boom"', 'pause', 'enter.from "oben"']) T.ok(errs.some((e) => e.includes(needle)), needle);
+    T.ok(errs.every((e) => e.startsWith('t[0]: ')), 'Szene und Panel-Index im Fehler');
+  });
+  T.test('validatePanels: pose/walk für eine Figur, die nicht auf der Bühne steht, ist ein Fehler; exit bleibt erlaubt', () => {
+    const absent = [{ bg: 'gasse', who: 'du', mood: 'angry', pose: { who: 'igor', pose: 'down' }, text: 'a' }];
+    const errs = CsDirector.validatePanels('t', absent, { castIds: ['du', 'igor'] });
+    T.eq(errs, ['t[0]: Figur "igor" nicht auf der Bühne (pose)']);
+    T.eq(CsDirector.validatePanels('t', [{ bg: 'gasse', who: 'du', cast: ['du', 'igor'], pose: { who: 'igor', pose: 'down' }, text: 'a' }], { castIds: ['du', 'igor'] }), [], 'mit cast auf der Bühne');
+    T.eq(CsDirector.validatePanels('t', [{ bg: 'gasse', who: 'du', walk: { who: 'igor', to: 'far' }, text: 'a' }], { castIds: ['du', 'igor'] }), ['t[0]: Figur "igor" nicht auf der Bühne (walk)']);
+    T.eq(CsDirector.validatePanels('t', [{ bg: 'gasse', who: 'du', exit: 'igor', text: 'a' }], { castIds: ['du', 'igor'] }), [], 'exit einer abwesenden Figur ist kein Fehler');
+    T.eq(CsDirector.validatePanels('t', [{ bg: 'gasse', who: 'igor', text: 'a' }, { bg: 'gasse', who: 'du', pose: { who: 'igor', pose: 'hands-up' }, text: 'b' }], { castIds: ['du', 'igor'] }), [], 'Sprecher aus Panel 1 steht in Panel 2 noch da');
+    const bad = CsDirector.validatePanels('t', [{ bg: 'gasse', who: 'du', cast: 5, text: 'a' }]);
+    T.ok(bad.some((e) => e.includes('cast muss ein Array sein')) && bad.some((e) => e.includes('Regieplan nicht berechenbar')), 'kaputter cast: Struktur-Fehler statt Absturz');
+  });
+  T.test('validatePanels: setIds → unbekannte Kulisse ist ein Fehler; ohne setIds nicht', () => {
+    const panels = [{ bg: 'nirgendwo', who: 'du', text: 'a' }];
+    T.eq(CsDirector.validatePanels('t', panels, { setIds: ['bar', 'gasse'] }), ['t[0]: bg "nirgendwo" unbekannt']);
+    T.eq(CsDirector.validatePanels('t', panels), []);
+    T.eq(CsDirector.validatePanels('t', [{ bg: 'gasse', who: 'du', text: 'a' }, { who: 'du', text: 'ohne bg' }], { setIds: ['bar', 'gasse'] }), []);
+  });
+  T.test('stagePlan: look gilt ab seinem Panel bis zum Szenenende (kumuliert, spätere Schlüssel gewinnen)', () => {
+    const plan = CsDirector.stagePlan([
+      { bg: 'gasse', who: 'du', text: 'a' },
+      { bg: 'gasse', who: 'raeuber', text: 'b', look: { du: { hurt: 'kruecke' } } },
+      { bg: 'keller', who: 'du', text: 'c' },
+      { bg: 'keller', who: 'du', text: 'd', look: { du: { hurt: 'pflaster' }, raeuber: { hurt: 'kruecke' } } },
+    ]);
+    T.eq(plan[0].look, {});
+    T.eq(plan[1].look, { du: { hurt: 'kruecke' } });
+    T.eq(plan[2].look.du.hurt, 'kruecke', 'auch über den Kulissenwechsel hinweg');
+    T.eq(plan[3].look, { du: { hurt: 'pflaster' }, raeuber: { hurt: 'kruecke' } });
+    plan[3].look.du.hurt = 'x';
+    T.eq(plan[2].look.du.hurt, 'kruecke', 'jedes Panel trägt eine eigene Kopie');
+  });
+}
+if (typeof CsCast !== 'undefined') {
+  T.test('CsCast: alle Figuren haben einen Look; figureHtml liefert acht Teil-SVGs mit Rig-Klassen und allen Stimmungen', () => {
+    for (const [id, c] of Object.entries(CsCast.CAST)) {
+      T.ok(c.look && c.look.skin && c.look.cloth && ['normal', 'breit', 'schmal', 'klein'].includes(c.look.build), `Look ${id}`);
+      const html = CsCast.figureHtml(id, { mood: 'angry' });
+      T.ok(html.startsWith('<div class="cs-fig-inner mood-angry'), `${id}: Stimmungsklasse`);
+      for (const part of ['legL', 'legR', 'body', 'armL', 'armR', 'head', 'eyes', 'mouth']) T.ok(html.includes(`<svg class="part ${part}" viewBox="0 0 100 180"`), `${id}: Teil ${part}`);
+      T.eq((html.match(/<svg /g) || []).length, 8, `${id}: acht Teile`);
+      for (const m of CsCast.MOODS) T.eq((html.match(new RegExp(`class="m m-${m}"`, 'g')) || []).length, 3, `${id}: Stimmung ${m} in Kopf, Augen, Mund`);
+    }
+  });
+  T.test('CsCast: Hut, Extras, Statur und Fallback-Emoji landen im HTML', () => {
+    const vito = CsCast.figureHtml('vito');
+    T.ok(vito.includes('<rect x="32" y="42"'), 'Sonnenbrille'); T.ok(vito.includes('class="ember"'), 'Zigarre'); T.ok(vito.includes('fill="#b0202a"'), 'Krawatte');
+    T.ok(CsCast.figureHtml('igor').includes('scale(1.22 1)'), 'breit'); T.ok(CsCast.figureHtml('chantal').includes('scale(0.86 1)'), 'schmal');
+    T.ok(CsCast.figureHtml('kevin').includes('cs-fig-inner mood-calm klein'), 'klein');
+    T.ok(CsCast.figureHtml('sylvie').includes('<rect x="32" y="2" width="36" height="30"'), 'Zylinder');
+    T.ok(CsCast.figureHtml('doc').includes('cx="50" cy="100" r="4"'), 'Stethoskop');
+    CsCast.CAST.testfig = { name: 'Test', emoji: '🦆', color: '#fff' };
+    try { T.ok(CsCast.figureHtml('testfig').includes('🦆'), 'Emoji-Fallback ohne Look'); } finally { delete CsCast.CAST.testfig; }
+    T.ok(CsCast.figureHtml('gibtsnicht').includes('fill="#8b1e1e"'), 'unbekannte ID → Look von du (rote Mütze)');
+  });
+  T.test('CsCast.duParts: Ausrüstung und Zustand aus dem Spielstand', () => {
+    T.eq(CsCast.duParts({ beers: 0, beerTimer: 0, mafiaDebt: 0 }), { shoes: null, weapon: 0, suit: false, cheeks: false, sway: false, blackEye: false, rings: false });
+    T.eq(CsCast.duParts({ shoes: 'trail', weapon: 2, beers: 3, beerTimer: 2, mafiaDebt: 500, story: { id: 'stash', flags: { blauesAuge: true } } }), { shoes: 'trail', weapon: 2, suit: true, cheeks: true, sway: true, blackEye: true, rings: true });
+    T.eq(CsCast.duParts({ beers: 2, beerTimer: 0, mafiaDebt: 0 }).cheeks, false, 'Bier ohne Timer wirkt nicht');
+    T.eq(CsCast.duParts({ beers: 2, beerTimer: 1, mafiaDebt: 0 }).sway, false, 'erst ab drei Bier');
+    T.eq(CsCast.duParts({ shoes: 'unbekannt', beers: 0, beerTimer: 0, mafiaDebt: 0 }).shoes, null);
+    T.eq(CsCast.duParts({ beers: 0, beerTimer: 0, mafiaDebt: 0, story: { id: 'kater', flags: {} } }).suit, false, 'Anzug nur in Story 3');
+    T.eq(CsCast.duParts(null), {});
+  });
+  T.test('CsCast.figureHtml(du): Teile nach parts und hurt', () => {
+    const html = CsCast.figureHtml('du', { mood: 'calm', parts: { shoes: 'trail', suit: true, cheeks: true, sway: true, blackEye: true, rings: true }, hurt: 'kruecke' });
+    T.ok(html.includes('fill="#ff7a1a"'), 'Trail-Schuhe'); T.ok(html.includes('fill="#1e1e22"'), 'Anzug'); T.ok(html.includes('fill="#ff6b6b"'), 'Wangen');
+    T.ok(html.startsWith('<div class="cs-fig-inner mood-calm sway"'), 'Schwanken'); T.ok(html.includes('fill="#3a2a6a"'), 'blaues Auge'); T.ok(html.includes('stroke="#4a3a5a"'), 'Augenringe'); T.ok(html.includes('stroke="#8a6a3a"'), 'Krücke');
+    T.ok(CsCast.figureHtml('du', { hurt: 'pflaster' }).includes('fill="#e8c8a0"'), 'Pflaster');
+    const plain = CsCast.figureHtml('du');
+    T.ok(!plain.includes('#ff6b6b') && !plain.includes('#8a6a3a') && !plain.includes('#e8c8a0') && !plain.includes(' sway'), 'nüchtern, unverletzt: keine Zustandsteile');
+  });
+}
+if (typeof CsSets !== 'undefined') {
+  T.test('CsSets: alle 16 Kulissen mit back/front/life; jedes lebende Element ist gezeichnet', () => {
+    const ids = ['bar', 'keller', 'hinterzimmer', 'strasse', 'gasse', 'hafen', 'hafen-morgen', 'klinik', 'bank', 'standesamt', 'villa', 'bahnhof', 'pfandleihe', 'autohaus', 'intersport', 'royal'];
+    T.eq(Object.keys(CsSets.SETS).sort(), [...ids].sort());
+    for (const id of ids) {
+      const s = CsSets.SETS[id];
+      T.ok(Array.isArray(s.life) && s.life.length >= 1 && s.life.every((l) => l.startsWith('life-')), `${id}: life`);
+      const back = s.back(), front = s.front();
+      T.ok(back.startsWith('<svg class="cs-set') && back.includes('preserveAspectRatio="xMidYMax meet"'), `${id}: back`);
+      T.eq(typeof front, 'string', `${id}: front`);
+      for (const l of s.life) T.ok(back.includes(`class="${l}"`) || front.includes(`class="${l}"`), `${id}: ${l} gezeichnet`);
+    }
+    T.ok(CsSets.SETS.gasse.front().includes('life-rain'), 'Regen im Vordergrund');
+    T.ok(CsSets.SETS['hafen-morgen'].back().includes('life-sun') && !CsSets.SETS.hafen.back().includes('life-sun'), 'Sonne nur am Morgen');
+    T.ok(typeof CsSets.hafen === 'function' && typeof hafen === 'undefined', 'hafen(morgen) lebt in CsSets, nicht als Global');
+  });
+}
+
+/* ---- Regie-Validierung: jede Szene, jeder Schlüssel ---- */
+if (typeof CsDirector !== 'undefined' && typeof STORY_SCHULD !== 'undefined') {
+  T.test('Regie: alle Story-Szenen (Probe, Schuld, Kater, Wäsche) bestehen validatePanels', () => {
+    const ctx = { raw: { vars: { woche: 1, lieferung: 10000, ziel: 20000, rueckgabe: 11000, letztePay: 11000, kredit: 0, zorn: 0, ausgang: 0, letzterUeberfall: 'slots', letzterRaub: 500, hinterhaltN: 2, igorBiere: 0, belege: 1, belegeOffen: 1, uebergeben: 0 }, flags: {} }, prev: {}, flags: {} };
+    const castIds = Object.keys(CsCast.CAST), setIds = Object.keys(CsSets.SETS);
+    const errs = []; let n = 0;
+    for (const story of [STORY_PROBE, STORY_SCHULD, STORY_KATER, STORY_STASH]) {
+      for (const [id, def] of Object.entries(story.scenes || {})) {
+        const panels = typeof def === 'function' ? def(ctx) : def;
+        n += panels.length;
+        errs.push(...CsDirector.validatePanels(id, panels, { castIds, setIds }));
+      }
+    }
+    T.eq(errs, []);
+    T.ok(n > 200, `${n} Panels geprüft`);
+  });
+}
+
 /* ---- Story-Engine (nur im Browser – Block story-engine wird in Node nicht geladen) ---- */
 if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
   /* Sofortiges Ende mitten in der Nacht: finish() → „Nächste Story" tauscht State.s aus. Der Rest von runEvents/night
@@ -11571,8 +12391,8 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
   });
   if (typeof document !== 'undefined') T.test('Cutscene.CAST: Story-3-Figuren und Hintergründe', () => {
     for (const id of ['anabi', 'stumme', 'kessler', 'brandt', 'kowalski']) T.ok(Cutscene.CAST[id] && Cutscene.CAST[id].name, `Figur ${id}`);
-    T.ok(Cutscene.PROPS.bahnhof && Cutscene.PROPS.pfandleihe, 'Props');
-    const probe = document.createElement('div'); probe.className = 'cs-bg bahnhof'; document.body.append(probe);
+    T.ok(Cutscene.SETS.bahnhof && Cutscene.SETS.pfandleihe, 'Kulissen');
+    const probe = document.createElement('div'); probe.className = 'cs-sky bahnhof'; document.body.append(probe);
     try { T.ok(getComputedStyle(probe).backgroundImage !== 'none', 'Hintergrund bahnhof hat CSS'); } finally { probe.remove(); }
   });
   if (typeof document !== 'undefined') T.test('Story.hudNotes: Zahl-Max, Geld ohne Max, Geld mit Funktions-Max', () => {
@@ -11865,6 +12685,321 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     }
     const base = keyframesOf('hitBase'); T.ok(base, '@keyframes hitBase vorhanden');
     const vals = new Set([...base.cssRules].map((k) => k.style.boxShadow)); T.eq(vals.size, 1, 'hitBase ist konstant (kein Repaint)');
+  });
+  /* Fällt eine Assertion mitten in einer Szene, bliebe Cutscene.active sonst hängen (der nächste Test mit Cutscene.play würde
+     ewig warten) – im finally notfalls hart zurücksetzen, wie play() es am Ende auch täte. */
+  const csHardReset = () => { if (Cutscene.active) { const root = qs('#cutscene'); root.hidden = true; root.innerHTML = ''; Cutscene.active = false; document.body.classList.remove('cs-open'); } };
+  T.test('Cutscene-Bühne: Figuren, eine Blase am Sprecher, Regie, Skip-Endzustand', async () => {
+    const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
+    State.save = () => {}; State.s = State.fresh(); State.s.beers = 3; State.s.beerTimer = 2;
+    Cutscene.instant = true;
+    Cutscene.define('test.buehne', [
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Eins.' },
+      { bg: 'bar', who: 'vito', mood: 'angry', text: 'Zwei.', cam: 'close', shout: 'HEY!' },
+      { bg: 'keller', who: 'du', mood: 'happy', text: 'Drei.', enter: 'igor', pose: { who: 'igor', pose: 'arms-crossed' }, look: { du: { hurt: 'pflaster' } } },
+      { bg: 'keller', who: 'du', mood: 'calm', text: 'Vier.', cast: [], choices: [{ label: 'Ok', value: 'ok' }] },
+    ]);
+    try {
+      const done = Cutscene.play('test.buehne', {});
+      await wait(40);
+      const root = qs('#cutscene');
+      T.eq(qsa('.cs-fig', root).length, 2, 'du + wirt');
+      T.eq(qsa('.cs-bubble:not([hidden])', root).length, 1, 'genau eine Blase');
+      T.ok(qs('.cs-fig.speaking .cs-fig-inner.mood-calm', root), 'Sprecher wirt mit Stimmung');
+      T.eq(qsa('.cs-fig.speaking svg.part', root).length, 8, 'acht Teil-SVGs');
+      T.eq(qs('.cs-name', root).textContent, 'Der Wirt');
+      T.ok(qs('.cs-sky', root).classList.contains('bar'), 'Kulisse bar');
+      T.ok(qs('.cs-back svg.cs-set', root), 'Kulissen-SVG');
+      T.ok(qs('.cs-fig:not(.speaking) circle[fill="#ff6b6b"]', root), 'Bier → rote Wangen bei du');
+      T.ok(qs('.cs-fig:not(.speaking) .cs-fig-inner.sway', root), '3 Bier → Schwanken');
+      T.ok(parseFloat(qs('.cs-bubble', root).style.top) >= 0 && qs('.cs-bubble', root).style.width, 'Blase platziert');
+      root.click(); await wait(40);
+      T.eq(qsa('.cs-fig', root).length, 3, 'vito dazu');
+      T.eq(qs('.cs-fig.speaking', root).dataset.pose, 'point', 'angry → point');
+      T.ok(/scale/.test(qs('.cs-world', root).style.transform), 'Kamera close');
+      T.eq(qs('.cs-shout', root).textContent, 'HEY!');
+      qs('.cs-skip', root).click(); await wait(40);
+      T.ok(qs('.cs-sky', root).classList.contains('keller'), 'Skip → letzte Kulisse');
+      T.eq(qsa('.cs-fig', root).length, 0, 'cast: [] → leere Bühne');
+      T.ok(qs('.cs-bubble', root).classList.contains('narrator'), 'Erzähler-Blase');
+      T.eq(qs('.cs-world', root).style.transform, '', 'Kamera zurück');
+      T.eq(qsa('.cs-choices .btn', root).length, 1, 'Wahl im Streifen');
+      T.ok(document.documentElement.scrollWidth <= window.innerWidth, 'keine Überbreite');
+      qs('.cs-choices .btn', root).click();
+      T.eq(await done, 'ok', 'Wahlwert');
+      T.ok(root.hidden, 'Overlay zu');
+      /* Regie-Ausführung ohne Skip: Kulissenwechsel, Auftritt, Pflaster, Pose-Override */
+      const done2 = Cutscene.play('test.buehne', {});
+      await wait(40); root.click(); await wait(40); root.click(); await wait(40);
+      T.eq(qsa('.cs-fig', root).length, 2, 'Kulissenwechsel: du + igor');
+      T.eq(qs('.cs-fig:not(.speaking)', root).dataset.pose, 'arms-crossed', 'pose-Override');
+      T.ok(qs('.cs-fig.speaking rect[fill="#e8c8a0"]', root), 'look.hurt → Pflaster');
+      qs('.cs-skip', root).click(); await wait(40); qs('.cs-choices .btn', root).click(); await done2;
+      T.ok(!Cutscene.active && !document.body.classList.contains('cs-open'), 'Szene sauber beendet');
+    } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.buehne']; }
+  });
+  T.test('Cutscene-Bühne: Klick während Auftritt/Kamerafahrt beendet Weg und Zoom sofort – Blase am Endpunkt', async () => {
+    const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
+    State.save = () => {}; State.s = State.fresh();
+    Cutscene.define('test.snap', [
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Eins, ganz ruhig.' },
+      { bg: 'keller', who: 'vito', mood: 'angry', text: 'Zwei – und dieser Satz ist lang genug, dass das Tippen nicht in sechzig Millisekunden fertig wäre.', cam: 'close' },
+    ]);
+    const root = qs('#cutscene');
+    const bubblePos = () => ({ left: parseFloat(qs('.cs-bubble', root).style.left), top: parseFloat(qs('.cs-bubble', root).style.top) });
+    try {
+      /* Referenz: Sofort-Modus – Endzustand ohne Wege */
+      Cutscene.instant = true;
+      const done1 = Cutscene.play('test.snap', {});
+      await wait(40); root.click(); await wait(40);
+      T.eq(qs('.cs-name', root).textContent, 'Don Vito', 'Referenz: Panel 2');
+      const ref = bubblePos();
+      root.click(); await done1;
+      /* Echtzeit: Panel 1 (Auftritt 600 ms) durchklicken, Panel 2 sofort während Weg + Zoom anklicken */
+      Cutscene.instant = false;
+      const done2 = Cutscene.play('test.snap', {});
+      await wait(40); root.click(); await wait(Cutscene.WALK_MS + 100); root.click();
+      await wait(10); root.click(); await wait(60);
+      T.eq(qs('.cs-name', root).textContent, 'Don Vito', 'Panel 2 aktiv');
+      T.eq(qsa('.cs-fig.walking', root).length, 0, 'kein Weg mehr');
+      T.eq(qs('.cs-fig.speaking', root).dataset.pose, 'point', 'Zielpose statt walk');
+      T.ok(/Millisekunden fertig wäre\.$/.test(qs('.cs-text', root).textContent), 'Text komplett');
+      const now = bubblePos();
+      T.ok(Math.abs(now.left - ref.left) <= 2 && Math.abs(now.top - ref.top) <= 2, `Blase am Endpunkt (${now.left}|${now.top} vs ${ref.left}|${ref.top})`);
+      root.click(); await done2;
+      T.ok(!Cutscene.active, 'Szene beendet');
+      /* Klick mitten im Fall (calm → dead, Räuber tritt währenddessen auf): _snap beendet den csFall sofort – Körper liegt bei 85° */
+      Cutscene.define('test.snapfall', [
+        { bg: 'gasse', who: 'du', mood: 'calm', text: 'Steht.' },
+        { bg: 'gasse', who: 'du', mood: 'dead', enter: 'raeuber', text: 'Liegt.' },
+      ]);
+      const done3 = Cutscene.play('test.snapfall', {});
+      await wait(40); root.click(); await wait(40); root.click(); // Auftritt abkürzen, weiter zu Panel 2 (Fall + Räuber-Auftritt starten)
+      await wait(200); root.click(); await wait(30);              // Klick mitten im Fall → _snap
+      const body = qs('.cs-fig.speaking .cs-body', root);
+      T.eq(qs('.cs-fig.speaking', root).dataset.pose, 'down', 'Snap-Fall: Pose down');
+      const m = /matrix\(([^)]+)\)/.exec(getComputedStyle(body).transform), [ma, mb] = m ? m[1].split(',').map(parseFloat) : [1, 0];
+      T.ok(Math.abs(ma) < 0.1 && Math.abs(mb) > 0.99, `Snap-Fall: Körper sofort bei 85° (matrix a=${ma.toFixed(3)} b=${mb.toFixed(3)})`);
+      root.click(); await done3;
+      T.ok(!Cutscene.active, 'Snap-Fall-Szene beendet');
+    } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.snap']; delete Cutscene.SCENES['test.snapfall']; }
+  });
+  T.test('Cutscene-Kamera close: Zoom zielt auf den gemessenen Kopf – auch liegend und schon gezoomt', async () => {
+    const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
+    State.save = () => {}; State.s = State.fresh();
+    Cutscene.instant = true;
+    Cutscene.define('test.cam', [
+      { bg: 'gasse', who: 'du', mood: 'dead', cast: ['du'], pose: 'down', cam: 'close', text: 'Am Boden.' },
+      { bg: 'gasse', who: 'kevin', mood: 'angry', cam: 'close', text: 'Steh auf.' },
+      { bg: 'gasse', who: 'kevin', mood: 'dead', pose: 'down', cam: 'close', text: 'Auch am Boden.' },
+    ]);
+    const root = qs('#cutscene');
+    const checkZoom = (label) => {
+      const world = qs('.cs-world', root);
+      T.ok(/scale/.test(world.style.transform), `${label}: Kamera close`);
+      const [ox, oy] = world.style.transformOrigin.split(' ').map(parseFloat);
+      const R = root.getBoundingClientRect();
+      T.ok(ox >= 0 && ox <= R.width, `${label}: Origin-x im Rahmen (${ox} von ${R.width})`);
+      T.ok(oy >= 0 && oy <= R.height, `${label}: Origin-y im Rahmen (${oy} von ${R.height})`);
+      const skull = qs('.cs-fig.speaking .head .skull', root).getBoundingClientRect();
+      const cx = skull.left + skull.width / 2 - R.left, cy = skull.top + skull.height / 2 - R.top;
+      T.ok(Math.abs(cx - ox) <= 3 && Math.abs(cy - oy) <= 3, `${label}: Origin = Kopfmitte (${cx.toFixed(1)}|${cy.toFixed(1)} vs ${ox}|${oy})`);
+      const b = qs('.cs-bubble', root);
+      const left = parseFloat(b.style.left);
+      T.ok(left >= 0 && left + b.offsetWidth <= R.width + 1, `${label}: Blase im Rahmen`);
+      T.ok(parseFloat(b.style.top) >= 0, `${label}: Blase top >= 0`);
+    };
+    try {
+      const done = Cutscene.play('test.cam', {});
+      await wait(40);
+      checkZoom('Panel 1 (liegend)');
+      root.click(); await wait(40);
+      checkZoom('Panel 2 (klein-Figur stehend, Welt schon gezoomt)');
+      root.click(); await wait(40);
+      checkZoom('Panel 3 (klein-Figur liegend)');
+      root.click(); await done;
+      T.ok(!Cutscene.active, 'Szene beendet');
+      /* Schwankend (3 Bier): eigene Szene, weil die du-Teile (und damit .sway) einmal beim Start von play() festgelegt werden –
+         in test.cam würde sonst auch das liegende du aus Panel 1 schwanken. Die Kamera darf dem Schwanken nicht folgen. */
+      State.s.beers = 3; State.s.beerTimer = 2;
+      Cutscene.define('test.camsway', [{ bg: 'gasse', who: 'du', mood: 'happy', cam: 'close', text: 'Schwankend.' }]);
+      const done2 = Cutscene.play('test.camsway', {});
+      await wait(40);
+      const swayFig = qs('.cs-fig.speaking', root);
+      T.ok(qs('.cs-fig-inner.sway', swayFig), 'Sprecher du schwankt (3 Bier)');
+      const world = qs('.cs-world', root), R = root.getBoundingClientRect();
+      T.ok(/scale/.test(world.style.transform), 'Schwankend: Kamera close');
+      const [ox, oy] = world.style.transformOrigin.split(' ').map(parseFloat);
+      const f = swayFig.getBoundingClientRect(); // äußerer Kasten – schwankt nie
+      T.ok(Math.abs(ox - (f.left + f.width / 2 - R.left)) <= 1 && Math.abs(oy - (f.top + 0.272 * f.height - R.top)) <= 1, `Schwankend: Origin aus dem äußeren Kasten (${ox}|${oy} vs ${(f.left + f.width / 2 - R.left).toFixed(1)}|${(f.top + 0.272 * f.height - R.top).toFixed(1)})`);
+      const h1 = Cutscene._headAt({ root }, { el: swayFig, pose: 'idle' }); await wait(300); const h2 = Cutscene._headAt({ root }, { el: swayFig, pose: 'idle' });
+      T.ok(Math.abs(h1.x - h2.x) < 0.01 && Math.abs(h1.cy - h2.cy) < 0.01, `Schwankend: _headAt folgt dem Schwanken nicht (${h1.x.toFixed(2)}|${h1.cy.toFixed(2)} vs ${h2.x.toFixed(2)}|${h2.cy.toFixed(2)})`);
+      const sk = qs('.head .skull', swayFig).getBoundingClientRect(), cx = sk.left + sk.width / 2 - R.left, cy = sk.top + sk.height / 2 - R.top;
+      const swayMax = 0.73 * f.height * Math.sin(2 * Math.PI / 180) + 3; // ±2° um die Standlinie, Schädel ~0,73 Kastenhöhen darüber
+      T.ok(Math.abs(cx - ox) <= swayMax && Math.abs(cy - oy) <= 3, `Schwankend: gerenderter Schädel innerhalb der Schwank-Amplitude (${cx.toFixed(1)}|${cy.toFixed(1)} vs ${ox}|${oy}, max ${swayMax.toFixed(1)})`);
+      const bb = qs('.cs-bubble', root), bl = parseFloat(bb.style.left);
+      T.ok(bl >= 0 && bl + bb.offsetWidth <= R.width + 1 && parseFloat(bb.style.top) >= 0, 'Schwankend: Blase im Rahmen');
+      root.click(); await done2;
+      T.ok(!Cutscene.active, 'Schwank-Szene beendet');
+    } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.cam']; delete Cutscene.SCENES['test.camsway']; }
+  });
+  T.test('Cutscene-Kamera close in Echtzeit: Kopf aus der Zielpose berechnet, wide zoomt erst nach dem Rückzug', async () => {
+    const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
+    State.save = () => {}; State.s = State.fresh();
+    Cutscene.instant = false;
+    Cutscene.define('test.camlive', [
+      { bg: 'gasse', who: 'du', mood: 'dead', cast: ['du'], pose: 'down', cam: 'close', text: 'Liegt.' },
+      { bg: 'keller', who: 'wirt', mood: 'calm', text: 'Steh auf.' },
+    ]);
+    const root = qs('#cutscene');
+    try {
+      const done = Cutscene.play('test.camlive', {});
+      await wait(50);
+      const duFig = qs('.cs-fig.speaking', root);
+      T.eq(duFig.dataset.pose, 'down', 'liegt von Anfang an, kein "walk"-Zwischenschritt');
+      T.ok(!duFig.classList.contains('walking'), 'liegende Figur läuft nicht ein');
+      await wait(Cutscene.WALK_MS + 100);
+      const world = qs('.cs-world', root);
+      T.ok(/scale/.test(world.style.transform), 'Panel 1: Kamera close aktiv');
+      const [ox1, oy1] = world.style.transformOrigin.split(' ').map(parseFloat);
+      const R = root.getBoundingClientRect();
+      T.ok(ox1 >= 0 && ox1 <= R.width && oy1 >= 0 && oy1 <= R.height, `Panel 1: Origin im Rahmen (${ox1}|${oy1})`);
+      const hd1 = Cutscene._headAt({ root }, { el: duFig, pose: 'down' });
+      T.ok(Math.abs(hd1.x - ox1) <= 3 && Math.abs(hd1.cy - oy1) <= 3, `Panel 1: Origin = berechneter Kopf (${hd1.x.toFixed(1)}|${hd1.cy.toFixed(1)} vs ${ox1}|${oy1})`);
+      root.click(); await wait(40);  // 1. Klick: Text sofort komplett (Zoom-Warten abgekürzt)
+      root.click(); await wait(10);  // 2. Klick: weiter zu Panel 2
+      // Strukturprüfung statt Pixel-Vergleich (CSS-Transitions laufen im Headless-Harness mit virtueller Zeit nicht
+      // sichtbar weiter, siehe Bericht): "wide" muss SOFORT (synchron in _stage) zurückgesetzt sein, nicht erst nach
+      // dem Auftritt – die Figuren laufen zu diesem Zeitpunkt noch ein.
+      T.eq(world.style.transform, '', 'Panel 2: wide sofort zurückgesetzt – nicht erst nach dem Auftritt');
+      T.ok(qsa('.cs-fig.walking', root).length >= 1, 'Panel 2: Auftritt läuft noch, während schon zurückgezoomt ist');
+      root.click(); await wait(40);
+      root.click(); await done;
+      T.ok(!Cutscene.active, 'Szene beendet');
+    } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.camlive']; }
+  });
+  T.test('Cutscene-Bühne in Echtzeit: Umfallen als Keyframe ohne Neuzeichnen, liegend gefunden ohne Fall, kein talking nach Skip, Klick im Auftritt kürzt die pause ab', async () => {
+    const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
+    State.save = () => {}; State.s = State.fresh();
+    Cutscene.instant = false;
+    Cutscene.define('test.fall', [
+      { bg: 'gasse', who: 'du', mood: 'calm', text: 'Eins – und dieser Satz ist lang genug, dass das Tippen nicht in wenigen Millisekunden fertig wäre.' },
+      { bg: 'gasse', who: 'du', mood: 'dead', text: 'Zwei.' },
+      { bg: 'gasse', who: 'raeuber', mood: 'calm', text: 'Drei – und auch dieser Satz ist lang genug, dass das Tippen nicht in wenigen Millisekunden fertig wäre.' },
+      { bg: 'gasse', who: 'du', mood: 'calm', text: 'Vier.' },
+    ]);
+    Cutscene.define('test.liegt', [{ bg: 'gasse', who: 'du', mood: 'dead', cast: ['du'], pose: 'down', text: 'Liegt.' }]);
+    Cutscene.define('test.pause', [{ bg: 'bar', who: 'wirt', mood: 'calm', enter: 'vito', pause: 1500, text: 'Warte mal.' }]);
+    const root = qs('#cutscene');
+    try {
+      const done = Cutscene.play('test.fall', {});
+      await wait(40); root.click(); await wait(40);          // Auftritt abkürzen, Text komplett
+      const du = qs('.cs-fig.speaking', root), inner = qs('.cs-fig-inner', du), body = qs('.cs-body', du);
+      T.ok(inner.classList.contains('mood-calm') && du.dataset.pose === 'talk', 'Panel 1: du calm, Pose talk');
+      T.eq(getComputedStyle(body).animationName, 'csNod', 'Panel 1: Nicken läuft (Keyframe auf .cs-body)');
+      root.click(); await wait(40);                           // Panel 2: calm → dead
+      T.ok(qs('.cs-fig-inner', du) === inner, 'Stimmungswechsel zeichnet die Figur nicht neu (gleicher Knoten)');
+      T.ok(inner.classList.contains('mood-dead') && !inner.classList.contains('mood-calm'), 'mood-dead per Klasse');
+      T.eq(du.dataset.pose, 'down', 'dead → down');
+      T.eq(getComputedStyle(body).animationName, 'csFall', 'Umfallen als Keyframe-Animation (startet trotz vorherigem csNod)');
+      T.eq(du.style.getPropertyValue('--fall'), '', 'stehend getroffen: Fall mit voller Dauer');
+      T.eq(getComputedStyle(body).animationDuration, '0.5s', 'Fall dauert 0,5 s');
+      root.click(); await wait(10); root.click(); await wait(Cutscene.WALK_MS + 150); // Tippen beenden, weiter – Panel 3: Räuber tritt auf und tippt
+      T.eq(qs('.cs-name', root).textContent, 'Der Räuber', 'Panel 3 aktiv');
+      T.ok(qs('.cs-fig.talking', root), 'Räuber spricht (talking während des Tippens)');
+      qs('.cs-skip', root).click(); await wait(40);           // Skip mitten im Tippen → letztes Panel
+      T.eq(qs('.cs-name', root).textContent, 'Du', 'Skip → letztes Panel');
+      T.eq(qsa('.cs-fig.talking', root).length, 0, 'kein talking mehr nach Skip');
+      T.eq(qsa('.cs-fig', root).length, 2, 'du + Räuber stehen noch');
+      root.click(); await done;
+      T.ok(!Cutscene.active, 'Szene beendet');
+      /* Liegend gefunden: keine Fall-Animation */
+      const done2 = Cutscene.play('test.liegt', {});
+      await wait(40);
+      const lying = qs('.cs-fig', root);
+      T.eq(lying.dataset.pose, 'down'); T.eq(lying.style.getPropertyValue('--fall'), '0s', 'liegend erstellt → --fall: 0s');
+      T.eq(getComputedStyle(qs('.cs-body', lying)).animationDuration, '0s', 'kein sichtbares Umfallen');
+      root.click(); await wait(40); root.click(); await done2;
+      /* Klick während des Auftritts kürzt auch die folgende pause ab */
+      const done3 = Cutscene.play('test.pause', {});
+      await wait(30); root.click(); await wait(100);
+      T.eq(qs('.cs-text', root).textContent, 'Warte mal.', 'Text sofort komplett, obwohl pause: 1500');
+      root.click(); await done3;
+      T.ok(!Cutscene.active, 'Szene beendet');
+    } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; for (const id of ['test.fall', 'test.liegt', 'test.pause']) delete Cutscene.SCENES[id]; }
+  });
+  T.test('Cutscene-Bühne: cam shake wackelt das Overlay und lässt den Zoom stehen; Vordergrund liegt vor den Figuren', async () => {
+    const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
+    State.save = () => {}; State.s = State.fresh();
+    Cutscene.instant = true;
+    Cutscene.define('test.shakezoom', [
+      { bg: 'gasse', who: 'du', mood: 'calm', cam: 'close', text: 'Nah.' },
+      { bg: 'gasse', who: 'du', mood: 'angry', cam: 'shake', text: 'Wackel.' },
+    ]);
+    const root = qs('#cutscene');
+    try {
+      const done = Cutscene.play('test.shakezoom', {});
+      await wait(40);
+      const world = qs('.cs-world', root);
+      T.ok(world.style.transform.includes('scale(1.8)'), 'Panel 1: Kamera close');
+      T.ok(!root.classList.contains('shake'), 'Panel 1: kein Wackeln');
+      root.click(); await wait(40);
+      T.ok(world.style.transform.includes('scale(1.8)'), 'Panel 2: Zoom bleibt trotz shake stehen');
+      T.ok(root.classList.contains('shake'), 'Panel 2: #cutscene wackelt');
+      T.eq(getComputedStyle(root).animationName, 'fadeIn, shake', '#cutscene.shake schlägt die ID-Regel, fadeIn bleibt an Stelle 0');
+      T.ok(!world.classList.contains('shake'), 'Welt selbst wackelt nicht');
+      /* Vordergrund (Regen) vor den Figuren: nur per z-index prüfbar – .cs-front hat pointer-events: none, elementFromPoint überspringt es */
+      const front = qs('.cs-front', root);
+      T.eq(getComputedStyle(front).zIndex, '2', '.cs-front z-index 2');
+      T.ok(qs('.life-rain', front), 'Regen im Vordergrund');
+      T.eq(getComputedStyle(qs('.cs-fig', root)).zIndex, '1', 'Figur z-index 1 (unter dem Vordergrund)');
+      T.eq(getComputedStyle(qs('.cs-bubble', root)).zIndex, '5', 'Blase z-index 5 (über dem Vordergrund)');
+      T.ok(front.compareDocumentPosition(qs('.cs-actors', root)) & Node.DOCUMENT_POSITION_PRECEDING, 'Vordergrund folgt den Figuren im DOM');
+      root.click(); await done;
+      T.ok(!Cutscene.active, 'Szene beendet');
+    } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.shakezoom']; }
+  });
+  T.test('Cutscene-Keyframes (cs*) animieren nur transform oder opacity', () => {
+    let n = 0;
+    for (const sheet of document.styleSheets) {
+      let rules; try { rules = sheet.cssRules; } catch (e) { continue; }
+      for (const r of rules) if (r.type === CSSRule.KEYFRAMES_RULE && /^cs[A-Z]/.test(r.name)) { n++; for (const p of animatedProps(r)) T.ok(p === 'transform' || p === 'opacity', `${r.name}: ${p}`); }
+    }
+    T.ok(n >= 25, `${n} cs-Keyframes gefunden`);
+  });
+  T.test('Cutscene reduced-motion: liegende Figur liegt statisch (rotate(85deg) im @media-Block, wo csFall abgeschaltet ist)', () => {
+    /* Ein echtes @media (prefers-reduced-motion) lässt sich im Harness nicht per matchMedia-Stub aktivieren – daher Prüfung über CSSOM */
+    let found = null, killsAnim = false;
+    for (const sheet of document.styleSheets) {
+      let rules; try { rules = sheet.cssRules; } catch (e) { continue; }
+      for (const r of rules) {
+        if (r.type !== CSSRule.MEDIA_RULE || !/prefers-reduced-motion:\s*reduce/.test(r.conditionText || r.media.mediaText)) continue;
+        for (const inner of r.cssRules) {
+          if (inner.selectorText === '.cs-fig[data-pose="down"] .cs-body') found = inner;
+          if ((inner.selectorText || '').split(',').some((sel) => sel.trim() === '.cs-fig *') && inner.style.animationName === 'none') killsAnim = true;
+        }
+      }
+    }
+    T.ok(killsAnim, 'reduced-motion schaltet Figuren-Animationen ab (also auch csFall)');
+    T.ok(found, 'Regel .cs-fig[data-pose="down"] .cs-body im reduced-motion-Block');
+    T.eq(found && found.style.transform, 'rotate(85deg)', 'statisch liegend');
+    T.eq(found && found.style.getPropertyPriority('transform'), 'important', '!important gegen die Pose-Regeln');
+  });
+  T.test('Regie: alle Keller-Szenen (Cutscene.SCENES) bestehen validatePanels, Sounds im SFX-Register', () => {
+    const ctx = { type: { intro: ['a', 'b'], fightWon: 'a', fightLost: 'a', fled: 'a', caught: 'a', paid: 'a' }, loot: '1 €', fight: 50, flee: 50, wallet: '1 €', strength: 1, extra: '0 €',
+      choices: [{ label: 'x', value: 'x' }], texts: '', old: 'a', tradeIn: '1 €', neu: 'b', cost: '1 €', name: 'n', price: '1 €', amount: '1 €', fee: '1 €', limit: '1 €', rate: 1, debt: '1 €', bill: '1 €', before: '1 €', after: '1 €', balance: '1 €', stats: {},
+      raw: { vars: {}, flags: {} }, prev: {}, flags: {} };
+    const castIds = Object.keys(Cutscene.CAST), sfxIds = Object.keys(SFX.LIB), setIds = Object.keys(Cutscene.SETS);
+    const errs = []; let n = 0, skipped = [];
+    for (const [id, def] of Object.entries(Cutscene.SCENES)) {
+      let panels;
+      try { panels = typeof def === 'function' ? def(ctx) : def; } catch (e) { skipped.push(id); continue; }
+      n++;
+      errs.push(...CsDirector.validatePanels(id, panels, { castIds, sfxIds, setIds }));
+    }
+    T.eq(errs, []);
+    T.eq(skipped, [], 'jede Szene lässt sich mit dem Test-Kontext erzeugen');
+    T.ok(n >= 60, `${n} Szenen geprüft`);
   });
   const pseudoAnim = (el, pseudo) => getComputedStyle(el, pseudo).animationName;
   T.test('Glücksrad: Rad in Clip-Wrapper (contain: paint), Geometrie unverändert, Zeiger/Lichter/Nabe außerhalb, Glow per ::after', async () => {

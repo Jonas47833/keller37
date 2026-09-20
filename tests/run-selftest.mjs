@@ -18,7 +18,7 @@ const storage = {
 };
 const ctx = { console, localStorage: storage, setTimeout, clearTimeout, URLSearchParams };
 vm.createContext(ctx);
-for (const id of ['rules', 'gear-rules', 'perk-rules', 'util', 'state', 'bus', 'story-rules', 'royal-rules', 'baccarat-rules', 'poker-rules', 'gang-rules', 'dev-rules', 'story-probe', 'story-schuld', 'story-kater', 'story-stash', 'selftest']) {
+for (const id of ['rules', 'gear-rules', 'perk-rules', 'util', 'state', 'bus', 'story-rules', 'royal-rules', 'baccarat-rules', 'poker-rules', 'gang-rules', 'dev-rules', 'cutscene-director', 'cutscene-cast', 'cutscene-sets', 'story-probe', 'story-schuld', 'story-kater', 'story-stash', 'selftest']) {
   if (!html.includes(`<script id="${id}">`)) continue; // state/bus kommen erst in Task 4
   vm.runInContext(block(id), ctx, { filename: `${id}.js` });
 }
