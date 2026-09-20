@@ -2881,7 +2881,7 @@ const CsCast = {
     const part = (cls, inner) => `<svg class="part ${cls}" viewBox="0 0 100 180" overflow="visible">${inner}</svg>`;
     const legL = part('legL', `<rect x="30" y="118" width="17" height="48" rx="4" fill="${legFill}"/><path d="M26 164h24a4 4 0 0 1 0 8H26z" fill="${shoe}"/>`);
     const legR = part('legR', `<rect x="53" y="118" width="17" height="48" rx="4" fill="${legFill}"/><path d="M50 164h24a4 4 0 0 1 0 8H50z" fill="${shoe}"/>`);
-    const body = part('body', `<g transform="${build}">
+    const body = part('torso', `<g transform="${build}">
       <path d="M24 74 L76 74 L82 124 L18 124 Z" fill="${P.cloth}"/>
       <path d="M42 74 L58 74 L52 118 L48 118 Z" fill="${P.accent}"/>
       ${P.extra.includes('krawatte') ? `<path d="M40 74 L60 74 L54 112 L46 112 Z" fill="#f2f2f2"/><path d="M47 74 L53 74 L55 108 L50 114 L45 108 Z" fill="${P.accent}"/><path d="M40 74 L50 100 L60 74" fill="none" stroke="${this.dark(P.cloth)}" stroke-width="3"/>` : ''}
@@ -12133,7 +12133,8 @@ if (typeof CsCast !== 'undefined') {
       T.ok(c.look && c.look.skin && c.look.cloth && ['normal', 'breit', 'schmal', 'klein'].includes(c.look.build), `Look ${id}`);
       const html = CsCast.figureHtml(id, { mood: 'angry' });
       T.ok(html.startsWith('<div class="cs-fig-inner mood-angry'), `${id}: Stimmungsklasse`);
-      for (const part of ['legL', 'legR', 'body', 'armL', 'armR', 'head', 'eyes', 'mouth']) T.ok(html.includes(`<svg class="part ${part}" viewBox="0 0 100 180"`), `${id}: Teil ${part}`);
+      for (const part of ['legL', 'legR', 'torso', 'armL', 'armR', 'head', 'eyes', 'mouth']) T.ok(html.includes(`<svg class="part ${part}" viewBox="0 0 100 180"`), `${id}: Teil ${part}`);
+      T.ok(!html.includes('class="part body"'), `${id}: kein Teil heißt „body“ (globale Layout-Klasse .body)`);
       T.eq((html.match(/<svg /g) || []).length, 8, `${id}: acht Teile`);
       for (const m of CsCast.MOODS) T.eq((html.match(new RegExp(`class="m m-${m}"`, 'g')) || []).length, 3, `${id}: Stimmung ${m} in Kopf, Augen, Mund`);
     }
@@ -12707,6 +12708,12 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.eq(qsa('.cs-bubble:not([hidden])', root).length, 1, 'genau eine Blase');
       T.ok(qs('.cs-fig.speaking .cs-fig-inner.mood-calm', root), 'Sprecher wirt mit Stimmung');
       T.eq(qsa('.cs-fig.speaking svg.part', root).length, 8, 'acht Teil-SVGs');
+      /* Jedes Teil füllt den Figuren-Kasten ohne fremde Layout-Regeln (Regression: „part body“ traf die globale .body-Klasse – Rumpf auf dem Handy unsichtbar) */
+      for (const el of qsa('.cs-fig.speaking svg.part', root)) {
+        const cs = getComputedStyle(el);
+        T.eq([cs.display, cs.paddingTop, cs.paddingBottom, cs.paddingLeft, cs.margin, cs.maxWidth], ['block', '0px', '0px', '0px', '0px', 'none'], `Teil ${el.getAttribute('class')} ohne Layout-Kollision`);
+        T.eq([Math.round(el.getBoundingClientRect().width), Math.round(el.getBoundingClientRect().height)], [Math.round(el.parentElement.getBoundingClientRect().width), Math.round(el.parentElement.getBoundingClientRect().height)], `Teil ${el.getAttribute('class')} füllt den Kasten`);
+      }
       T.eq(qs('.cs-name', root).textContent, 'Der Wirt');
       T.ok(qs('.cs-sky', root).classList.contains('bar'), 'Kulisse bar');
       T.ok(qs('.cs-back svg.cs-set', root), 'Kulissen-SVG');
