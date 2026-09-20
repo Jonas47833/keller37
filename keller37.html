@@ -858,7 +858,8 @@ body.mode-story #newgame { display: none; }
 @keyframes duelTwitch { 0%, 88%, 100% { transform: rotate(0); } 92% { transform: rotate(-14deg); } 96% { transform: rotate(-4deg); } }
 @keyframes duelRecoil { 0% { transform: translate(0, 0) rotate(0); } 30% { transform: translate(6px, 18px) rotate(-6deg); } 100% { transform: translate(0, 0) rotate(0); } }
 @keyframes csHit { 0% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-8px) rotate(4deg); } 100% { transform: translateY(0) rotate(-2deg); } }
-@media (max-width: 760px) { .duel-stage { height: 62vh; min-height: 380px; } .duel-stage .cs-fig.duel-foe { height: 44%; bottom: 36%; } .duel-gun { width: 46%; } }
+/* Handy: Bühne so hoch, dass Status + „Bereit“ noch über der Tab-Leiste stehen (410 px = Kopfzeile (2 Zeilen) + Panel-Rand/Abstände + 3-zeiliger Status + Knopf + Tab-Leiste) */
+@media (max-width: 760px) { .duel-stage { height: calc(100vh - 410px); min-height: 300px; } .duel-stage .cs-fig.duel-foe { height: 44%; bottom: 36%; } .duel-gun { width: 46%; } }
 @media (orientation: landscape) and (max-height: 500px) { .duel-stage { height: 80vh; min-height: 280px; } .duel-stage .cs-fig.duel-foe { height: 55%; bottom: 30%; } }
 @media (prefers-reduced-motion: reduce) { .duel-stage .cs-fig.duel-foe, .duel-gun { transition: none; } .duel-gun.recoil, .duel-flash.on, .duel-foe[data-pose="idle"] .armR { animation: none; } }
 
