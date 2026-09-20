@@ -2623,14 +2623,16 @@ const CsDirector = {
     if (slot === 'right') return -1;
     return speakerSlot === 'right' ? 1 : -1;
   },
-  /* panels → je Panel ein Plan: { bg, bgChange, speaker, cast: [{ who, slot, facing, pose, mood }], enter: [{ who, from }], exit: [who], cam, shout, pause, sfx, look } */
+  /* panels → je Panel ein Plan: { bg, bgChange, speaker, cast: [{ who, slot, facing, pose, mood }], enter: [{ who, from }], exit: [who], cam, shout, pause, sfx, look (kumuliert) } */
   stagePlan(panels) {
     let on = [];            // Figuren auf der Bühne, in Auftrittsreihenfolge: { who, slot, pose, lastSpoke }
     let prevBg = null;
+    const look = {};        // look-Schlüssel gelten ab ihrem Panel bis zum Szenenende – kumuliert, damit auch der Skip-Endzustand sie trägt
     return panels.map((p, i) => {
       const who = p.who || 'du', bg = p.bg || 'bar';
       const bgChange = i === 0 || bg !== prevBg;
       prevBg = bg;
+      if (p.look && typeof p.look === 'object') for (const [w, l] of Object.entries(p.look)) look[w] = Object.assign({}, look[w], l);
       const enter = [], exit = [];
       const add = (id, from) => { if (on.some((f) => f.who === id)) return; on.push({ who: id, slot: null, pose: 'idle', lastSpoke: -1 }); enter.push({ who: id, from: from || this.side(id) }); };
       const remove = (id) => { if (!on.some((f) => f.who === id)) return; on = on.filter((f) => f.who !== id); exit.push(id); };
@@ -2668,17 +2670,23 @@ const CsDirector = {
         cast: on.map((f) => ({ who: f.who, slot: f.slot, facing: this.facing(f.slot, speakerSlot), pose: f.pose, mood: f.mood })),
         enter, exit,
         cam: p.cam || (bgChange && i > 0 ? 'wide' : null),
-        shout: p.shout || null, pause: p.pause || 0, sfx: p.sfx || null, look: p.look || null,
+        shout: p.shout || null, pause: p.pause || 0, sfx: p.sfx || null,
+        look: Object.fromEntries(Object.entries(look).map(([w, l]) => [w, Object.assign({}, l)])),
       };
     });
   },
-  /* Regie-Schlüssel prüfen: unbekannte Schlüssel, Figuren, Posen, Kameras, Sounds sind Fehler */
-  validatePanels(id, panels, { castIds = null, sfxIds = null } = {}) {
+  /* Regie-Schlüssel prüfen: unbekannte Schlüssel, Figuren, Posen, Kameras, Sounds, Kulissen (mit setIds) sind Fehler;
+     pose/walk für eine Figur, die laut Regieplan nicht auf der Bühne steht, ebenfalls (sonst stiller Leerlauf) */
+  validatePanels(id, panels, { castIds = null, sfxIds = null, setIds = null } = {}) {
     const errs = [];
     const err = (i, msg) => errs.push(`${id}[${i}]: ${msg}`);
     const cast = (i, who, where) => { if (typeof who !== 'string' || (castIds && !castIds.includes(who))) err(i, `Figur "${who}" unbekannt (${where})`); };
+    let plan = null;
+    try { plan = this.stagePlan(panels); } catch (e) { err(0, `Regieplan nicht berechenbar: ${e.message}`); }
+    const onStage = (i, who, where) => { if (plan && typeof who === 'string' && !plan[i].cast.some((c) => c.who === who)) err(i, `Figur "${who}" nicht auf der Bühne (${where})`); };
     panels.forEach((p, i) => {
       for (const k of Object.keys(p)) if (!this.KEYS.includes(k)) err(i, `Schlüssel "${k}" unbekannt`);
+      if (p.bg != null && setIds && !setIds.includes(p.bg)) err(i, `bg "${p.bg}" unbekannt`);
       if (p.who != null) cast(i, p.who, 'who');
       if (p.mood != null && !this.MOODS.includes(p.mood)) err(i, `mood "${p.mood}" unbekannt`);
       if (p.fx != null && !this.FX.includes(p.fx)) err(i, `fx "${p.fx}" unbekannt`);
@@ -2688,10 +2696,10 @@ const CsDirector = {
         else { cast(i, e && e.who, 'enter'); if (e && e.from != null && !this.SIDES.includes(e.from)) err(i, `enter.from "${e.from}" unbekannt`); }
       }
       for (const e of [].concat(p.exit || [])) cast(i, e, 'exit');
-      if (p.walk != null) { cast(i, p.walk.who, 'walk'); if (!this.SLOTS.includes(p.walk.to)) err(i, `walk.to "${p.walk.to}" unbekannt`); }
+      if (p.walk != null) { cast(i, p.walk.who, 'walk'); onStage(i, p.walk.who, 'walk'); if (!this.SLOTS.includes(p.walk.to)) err(i, `walk.to "${p.walk.to}" unbekannt`); }
       if (p.pose != null) {
         const pose = typeof p.pose === 'string' ? p.pose : p.pose.pose;
-        if (typeof p.pose === 'object') cast(i, p.pose.who, 'pose');
+        if (typeof p.pose === 'object') { cast(i, p.pose.who, 'pose'); onStage(i, p.pose.who, 'pose'); }
         if (!this.POSES.includes(pose)) err(i, `pose "${pose}" unbekannt`);
       }
       if (p.cam != null && !this.CAMS.includes(p.cam)) err(i, `cam "${p.cam}" unbekannt`);
@@ -5874,7 +5882,7 @@ Cutscene.define('mug.intro', (ctx) => [
     ] },
 ]);
 Cutscene.define('mug.fightWon', (ctx) => [
-  { bg: 'gasse', who: 'du', mood: 'angry', fx: 'shake', pose: { who: 'raeuber', pose: 'down' }, shout: 'ZACK!', cam: 'shake', text: ctx.type.fightWon },
+  { bg: 'gasse', who: 'du', mood: 'angry', fx: 'shake', cast: ['du', 'raeuber'], pose: { who: 'raeuber', pose: 'down' }, shout: 'ZACK!', cam: 'shake', text: ctx.type.fightWon },
   { bg: 'gasse', who: 'du', mood: 'happy', fx: ctx.wallet !== '0 €' ? 'gain' : undefined, cam: 'close', text: ctx.wallet !== '0 €' ? `Seine Brieftasche: ${ctx.wallet}. Finderlohn. Stärke ${ctx.strength}.` : `Nichts verloren. Stärke ${ctx.strength}.` },
 ]);
 Cutscene.define('mug.fightLost', (ctx) => [
@@ -6840,7 +6848,8 @@ const Stories = {
     const storyIds = Object.keys(this.all);
     for (const st of Object.values(this.all)) errs.push(...StoryRules.validate(st, sceneIds, jobIds || (st.start.unlocked.jobs), storyIds, this.all));
     const castIds = Object.keys(Cutscene.CAST), sfxIds = typeof SFX !== 'undefined' && SFX.LIB ? Object.keys(SFX.LIB) : null;
-    for (const [id, def] of Object.entries(Cutscene.SCENES)) if (typeof def !== 'function') errs.push(...CsDirector.validatePanels(id, def, { castIds, sfxIds }));
+    const setIds = Object.keys(Cutscene.SETS);
+    for (const [id, def] of Object.entries(Cutscene.SCENES)) if (typeof def !== 'function') errs.push(...CsDirector.validatePanels(id, def, { castIds, sfxIds, setIds }));
     if (errs.length) { errs.forEach((e) => console.error('[story]', e)); UI.toast({ icon: '🐛', title: 'Story-Daten fehlerhaft', text: errs[0], tone: 'loss', ms: 8000 }); }
     return errs;
   },
@@ -11445,6 +11454,37 @@ if (typeof CsDirector !== 'undefined') {
     for (const needle of ['"foo"', '"nix"', 'mood "sad"', 'fx "boom"', 'cam "zoom"', 'pose "fly"', 'walk.to "oben"', 'look.hurt "x"', 'sfx "boom"', 'pause', 'enter.from "oben"']) T.ok(errs.some((e) => e.includes(needle)), needle);
     T.ok(errs.every((e) => e.startsWith('t[0]: ')), 'Szene und Panel-Index im Fehler');
   });
+  T.test('validatePanels: pose/walk für eine Figur, die nicht auf der Bühne steht, ist ein Fehler; exit bleibt erlaubt', () => {
+    const absent = [{ bg: 'gasse', who: 'du', mood: 'angry', pose: { who: 'igor', pose: 'down' }, text: 'a' }];
+    const errs = CsDirector.validatePanels('t', absent, { castIds: ['du', 'igor'] });
+    T.eq(errs, ['t[0]: Figur "igor" nicht auf der Bühne (pose)']);
+    T.eq(CsDirector.validatePanels('t', [{ bg: 'gasse', who: 'du', cast: ['du', 'igor'], pose: { who: 'igor', pose: 'down' }, text: 'a' }], { castIds: ['du', 'igor'] }), [], 'mit cast auf der Bühne');
+    T.eq(CsDirector.validatePanels('t', [{ bg: 'gasse', who: 'du', walk: { who: 'igor', to: 'far' }, text: 'a' }], { castIds: ['du', 'igor'] }), ['t[0]: Figur "igor" nicht auf der Bühne (walk)']);
+    T.eq(CsDirector.validatePanels('t', [{ bg: 'gasse', who: 'du', exit: 'igor', text: 'a' }], { castIds: ['du', 'igor'] }), [], 'exit einer abwesenden Figur ist kein Fehler');
+    T.eq(CsDirector.validatePanels('t', [{ bg: 'gasse', who: 'igor', text: 'a' }, { bg: 'gasse', who: 'du', pose: { who: 'igor', pose: 'hands-up' }, text: 'b' }], { castIds: ['du', 'igor'] }), [], 'Sprecher aus Panel 1 steht in Panel 2 noch da');
+    const bad = CsDirector.validatePanels('t', [{ bg: 'gasse', who: 'du', cast: 5, text: 'a' }]);
+    T.ok(bad.some((e) => e.includes('cast muss ein Array sein')) && bad.some((e) => e.includes('Regieplan nicht berechenbar')), 'kaputter cast: Struktur-Fehler statt Absturz');
+  });
+  T.test('validatePanels: setIds → unbekannte Kulisse ist ein Fehler; ohne setIds nicht', () => {
+    const panels = [{ bg: 'nirgendwo', who: 'du', text: 'a' }];
+    T.eq(CsDirector.validatePanels('t', panels, { setIds: ['bar', 'gasse'] }), ['t[0]: bg "nirgendwo" unbekannt']);
+    T.eq(CsDirector.validatePanels('t', panels), []);
+    T.eq(CsDirector.validatePanels('t', [{ bg: 'gasse', who: 'du', text: 'a' }, { who: 'du', text: 'ohne bg' }], { setIds: ['bar', 'gasse'] }), []);
+  });
+  T.test('stagePlan: look gilt ab seinem Panel bis zum Szenenende (kumuliert, spätere Schlüssel gewinnen)', () => {
+    const plan = CsDirector.stagePlan([
+      { bg: 'gasse', who: 'du', text: 'a' },
+      { bg: 'gasse', who: 'raeuber', text: 'b', look: { du: { hurt: 'kruecke' } } },
+      { bg: 'keller', who: 'du', text: 'c' },
+      { bg: 'keller', who: 'du', text: 'd', look: { du: { hurt: 'pflaster' }, raeuber: { hurt: 'kruecke' } } },
+    ]);
+    T.eq(plan[0].look, {});
+    T.eq(plan[1].look, { du: { hurt: 'kruecke' } });
+    T.eq(plan[2].look.du.hurt, 'kruecke', 'auch über den Kulissenwechsel hinweg');
+    T.eq(plan[3].look, { du: { hurt: 'pflaster' }, raeuber: { hurt: 'kruecke' } });
+    plan[3].look.du.hurt = 'x';
+    T.eq(plan[2].look.du.hurt, 'kruecke', 'jedes Panel trägt eine eigene Kopie');
+  });
 }
 if (typeof CsCast !== 'undefined') {
   T.test('CsCast: alle Figuren haben einen Look; figureHtml liefert acht Teil-SVGs mit Rig-Klassen und allen Stimmungen', () => {
@@ -11507,13 +11547,13 @@ if (typeof CsSets !== 'undefined') {
 if (typeof CsDirector !== 'undefined' && typeof STORY_SCHULD !== 'undefined') {
   T.test('Regie: alle Story-Szenen (Probe, Schuld, Kater, Wäsche) bestehen validatePanels', () => {
     const ctx = { raw: { vars: { woche: 1, lieferung: 10000, ziel: 20000, rueckgabe: 11000, letztePay: 11000, kredit: 0, zorn: 0, ausgang: 0, letzterUeberfall: 'slots', letzterRaub: 500, hinterhaltN: 2, igorBiere: 0, belege: 1, belegeOffen: 1, uebergeben: 0 }, flags: {} }, prev: {}, flags: {} };
-    const castIds = Object.keys(CsCast.CAST);
+    const castIds = Object.keys(CsCast.CAST), setIds = Object.keys(CsSets.SETS);
     const errs = []; let n = 0;
     for (const story of [STORY_PROBE, STORY_SCHULD, STORY_KATER, STORY_STASH]) {
       for (const [id, def] of Object.entries(story.scenes || {})) {
         const panels = typeof def === 'function' ? def(ctx) : def;
         n += panels.length;
-        errs.push(...CsDirector.validatePanels(id, panels, { castIds }));
+        errs.push(...CsDirector.validatePanels(id, panels, { castIds, setIds }));
       }
     }
     T.eq(errs, []);
@@ -12196,13 +12236,13 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     const ctx = { type: { intro: ['a', 'b'], fightWon: 'a', fightLost: 'a', fled: 'a', caught: 'a', paid: 'a' }, loot: '1 €', fight: 50, flee: 50, wallet: '1 €', strength: 1, extra: '0 €',
       choices: [{ label: 'x', value: 'x' }], texts: '', old: 'a', tradeIn: '1 €', neu: 'b', cost: '1 €', name: 'n', price: '1 €', amount: '1 €', fee: '1 €', limit: '1 €', rate: 1, debt: '1 €', bill: '1 €', before: '1 €', after: '1 €', balance: '1 €', stats: {},
       raw: { vars: {}, flags: {} }, prev: {}, flags: {} };
-    const castIds = Object.keys(Cutscene.CAST), sfxIds = Object.keys(SFX.LIB);
+    const castIds = Object.keys(Cutscene.CAST), sfxIds = Object.keys(SFX.LIB), setIds = Object.keys(Cutscene.SETS);
     const errs = []; let n = 0, skipped = [];
     for (const [id, def] of Object.entries(Cutscene.SCENES)) {
       let panels;
       try { panels = typeof def === 'function' ? def(ctx) : def; } catch (e) { skipped.push(id); continue; }
       n++;
-      errs.push(...CsDirector.validatePanels(id, panels, { castIds, sfxIds }));
+      errs.push(...CsDirector.validatePanels(id, panels, { castIds, sfxIds, setIds }));
     }
     T.eq(errs, []);
     T.eq(skipped, [], 'jede Szene lässt sich mit dem Test-Kontext erzeugen');
