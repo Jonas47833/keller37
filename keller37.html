@@ -1656,7 +1656,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
       <h4>24 Felder</h4>
       <table>
         <tr><td>×10</td><td>1 Feld</td></tr><tr><td>×5</td><td>1 Feld</td></tr><tr><td>×2</td><td>1 Feld</td></tr>
-        <tr><td>×1</td><td>3 Felder</td></tr><tr><td>Hälfte</td><td>5 Felder</td></tr><tr><td>Bankrott</td><td>13 Felder</td></tr>
+        <tr><td>Hälfte</td><td>11 Felder</td></tr><tr><td>Bankrott</td><td>10 Felder</td></tr>
       </table>
     </div>
     <div class="status" id="wheelStatus">Einsatz wählen und drehen</div>
@@ -1714,7 +1714,7 @@ const Rules = {
     return l;
   },
   /* Glück ist ein echter, aber teurer Vorteil: voll bis LUCK_CAP, darüber im Verhältnis kleiner (Pech genauso).
-     Mit 3 Bier liegt Roulette Rot/Schwarz bei ~117 %, das Rad bei ~114 %, die Slots bei ~105 % – wer die Bankroll
+     Mit 3 Bier liegt Roulette Rot/Schwarz bei ~117 %, das Rad bei ~111 %, die Slots bei ~105 % – wer die Bankroll
      hält und den Einsatz am Cap ausrichtet, kommt voran; wer alles setzt, fällt trotzdem. */
   effectiveLuck(luck, bet) {
     if (!luck) return 0;
@@ -6908,9 +6908,12 @@ const RoyalRules = {
     }
     return dice;
   },
-  /* ---- Glücksrad: 24 Segmente, Multiplikator auf den Einsatz (0 = Bankrott, 0,5 = Hälfte zurück) ---- */
+  /* ---- Glücksrad: 24 Segmente, Multiplikator auf den Einsatz (0 = Bankrott, 0,5 = Hälfte zurück) ----
+     Summe 22,5 → 93,75 % ohne Glück. Balancing 2026-09-20: 10 statt 13 Bankrott, dafür 11 Hälfte und kein Einsatz-zurück –
+     gleiche Quote, weniger Totalverluste. ×2/×5/×10 liegen direkt hinter einem Bankrott, weil Glück Bankrott auf das nächste
+     Feld schiebt; so bleibt Bier am Rad bei ~112 % (tests/balance-sim.mjs). */
   WHEEL: {
-    SEGMENTS: [0, 0, 0.5, 0, 0, 1, 0, 1, 0, 2, 0, 0.5, 0, 1, 0, 5, 0, 0.5, 0, 10, 0, 0.5, 0, 0.5],
+    SEGMENTS: [0, 0.5, 0, 10, 0.5, 0, 5, 0.5, 0, 0.5, 0, 2, 0.5, 0, 0.5, 0, 0.5, 0.5, 0, 0.5, 0, 0.5, 0.5, 0],
     BETS: [100, 500, 1000, 5000],
   },
   wheelSpin(rng) { return Math.floor(rng() * RoyalRules.WHEEL.SEGMENTS.length); },
@@ -10349,9 +10352,12 @@ T.test('WHEEL: 24 Segmente, Verteilung, Erwartungswert 93,75 %', () => {
   const S = RoyalRules.WHEEL.SEGMENTS;
   T.eq(S.length, 24);
   const count = (v) => S.filter((x) => x === v).length;
-  T.eq([count(0), count(0.5), count(1), count(2), count(5), count(10)], [13, 5, 3, 1, 1, 1]);
+  T.eq([count(0), count(0.5), count(1), count(2), count(5), count(10)], [10, 11, 0, 1, 1, 1], 'Balancing 2026-09-20: 10 statt 13 Bankrott, dafür Hälfte statt Einsatz zurück');
   T.eq(S.reduce((a, b) => a + b, 0) / 24, 0.9375);
   S.forEach((v, i) => { if (v === 0) T.ok(S[(i + 1) % 24] !== 0 || S[(i + 2) % 24] !== 0, `Bankrott ${i} hat binnen 2 Schritten ein Nicht-Bankrott-Segment`); });
+  S.forEach((v, i) => { if (v !== 0) T.ok(S[(i + 1) % 24] === 0 || S[(i + 2) % 24] === 0, `Segment ${i} hat binnen 2 Schritten ein Bankrott-Segment (Pech)`); });
+  /* Glück schiebt Bankrott aufs nächste Feld – die drei Gewinnfelder liegen direkt hinter einem Bankrott, sonst wirkt Bier am Rad kaum */
+  [2, 5, 10].forEach((m) => T.eq(S[(S.indexOf(m) + 23) % 24], 0, `×${m} liegt direkt hinter einem Bankrott`));
 });
 T.test('megaWinTier: Gewinnstufe nach Vielfachem des Einsatzes', () => {
   T.eq(RoyalRules.megaWinTier(0, 100), 'none');
@@ -10411,7 +10417,7 @@ T.test('wheelSpin / wheelPayout / wheelDelta', () => {
   T.eq(RoyalRules.wheelPayout(i0, 500), 0);
   T.eq(RoyalRules.wheelDelta(i10, 500), 4500);
   T.eq(RoyalRules.wheelDelta(iH, 500), -250);
-  T.eq(RoyalRules.wheelDelta(S.indexOf(1), 500), 0);
+  T.eq(RoyalRules.wheelDelta(S.indexOf(2), 500), 500);
 });
 T.test('wheelIndexAt / wheelAngleOf: Segment unter dem Zeiger für eine Drehung, Hinweg = Rückweg', () => {
   const S = RoyalRules.WHEEL.SEGMENTS, step = 360 / S.length;
@@ -10440,8 +10446,8 @@ T.test('wheelLuckOverride: Bankrott rückt auf das nächste Nicht-Bankrott-Segme
 T.test('wheelLuckOverride: Pech rückt einen Gewinn auf das nächste Bankrott-Segment', () => {
   const S = RoyalRules.WHEEL.SEGMENTS;
   const i10 = S.indexOf(10), i0 = S.indexOf(0);
-  T.eq(i10, 19); T.eq(S[20], 0);
-  T.eq(RoyalRules.wheelLuckOverride(i10, -100, seq(0)), 20, '×10 (Index 19) → Nachbar 20 ist Bankrott');
+  T.eq(i10, 3); T.eq(S[4], 0.5); T.eq(S[5], 0);
+  T.eq(RoyalRules.wheelLuckOverride(i10, -100, seq(0)), 5, '×10 (Index 3) → Index 5 ist das nächste Bankrott');
   T.eq(RoyalRules.wheelLuckOverride(i10, -15, seq(0.15)), i10, 'rng 15 ≥ |luck| 15 → bleibt');
   T.eq(RoyalRules.wheelLuckOverride(i0, -100, seq(0)), i0, 'Bankrott bleibt');
   T.eq(RoyalRules.wheelLuckOverride(i10, 0, seq(0)), i10, 'luck 0 unverändert');
