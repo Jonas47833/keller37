@@ -2759,6 +2759,130 @@ const CsCast = {
 };
 </script>
 
+<script id="cutscene-sets">
+/* ================= CUTSCENE SETS – Kulissen-Register (DOM-frei: liefert SVG-Strings) =================
+   Jede Kulisse: { back(): SVG hinter den Figuren, front(): SVG vor den Figuren ('' = keins), life: [Klassen der lebenden Elemente] }
+   Zeichenfläche 1000×400, unten bündig und auf Bühnenbreite skaliert (preserveAspectRatio xMidYMax meet) – hochkant bleibt oben Himmel frei. Die Standlinie der Figuren liegt bei y≈352. */
+const CsSets = {
+  svg(inner, cls = '') { return `<svg class="cs-set ${cls}" viewBox="0 0 1000 400" preserveAspectRatio="xMidYMax meet">${inner}</svg>`; },
+  rect(x, y, w, h, fill, extra = '') { return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" ${extra}/>`; },
+  windows(x0, y0, cols, rows, dx, dy, fill, cls = '') { let s = ''; for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) s += `<rect class="${cls}" x="${x0 + c * dx}" y="${y0 + r * dy}" width="10" height="14" fill="${fill}" style="animation-delay:${((r * cols + c) * 0.37) % 3}s"/>`; return s; },
+  SETS: {},
+  define(id, def) { this.SETS[id] = def; },
+};
+CsSets.define('bar', {
+  life: ['life-neon', 'life-smoke'],
+  back() { const S = CsSets; let bottles = ''; for (let i = 0; i < 12; i++) bottles += S.rect(230 + i * 46, 120 - (i % 3) * 8, 18, 46 + (i % 3) * 8, ['#7a5a2a', '#3a6a3a', '#6a2a2a', '#c9a227'][i % 4], 'rx="5"');
+    return S.svg(`${S.rect(200, 60, 600, 8, '#5a3a1a')}${S.rect(200, 166, 600, 8, '#5a3a1a')}${bottles}
+      ${S.rect(0, 280, 1000, 60, '#4a2e12')}${S.rect(0, 274, 1000, 8, '#7a5a2a')}
+      <text class="life-neon" x="880" y="60" font-family="monospace" font-size="26" font-weight="700" fill="#ff5c7a" text-anchor="middle" letter-spacing="4">KELLER 37</text>
+      <path class="life-smoke" d="M120 250 Q130 230 120 210 Q110 190 120 170" fill="none" stroke="#fff" stroke-width="3" opacity=".25"/>`); },
+  front() { return ''; },
+});
+CsSets.define('keller', {
+  life: ['life-blink', 'life-swing'],
+  back() { const S = CsSets; let m = ''; for (let i = 0; i < 4; i++) m += `${S.rect(80 + i * 240, 170, 110, 170, '#1e1e1a', 'rx="6"')}<rect class="life-blink" x="${95 + i * 240}" y="185" width="80" height="50" fill="#2a4a3a" style="animation-delay:${i * .5}s"/>${S.rect(95 + i * 240, 250, 80, 20, '#3a3a30')}`;
+    return S.svg(`${m}<g class="life-swing" style="transform-origin:500px 0px"><path d="M500 0 L500 70" stroke="#666" stroke-width="3"/><path d="M470 70 L530 70 L545 100 L455 100z" fill="#8a8a70"/><ellipse cx="500" cy="100" rx="45" ry="6" fill="#fff8d0" opacity=".9"/></g>`); },
+  front() { return ''; },
+});
+CsSets.define('hinterzimmer', {
+  life: ['life-candle', 'life-smoke'],
+  back() { const S = CsSets; return S.svg(`${S.rect(300, 250, 400, 14, '#3a2410')}${S.rect(320, 264, 20, 90, '#2a1a0a')}${S.rect(660, 264, 20, 90, '#2a1a0a')}
+      ${S.rect(560, 214, 12, 36, '#e8e0c0')}<ellipse class="life-candle" cx="566" cy="206" rx="7" ry="14" fill="#ffb347" style="transform-origin:566px 220px"/>
+      <ellipse cx="430" cy="252" rx="26" ry="6" fill="#555"/><path class="life-smoke" d="M430 246 Q440 226 430 206 Q420 186 430 166" fill="none" stroke="#fff" stroke-width="3" opacity=".25"/>`); },
+  front() { return ''; },
+});
+CsSets.define('strasse', {
+  life: ['life-car'],
+  back() { const S = CsSets; let houses = ''; for (let i = 0; i < 5; i++) houses += `${S.rect(i * 210, 60 + (i % 2) * 40, 190, 280 - (i % 2) * 40, ['#2a2a34', '#33333f'][i % 2])}${S.windows(i * 210 + 20, 90 + (i % 2) * 40, 5, 4, 34, 44, '#8a8a60')}`;
+    return S.svg(`${houses}${S.rect(0, 338, 1000, 14, '#555')}${S.rect(760, 120, 6, 220, '#777')}<path d="M740 120 L786 120 L780 100 L746 100z" fill="#999"/><ellipse cx="763" cy="128" rx="70" ry="40" fill="#fff4c0" opacity=".12"/>
+      <g class="life-car"><rect x="-260" y="300" width="160" height="44" rx="10" fill="#111"/><rect x="-230" y="278" width="90" height="30" rx="8" fill="#222"/><circle cx="-230" cy="346" r="12" fill="#333"/><circle cx="-130" cy="346" r="12" fill="#333"/><path d="M-100 314 L60 290 L60 340z" fill="#fff8c0" opacity=".25"/></g>`); },
+  front() { return ''; },
+});
+CsSets.define('gasse', {
+  life: ['life-rain', 'life-cat'],
+  back() { const S = CsSets; return S.svg(`${S.rect(0, 0, 1000, 340, '#14161c')}<circle cx="820" cy="70" r="30" fill="#e8e6d0" opacity=".85"/>
+      ${S.rect(60, 250, 70, 90, '#3a3a40', 'rx="6"')}${S.rect(140, 262, 70, 78, '#3a3a40', 'rx="6"')}${S.rect(55, 244, 80, 10, '#555', 'rx="3"')}
+      <path d="M700 60 L700 340 M760 60 L760 340 M700 120 L760 120 M700 200 L760 200 M700 280 L760 280 M760 120 L820 60" stroke="#444" stroke-width="5" fill="none"/>
+      <g class="life-cat"><path d="M0 340 q10 -20 20 0 l4 -14 l6 12 h20 l6 -12 l4 14 q10 -14 8 0z" fill="#0a0a0a"/></g>`); },
+  front() { let r = ''; for (let i = 0; i < 40; i++) r += `<path d="M${i * 26 + (i % 3) * 7} ${-400 + (i * 53) % 400} l-6 30" stroke="#9ab" stroke-width="1.5" opacity=".35"/>`;
+    return CsSets.svg(`<g class="life-rain">${r}<g transform="translate(0 400)">${r}</g></g>`); },
+});
+const hafen = (morgen) => ({
+  life: morgen ? ['life-wave', 'life-sun'] : ['life-wave', 'life-gull'],
+  back() { const S = CsSets; return S.svg(`${morgen ? '<circle class="life-sun" cx="820" cy="200" r="46" fill="#ffb060" opacity=".9"/>' : '<circle cx="840" cy="70" r="28" fill="#e8e6d0" opacity=".8"/>'}
+      <path d="M120 300 L120 60 L260 60 M120 100 L200 60 M120 140 L200 60 M120 180 L200 60" stroke="#333" stroke-width="8" fill="none"/>
+      <path d="M560 300 L560 90 L700 90 M560 130 L640 90 M560 170 L640 90" stroke="#333" stroke-width="8" fill="none"/>
+      ${S.rect(300, 240, 120, 60, '#5a2a2a')}${S.rect(420, 240, 120, 60, '#2a4a5a')}${S.rect(360, 180, 120, 60, '#5a5a2a')}
+      ${S.rect(0, 300, 1000, 100, morgen ? '#c46a3a' : '#0a1a33')}<g class="life-wave"><path d="M-100 320 q25 -6 50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0" fill="none" stroke="${morgen ? '#ffd090' : '#5aa0d0'}" stroke-width="2" opacity=".6"/></g>
+      ${morgen ? '' : '<path class="life-gull" d="M0 0 q8 -8 16 0 q8 -8 16 0" fill="none" stroke="#ddd" stroke-width="2" style="transform:translate(200px,120px)"/>'}`); },
+  front() { return ''; },
+});
+CsSets.define('hafen', hafen(false));
+CsSets.define('hafen-morgen', hafen(true));
+CsSets.define('klinik', {
+  life: ['life-ekg', 'life-flicker'],
+  back() { const S = CsSets; return S.svg(`<rect class="life-flicker" x="380" y="20" width="240" height="14" rx="4" fill="#f4fff8"/>
+      ${S.rect(600, 240, 300, 20, '#cfd8e3')}${S.rect(600, 260, 14, 90, '#889')}${S.rect(886, 260, 14, 90, '#889')}${S.rect(620, 220, 80, 20, '#eef')}
+      ${S.rect(120, 120, 150, 100, '#111', 'rx="6"')}${S.rect(180, 220, 30, 130, '#889')}<polyline class="life-ekg" points="130,170 160,170 170,150 180,195 190,160 200,170 260,170" fill="none" stroke="#5fe0d0" stroke-width="3"/>`); },
+  front() { return ''; },
+});
+CsSets.define('bank', {
+  life: ['life-ticker'],
+  back() { const S = CsSets; let rows = ''; for (let i = 0; i < 4; i++) rows += `<text class="life-ticker" x="720" y="${150 + i * 22}" font-family="monospace" font-size="16" fill="${i % 2 ? '#ff6b6b' : '#5fe0a0'}" style="animation-delay:${i * .7}s">${['DAX  −0,8 %', 'GOLD +1,2 %', 'BTC  −4,1 %', 'K37  +37 %'][i]}</text>`;
+    return S.svg(`${S.rect(0, 230, 1000, 20, '#1a3a5c')}${S.rect(0, 250, 1000, 100, '#123a5c')}${S.rect(700, 120, 220, 110, '#0a1a2a', 'rx="6"')}${rows}
+      ${S.rect(930, 300, 30, 50, '#5a3a1a')}<circle cx="945" cy="280" r="34" fill="#2a6a3a"/><circle cx="920" cy="300" r="22" fill="#2a6a3a"/><circle cx="970" cy="300" r="22" fill="#2a6a3a"/>`); },
+  front() { return ''; },
+});
+CsSets.define('standesamt', {
+  life: ['life-dust'],
+  back() { const S = CsSets; return S.svg(`${S.rect(380, 40, 240, 200, '#f8f4e8')}<path d="M500 40 L500 240 M380 140 L620 140" stroke="#b8a888" stroke-width="8"/>
+      ${S.rect(660, 240, 200, 110, '#8a7050')}<circle cx="710" cy="230" r="22" fill="#ff9ab0"/><circle cx="750" cy="222" r="24" fill="#ffd0a0"/><circle cx="790" cy="230" r="22" fill="#ff9ab0"/>
+      ${S.rect(120, 60, 6, 290, '#777')}<path d="M126 60 L200 80 L126 100z" fill="#c0392b"/><path d="M126 100 L200 120 L126 140z" fill="#f1c40f"/>`); },
+  front() { let d = ''; for (let i = 0; i < 18; i++) d += `<circle class="life-dust" cx="${400 + (i * 61) % 220}" cy="${60 + (i * 37) % 200}" r="2" fill="#fff" style="animation-delay:${(i * .4) % 4}s"/>`; return CsSets.svg(d); },
+});
+CsSets.define('villa', {
+  life: ['life-city', 'life-shimmer'],
+  back() { const S = CsSets; let sky = ''; for (let i = 0; i < 12; i++) sky += `${S.rect(i * 84, 120 + (i * 37) % 90, 70, 300, '#0a1030')}${S.windows(i * 84 + 8, 130 + (i * 37) % 90, 3, 6, 22, 24, '#ffe08a', 'life-city')}`;
+    return S.svg(`<circle cx="880" cy="60" r="26" fill="#f4f0d0"/>${sky}${S.rect(0, 300, 1000, 60, '#1a5a8a')}<g class="life-shimmer"><path d="M0 320 h1000 M0 340 h1000" stroke="#8ad0ff" stroke-width="2" stroke-dasharray="30 40" opacity=".6"/></g>`); },
+  front() { return ''; },
+});
+CsSets.define('bahnhof', {
+  life: ['life-train', 'life-tick'],
+  back() { const S = CsSets; return S.svg(`${S.rect(0, 0, 1000, 340, '#0d1220')}<path d="M0 330 h1000 M0 346 h1000" stroke="#666" stroke-width="4"/>
+      <g class="life-train"><rect x="-1100" y="230" width="1000" height="100" rx="12" fill="#2a2a3a"/>${S.windows(-1080, 250, 20, 1, 50, 0, '#ffd88a')}</g>
+      ${S.rect(120, 60, 8, 280, '#777')}<circle cx="124" cy="60" r="30" fill="#f4f0e0"/><path d="M124 60 L124 40" stroke="#111" stroke-width="3"/><path class="life-tick" d="M124 60 L140 60" stroke="#111" stroke-width="3" style="transform-origin:124px 60px"/>
+      ${S.rect(700, 290, 200, 14, '#5a3a1a')}${S.rect(710, 304, 12, 46, '#333')}${S.rect(878, 304, 12, 46, '#333')}`); },
+  front() { return ''; },
+});
+CsSets.define('pfandleihe', {
+  life: ['life-neon'],
+  back() { const S = CsSets; return S.svg(`${S.rect(200, 200, 600, 140, '#2a2418')}${S.rect(210, 210, 580, 90, '#1a160c')}
+      ${S.rect(240, 250, 60, 40, '#c9a227')}${S.rect(340, 240, 40, 50, '#8a8a8a')}<path d="M440 270 h60 v-14 h-20 v-10 h-24z" fill="#444"/>${S.rect(560, 246, 80, 44, '#5a3a1a')}${S.rect(680, 236, 60, 54, '#333')}
+      <text class="life-neon" x="500" y="80" font-family="monospace" font-size="30" fill="#ffd166" text-anchor="middle" letter-spacing="6">PFAND · GOLD · BARGELD</text>`); },
+  front() { return ''; },
+});
+CsSets.define('autohaus', {
+  life: ['life-sway'],
+  back() { const S = CsSets; return S.svg(`${S.rect(0, 0, 1000, 340, '#1a1e26')}<ellipse cx="500" cy="330" rx="260" ry="26" fill="#2a2e38"/>
+      <g class="life-sway" style="transform-origin:500px 330px"><path d="M300 320 L320 270 L400 240 L600 240 L680 270 L700 320z" fill="#c0392b"/><path d="M400 240 L420 260 L580 260 L600 240z" fill="#8ad"/><circle cx="360" cy="320" r="24" fill="#111"/><circle cx="640" cy="320" r="24" fill="#111"/></g>`); },
+  front() { return ''; },
+});
+CsSets.define('intersport', {
+  life: ['life-spot'],
+  back() { const S = CsSets; let shoes = ''; for (let i = 0; i < 8; i++) shoes += `<path d="M${140 + i * 100} 220 q30 -30 60 -10 l20 10 v14 h-80z" fill="${['#f2f2f2', '#ff7a1a', '#111', '#4cc9f0'][i % 4]}"/>`;
+    return S.svg(`${S.rect(100, 140, 800, 8, '#cfd8e3')}${S.rect(100, 236, 800, 8, '#cfd8e3')}${shoes}<path class="life-spot" d="M500 0 L380 300 L620 300z" fill="#fff" opacity=".08" style="transform-origin:500px 0px"/>`); },
+  front() { return ''; },
+});
+CsSets.define('royal', {
+  life: ['life-glitter'],
+  back() { const S = CsSets; let g = ''; for (let i = 0; i < 9; i++) g += `<circle class="life-glitter" cx="${420 + i * 20}" cy="${110 + Math.abs(i - 4) * 12}" r="5" fill="#fff7d0" style="animation-delay:${i * .2}s"/>`;
+    return S.svg(`${S.rect(0, 0, 220, 340, '#6a0f1a')}${S.rect(780, 0, 220, 340, '#6a0f1a')}${S.rect(240, 0, 40, 340, '#e8dcc0')}${S.rect(720, 0, 40, 340, '#e8dcc0')}
+      <path d="M500 0 L500 60" stroke="#c9a961" stroke-width="4"/><path d="M420 110 Q500 60 580 110" fill="none" stroke="#c9a961" stroke-width="4"/>${g}`); },
+  front() { return ''; },
+});
+</script>
+
 <script id="cutscene-engine">
 /* ================= CUTSCENE – Visual-Novel-Engine ================= */
 const Cutscene = {
@@ -11122,6 +11246,22 @@ if (typeof CsCast !== 'undefined') {
     T.ok(CsCast.figureHtml('du', { hurt: 'pflaster' }).includes('fill="#e8c8a0"'), 'Pflaster');
     const plain = CsCast.figureHtml('du');
     T.ok(!plain.includes('#ff6b6b') && !plain.includes('#8a6a3a') && !plain.includes('#e8c8a0') && !plain.includes(' sway'), 'nüchtern, unverletzt: keine Zustandsteile');
+  });
+}
+if (typeof CsSets !== 'undefined') {
+  T.test('CsSets: alle 16 Kulissen mit back/front/life; jedes lebende Element ist gezeichnet', () => {
+    const ids = ['bar', 'keller', 'hinterzimmer', 'strasse', 'gasse', 'hafen', 'hafen-morgen', 'klinik', 'bank', 'standesamt', 'villa', 'bahnhof', 'pfandleihe', 'autohaus', 'intersport', 'royal'];
+    T.eq(Object.keys(CsSets.SETS).sort(), [...ids].sort());
+    for (const id of ids) {
+      const s = CsSets.SETS[id];
+      T.ok(Array.isArray(s.life) && s.life.length >= 1 && s.life.every((l) => l.startsWith('life-')), `${id}: life`);
+      const back = s.back(), front = s.front();
+      T.ok(back.startsWith('<svg class="cs-set') && back.includes('preserveAspectRatio="xMidYMax meet"'), `${id}: back`);
+      T.eq(typeof front, 'string', `${id}: front`);
+      for (const l of s.life) T.ok(back.includes(`class="${l}"`) || front.includes(`class="${l}"`), `${id}: ${l} gezeichnet`);
+    }
+    T.ok(CsSets.SETS.gasse.front().includes('life-rain'), 'Regen im Vordergrund');
+    T.ok(CsSets.SETS['hafen-morgen'].back().includes('life-sun') && !CsSets.SETS.hafen.back().includes('life-sun'), 'Sonne nur am Morgen');
   });
 }
 
