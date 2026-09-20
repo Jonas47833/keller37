@@ -273,6 +273,7 @@ body.cs-open .toast { max-width: 300px; }
 /* Sofort-Modus (Tests, Skip, reduced-motion): keine Wege, keine Überblendung */
 .cs-instant .cs-fig, .cs-instant .cs-world { transition: none !important; }
 .cs-instant .cs-world.cs-fade { animation: none; }
+.cs-snap .cs-fig, .cs-snap .cs-world { transition: none !important; }
 /* Kulissen-Leben – ausschließlich transform/opacity */
 .life-neon { animation: csFlicker 3s infinite; }
 .life-flicker { animation: csFlicker 4s infinite; }
@@ -597,9 +598,6 @@ body.cs-open .toast { max-width: 300px; }
   .duel { flex-direction: column; }
   .fighter .face { width: 90px; height: 90px; font-size: 3rem; }
   .house { width: 70px; } .house .roof { border-left-width: 35px; border-right-width: 35px; } .house .wall { width: 64px; height: 50px; font-size: 1.1rem; }
-  .cs-stage { flex-direction: column; align-items: center; padding: 0 4vw 2vh; gap: 10px; }
-  .cs-text { font-size: 1rem; }
-  .cs-box { width: 100%; }
   #toasts { right: 10px; left: 10px; bottom: 120px; }
   body.cs-open #toasts { top: 70px; bottom: auto; left: 10px; right: 10px; }
   .toast { max-width: none; }
@@ -879,12 +877,6 @@ body.mode-story #newgame { display: none; }
 .gear-card .btn { margin-top: auto; font-size: .95rem; padding: 8px 18px; }
 .gear-card .reason { margin-top: auto; font-family: var(--font-mono); font-size: .78rem; color: var(--dim); padding: 8px 0; }
 .gear-line { font-family: var(--font-mono); font-size: .78rem; color: var(--gold-2); }
-.cs-bg.autohaus { background: linear-gradient(180deg, #e8eef3 0%, #b9c4cf 45%, #3c4249 46%, #1b1f23 100%); }
-.cs-bg.intersport { background: linear-gradient(180deg, #1a1a1a 0%, #2b2b2b 50%, #ff6a3d 51%, #b03d1c 100%); }
-.cs-bg.royal { background: linear-gradient(180deg, transparent 70%, rgba(0,0,0,.5)), conic-gradient(from 180deg at 50% -5%, transparent 0deg, rgba(201,169,97,.05) 7.5deg, transparent 15deg), radial-gradient(ellipse at 50% 0%, #4a1520 0%, #1c080e 45%, #0b0508 100%); }
-.cs-bg.royal::before { content: ""; position: absolute; left: 50%; top: 4%; width: 220px; height: 60px; transform: translateX(-50%); border: 2px solid #c9a961; border-top: 0; border-radius: 0 0 110px 110px;
-  background: radial-gradient(circle at 10% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 25% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 40% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 50% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 60% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 75% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 90% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px); }
-.cs-bg.royal::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: linear-gradient(180deg, transparent, rgba(0,0,0,.4)), repeating-linear-gradient(45deg, #141216 0 28px, #1a171c 28px 56px); opacity: .7; }
 .gold-drop { position: fixed; top: -5vh; z-index: 79; pointer-events: none; animation: goldDrop 2.2s ease-in both; text-shadow: 0 0 8px rgba(241,223,168,.8); }
 @keyframes goldDrop { from { transform: translateY(0) rotate(0); opacity: 1; } to { transform: translateY(110vh) rotate(360deg); opacity: .2; } }
 .balance.gold-flash { animation: goldFlash .8s ease both; }
@@ -1003,7 +995,6 @@ body.mode-story #newgame { display: none; }
 @keyframes wheelLights { to { opacity: 1; } }
 @media (max-width: 760px) { .wheel-panel { grid-template-columns: 1fr; } .wheel-panel .paytable { justify-self: center; } .wheel .seg { font-size: .6rem; } }
 @media (prefers-reduced-motion: reduce) { .wheel-panel { transition: none; } .wheel-lights { animation: none !important; } }
-.cs-bg.gasse { background: linear-gradient(180deg, #05060a 0%, #14161e 55%, #2a2418 56%, #0d0b07 100%); }
 /* ==== Perks – Level-Badge, Skill-Screen ==== */
 .lv-badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: .8rem; color: var(--gold-2); border: 1px solid rgba(201,162,39,.35); border-radius: 6px; padding: 2px 8px; background: rgba(0,0,0,.3); cursor: pointer; }
 .lv-badge .bar { width: 44px; height: 6px; border-radius: 3px; background: #2a2e26; overflow: hidden; }
@@ -3081,17 +3072,19 @@ const Cutscene = {
     for (const who of plan.exit) {
       const f = els.figs.get(who); if (!f) continue;
       els.figs.delete(who);
+      for (const t of f.timers || []) clearTimeout(t); f.timers = [];
       f.el.classList.add('walking'); f.el.classList.remove('speaking'); f.el.dataset.pose = 'walk';
       f.el.style.setProperty('--x', `${this.offX(CsDirector.side(who), W)}px`);
-      if (instant || plan.bgChange) f.el.remove(); else setTimeout(() => f.el.remove(), this.WALK_MS); // beim Kulissenwechsel deckt die Überblendung den Abgang
+      if (instant || plan.bgChange) f.el.remove(); else f.timers.push(setTimeout(() => f.el.remove(), this.WALK_MS)); // beim Kulissenwechsel deckt die Überblendung den Abgang
     }
     for (const [who, f] of [...els.figs]) if (!plan.cast.some((c) => c.who === who)) { els.figs.delete(who); f.el.remove(); } // nach Skip/Kulissenwechsel: nur die geplante Besetzung bleibt
     let speaker = null;
     for (const c of plan.cast) {
       let f = els.figs.get(c.who);
       const entering = plan.enter.find((e) => e.who === c.who);
+      if (f) { for (const t of f.timers || []) clearTimeout(t); f.timers = []; } // alte Weg-Timer löschen, sonst überschriebe ein später Timer die Pose dieses Panels
       if (!f) {
-        f = { who: c.who, el: h('div', { class: 'cs-fig' }), key: null };
+        f = { who: c.who, el: h('div', { class: 'cs-fig' }), key: null, timers: [] };
         els.figs.set(c.who, f); els.actors.append(f.el);
         f.el.style.setProperty('--x', `${this.offX(entering ? entering.from : CsDirector.side(c.who), W)}px`);
         if (!instant) void f.el.offsetWidth; // Startposition festschreiben, sonst gibt es keinen Weg zu animieren
@@ -3103,10 +3096,11 @@ const Cutscene = {
       f.el.style.setProperty('--face', String(c.facing));
       f.el.classList.toggle('far', c.slot === 'far');
       const walking = !!entering && !instant;
+      f.pose = c.pose; // Zielpose merken (für _snap)
       f.el.classList.toggle('walking', walking);
-      if (walking) setTimeout(() => f.el.classList.remove('walking'), this.WALK_MS);
+      if (walking) f.timers.push(setTimeout(() => f.el.classList.remove('walking'), this.WALK_MS));
       f.el.dataset.pose = walking ? 'walk' : c.pose;
-      if (walking) setTimeout(() => { if (f.el.isConnected) f.el.dataset.pose = c.pose; }, this.WALK_MS);
+      if (walking) f.timers.push(setTimeout(() => { if (f.el.isConnected) f.el.dataset.pose = c.pose; }, this.WALK_MS));
       f.el.classList.toggle('speaking', c.who === plan.speaker);
       if (c.who === plan.speaker) speaker = f;
     }
@@ -3118,6 +3112,17 @@ const Cutscene = {
       els.world.style.transform = 'scale(1.8)';
     }
     return speaker;
+  },
+  /* Klick während Auftritt/Kamerafahrt: Wege und Zoom sofort zu Ende führen, damit die Blase am Endpunkt gemessen wird */
+  _snap(els) {
+    els.root.classList.add('cs-snap');
+    for (const f of els.figs.values()) {
+      for (const t of f.timers || []) clearTimeout(t);
+      f.timers = []; f.el.classList.remove('walking');
+      if (f.pose) f.el.dataset.pose = f.pose;
+    }
+    void els.root.offsetWidth; // Stil mit abgeschalteten Transitions übernehmen – Transitions enden am Zielwert
+    els.root.classList.remove('cs-snap');
   },
   /* Kopfposition einer Figur relativ zur Bühne – einmal pro Panel gemessen, nie pro Frame */
   _headAt(els, fig) {
@@ -3192,6 +3197,7 @@ const Cutscene = {
         if (finished) return;
         await waitOr(p.pause || 0);
         if (finished) return;
+        if (showAll) this._snap(els);
         if (p.shout) this._shout(els, speaker, p.shout);
         this._placeBubble(els, speaker, full);
         started = true;
@@ -11981,6 +11987,38 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       qs('.cs-skip', root).click(); await wait(40); qs('.cs-choices .btn', root).click(); await done2;
       T.ok(!Cutscene.active && !document.body.classList.contains('cs-open'), 'Szene sauber beendet');
     } finally { Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.buehne']; }
+  });
+  T.test('Cutscene-Bühne: Klick während Auftritt/Kamerafahrt beendet Weg und Zoom sofort – Blase am Endpunkt', async () => {
+    const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
+    State.save = () => {}; State.s = State.fresh();
+    Cutscene.define('test.snap', [
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Eins, ganz ruhig.' },
+      { bg: 'keller', who: 'vito', mood: 'angry', text: 'Zwei – und dieser Satz ist lang genug, dass das Tippen nicht in sechzig Millisekunden fertig wäre.', cam: 'close' },
+    ]);
+    const root = qs('#cutscene');
+    const bubblePos = () => ({ left: parseFloat(qs('.cs-bubble', root).style.left), top: parseFloat(qs('.cs-bubble', root).style.top) });
+    try {
+      /* Referenz: Sofort-Modus – Endzustand ohne Wege */
+      Cutscene.instant = true;
+      const done1 = Cutscene.play('test.snap', {});
+      await wait(40); root.click(); await wait(40);
+      T.eq(qs('.cs-name', root).textContent, 'Don Vito', 'Referenz: Panel 2');
+      const ref = bubblePos();
+      root.click(); await done1;
+      /* Echtzeit: Panel 1 (Auftritt 600 ms) durchklicken, Panel 2 sofort während Weg + Zoom anklicken */
+      Cutscene.instant = false;
+      const done2 = Cutscene.play('test.snap', {});
+      await wait(40); root.click(); await wait(Cutscene.WALK_MS + 100); root.click();
+      await wait(10); root.click(); await wait(60);
+      T.eq(qs('.cs-name', root).textContent, 'Don Vito', 'Panel 2 aktiv');
+      T.eq(qsa('.cs-fig.walking', root).length, 0, 'kein Weg mehr');
+      T.eq(qs('.cs-fig.speaking', root).dataset.pose, 'point', 'Zielpose statt walk');
+      T.ok(/Millisekunden fertig wäre\.$/.test(qs('.cs-text', root).textContent), 'Text komplett');
+      const now = bubblePos();
+      T.ok(Math.abs(now.left - ref.left) <= 2 && Math.abs(now.top - ref.top) <= 2, `Blase am Endpunkt (${now.left}|${now.top} vs ${ref.left}|${ref.top})`);
+      root.click(); await done2;
+      T.ok(!Cutscene.active, 'Szene beendet');
+    } finally { Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.snap']; }
   });
   T.test('Cutscene-Keyframes (cs*) animieren nur transform oder opacity', () => {
     let n = 0;
