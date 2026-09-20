@@ -274,6 +274,7 @@ body.cs-open .toast { max-width: 300px; }
 .cs-instant .cs-fig, .cs-instant .cs-world { transition: none !important; }
 .cs-instant .cs-world.cs-fade { animation: none; }
 .cs-snap .cs-fig, .cs-snap .cs-world { transition: none !important; }
+.cs-instant .cs-fig .cs-body, .cs-instant .cs-fig .part, .cs-snap .cs-fig .cs-body, .cs-snap .cs-fig .part { transition: none !important; }
 /* Kulissen-Leben – ausschließlich transform/opacity */
 .life-neon { animation: csFlicker 3s infinite; }
 .life-flicker { animation: csFlicker 4s infinite; }
@@ -3082,12 +3083,17 @@ const Cutscene = {
     for (const c of plan.cast) {
       let f = els.figs.get(c.who);
       const entering = plan.enter.find((e) => e.who === c.who);
+      const walking = !!entering && !instant && c.pose !== 'down'; // liegend läuft nie ein – erscheint direkt am Platz
       if (f) { for (const t of f.timers || []) clearTimeout(t); f.timers = []; } // alte Weg-Timer löschen, sonst überschriebe ein später Timer die Pose dieses Panels
       if (!f) {
         f = { who: c.who, el: h('div', { class: 'cs-fig' }), key: null, timers: [] };
         els.figs.set(c.who, f); els.actors.append(f.el);
-        f.el.style.setProperty('--x', `${this.offX(entering ? entering.from : CsDirector.side(c.who), W)}px`);
-        if (!instant) void f.el.offsetWidth; // Startposition festschreiben, sonst gibt es keinen Weg zu animieren
+        if (walking) {
+          f.el.style.setProperty('--x', `${this.offX(entering ? entering.from : CsDirector.side(c.who), W)}px`);
+          void f.el.offsetWidth; // Startposition festschreiben, sonst gibt es keinen Weg zu animieren
+        } else {
+          f.el.style.setProperty('--x', `${this.SLOT_X[c.slot] * W}px`); // liegend oder Sofort-Modus: direkt am Zielplatz, kein Weg
+        }
       }
       const look = els.look[c.who] || {};
       const key = `${c.mood}|${look.hurt || ''}`;
@@ -3095,8 +3101,7 @@ const Cutscene = {
       f.el.style.setProperty('--x', `${this.SLOT_X[c.slot] * W}px`);
       f.el.style.setProperty('--face', String(c.facing));
       f.el.classList.toggle('far', c.slot === 'far');
-      const walking = !!entering && !instant;
-      f.pose = c.pose; // Zielpose merken (für _snap)
+      f.pose = c.pose; // Zielpose merken (für _snap und _headAt)
       f.el.classList.toggle('walking', walking);
       if (walking) f.timers.push(setTimeout(() => f.el.classList.remove('walking'), this.WALK_MS));
       f.el.dataset.pose = walking ? 'walk' : c.pose;
@@ -3104,25 +3109,25 @@ const Cutscene = {
       f.el.classList.toggle('speaking', c.who === plan.speaker);
       if (c.who === plan.speaker) speaker = f;
     }
-    return speaker;
-  },
-  /* Kamera: Shake, Weitwinkel, oder Zoom auf den gemessenen Kopf des Sprechers (auch liegend oder fern). Läuft erst
-     NACH dem Auftritts-/Wege-Warten in _panel, damit der Kopf an seiner endgültigen Position gemessen wird. */
-  _cam(els, plan, speaker) {
     if (plan.cam === 'shake') UI.shake(els.world);
     else if (plan.cam === 'wide') els.world.style.transform = '';
-    else if (plan.cam === 'close' && speaker) {
-      const W = els.actors.clientWidth, H = els.actors.clientHeight;
-      /* Zoom auf den Kopf des Sprechers – gemessen (auch liegend oder fern) und in ungezoomte Weltkoordinaten zurückgerechnet,
-         falls die Welt aus dem vorigen Panel schon gezoomt ist */
-      const m = /scale\(([\d.]+)\)/.exec(els.world.style.transform), s = m ? parseFloat(m[1]) : 1;
-      const o = (els.world.style.transformOrigin || '').split(' ').map(parseFloat);
-      const ox = Number.isFinite(o[0]) ? o[0] : W / 2, oy = Number.isFinite(o[1]) ? o[1] : H / 2;
-      const hd = this._headAt(els, speaker);
-      const x = ox + (hd.x - ox) / s, y = oy + (hd.y + hd.h / 2 - oy) / s;
-      els.world.style.transformOrigin = `${Math.round(x)}px ${Math.round(y)}px`;
-      els.world.style.transform = 'scale(1.8)';
-    }
+    return speaker;
+  },
+  /* Kamera-Zoom auf den Kopf des Sprechers (geometrisch berechnet, auch liegend oder fern) – läuft NACH dem ersten
+     Warten/_snap in _panel, damit Weg und Pose an ihrer Zielposition sind, bevor darauf gezoomt wird. shake/wide
+     bleiben synchron in _stage (siehe oben), weil sie keine laufende Bewegung voraussetzen. */
+  _cam(els, plan, speaker) {
+    if (plan.cam !== 'close' || !speaker) return;
+    const W = els.actors.clientWidth, H = els.actors.clientHeight;
+    /* Zoom auf den Kopf des Sprechers – berechnet (auch liegend oder fern) und in ungezoomte Weltkoordinaten zurückgerechnet,
+       falls die Welt aus dem vorigen Panel schon gezoomt ist */
+    const m = /scale\(([\d.]+)\)/.exec(els.world.style.transform), s = m ? parseFloat(m[1]) : 1;
+    const o = (els.world.style.transformOrigin || '').split(' ').map(parseFloat);
+    const ox = Number.isFinite(o[0]) ? o[0] : W / 2, oy = Number.isFinite(o[1]) ? o[1] : H / 2;
+    const hd = this._headAt(els, speaker);
+    const x = ox + (hd.x - ox) / s, y = oy + (hd.cy - oy) / s;
+    els.world.style.transformOrigin = `${Math.round(x)}px ${Math.round(y)}px`;
+    els.world.style.transform = 'scale(1.8)';
   },
   /* Klick während Auftritt/Kamerafahrt: Wege und Zoom sofort zu Ende führen, damit die Blase am Endpunkt gemessen wird */
   _snap(els) {
@@ -3135,12 +3140,25 @@ const Cutscene = {
     void els.root.offsetWidth; // Stil mit abgeschalteten Transitions übernehmen – Transitions enden am Zielwert
     els.root.classList.remove('cs-snap');
   },
-  /* Kopfposition = gemessener Schädel, inklusive Drehung/Verkleinerung der Figur – einmal pro Panel gemessen, nie pro Frame */
+  /* Kopfposition GEOMETRISCH aus dem Figuren-Kasten (nur Verschiebung, bei "far" zusätzlich Skalierung – nie die
+     Körperdrehung) plus Zielpose und Blickrichtung berechnet, nie gemessen: so ist sie unabhängig von einer gerade
+     laufenden Bewegung (Weg, Hinlegen). Die Konstanten folgen dem Figuren-Rig (Schädel-Pfad, Dreh-Pivot 50 %/95,6 %,
+     85°) und müssen mit ihm zusammen aktualisiert werden.
+     - Stehend (jede Pose außer "down"): Kastenoberkante = Blasenanker (y), Schädelmitte bei 27,2 % der Kastenhöhe
+       (viewBox des Schädel-Pfads y 22…76 → Mitte 49 von 180).
+     - Liegend ("down"): Der Körper dreht sich 85° um (50 %, 95,6 %). Aus Pivot (50,172) und Schädelmitte (50,49)
+       folgt dy = -123; nach der 85°-Drehung: dx' = 123·sin85° ≈ 122,5 (= 0,681·Kastenhöhe),
+       dy' = 172 − 123·cos85° ≈ 161,3 (= 0,896·Kastenhöhe). */
   _headAt(els, fig) {
     const R = els.root.getBoundingClientRect();
-    const el = qs('.head .skull', fig.el) || qs('.head', fig.el);
-    const head = el.getBoundingClientRect();
-    return { x: head.left + head.width / 2 - R.left, y: head.top - R.top, h: head.height, W: R.width, H: R.height };
+    const b = fig.el.getBoundingClientRect();
+    const facing = parseFloat(fig.el.style.getPropertyValue('--face')) || 1;
+    const down = fig.pose === 'down';
+    const x = b.left + b.width / 2 + (down ? facing * 0.681 * b.height : 0);
+    const cy = b.top + (down ? 0.896 : 0.272) * b.height;
+    const y = down ? cy - 0.15 * b.height : b.top;
+    const h = 0.30 * b.height;
+    return { x: x - R.left, y: y - R.top, cy: cy - R.top, h, W: R.width, H: R.height };
   },
   /* Blase über dem Sprecher; ohne Sprecher (leere Bühne) als Erzähler-Blase oben mittig */
   _placeBubble(els, speaker, full) {
@@ -3169,8 +3187,9 @@ const Cutscene = {
       els.bubble.hidden = true; els.choices.innerHTML = ''; els.extra.innerHTML = ''; els.next.style.visibility = 'hidden';
       els.skip.style.display = isLast ? 'none' : '';
       els.name.textContent = who.name; els.bubble.style.setProperty('--c', who.color); // Sprecher sofort bekannt (Blase erscheint nach dem Auftritt)
+      // vor _stage messen: "wide" holt nur dann Wartezeit, wenn die Welt gerade noch gezoomt ist (_stage setzt das gleich synchron zurück)
+      const moving = plan.enter.length > 0 || plan.exit.length > 0 || (plan.cam === 'wide' && !!els.world.style.transform);
       const speaker = this._stage(els, p, plan, instant);
-      const moving = plan.enter.length > 0 || plan.exit.length > 0 || plan.cam === 'close' || plan.cam === 'wide';
       this._fx(els, p.fx, ctx, false);
       if (p.sfx) SFX.play(p.sfx);
       const full = this.fill(p.text || '', ctx);
@@ -3212,7 +3231,7 @@ const Cutscene = {
         if (finished) return;
         if (showAll) this._snap(els);
         this._cam(els, plan, speaker);
-        if (plan.cam === 'close') {
+        if (plan.cam === 'close' && speaker) {
           // Kopf erst NACH abgeschlossenem Zoom messen (Blase am Endpunkt), sonst wie oben abkürzbar per Klick
           await waitOr(instant || showAll ? 0 : this.WALK_MS);
           if (finished) return;
@@ -12093,6 +12112,47 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       root.click(); await done;
       T.ok(!Cutscene.active, 'Szene beendet');
     } finally { Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.cam']; }
+  });
+  T.test('Cutscene-Kamera close in Echtzeit: Kopf aus der Zielpose berechnet, wide zoomt erst nach dem Rückzug', async () => {
+    const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
+    State.save = () => {}; State.s = State.fresh();
+    Cutscene.instant = false;
+    Cutscene.define('test.camlive', [
+      { bg: 'gasse', who: 'du', mood: 'dead', cast: ['du'], pose: 'down', cam: 'close', text: 'Liegt.' },
+      { bg: 'keller', who: 'wirt', mood: 'calm', text: 'Steh auf.' },
+    ]);
+    const root = qs('#cutscene');
+    try {
+      const done = Cutscene.play('test.camlive', {});
+      await wait(50);
+      const duFig = qs('.cs-fig.speaking', root);
+      T.eq(duFig.dataset.pose, 'down', 'liegt von Anfang an, kein "walk"-Zwischenschritt');
+      T.ok(!duFig.classList.contains('walking'), 'liegende Figur läuft nicht ein');
+      await wait(Cutscene.WALK_MS + 100);
+      const world = qs('.cs-world', root);
+      T.ok(/scale/.test(world.style.transform), 'Panel 1: Kamera close aktiv');
+      const [ox1, oy1] = world.style.transformOrigin.split(' ').map(parseFloat);
+      const R = root.getBoundingClientRect();
+      T.ok(ox1 >= 0 && ox1 <= R.width && oy1 >= 0 && oy1 <= R.height, `Panel 1: Origin im Rahmen (${ox1}|${oy1})`);
+      const hd1 = Cutscene._headAt({ root }, { el: duFig, pose: 'down' });
+      T.ok(Math.abs(hd1.x - ox1) <= 3 && Math.abs(hd1.cy - oy1) <= 3, `Panel 1: Origin = berechneter Kopf (${hd1.x.toFixed(1)}|${hd1.cy.toFixed(1)} vs ${ox1}|${oy1})`);
+      root.click(); await wait(40);  // 1. Klick: Text sofort komplett (Zoom-Warten abgekürzt)
+      root.click(); await wait(40);  // 2. Klick: weiter zu Panel 2
+      await wait(Cutscene.WALK_MS + 100);
+      T.eq(world.style.transform, '', 'Panel 2: wide zurückgezoomt');
+      const wirtFig = qs('.cs-fig.speaking', root);
+      const hd2 = Cutscene._headAt({ root }, { el: wirtFig, pose: wirtFig.dataset.pose });
+      const b = qs('.cs-bubble', root);
+      const left = parseFloat(b.style.left), tail = parseFloat(b.style.getPropertyValue('--tail'));
+      T.ok(Math.abs(left + tail - hd2.x) <= 4, `Panel 2: Blase zeigt auf den Kopf (${left} + ${tail} vs ${hd2.x.toFixed(1)})`);
+      root.click(); await done;
+      T.ok(!Cutscene.active, 'Szene beendet');
+    } finally {
+      // Fällt eine Assertion mitten in der Szene, bliebe Cutscene.active sonst hängen (nächster Test mit
+      // Cutscene.play würde ewig warten) – hier notfalls hart zurücksetzen, wie play() es am Ende auch täte.
+      if (Cutscene.active) { root.hidden = true; root.innerHTML = ''; Cutscene.active = false; document.body.classList.remove('cs-open'); }
+      Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.camlive'];
+    }
   });
   T.test('Cutscene-Keyframes (cs*) animieren nur transform oder opacity', () => {
     let n = 0;
