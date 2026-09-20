@@ -2599,6 +2599,166 @@ const CsDirector = {
 };
 </script>
 
+<script id="cutscene-cast">
+/* ================= CUTSCENE CAST – Figuren-Register und SVG-Baukasten (DOM-frei: liefert Strings) =================
+   Rig: viewBox 0 0 100 180. Schultern (21,82)/(79,82), Kopfmitte (50,46), Mundmitte (50,61), Standlinie y=172. */
+const CsCast = {
+  CAST: {
+    wirt:        { name: 'Der Wirt',         emoji: '🍺', color: 'var(--neon-amber)', look: { skin: '#e0b08a', cloth: '#3b2a1e', accent: '#c9a227', hair: 'glatze', hairColor: '#555', hat: null,      extra: ['schuerze', 'bart'],               build: 'breit' } },
+    chantal:     { name: 'Chantal-Monique',  emoji: '💅', color: 'var(--neon-pink)',  look: { skin: '#f0c8a8', cloth: '#ff2d95', accent: '#ffd6ea', hair: 'lang',   hairColor: '#f2d16b', hat: null,   extra: ['lippenstift', 'kette'],           build: 'schmal' } },
+    vito:        { name: 'Don Vito',         emoji: '🕶️', color: 'var(--neon-red)',   look: { skin: '#e8b48a', cloth: '#1e1e22', accent: '#b0202a', hair: 'kurz',   hairColor: '#111',    hat: 'fedora', hatColor: '#151515', extra: ['sonnenbrille', 'zigarre', 'krawatte'], build: 'normal' } },
+    igor:        { name: 'Igor',             emoji: '🐻', color: 'var(--neon-blue)',  look: { skin: '#d8a888', cloth: '#2f3a4a', accent: '#1a222c', hair: 'igel',   hairColor: '#222',    hat: null,   extra: ['narbe'],                          build: 'breit' } },
+    doc:         { name: 'Der Doc',          emoji: '🥼', color: '#5fe0d0',           look: { skin: '#e8c8a8', cloth: '#f2f2f2', accent: '#5fe0d0', hair: 'grau',   hairColor: '#b8b8b8', hat: null,   extra: ['brille', 'stethoskop'],           build: 'normal' } },
+    krause:      { name: 'Herr Krause',      emoji: '👔', color: 'var(--neon-blue)',  look: { skin: '#e8c8a8', cloth: '#2a3a5c', accent: '#4cc9f0', hair: 'kurz',   hairColor: '#6a5040', hat: null,   extra: ['brille', 'krawatte'],             build: 'normal' } },
+    makler:      { name: 'Der Makler',       emoji: '🧑‍💼', color: 'var(--gold-2)',    look: { skin: '#e8b48a', cloth: '#6a6a70', accent: '#c9a227', hair: 'kurz',   hairColor: '#3a2414', hat: null,   extra: ['krawatte'],                       build: 'normal' } },
+    schmalz:     { name: 'Dr. Schmalz',      emoji: '⚖️', color: '#c0c0c0',           look: { skin: '#e0b898', cloth: '#111111', accent: '#c0c0c0', hair: 'grau',   hairColor: '#9a9a9a', hat: null,   extra: ['brille'],                         build: 'normal' } },
+    kevin:       { name: 'Kevin',            emoji: '🧢', color: 'var(--neon-purple)', look: { skin: '#e8c8a8', cloth: '#7b2cbf', accent: '#3a1a5c', hair: 'kurz',  hairColor: '#3a2414', hat: 'cap', hatColor: '#111', extra: [],               build: 'klein' } },
+    postmeister: { name: 'Der Postmeister',  emoji: '📬', color: 'var(--day)',        look: { skin: '#e0b08a', cloth: '#f3c623', accent: '#1a1a1a', hair: 'grau',   hairColor: '#b8b8b8', hat: 'kappe', hatColor: '#1a1a1a', extra: ['schnurrbart'], build: 'normal' } },
+    verkaeufer:  { name: 'Der Verkäufer',    emoji: '🤵', color: '#cfd8e3',           look: { skin: '#e8c8a8', cloth: '#cfd8e3', accent: '#1a1a1a', hair: 'kurz',   hairColor: '#111',    hat: null,   extra: ['krawatte'],                       build: 'normal' } },
+    du:          { name: 'Du',               emoji: '🤠', color: '#ffffff',           look: { skin: '#e8b48a', cloth: '#6b4a2a', accent: '#e6e0d0', hair: 'kurz',   hairColor: '#3a2414', hat: 'cap', hatColor: '#8b1e1e', extra: [],            build: 'normal' } },
+    raeuber:     { name: 'Der Räuber',       emoji: '🥷', color: 'var(--neon-red)',   look: { skin: '#e8b48a', cloth: '#111111', accent: '#222',    hair: 'kurz',   hairColor: '#111',    hat: 'muetze', hatColor: '#111', extra: ['maske'],      build: 'normal' } },
+    sylvie:      { name: 'Madame Sylvie',    emoji: '🎩', color: '#e8d5a3',           look: { skin: '#e8c8a8', cloth: '#0b0a0c', accent: '#c9a961', hair: 'lang',   hairColor: '#3a1a1a', hat: 'zylinder', hatColor: '#0b0a0c', extra: ['lippenstift'], build: 'schmal' } },
+    insider:     { name: 'Der Insider',      emoji: '🕵️', color: 'var(--neon-blue)',  look: { skin: '#e8b48a', cloth: '#4a4a52', accent: '#2a2a30', hair: 'kurz',   hairColor: '#222',    hat: 'fedora', hatColor: '#3a3a40', extra: ['sonnenbrille'], build: 'normal' } },
+    anabi:       { name: 'Anabi Stash',      emoji: '🕶️', color: '#d4af37',           look: { skin: '#c89068', cloth: '#111111', accent: '#d4af37', hair: 'kurz',   hairColor: '#111',    hat: null,   extra: ['sonnenbrille', 'kette', 'krawatte'], build: 'normal' } },
+    stumme:      { name: 'Der Stumme',       emoji: '🃏', color: '#8a8a8a',           look: { skin: '#e8c8a8', cloth: '#8a8a8a', accent: '#5a5a5a', hair: 'glatze', hairColor: '#333',    hat: null,   extra: [],                                 build: 'schmal' } },
+    kessler:     { name: 'Kessler',          emoji: '🚬', color: 'var(--neon-red)',   look: { skin: '#e8b48a', cloth: '#5a1a1a', accent: '#2a0a0a', hair: 'kurz',   hairColor: '#111',    hat: null,   extra: ['zigarette', 'narbe'],             build: 'normal' } },
+    brandt:      { name: 'Kommissar Brandt', emoji: '👮', color: 'var(--neon-blue)',  look: { skin: '#e8c8a8', cloth: '#1e3a5c', accent: '#4cc9f0', hair: 'kurz',   hairColor: '#6a5040', hat: 'kappe', hatColor: '#1e3a5c', extra: ['schnurrbart'], build: 'normal' } },
+    kowalski:    { name: 'Kowalski',         emoji: '🔧', color: '#b8a070',           look: { skin: '#e0b08a', cloth: '#3a4a5a', accent: '#b8a070', hair: 'kurz',   hairColor: '#3a2414', hat: null,   extra: ['schnurrbart'],                    build: 'breit' } },
+  },
+  SHOES: { basic: '#f2f2f2', trail: '#ff7a1a', carbon: '#111' },
+  MOODS: ['calm', 'angry', 'happy', 'shock', 'dead'],
+  /* Ausrüstung und Zustand des Protagonisten aus dem Spielstand (einmal pro Szene gelesen) */
+  duParts(s) {
+    if (!s) return {};
+    const inStash = !!(s.story && s.story.id === 'stash');
+    return {
+      shoes: s.shoes && this.SHOES[s.shoes] ? s.shoes : null,
+      weapon: s.weapon || 0,
+      suit: inStash,
+      cheeks: s.beers >= 1 && s.beerTimer > 0,
+      sway: s.beers >= 3 && s.beerTimer > 0,
+      blackEye: !!(s.story && s.story.flags && s.story.flags.blauesAuge),
+      rings: s.mafiaDebt > 0,
+    };
+  },
+  /* opts: { mood, parts (nur du), hurt: 'pflaster'|'kruecke' } → HTML-String.
+     Jedes bewegliche Teil ist ein eigenes <svg> (gleiche viewBox, übereinander gestapelt): CSS-Transforms auf HTML-Elementen laufen
+     auf dem Compositor, Transforms auf SVG-Kindknoten würden die ganze Figur pro Frame neu malen. */
+  figureHtml(who, opts = {}) {
+    const c = this.CAST[who] || this.CAST.du;
+    const look = Object.assign({}, c.look || this.CAST.du.look);
+    if (!c.look) { look.extra = ['emoji']; look.emoji = c.emoji; }
+    const parts = opts.parts || {};
+    if (parts.suit) { look.cloth = '#1e1e22'; look.accent = '#b0202a'; look.extra = [...look.extra, 'krawatte']; }
+    const mood = opts.mood || 'calm';
+    const P = look;
+    const build = { breit: 'translate(50 0) scale(1.22 1) translate(-50 0)', schmal: 'translate(50 0) scale(0.86 1) translate(-50 0)' }[P.build] || '';
+    const armShift = P.build === 'breit' ? 8 : P.build === 'schmal' ? -4 : 0;
+    const shoe = parts.shoes ? this.SHOES[parts.shoes] : '#1c1c1c';
+    const legFill = P.cloth === '#f2f2f2' ? '#cfd8e3' : this.dark(P.cloth);
+    const part = (cls, inner) => `<svg class="part ${cls}" viewBox="0 0 100 180" overflow="visible">${inner}</svg>`;
+    const legL = part('legL', `<rect x="30" y="118" width="17" height="48" rx="4" fill="${legFill}"/><path d="M26 164h24a4 4 0 0 1 0 8H26z" fill="${shoe}"/>`);
+    const legR = part('legR', `<rect x="53" y="118" width="17" height="48" rx="4" fill="${legFill}"/><path d="M50 164h24a4 4 0 0 1 0 8H50z" fill="${shoe}"/>`);
+    const body = part('body', `<g transform="${build}">
+      <path d="M24 74 L76 74 L82 124 L18 124 Z" fill="${P.cloth}"/>
+      <path d="M42 74 L58 74 L52 118 L48 118 Z" fill="${P.accent}"/>
+      ${P.extra.includes('krawatte') ? `<path d="M40 74 L60 74 L54 112 L46 112 Z" fill="#f2f2f2"/><path d="M47 74 L53 74 L55 108 L50 114 L45 108 Z" fill="${P.accent}"/><path d="M40 74 L50 100 L60 74" fill="none" stroke="${this.dark(P.cloth)}" stroke-width="3"/>` : ''}
+      ${P.extra.includes('schuerze') ? `<path d="M30 92 L70 92 L72 124 L28 124 Z" fill="#e6e0d0"/><path d="M30 92 L70 92" stroke="#c9a227" stroke-width="2"/>` : ''}
+      ${P.extra.includes('kette') ? `<path d="M36 76 Q50 96 64 76" fill="none" stroke="#d4af37" stroke-width="3"/>` : ''}
+      ${P.extra.includes('stethoskop') ? `<path d="M38 76 Q50 100 62 76" fill="none" stroke="#333" stroke-width="2.5"/><circle cx="50" cy="100" r="4" fill="#333"/>` : ''}
+    </g><rect x="44" y="62" width="12" height="14" fill="${P.skin}"/>`);
+    const arm = (side) => {
+      const x = side === 'L' ? 14 - armShift : 72 + armShift, cx = side === 'L' ? 21 - armShift : 79 + armShift;
+      return part(`arm${side}`, `<rect x="${x}" y="76" width="14" height="52" rx="7" fill="${P.cloth}"/><circle cx="${cx}" cy="130" r="6" fill="${P.skin}"/>
+        ${side === 'L' && opts.hurt === 'kruecke' ? `<path d="M${cx - 14} 118 L${cx - 14} 172" stroke="#8a6a3a" stroke-width="4"/><path d="M${cx - 22} 118 L${cx - 6} 118" stroke="#8a6a3a" stroke-width="4"/>` : ''}`);
+    };
+    const face = this.face(mood, P, parts, opts.hurt);
+    const hair = this.hair(P);
+    const head = part('head', `${hair.back}<path d="M28 46 a22 24 0 0 1 44 0 v10 a22 20 0 0 1 -44 0z" fill="${P.skin}"/>${face.head}${hair.front}${this.extras(P, parts)}${this.hat(P)}`);
+    const eyes = part('eyes', face.eyes);
+    const mouth = part('mouth', face.mouth);
+    const klein = P.build === 'klein' ? ' klein' : '';
+    return `<div class="cs-fig-inner mood-${mood}${parts.sway ? ' sway' : ''}${klein}"><div class="cs-body">${legL}${legR}${body}${arm('L')}${arm('R')}${head}${eyes}${mouth}</div></div>`;
+  },
+  dark(hex) {
+    const n = parseInt(hex.slice(1), 16); if (Number.isNaN(n) || hex.length !== 7) return '#222';
+    const f = (v) => Math.max(0, Math.round(v * 0.7)).toString(16).padStart(2, '0');
+    return `#${f(n >> 16)}${f((n >> 8) & 255)}${f(n & 255)}`;
+  },
+  /* Mimik: alle fünf Stimmungen liegen in den Teilen, CSS zeigt nur .m-<mood>. Liefert { head, eyes, mouth } (Brauen gehören zum Kopf,
+     Augen und Mund sind eigene Teile, damit Blinzeln und Sprechen ohne Neuzeichnen des Kopfes laufen) */
+  face(mood, P, parts, hurt) {
+    const browColor = P.hairColor === '#b8b8b8' || P.hairColor === '#9a9a9a' ? '#777' : P.hairColor;
+    const brow = (d) => `<path d="${d}" fill="none" stroke="${browColor}" stroke-width="2.2" stroke-linecap="round"/>`;
+    const dots = '<circle cx="41" cy="48" r="3.2" fill="#111"/><circle cx="59" cy="48" r="3.2" fill="#111"/>';
+    const mouthColor = P.extra.includes('lippenstift') ? '#c8102e' : '#5a3020';
+    const brows = {
+      calm: brow('M36 41 L46 40') + brow('M54 40 L64 41'),
+      angry: brow('M35 37 L47 43') + brow('M65 37 L53 43'),
+      happy: brow('M35 40 Q41 36 47 39') + brow('M53 39 Q59 36 65 40'),
+      shock: brow('M35 38 Q41 34 47 37') + brow('M53 37 Q59 34 65 38'),
+      dead: brow('M36 40 L46 42') + brow('M54 42 L64 40'),
+    };
+    const eyes = {
+      calm: dots, angry: dots,
+      happy: '<path d="M37 49 Q41 44 45 49" fill="none" stroke="#111" stroke-width="2.4"/><path d="M55 49 Q59 44 63 49" fill="none" stroke="#111" stroke-width="2.4"/>',
+      shock: '<circle cx="41" cy="48" r="5" fill="#fff" stroke="#111" stroke-width="1.5"/><circle cx="59" cy="48" r="5" fill="#fff" stroke="#111" stroke-width="1.5"/><circle cx="41" cy="48" r="2.4" fill="#111"/><circle cx="59" cy="48" r="2.4" fill="#111"/>',
+      dead: '<g fill="none" stroke="#111" stroke-width="2.2"><path d="M37 44 L45 52 M45 44 L37 52"/><path d="M55 44 L63 52 M63 44 L55 52"/></g>',
+    };
+    const mouths = {
+      calm: `<path d="M44 61 Q50 65 56 61" fill="${mouthColor}" stroke="${mouthColor}" stroke-width="2" stroke-linecap="round"/>`,
+      angry: `<path d="M43 63 Q50 58 57 63" fill="none" stroke="${mouthColor}" stroke-width="2.5" stroke-linecap="round"/>`,
+      happy: `<path d="M41 59 Q50 70 59 59z" fill="${mouthColor}"/><path d="M44 60 Q50 63 56 60z" fill="#fff"/>`,
+      shock: '<ellipse cx="50" cy="63" rx="5" ry="6" fill="#3a1a10"/>',
+      dead: `<path d="M44 63 L56 63" stroke="${mouthColor}" stroke-width="2.5" stroke-linecap="round"/>`,
+    };
+    const state = `${parts.cheeks ? '<circle cx="36" cy="56" r="4" fill="#ff6b6b" opacity=".55"/><circle cx="64" cy="56" r="4" fill="#ff6b6b" opacity=".55"/>' : ''}
+      ${parts.rings ? '<path d="M36 53 Q41 56 46 53" fill="none" stroke="#4a3a5a" stroke-width="2" opacity=".7"/><path d="M54 53 Q59 56 64 53" fill="none" stroke="#4a3a5a" stroke-width="2" opacity=".7"/>' : ''}
+      ${parts.blackEye ? '<circle cx="41" cy="48" r="7" fill="#3a2a6a" opacity=".55"/>' : ''}
+      ${hurt === 'pflaster' ? '<rect x="52" y="30" width="16" height="7" rx="2" fill="#e8c8a0" transform="rotate(-20 60 33)"/><rect x="58" y="24" width="7" height="16" rx="2" fill="#e8c8a0" transform="rotate(-20 60 33)"/>' : ''}`;
+    const moodGroups = (map) => this.MOODS.map((m) => `<g class="m m-${m}">${map[m]}</g>`).join('');
+    return { head: moodGroups(brows) + state, eyes: moodGroups(eyes), mouth: moodGroups(mouths) };
+  },
+  hair(P) {
+    const h = P.hairColor || '#3a2414';
+    const front = {
+      kurz: `<path d="M26 44 Q28 18 50 18 Q72 18 74 44 Q68 32 50 30 Q32 32 26 44z" fill="${h}"/>`,
+      grau: `<path d="M26 44 Q28 18 50 18 Q72 18 74 44 Q68 32 50 30 Q32 32 26 44z" fill="${h}"/>`,
+      lang: `<path d="M26 44 Q28 16 50 16 Q72 16 74 44 Q68 30 50 28 Q32 30 26 44z" fill="${h}"/>`,
+      igel: `<path d="M26 44 L30 22 L36 34 L42 18 L48 32 L54 18 L60 32 L66 22 L74 44 Q50 34 26 44z" fill="${h}"/>`,
+      glatze: `<path d="M27 42 Q27 30 33 26 L33 42z" fill="${h}"/><path d="M73 42 Q73 30 67 26 L67 42z" fill="${h}"/>`,
+    }[P.hair] || '';
+    const back = P.hair === 'lang' ? `<path d="M24 40 Q22 90 30 96 L70 96 Q78 90 76 40z" fill="${h}"/>` : '';
+    return { front, back };
+  },
+  hat(P) {
+    const c = P.hatColor || '#111';
+    return {
+      cap: `<path d="M24 30 Q26 8 50 8 Q74 8 76 30z" fill="${c}"/><path d="M20 29 L55 29 Q58 32 55 35 L22 35 Q18 32 20 29z" fill="${this.dark(c)}"/>`,
+      fedora: `<path d="M30 34 Q34 8 50 8 Q66 8 70 34z" fill="${c}"/><path d="M14 34 Q50 26 86 34 L84 40 Q50 34 16 40z" fill="${this.dark(c)}"/><path d="M30 30 L70 30 L70 35 L30 35z" fill="${P.accent}"/>`,
+      zylinder: `<rect x="32" y="2" width="36" height="30" fill="${c}"/><rect x="22" y="30" width="56" height="6" rx="3" fill="${this.dark(c)}"/><rect x="32" y="24" width="36" height="5" fill="${P.accent}"/>`,
+      muetze: `<path d="M26 36 Q26 10 50 10 Q74 10 74 36z" fill="${c}"/><rect x="25" y="30" width="50" height="8" rx="3" fill="${this.dark(c)}"/>`,
+      kappe: `<path d="M26 32 Q26 14 50 14 Q74 14 74 32z" fill="${c}"/><rect x="24" y="30" width="52" height="6" rx="2" fill="${this.dark(c)}"/><path d="M22 35 L56 35 Q58 38 55 41 L24 41 Q20 38 22 35z" fill="#111"/><circle cx="50" cy="24" r="4" fill="${P.accent}"/>`,
+    }[P.hat] || '';
+  },
+  extras(P, parts) {
+    const out = [];
+    for (const e of P.extra) {
+      if (e === 'sonnenbrille') out.push('<rect x="32" y="42" width="14" height="9" rx="2" fill="#050505"/><rect x="54" y="42" width="14" height="9" rx="2" fill="#050505"/><path d="M46 45 L54 45" stroke="#050505" stroke-width="2"/>');
+      if (e === 'brille') out.push('<circle cx="41" cy="48" r="7" fill="none" stroke="#333" stroke-width="1.8"/><circle cx="59" cy="48" r="7" fill="none" stroke="#333" stroke-width="1.8"/><path d="M48 48 L52 48" stroke="#333" stroke-width="1.8"/>');
+      if (e === 'zigarre') out.push('<rect x="58" y="60" width="20" height="4" rx="2" fill="#3a2a1a"/><circle class="ember" cx="79" cy="62" r="3" fill="#ff7a1a"/>');
+      if (e === 'zigarette') out.push('<rect x="57" y="61" width="18" height="2.5" rx="1" fill="#f2f2f2"/><circle class="ember" cx="76" cy="62" r="2" fill="#ff7a1a"/>');
+      if (e === 'narbe') out.push('<path d="M64 40 L68 54" stroke="#a04040" stroke-width="2" stroke-linecap="round"/>');
+      if (e === 'bart') out.push(`<path d="M30 56 Q50 84 70 56 Q66 66 50 68 Q34 66 30 56z" fill="${P.hairColor}"/>`);
+      if (e === 'schnurrbart') out.push(`<path d="M40 57 Q50 53 60 57 Q50 61 40 57z" fill="${P.hairColor}"/>`);
+      if (e === 'maske') out.push('<path d="M28 54 L72 54 L70 68 Q50 76 30 68z" fill="#111"/>');
+      if (e === 'emoji') out.push(`<text x="50" y="58" font-size="40" text-anchor="middle">${P.emoji}</text>`);
+    }
+    return out.join('');
+  },
+};
+</script>
+
 <script id="cutscene-engine">
 /* ================= CUTSCENE – Visual-Novel-Engine ================= */
 const Cutscene = {
@@ -10922,6 +11082,46 @@ if (typeof CsDirector !== 'undefined') {
     const errs = CsDirector.validatePanels('t', [{ bg: 'bar', who: 'nix', foo: 1, mood: 'sad', fx: 'boom', cam: 'zoom', pose: { who: 'du', pose: 'fly' }, walk: { who: 'du', to: 'oben' }, look: { du: { hurt: 'x' } }, sfx: 'boom', pause: -1, enter: { who: 'du', from: 'oben' } }], { castIds: ['du'], sfxIds: ['gunshot'] });
     for (const needle of ['"foo"', '"nix"', 'mood "sad"', 'fx "boom"', 'cam "zoom"', 'pose "fly"', 'walk.to "oben"', 'look.hurt "x"', 'sfx "boom"', 'pause', 'enter.from "oben"']) T.ok(errs.some((e) => e.includes(needle)), needle);
     T.ok(errs.every((e) => e.startsWith('t[0]: ')), 'Szene und Panel-Index im Fehler');
+  });
+}
+if (typeof CsCast !== 'undefined') {
+  T.test('CsCast: alle Figuren haben einen Look; figureHtml liefert acht Teil-SVGs mit Rig-Klassen und allen Stimmungen', () => {
+    for (const [id, c] of Object.entries(CsCast.CAST)) {
+      T.ok(c.look && c.look.skin && c.look.cloth && ['normal', 'breit', 'schmal', 'klein'].includes(c.look.build), `Look ${id}`);
+      const html = CsCast.figureHtml(id, { mood: 'angry' });
+      T.ok(html.startsWith('<div class="cs-fig-inner mood-angry'), `${id}: Stimmungsklasse`);
+      for (const part of ['legL', 'legR', 'body', 'armL', 'armR', 'head', 'eyes', 'mouth']) T.ok(html.includes(`<svg class="part ${part}" viewBox="0 0 100 180"`), `${id}: Teil ${part}`);
+      T.eq((html.match(/<svg /g) || []).length, 8, `${id}: acht Teile`);
+      for (const m of CsCast.MOODS) T.eq((html.match(new RegExp(`class="m m-${m}"`, 'g')) || []).length, 3, `${id}: Stimmung ${m} in Kopf, Augen, Mund`);
+    }
+  });
+  T.test('CsCast: Hut, Extras, Statur und Fallback-Emoji landen im HTML', () => {
+    const vito = CsCast.figureHtml('vito');
+    T.ok(vito.includes('<rect x="32" y="42"'), 'Sonnenbrille'); T.ok(vito.includes('class="ember"'), 'Zigarre'); T.ok(vito.includes('fill="#b0202a"'), 'Krawatte');
+    T.ok(CsCast.figureHtml('igor').includes('scale(1.22 1)'), 'breit'); T.ok(CsCast.figureHtml('chantal').includes('scale(0.86 1)'), 'schmal');
+    T.ok(CsCast.figureHtml('kevin').includes('cs-fig-inner mood-calm klein'), 'klein');
+    T.ok(CsCast.figureHtml('sylvie').includes('<rect x="32" y="2" width="36" height="30"'), 'Zylinder');
+    T.ok(CsCast.figureHtml('doc').includes('cx="50" cy="100" r="4"'), 'Stethoskop');
+    CsCast.CAST.testfig = { name: 'Test', emoji: '🦆', color: '#fff' };
+    try { T.ok(CsCast.figureHtml('testfig').includes('🦆'), 'Emoji-Fallback ohne Look'); } finally { delete CsCast.CAST.testfig; }
+    T.ok(CsCast.figureHtml('gibtsnicht').includes('fill="#8b1e1e"'), 'unbekannte ID → Look von du (rote Mütze)');
+  });
+  T.test('CsCast.duParts: Ausrüstung und Zustand aus dem Spielstand', () => {
+    T.eq(CsCast.duParts({ beers: 0, beerTimer: 0, mafiaDebt: 0 }), { shoes: null, weapon: 0, suit: false, cheeks: false, sway: false, blackEye: false, rings: false });
+    T.eq(CsCast.duParts({ shoes: 'trail', weapon: 2, beers: 3, beerTimer: 2, mafiaDebt: 500, story: { id: 'stash', flags: { blauesAuge: true } } }), { shoes: 'trail', weapon: 2, suit: true, cheeks: true, sway: true, blackEye: true, rings: true });
+    T.eq(CsCast.duParts({ beers: 2, beerTimer: 0, mafiaDebt: 0 }).cheeks, false, 'Bier ohne Timer wirkt nicht');
+    T.eq(CsCast.duParts({ beers: 2, beerTimer: 1, mafiaDebt: 0 }).sway, false, 'erst ab drei Bier');
+    T.eq(CsCast.duParts({ shoes: 'unbekannt', beers: 0, beerTimer: 0, mafiaDebt: 0 }).shoes, null);
+    T.eq(CsCast.duParts({ beers: 0, beerTimer: 0, mafiaDebt: 0, story: { id: 'kater', flags: {} } }).suit, false, 'Anzug nur in Story 3');
+    T.eq(CsCast.duParts(null), {});
+  });
+  T.test('CsCast.figureHtml(du): Teile nach parts und hurt', () => {
+    const html = CsCast.figureHtml('du', { mood: 'calm', parts: { shoes: 'trail', suit: true, cheeks: true, sway: true, blackEye: true, rings: true }, hurt: 'kruecke' });
+    T.ok(html.includes('fill="#ff7a1a"'), 'Trail-Schuhe'); T.ok(html.includes('fill="#1e1e22"'), 'Anzug'); T.ok(html.includes('fill="#ff6b6b"'), 'Wangen');
+    T.ok(html.startsWith('<div class="cs-fig-inner mood-calm sway"'), 'Schwanken'); T.ok(html.includes('fill="#3a2a6a"'), 'blaues Auge'); T.ok(html.includes('stroke="#4a3a5a"'), 'Augenringe'); T.ok(html.includes('stroke="#8a6a3a"'), 'Krücke');
+    T.ok(CsCast.figureHtml('du', { hurt: 'pflaster' }).includes('fill="#e8c8a0"'), 'Pflaster');
+    const plain = CsCast.figureHtml('du');
+    T.ok(!plain.includes('#ff6b6b') && !plain.includes('#8a6a3a') && !plain.includes('#e8c8a0') && !plain.includes(' sway'), 'nüchtern, unverletzt: keine Zustandsteile');
   });
 }
 
