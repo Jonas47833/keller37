@@ -2487,6 +2487,118 @@ UI.register('hub', {
 });
 </script>
 
+<script id="cutscene-director">
+/* ================= CUTSCENE DIRECTOR – Auto-Regie als reine Funktion (DOM-frei, testbar) ================= */
+const CsDirector = {
+  SLOTS: ['left', 'mid', 'right', 'far'],
+  POSES: ['idle', 'talk', 'point', 'arms-crossed', 'hands-up', 'walk', 'down', 'flinch'],
+  CAMS: ['close', 'wide', 'shake'],
+  MOODS: ['calm', 'angry', 'happy', 'shock', 'dead'],
+  HURTS: ['pflaster', 'kruecke'],
+  SIDES: ['left', 'right'],
+  KEYS: ['bg', 'who', 'mood', 'text', 'fx', 'choices', 'cast', 'enter', 'exit', 'walk', 'pose', 'cam', 'shout', 'pause', 'sfx', 'look'],
+  FX: ['flash', 'shake', 'blackout', 'hearts', 'coins', 'drain', 'gain', 'stats', 'insiderCards'],
+  MAX_ON_STAGE: 3,
+  /* Stimmung des Sprechers → Körperhaltung */
+  moodPose(mood) { return { angry: 'point', shock: 'flinch', dead: 'down' }[mood] || 'talk'; },
+  /* Von welcher Seite eine Figur kommt/geht: du von links, alle anderen von rechts */
+  side(who) { return who === 'du' ? 'left' : 'right'; },
+  /* Platz nach Reihenfolge: du links, erstes Gegenüber rechts, drittes mittig */
+  slotFor(who, on) {
+    if (who === 'du') return 'left';
+    const taken = on.filter((f) => f.who !== who).map((f) => f.slot);
+    return taken.includes('right') ? 'mid' : 'right';
+  },
+  facing(slot, speakerSlot) {
+    if (slot === 'left') return 1;
+    if (slot === 'right') return -1;
+    return speakerSlot === 'right' ? 1 : -1;
+  },
+  /* panels → je Panel ein Plan: { bg, bgChange, speaker, cast: [{ who, slot, facing, pose, mood }], enter: [{ who, from }], exit: [who], cam, shout, pause, sfx, look } */
+  stagePlan(panels) {
+    let on = [];            // Figuren auf der Bühne, in Auftrittsreihenfolge: { who, slot, pose, lastSpoke }
+    let prevBg = null;
+    return panels.map((p, i) => {
+      const who = p.who || 'du', bg = p.bg || 'bar';
+      const bgChange = i === 0 || bg !== prevBg;
+      prevBg = bg;
+      const enter = [], exit = [];
+      const add = (id, from) => { if (on.some((f) => f.who === id)) return; on.push({ who: id, slot: null, pose: 'idle', lastSpoke: -1 }); enter.push({ who: id, from: from || this.side(id) }); };
+      const remove = (id) => { if (!on.some((f) => f.who === id)) return; on = on.filter((f) => f.who !== id); exit.push(id); };
+      if (bgChange) { for (const f of on) exit.push(f.who); on = []; }   // Kulissenwechsel: alle gehen ab und treten neu auf
+      if (p.cast) {                                                 // explizite Besetzung
+        for (const f of on.map((f) => f.who)) if (!p.cast.includes(f)) remove(f);
+        for (const id of p.cast) add(id);
+      } else {
+        add('du');
+        add(who);
+      }
+      for (const e of [].concat(p.enter || [])) add(typeof e === 'string' ? e : e.who, typeof e === 'string' ? null : e.from);
+      for (const id of [].concat(p.exit || [])) remove(id);
+      if (!p.cast && !on.some((f) => f.who === who)) add(who);
+      while (on.length > this.MAX_ON_STAGE) {                       // die am längsten stumme Nebenfigur geht
+        const cand = on.filter((f) => f.who !== 'du' && f.who !== who).sort((a, b) => a.lastSpoke - b.lastSpoke)[0];
+        if (!cand) break;
+        remove(cand.who);
+      }
+      for (const f of on) if (!f.slot) f.slot = this.slotFor(f.who, on);
+      if (p.walk) { const f = on.find((f) => f.who === p.walk.who); if (f) f.slot = p.walk.to; }
+      const speaker = on.find((f) => f.who === who);
+      if (speaker) speaker.lastSpoke = i;
+      const poseOverride = p.pose && typeof p.pose === 'object' ? p.pose : null;
+      for (const f of on) {
+        const isSpeaker = f.who === who;
+        if (isSpeaker) f.pose = typeof p.pose === 'string' ? p.pose : this.moodPose(p.mood || 'calm');
+        else if (f.pose !== 'down') f.pose = 'idle';
+        if (poseOverride && poseOverride.who === f.who) f.pose = poseOverride.pose;
+        f.mood = isSpeaker ? (p.mood || 'calm') : (f.mood === 'dead' ? 'dead' : 'calm');
+      }
+      const speakerSlot = speaker ? speaker.slot : 'right';
+      return {
+        bg, bgChange, speaker: who,
+        cast: on.map((f) => ({ who: f.who, slot: f.slot, facing: this.facing(f.slot, speakerSlot), pose: f.pose, mood: f.mood })),
+        enter, exit,
+        cam: p.cam || (bgChange && i > 0 ? 'wide' : null),
+        shout: p.shout || null, pause: p.pause || 0, sfx: p.sfx || null, look: p.look || null,
+      };
+    });
+  },
+  /* Regie-Schlüssel prüfen: unbekannte Schlüssel, Figuren, Posen, Kameras, Sounds sind Fehler */
+  validatePanels(id, panels, { castIds = null, sfxIds = null } = {}) {
+    const errs = [];
+    const err = (i, msg) => errs.push(`${id}[${i}]: ${msg}`);
+    const cast = (i, who, where) => { if (typeof who !== 'string' || (castIds && !castIds.includes(who))) err(i, `Figur "${who}" unbekannt (${where})`); };
+    panels.forEach((p, i) => {
+      for (const k of Object.keys(p)) if (!this.KEYS.includes(k)) err(i, `Schlüssel "${k}" unbekannt`);
+      if (p.who != null) cast(i, p.who, 'who');
+      if (p.mood != null && !this.MOODS.includes(p.mood)) err(i, `mood "${p.mood}" unbekannt`);
+      if (p.fx != null && !this.FX.includes(p.fx)) err(i, `fx "${p.fx}" unbekannt`);
+      if (p.cast != null) { if (!Array.isArray(p.cast)) err(i, 'cast muss ein Array sein'); else p.cast.forEach((w) => cast(i, w, 'cast')); }
+      for (const e of [].concat(p.enter || [])) {
+        if (typeof e === 'string') cast(i, e, 'enter');
+        else { cast(i, e && e.who, 'enter'); if (e && e.from != null && !this.SIDES.includes(e.from)) err(i, `enter.from "${e.from}" unbekannt`); }
+      }
+      for (const e of [].concat(p.exit || [])) cast(i, e, 'exit');
+      if (p.walk != null) { cast(i, p.walk.who, 'walk'); if (!this.SLOTS.includes(p.walk.to)) err(i, `walk.to "${p.walk.to}" unbekannt`); }
+      if (p.pose != null) {
+        const pose = typeof p.pose === 'string' ? p.pose : p.pose.pose;
+        if (typeof p.pose === 'object') cast(i, p.pose.who, 'pose');
+        if (!this.POSES.includes(pose)) err(i, `pose "${pose}" unbekannt`);
+      }
+      if (p.cam != null && !this.CAMS.includes(p.cam)) err(i, `cam "${p.cam}" unbekannt`);
+      if (p.shout != null && typeof p.shout !== 'string') err(i, 'shout muss Text sein');
+      if (p.pause != null && !(typeof p.pause === 'number' && p.pause >= 0)) err(i, 'pause muss eine Zahl ≥ 0 sein');
+      if (p.sfx != null && sfxIds && !sfxIds.includes(p.sfx)) err(i, `sfx "${p.sfx}" unbekannt`);
+      if (p.look != null) {
+        if (typeof p.look !== 'object') err(i, 'look muss ein Objekt sein');
+        else for (const [w, l] of Object.entries(p.look)) { cast(i, w, 'look'); if (l && l.hurt != null && !this.HURTS.includes(l.hurt)) err(i, `look.hurt "${l.hurt}" unbekannt`); }
+      }
+    });
+    return errs;
+  },
+};
+</script>
+
 <script id="cutscene-engine">
 /* ================= CUTSCENE – Visual-Novel-Engine ================= */
 const Cutscene = {
@@ -10756,6 +10868,62 @@ T.test('STORY_STASH: Abrechnungs-Szene je Ausgang, Lieferung je Woche, keine Stu
   }
   for (const e of STORY_STASH.endings) { const p = STORY_STASH.scenes[e.scene]; const panels = typeof p === 'function' ? p(ctx({})) : p; T.eq(panels[panels.length - 1].choices, undefined, `${e.id}: Ende ohne Wahl`); }
 });
+
+/* ---- Cutscene-Bühne: Regie-Planer, Figuren, Kulissen (DOM-frei) ---- */
+if (typeof CsDirector !== 'undefined') {
+  T.test('stagePlan: du links, Sprecher rechts, Auftritt von der eigenen Seite, Stimmung → Pose', () => {
+    const plan = CsDirector.stagePlan([
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'a' },
+      { bg: 'bar', who: 'du', mood: 'happy', text: 'b' },
+      { bg: 'bar', who: 'vito', mood: 'angry', text: 'c' },
+    ]);
+    T.eq(plan[0].cast.map((c) => `${c.who}@${c.slot}`), ['du@left', 'wirt@right']);
+    T.eq(plan[0].enter, [{ who: 'du', from: 'left' }, { who: 'wirt', from: 'right' }]);
+    T.eq(plan[0].cast[1].pose, 'talk'); T.eq(plan[0].cast[0].pose, 'idle');
+    T.eq(plan[0].cast[0].facing, 1); T.eq(plan[0].cast[1].facing, -1);
+    T.eq(plan[0].speaker, 'wirt'); T.eq(plan[0].bg, 'bar'); T.eq(plan[0].cam, null);
+    T.eq(plan[1].enter, []); T.eq(plan[1].cast[0].pose, 'talk'); T.eq(plan[1].cast[0].mood, 'happy');
+    T.eq(plan[2].enter, [{ who: 'vito', from: 'right' }]); T.eq(plan[2].cast[2].slot, 'mid'); T.eq(plan[2].cast[2].pose, 'point');
+    T.eq(plan[2].cast[1].mood, 'calm', 'Nicht-Sprecher neutral'); T.eq(plan[2].cast[1].pose, 'idle');
+  });
+  T.test('stagePlan: vierte Figur → die am längsten stumme Nebenfigur geht', () => {
+    const plan = CsDirector.stagePlan([
+      { bg: 'bar', who: 'wirt', text: 'a' }, { bg: 'bar', who: 'vito', text: 'b' }, { bg: 'bar', who: 'igor', text: 'c' },
+    ]);
+    T.eq(plan[2].exit, ['wirt']);
+    T.eq(plan[2].cast.map((c) => c.who).sort(), ['du', 'igor', 'vito']);
+    T.eq(plan[2].cast.find((c) => c.who === 'igor').slot, 'right', 'freier Platz rechts');
+  });
+  T.test('stagePlan: Kulissenwechsel → alle treten neu auf, Kamera zurück; cast: [] leert die Bühne; enter/exit/walk/pose/look', () => {
+    const plan = CsDirector.stagePlan([
+      { bg: 'bar', who: 'wirt', text: 'a' },
+      { bg: 'keller', who: 'vito', mood: 'shock', text: 'b', cam: 'close' },
+      { bg: 'keller', who: 'vito', text: 'c', enter: { who: 'igor', from: 'left' }, walk: { who: 'igor', to: 'far' }, pose: { who: 'du', pose: 'arms-crossed' }, look: { du: { hurt: 'pflaster' } }, shout: 'HEY', pause: 300, sfx: 'gunshot' },
+      { bg: 'keller', who: 'vito', text: 'd', exit: 'igor' },
+      { bg: 'strasse', who: 'du', text: 'e', cast: [] },
+    ]);
+    T.eq(plan[1].bgChange, true); T.eq(plan[1].exit.sort(), ['du', 'wirt']); T.eq(plan[1].enter.map((e) => e.who), ['du', 'vito']); T.eq(plan[1].cam, 'close'); T.eq(plan[1].cast[1].pose, 'flinch');
+    T.eq(plan[2].enter, [{ who: 'igor', from: 'left' }]);
+    T.eq(plan[2].cast.find((c) => c.who === 'igor').slot, 'far');
+    T.eq(plan[2].cast.find((c) => c.who === 'du').pose, 'arms-crossed'); T.eq(plan[2].look, { du: { hurt: 'pflaster' } });
+    T.eq([plan[2].shout, plan[2].pause, plan[2].sfx], ['HEY', 300, 'gunshot']);
+    T.eq(plan[3].exit, ['igor']); T.eq(plan[3].cast.length, 2);
+    T.eq(plan[4].cast, []); T.eq(plan[4].exit.sort(), ['du', 'vito']); T.eq(plan[4].cam, 'wide'); T.eq(plan[4].speaker, 'du');
+  });
+  T.test('stagePlan: dead bleibt liegen, Sprecher-Pose überschreibbar, unbekannter Sprecher = du', () => {
+    const plan = CsDirector.stagePlan([{ bg: 'gasse', who: 'du', mood: 'dead', text: 'a' }, { bg: 'gasse', who: 'raeuber', text: 'b' }, { bg: 'gasse', who: 'du', pose: 'hands-up', text: 'c' }, { bg: 'gasse', text: 'd' }]);
+    T.eq(plan[0].cast[0].pose, 'down'); T.eq(plan[1].cast[0].pose, 'down'); T.eq(plan[1].cast[0].mood, 'dead'); T.eq(plan[2].cast[0].pose, 'hands-up');
+    T.eq(plan[3].speaker, 'du');
+  });
+  T.test('validatePanels: gültige Panels ohne Fehler; unbekannte Schlüssel, Figuren, Posen, Kameras, Sounds, look.hurt sind Fehler', () => {
+    const ok = [{ bg: 'bar', who: 'du', mood: 'calm', text: 'x', fx: 'flash', cast: ['du'], enter: { who: 'vito', from: 'right' }, exit: 'igor', walk: { who: 'du', to: 'mid' }, pose: 'point', cam: 'close', shout: 'PÄNG!', pause: 300, sfx: 'gunshot', look: { du: { hurt: 'pflaster' } }, choices: [{ label: 'a', value: 1 }] }];
+    T.eq(CsDirector.validatePanels('ok', ok, { castIds: ['du', 'vito', 'igor'], sfxIds: ['gunshot'] }), []);
+    T.eq(CsDirector.validatePanels('ok', ok), [], 'ohne Listen: nur Struktur');
+    const errs = CsDirector.validatePanels('t', [{ bg: 'bar', who: 'nix', foo: 1, mood: 'sad', fx: 'boom', cam: 'zoom', pose: { who: 'du', pose: 'fly' }, walk: { who: 'du', to: 'oben' }, look: { du: { hurt: 'x' } }, sfx: 'boom', pause: -1, enter: { who: 'du', from: 'oben' } }], { castIds: ['du'], sfxIds: ['gunshot'] });
+    for (const needle of ['"foo"', '"nix"', 'mood "sad"', 'fx "boom"', 'cam "zoom"', 'pose "fly"', 'walk.to "oben"', 'look.hurt "x"', 'sfx "boom"', 'pause', 'enter.from "oben"']) T.ok(errs.some((e) => e.includes(needle)), needle);
+    T.ok(errs.every((e) => e.startsWith('t[0]: ')), 'Szene und Panel-Index im Fehler');
+  });
+}
 
 /* ---- Story-Engine (nur im Browser – Block story-engine wird in Node nicht geladen) ---- */
 if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
