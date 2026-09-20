@@ -2950,8 +2950,9 @@ const CsCast = {
       igel: `<path d="M26 44 L30 22 L36 34 L42 18 L48 32 L54 18 L60 32 L66 22 L74 44 Q50 34 26 44z" fill="${h}"/>`,
       glatze: `<path d="M27 42 Q27 30 33 26 L33 42z" fill="${h}"/><path d="M73 42 Q73 30 67 26 L67 42z" fill="${h}"/>`,
     }[P.hair] || '';
-    /* lange Haare: zwei Strähnen seitlich am Gesicht vorbei auf die Schultern – keine Fläche hinter dem Kinn (sah aus wie ein Bart) */
-    const back = P.hair === 'lang' ? `<path d="M23 40 Q17 70 23 98 L37 98 Q33 72 33 46z" fill="${h}"/><path d="M77 40 Q83 70 77 98 L63 98 Q67 72 67 46z" fill="${h}"/>` : '';
+    /* lange Haare: eine Silhouette vom Scheitel um den Kopf herum bis auf die Schultern; das Gesicht liegt davor und schneidet die Mitte frei,
+       unter dem Kinn (x 36–64, y > 72) bleibt die Fläche offen – sonst sah der Rest hinter dem Kinn wie ein Bart aus */
+    const back = P.hair === 'lang' ? `<path d="M21 46 Q21 12 50 12 Q79 12 79 46 L81 98 L65 98 L64 72 L36 72 L35 98 L19 98z" fill="${h}"/>` : '';
     return { front, back };
   },
   hat(P) {
