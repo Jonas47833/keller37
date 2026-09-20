@@ -79,7 +79,7 @@ Konstanten `PokerRules.WIRT = { BLUFF_RAISE: 0.2, BLUFF_BET: 0.3 }`. Genau ein `
 
 `outcome` ∈ `'win' | 'lose' | 'split'`: `win → pot`, `lose → 0`, `split → Math.ceil(pot / 2)`.
 
-Konvention wie bei Blackjack: Die Einsätze des Spielers sind beim Setzen bereits abgebucht (`Game.beginSpin` fürs Ante, `Game.applyDelta` für Setzen/Mitgehen); `Game.settle(payout)` bucht den Bruttobetrag zurück. Das Netto für Toast und Statistik ist `payout − playerIn`, wobei `playerIn` die Summe der Spieler-Einsätze in dieser Runde ist.
+Konvention wie bei Blackjack: Die Einsätze des Spielers sind bereits abgebucht (`Game.beginSpin` fürs Ante, `Game.applyDelta` für Setzen/Mitgehen). `Game.settle(delta, { bet })` bucht `delta + bet` zurück – das Modul ruft `Game.settle(payout − playerIn, { bet: playerIn, … })`, wobei `playerIn` die Summe der Spieler-Einsätze in dieser Runde ist. Das Netto `payout − playerIn` ist zugleich der Wert für Toast und Statistik.
 
 ## 4. Systeme
 
@@ -118,7 +118,7 @@ Die Ersatzkarten für den Neuzug kommen vom selben Deck (weiter oben abgehoben);
 - `NEUTRAL_MODS`: `pokerTell: false`; `MOD_STACK`: `'set'`.
 - Anzeige im `insider-hint` neben dem Wirt-Label, nach dem Wirt-Tausch und vor der Spieler-Entscheidung: `Rules.effectiveInsider(mods.pokerTell, ante)` → wahr: rank 0 → „🧔 Der Wirt kratzt sich am Bart", sonst „🧔 Der Wirt trinkt einen Schluck". Bei Ante > 250 €: „🧔 Wirts Tell: wirkt bis 250 €".
 - Der Tell bezieht sich auf die Hand **nach** dem Wirt-Tausch.
-- `insiderDraw`-Pool wächst auf 8; bestehender Test bleibt gültig (er rechnet mit `Rules.INSIDER.length`).
+- `insiderDraw`-Pool wächst auf 8. Der bestehende Test `insiderDraw: 3 ungezogene, weniger wenn Pool kleiner` zieht mit `all.slice(0, 5)` und erwartet 2 – er wird auf `all.slice(0, 6)` angepasst. Der Playtest-Check „8 Skills wählbar" wird auf 9 angepasst.
 
 ### 4.4 Achievement
 
@@ -171,7 +171,7 @@ Script-Block `game-poker` nach `game-blackjack`. Struktur wie `Blackjack`: `root
 Geldfluss:
 - Geben: `Game.beginSpin(ante)` (bucht Ante ab). `pot = 2 × ante`, `playerIn = ante`.
 - Setzen / Mitgehen: `Game.applyDelta(-ante, { quiet: true })`, `pot += ante`, `playerIn += ante`. Der Wirt-Einsatz erhöht nur `pot`.
-- Ende: `Game.settle(PokerRules.payout(pot, outcome), { from: #pkPlayerCards, game: 'poker', bet: playerIn, run })`.
+- Ende: `Game.settle(PokerRules.payout(pot, outcome) − playerIn, { from: #pkPlayerCards, game: 'poker', bet: playerIn, run })`.
 
 ## 6. Story-Anbindung
 
