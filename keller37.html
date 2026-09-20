@@ -2089,7 +2089,7 @@ Object.assign(Rules, {
     bankRateAdd: 0, bankLimitAdd: 0, mafiaSpins: Rules.MAFIA_SPINS, mafiaMult: 3, investRateMult: 1,
     mugChanceMult: 1, fightAdd: 0, walletMult: 1,
     postTimeAdd: 0, postPayAdd: 0, postLetters: 15,
-    pokerPeekDraw: false, pokerTell: false, bjDealerStand: 17,
+    pokerPeekDraw: false, pokerTell: false, bjDealerStand: 17, studPeek: false,
   },
   /* Wie ein Schlüssel gestapelt wird: add = Summe, mult = Produkt, max = Maximum, set = letzter Wert */
   MOD_STACK: {
@@ -2101,7 +2101,7 @@ Object.assign(Rules, {
     bankRateAdd: 'add', bankLimitAdd: 'add', mafiaSpins: 'max', mafiaMult: 'set', investRateMult: 'mult',
     mugChanceMult: 'mult', fightAdd: 'add', walletMult: 'mult',
     postTimeAdd: 'add', postPayAdd: 'add', postLetters: 'max',
-    pokerPeekDraw: 'set', pokerTell: 'set', bjDealerStand: 'max',
+    pokerPeekDraw: 'set', pokerTell: 'set', bjDealerStand: 'max', studPeek: 'set',
   },
   SKILLS: [
     { id: 'pokerface', name: 'Pokerface', icon: '🃏', light: 'Blackjack: natürlicher Blackjack zahlt 3:2, Push bringt +10 %', shadow: 'Bier gibt kein Glück', mods: { bjNatural: 1.5, bjPushBonus: 0.1, beerLuckMult: 0 } },
@@ -2123,6 +2123,7 @@ Object.assign(Rules, {
     { id: 'vitosneffe', name: 'Vitos Neffe', icon: '🕶️', text: 'Vito-Frist 8 Spins, Rechnung ×2 statt ×3, Überfälle halb so oft.', capped: false, mods: { mafiaSpins: 8, mafiaMult: 2, mugChanceMult: 0.5 } },
     { id: 'postmeister', name: 'Postmeister', icon: '📮', text: 'Postbote: 20 Briefe pro Schicht, +5 € pro Brief.', capped: false, mods: { postLetters: 20, postPayAdd: 5 } },
     { id: 'wirtstell', name: 'Wirts Tell', icon: '🧔', text: 'Poker: der Wirt kratzt sich am Bart, wenn er nichts auf der Hand hat.', capped: true, mods: { pokerTell: true } },
+    { id: 'sylviesblick', name: 'Sylvies Blick', icon: '🎩', text: 'Caribbean Stud: Madame Sylvie lässt dich eine zweite Dealer-Karte sehen, bevor du mitgehst.', capped: true, mods: { studPeek: true } },
   ],
   xpLevel(xp) {
     let level = 1;
@@ -6054,6 +6055,7 @@ const Achievements = {
     { id: 'vollausgestattet', title: 'Vollausgestattet', icon: '🏁', desc: 'Top-Auto und Carbon-Sprinter.' },
     { id: 'royalHigh', title: 'High Roller', icon: '🎩', desc: 'Einzelgewinn von 5.000 € im Casino Royal.' },
     { id: 'fullhouse', title: 'Full House', icon: '🏠', desc: 'Mit Full House oder besser den Showdown gewonnen.' },
+    { id: 'karibik', title: 'Karibische Nacht', icon: '🌴', desc: 'Bei Caribbean Stud mit Flush oder besser gegen einen qualifizierten Dealer gewonnen.' },
     { id: 'fuenfSiebener', title: 'Fünf Siebener', icon: '7️⃣', desc: 'Fünf 7️⃣ auf einer Linie bei Mega Seven.' },
     { id: 'gegenDieWand', title: 'Gegen die Wand', icon: '🎡', desc: 'Bankrott am Glücksrad mit 5.000 € Einsatz.' },
     { id: 'natural', title: 'Natural', icon: '🂡', desc: 'Fünf Naturals in einer Sitzung am Tisch im Hinterzimmer.' },
@@ -6113,6 +6115,7 @@ Bus.on('slots:result', ({ res }) => { if (res.every((s) => s === '7️⃣')) Ach
 Bus.on('roulette:result', ({ hits }) => { if ((hits || []).some((x) => x.win && x.bet.type === 'number')) Achievements.unlock('plein'); });
 Bus.on('rr:result', ({ victim }) => { if (victim === 'igor') Achievements.unlock('igor'); });
 Bus.on('poker:result', ({ outcome, showdown, player }) => { if (showdown && outcome === 'win' && player.rank >= 6) Achievements.unlock('fullhouse'); });
+Bus.on('stud:result', ({ outcome, player }) => { if (outcome === 'win' && player.rank >= 5) Achievements.unlock('karibik'); });
 Bus.on('beer', ({ beers }) => { if (beers >= 3) Achievements.unlock('regular'); });
 Bus.on('kidney.sold', () => Achievements.unlock('donor'));
 Bus.on('house.bought', () => Achievements.unlock('owner'));
@@ -13402,7 +13405,7 @@ T.test('xpLevel: Schwellen und Punkte', () => {
   T.eq(Rules.xpLevel(9999), { level: 6, next: null, points: 3 });
 });
 T.test('Kataloge: Skills mit Licht/Schatten, mods-Schlüssel bekannt', () => {
-  T.eq(Rules.SKILLS.length, 9); T.eq(Rules.INSIDER.length, 8);
+  T.eq(Rules.SKILLS.length, 9); T.eq(Rules.INSIDER.length, 9);
   for (const sk of Rules.SKILLS) { T.ok(sk.light && sk.shadow, sk.id); for (const k of Object.keys(sk.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${sk.id}.${k}`); }
   for (const ins of Rules.INSIDER) { T.ok(ins.text && typeof ins.capped === 'boolean', ins.id); for (const k of Object.keys(ins.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${ins.id}.${k}`); }
   T.eq(Rules.INSIDER_CAP, 250); T.eq(Rules.MAX_SKILLS, 3); T.eq(Rules.RESPEC_PRICE, 2000);
@@ -13425,12 +13428,29 @@ T.test('mods: Skills und Insider stapeln', () => {
   T.eq(k.maxBeers, 4); T.eq(k.brownieSpins, 6); T.eq(k.postTimeAdd, -1); T.eq(k.postPayAdd, 5); T.eq(k.postLetters, 20);
   T.eq(Rules.mods(base({ skills: ['unbekannt'] })), Rules.NEUTRAL_MODS, 'unbekannte IDs ignoriert');
 });
-T.test('mods: Kartenhai und Wirts Tell; neutral aus', () => {
+T.test('mods: Kartenhai, Wirts Tell und Sylvies Blick; neutral aus', () => {
   const n = Rules.mods(base(), { insider: [] });
-  T.eq([n.pokerPeekDraw, n.pokerTell, n.bjDealerStand], [false, false, 17]);
-  const m = Rules.mods(base({ skills: ['kartenhai'] }), { insider: ['wirtstell'] });
-  T.eq([m.pokerPeekDraw, m.pokerTell, m.bjDealerStand], [true, true, 18]);
+  T.eq([n.pokerPeekDraw, n.pokerTell, n.bjDealerStand, n.studPeek], [false, false, 17, false]);
+  const m = Rules.mods(base({ skills: ['kartenhai'] }), { insider: ['wirtstell', 'sylviesblick'] });
+  T.eq([m.pokerPeekDraw, m.pokerTell, m.bjDealerStand, m.studPeek], [true, true, 18, true]);
   T.ok(Rules.SKILLS.some((k) => k.id === 'kartenhai') && Rules.INSIDER.some((i) => i.id === 'wirtstell' && i.capped));
+  T.ok(Rules.INSIDER.some((i) => i.id === 'sylviesblick' && i.capped && i.icon === '🎩'), 'Sylvies Blick gedeckelt');
+  T.eq(Rules.MOD_STACK.studPeek, 'set');
+  T.eq(Rules.effectiveInsider(m.studPeek, 250), true); T.eq(Rules.effectiveInsider(m.studPeek, 500), false, 'über der Kappe aus');
+});
+if (typeof document !== 'undefined') T.test('Erfolg karibik: Flush oder besser gewinnt bei Stud, Straße nicht, Passen nicht', async () => {
+  const keep = State.meta.achievements.slice(), saveMeta = State.saveMeta;
+  State.saveMeta = () => {};
+  try {
+    State.meta.achievements = State.meta.achievements.filter((id) => id !== 'karibik');
+    T.ok(Achievements.DEFS.some((a) => a.id === 'karibik' && a.icon === '🌴'), 'im Katalog');
+    await Bus.emit('stud:result', { outcome: 'win', player: { rank: 4 }, dealer: { rank: 1 }, ante: 100, net: 900 });
+    T.ok(!Achievements.has('karibik'), 'Straße reicht nicht');
+    await Bus.emit('stud:result', { outcome: 'fold', player: { rank: 5 }, dealer: { rank: 1 }, ante: 100, net: -100 });
+    T.ok(!Achievements.has('karibik'), 'Passen zählt nicht');
+    await Bus.emit('stud:result', { outcome: 'win', player: { rank: 5 }, dealer: { rank: 1 }, ante: 100, net: 1100 });
+    T.ok(Achievements.has('karibik'), 'Flush gewinnt → Trophäe');
+  } finally { State.meta.achievements = keep; State.saveMeta = saveMeta; }
 });
 T.test('canPickSkill / skillPointsFree', () => {
   T.eq(Rules.skillPointsFree(base({ xp: 0, skills: [] })), 0);
@@ -13447,8 +13467,8 @@ T.test('insiderDraw: 3 ungezogene, weniger wenn Pool kleiner', () => {
   const all = Rules.INSIDER.map((i) => i.id);
   const d = Rules.insiderDraw({ insider: [] }, seq(0, 0, 0));
   T.eq(d.length, 3); T.ok(new Set(d).size === 3, 'verschieden'); d.forEach((id) => T.ok(all.includes(id)));
-  const d2 = Rules.insiderDraw({ insider: all.slice(0, 6) }, seq(0, 0));
-  T.eq(d2.length, 2); d2.forEach((id) => T.ok(!all.slice(0, 6).includes(id), 'nie gewählte'));
+  const d2 = Rules.insiderDraw({ insider: all.slice(0, 7) }, seq(0, 0));
+  T.eq(d2.length, 2); d2.forEach((id) => T.ok(!all.slice(0, 7).includes(id), 'nie gewählte'));
   T.eq(Rules.insiderDraw({ insider: all }, seq(0)), []);
 });
 T.test('insiderCapText: gedeckelte Insider nennen die 250 €, freie „wirkt immer"', () => {
