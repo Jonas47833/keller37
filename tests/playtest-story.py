@@ -1701,7 +1701,7 @@ async def _scenario_perks_body(cdp):
     await asyncio.sleep(0.4)
     pulsing = await cdp.eval("document.querySelector('#lvBadge').classList.contains('point')", await_promise=False)
     n = await cdp.eval("document.querySelectorAll('#skillCards .btn').length", await_promise=False)
-    record("perks: Level 2 -> Badge pulsiert, 8 Skills waehlbar", pulsing is True and n == 8, "pulsing=%s buttons=%s" % (pulsing, n))
+    record("perks: Level 2 -> Badge pulsiert, 9 Skills waehlbar", pulsing is True and n == 9, "pulsing=%s buttons=%s" % (pulsing, n))
     await cdp.screenshot("skills.png")
     # Zusaetzliche XP auf Level 4 (110 XP gesamt = 2 Skill-Punkte), damit nach dem Pick von
     # Zockerhaende noch ein Punkt frei ist -- sonst meldet canPickSkill fuer Brieftraegerherz

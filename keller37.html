@@ -1694,7 +1694,7 @@ const Rules = {
     while (s > 21 && aces > 0) { s -= 10; aces--; }
     return s;
   },
-  dealerShouldHit(hand) { return Rules.handSum(hand) < 17; },
+  dealerShouldHit(hand, stand = 17) { return Rules.handSum(hand) < stand; },
   bjOutcome(pSum, dSum) {
     if (pSum > 21) return 'bust';
     if (dSum > 21 || pSum > dSum) return 'win';
@@ -1897,6 +1897,7 @@ Object.assign(Rules, {
     bankRateAdd: 0, bankLimitAdd: 0, mafiaSpins: Rules.MAFIA_SPINS, mafiaMult: 3, investRateMult: 1,
     mugChanceMult: 1, fightAdd: 0, walletMult: 1,
     postTimeAdd: 0, postPayAdd: 0, postLetters: 15,
+    pokerPeekDraw: false, pokerTell: false, bjDealerStand: 17,
   },
   /* Wie ein Schlüssel gestapelt wird: add = Summe, mult = Produkt, max = Maximum, set = letzter Wert */
   MOD_STACK: {
@@ -1908,6 +1909,7 @@ Object.assign(Rules, {
     bankRateAdd: 'add', bankLimitAdd: 'add', mafiaSpins: 'max', mafiaMult: 'set', investRateMult: 'mult',
     mugChanceMult: 'mult', fightAdd: 'add', walletMult: 'mult',
     postTimeAdd: 'add', postPayAdd: 'add', postLetters: 'max',
+    pokerPeekDraw: 'set', pokerTell: 'set', bjDealerStand: 'max',
   },
   SKILLS: [
     { id: 'pokerface', name: 'Pokerface', icon: '🃏', light: 'Blackjack: natürlicher Blackjack zahlt 3:2, Push bringt +10 %', shadow: 'Bier gibt kein Glück', mods: { bjNatural: 1.5, bjPushBonus: 0.1, beerLuckMult: 0 } },
@@ -1918,6 +1920,7 @@ Object.assign(Rules, {
     { id: 'verhandler', name: 'Verhandler', icon: '🤝', light: 'Bank-Zinsen −2 %, Vito-Frist 7 Spins', shadow: 'Anlagen zahlen 10 % weniger', mods: { bankRateAdd: -0.02, mafiaSpins: 7, investRateMult: 0.9 } },
     { id: 'strassenkoeter', name: 'Straßenköter', icon: '🐕', light: 'Kampfchance +15 %, Brieftasche ×2', shadow: 'Bank-Limit −1.000 €', mods: { fightAdd: 0.15, walletMult: 2, bankLimitAdd: -1000 } },
     { id: 'brieftraeger', name: 'Briefträgerherz', icon: '📬', light: 'Postbote +1 s und +5 € pro Brief', shadow: 'Slots: Paare zahlen nichts', mods: { postTimeAdd: 1, postPayAdd: 5, slotPairMult: 0 }, excludes: ['zockerhaende'] },
+    { id: 'kartenhai', name: 'Kartenhai', icon: '🦈', light: 'Poker: du siehst, wie viele Karten der Wirt tauschen wird, bevor du tauschst', shadow: 'Blackjack: Dealer zieht bis 18', mods: { pokerPeekDraw: true, bjDealerStand: 18 } },
   ],
   INSIDER: [
     { id: 'stallbursche', name: 'Stallbursche', icon: '🐴', text: 'Vor jedem Rennen ist ein Pferd markiert, das sicher nicht gewinnt.', capped: true, mods: { horseLoserMarked: true } },
@@ -1927,6 +1930,7 @@ Object.assign(Rules, {
     { id: 'bankinsider', name: 'Bankinsider', icon: '🏦', text: 'Zinsen −3 %, Limit +2.000 €.', capped: false, mods: { bankRateAdd: -0.03, bankLimitAdd: 2000 } },
     { id: 'vitosneffe', name: 'Vitos Neffe', icon: '🕶️', text: 'Vito-Frist 8 Spins, Rechnung ×2 statt ×3, Überfälle halb so oft.', capped: false, mods: { mafiaSpins: 8, mafiaMult: 2, mugChanceMult: 0.5 } },
     { id: 'postmeister', name: 'Postmeister', icon: '📮', text: 'Postbote: 20 Briefe pro Schicht, +5 € pro Brief.', capped: false, mods: { postLetters: 20, postPayAdd: 5 } },
+    { id: 'wirtstell', name: 'Wirts Tell', icon: '🧔', text: 'Poker: der Wirt kratzt sich am Bart, wenn er nichts auf der Hand hat.', capped: true, mods: { pokerTell: true } },
   ],
   xpLevel(xp) {
     let level = 1;
@@ -4202,7 +4206,8 @@ const Blackjack = {
         await wait(550);
         this.updateVals(true);
       }
-      while (Rules.dealerShouldHit(round.dHand)) {
+      const stand = Perks.mods().bjDealerStand;
+      while (Rules.dealerShouldHit(round.dHand, stand)) {
         const c = round.deck.pop();
         round.dHand.push(c);
         await this.dealTo('dealerCards', c);
@@ -4254,7 +4259,7 @@ UI.register('blackjack', {
     Blackjack.gen++;
     Blackjack.root = root;
     const mods = Perks.mods();
-    qs('#bjArc', root).textContent = `${mods.bjNatural === 1.5 ? 'Blackjack zahlt 3:2' : 'Blackjack zahlt 1:1'} · Dealer zieht bis 17`;
+    qs('#bjArc', root).textContent = `${mods.bjNatural === 1.5 ? 'Blackjack zahlt 3:2' : 'Blackjack zahlt 1:1'} · Dealer zieht bis ${mods.bjDealerStand}`;
     Game.bindBet(root, 'bjBet');
     qs('#btnDeal', root).addEventListener('click', () => Blackjack.start());
     qs('#btnHit', root).addEventListener('click', () => Blackjack.hit());
@@ -8858,10 +8863,12 @@ T.test('handSum: Ass-Logik', () => {
   T.eq(Rules.handSum(H('K', 'Q', '5')), 25);
   T.eq(Rules.handSum([]), 0);
 });
-T.test('dealerShouldHit: unter 17', () => {
+T.test('dealerShouldHit: unter 17, mit Kartenhai unter 18', () => {
   T.ok(Rules.dealerShouldHit(H('K', '6')));
   T.ok(!Rules.dealerShouldHit(H('K', '7')));
   T.ok(!Rules.dealerShouldHit(H('A', '6')), 'Soft 17 steht');
+  T.ok(Rules.dealerShouldHit(H('K', '7'), 18), '17 zieht bei Stand 18');
+  T.ok(!Rules.dealerShouldHit(H('K', '8'), 18), '18 steht bei Stand 18');
 });
 T.test('bjOutcome', () => {
   T.eq(Rules.bjOutcome(22, 18), 'bust');
@@ -11598,7 +11605,7 @@ T.test('xpLevel: Schwellen und Punkte', () => {
   T.eq(Rules.xpLevel(9999), { level: 6, next: null, points: 3 });
 });
 T.test('Kataloge: Skills mit Licht/Schatten, mods-Schlüssel bekannt', () => {
-  T.eq(Rules.SKILLS.length, 8); T.eq(Rules.INSIDER.length, 7);
+  T.eq(Rules.SKILLS.length, 9); T.eq(Rules.INSIDER.length, 8);
   for (const sk of Rules.SKILLS) { T.ok(sk.light && sk.shadow, sk.id); for (const k of Object.keys(sk.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${sk.id}.${k}`); }
   for (const ins of Rules.INSIDER) { T.ok(ins.text && typeof ins.capped === 'boolean', ins.id); for (const k of Object.keys(ins.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${ins.id}.${k}`); }
   T.eq(Rules.INSIDER_CAP, 250); T.eq(Rules.MAX_SKILLS, 3); T.eq(Rules.RESPEC_PRICE, 2000);
@@ -11621,6 +11628,13 @@ T.test('mods: Skills und Insider stapeln', () => {
   T.eq(k.maxBeers, 4); T.eq(k.brownieSpins, 6); T.eq(k.postTimeAdd, -1); T.eq(k.postPayAdd, 5); T.eq(k.postLetters, 20);
   T.eq(Rules.mods(base({ skills: ['unbekannt'] })), Rules.NEUTRAL_MODS, 'unbekannte IDs ignoriert');
 });
+T.test('mods: Kartenhai und Wirts Tell; neutral aus', () => {
+  const n = Rules.mods(base(), { insider: [] });
+  T.eq([n.pokerPeekDraw, n.pokerTell, n.bjDealerStand], [false, false, 17]);
+  const m = Rules.mods(base({ skills: ['kartenhai'] }), { insider: ['wirtstell'] });
+  T.eq([m.pokerPeekDraw, m.pokerTell, m.bjDealerStand], [true, true, 18]);
+  T.ok(Rules.SKILLS.some((k) => k.id === 'kartenhai') && Rules.INSIDER.some((i) => i.id === 'wirtstell' && i.capped));
+});
 T.test('canPickSkill / skillPointsFree', () => {
   T.eq(Rules.skillPointsFree(base({ xp: 0, skills: [] })), 0);
   T.eq(Rules.skillPointsFree(base({ xp: 60, skills: [] })), 1);
@@ -11636,8 +11650,8 @@ T.test('insiderDraw: 3 ungezogene, weniger wenn Pool kleiner', () => {
   const all = Rules.INSIDER.map((i) => i.id);
   const d = Rules.insiderDraw({ insider: [] }, seq(0, 0, 0));
   T.eq(d.length, 3); T.ok(new Set(d).size === 3, 'verschieden'); d.forEach((id) => T.ok(all.includes(id)));
-  const d2 = Rules.insiderDraw({ insider: all.slice(0, 5) }, seq(0, 0));
-  T.eq(d2.length, 2); d2.forEach((id) => T.ok(!all.slice(0, 5).includes(id), 'nie gewählte'));
+  const d2 = Rules.insiderDraw({ insider: all.slice(0, 6) }, seq(0, 0));
+  T.eq(d2.length, 2); d2.forEach((id) => T.ok(!all.slice(0, 6).includes(id), 'nie gewählte'));
   T.eq(Rules.insiderDraw({ insider: all }, seq(0)), []);
 });
 T.test('insiderCapText: gedeckelte Insider nennen die 250 €, freie „wirkt immer"', () => {
