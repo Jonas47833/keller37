@@ -196,6 +196,6 @@ Trace-Szenario „Duell" (`?screen=shootout&foe=junge&weapon=1`, Signal nach 400
 |---|---|---|---|---|
 | Duell (`main`: altes Emoji-Panel, idle) | 0,0 ms | 0,0 ms | 35,6 ms | 38,7 ms |
 
-Die Raster-Zeit auf dem Branch verteilt sich auf ~46 (Desktop) bzw. ~35 (Mobil) Raster-Tasks über die 4 Sekunden, also rund 0,8–1,1 ms Zeichenzeit pro Frame – unter dem 2-ms-Budget, `MAX_PARTS` musste nicht gesenkt werden. Layout bleibt bei 1,2/s, das entspricht dem einzigen Layout-Lesevorgang (`foeBox()` beim Tipp). Unter „meistgemalte Elemente" tauchen neben den Canvas-Frames zwei einmalige DOM-Repaints auf (`.duel-flash`-Text beim Signal, `.cs-fig-inner` beim Posenwechsel `draw`/`hit`) – keine laufenden Figuren-Repaints pro Frame.
+Die Raster-Zeit auf dem Branch verteilt sich auf ~46 (Desktop) bzw. ~35 (Mobil) Raster-Tasks über die 4 Sekunden, also rund 0,8–1,1 ms Zeichenzeit pro Frame – unter dem 2-ms-Budget, `MAX_PARTS` musste nicht gesenkt werden. Layout bleibt bei 1,2/s, das entspricht dem einzigen Layout-Lesevorgang (`foeBox()` beim Tipp). Canvas-Zeichnen taucht in Chromes Paint-Trace nicht als Knoten auf (es läuft über RasterTask); unter „meistgemalte Elemente" stehen deshalb nur zwei einmalige DOM-Repaints (Blitztext, Posenwechsel), keine dauerhaften Neuzeichnungen der Figur.
 
 `Gamble Game.html` ist das Original, aus dem die Mechanik 1:1 übernommen wurde. Spec, Plan, Abnahme-Checkliste und Screenshots liegen unter `docs/superpowers/`.
