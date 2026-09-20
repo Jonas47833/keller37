@@ -226,7 +226,7 @@ body.cs-open .toast { max-width: 300px; }
 .cs-fig[data-pose="hands-up"] .armR { transform: rotate(-160deg); }
 .cs-fig[data-pose="walk"] .legL, .cs-fig[data-pose="walk"] .armR { animation: csStepA .4s ease-in-out infinite alternate; }
 .cs-fig[data-pose="walk"] .legR, .cs-fig[data-pose="walk"] .armL { animation: csStepB .4s ease-in-out infinite alternate; }
-.cs-fig[data-pose="down"] .cs-body { transform: rotate(85deg); transition: transform .5s ease-in; }
+.cs-fig[data-pose="down"] .cs-body { animation: csFall var(--fall, .5s) ease-in forwards; } /* Keyframe statt Transition: startet auch, wenn vorher csBreathe/csNod lief; --fall: 0s = liegend gefunden */
 .cs-fig[data-pose="flinch"] .cs-body { animation: csFlinch .4s ease both; }
 @keyframes csFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes csBlink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
@@ -238,6 +238,7 @@ body.cs-open .toast { max-width: 300px; }
 @keyframes csTalkArm { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-35deg); } }
 @keyframes csStepA { from { transform: rotate(-20deg); } to { transform: rotate(20deg); } }
 @keyframes csStepB { from { transform: rotate(20deg); } to { transform: rotate(-20deg); } }
+@keyframes csFall { from { transform: rotate(0); } to { transform: rotate(85deg); } }
 @keyframes csFlinch { 0% { transform: translateX(0) rotate(0); } 30% { transform: translateX(-12px) rotate(-8deg); } 100% { transform: translateX(-4px) rotate(-3deg); } }
 /* Sprechblase, Ausruf, Streifen */
 .cs-bubble { position: absolute; z-index: 5; max-width: min(460px, 70%); background: #f4efe2; color: #1a1208; border-radius: 14px; border-left: 5px solid var(--c, #8b1e1e); padding: 10px 14px 18px; box-shadow: 0 6px 18px rgba(0,0,0,.6); animation: popIn .18s ease both; --tail: 40px; }
@@ -274,7 +275,8 @@ body.cs-open .toast { max-width: 300px; }
 .cs-instant .cs-fig, .cs-instant .cs-world { transition: none !important; }
 .cs-instant .cs-world.cs-fade { animation: none; }
 .cs-snap .cs-fig, .cs-snap .cs-world { transition: none !important; }
-.cs-instant .cs-fig .cs-body, .cs-instant .cs-fig .part, .cs-snap .cs-fig .cs-body, .cs-snap .cs-fig .part { transition: none !important; }
+.cs-instant .cs-fig .part, .cs-snap .cs-fig .part { transition: none !important; }
+.cs-instant .cs-fig[data-pose="down"] .cs-body, .cs-snap .cs-fig[data-pose="down"] .cs-body { animation-duration: 0s !important; } /* Sofort-Modus/Snap: liegt sofort */
 /* Kulissen-Leben – ausschließlich transform/opacity */
 .life-neon { animation: csFlicker 3s infinite; }
 .life-flicker { animation: csFlicker 4s infinite; }
@@ -3040,7 +3042,7 @@ const Cutscene = {
       money: h('div', { class: 'cs-money money-live' }, UI.fmt(UI.shownBalance)),
       extra: h('div', { class: 'cs-extra' }), choices: h('div', { class: 'cs-choices' }),
       skip: h('button', { class: 'cs-skip' }, 'Überspringen ⏭'),
-      figs: new Map(), bg: null, look: {}, parts: CsCast.duParts(State.s), skipping: false,
+      figs: new Map(), bg: null, parts: CsCast.duParts(State.s), skipping: false,
     };
     els.bubble.append(els.name, els.text, els.next); els.bubble.hidden = true;
     els.world.append(els.sky, els.back, els.floor, els.actors, els.front);
@@ -3080,7 +3082,6 @@ const Cutscene = {
       if (els.bg !== null && !instant) { els.world.classList.remove('cs-fade'); void els.world.offsetWidth; els.world.classList.add('cs-fade'); }
       els.bg = plan.bg;
     }
-    if (p.look) for (const [who, l] of Object.entries(p.look)) els.look[who] = Object.assign({}, els.look[who], l);
     for (const who of plan.exit) {
       const f = els.figs.get(who); if (!f) continue;
       els.figs.delete(who);
@@ -3096,9 +3097,11 @@ const Cutscene = {
       const entering = plan.enter.find((e) => e.who === c.who);
       const walking = !!entering && !instant && c.pose !== 'down'; // liegend läuft nie ein – erscheint direkt am Platz
       if (f) { for (const t of f.timers || []) clearTimeout(t); f.timers = []; } // alte Weg-Timer löschen, sonst überschriebe ein später Timer die Pose dieses Panels
-      if (!f) {
-        f = { who: c.who, el: h('div', { class: 'cs-fig' }), key: null, timers: [] };
+      const fresh = !f;
+      if (fresh) {
+        f = { who: c.who, el: h('div', { class: 'cs-fig' }), key: null, inner: null, timers: [] };
         els.figs.set(c.who, f); els.actors.append(f.el);
+        if (c.pose === 'down') f.el.style.setProperty('--fall', '0s'); // liegend gefunden: kein Umfallen (steht sie später auf, fällt sie wieder animiert, siehe unten)
         if (walking) {
           f.el.style.setProperty('--x', `${this.offX(entering ? entering.from : CsDirector.side(c.who), W)}px`);
           void f.el.offsetWidth; // Startposition festschreiben, sonst gibt es keinen Weg zu animieren
@@ -3106,9 +3109,11 @@ const Cutscene = {
           f.el.style.setProperty('--x', `${this.SLOT_X[c.slot] * W}px`); // liegend oder Sofort-Modus: direkt am Zielplatz, kein Weg
         }
       }
-      const look = els.look[c.who] || {};
-      const key = `${c.mood}|${look.hurt || ''}`;
-      if (f.key !== key) { f.el.innerHTML = CsCast.figureHtml(c.who, { mood: c.mood, parts: c.who === 'du' ? els.parts : null, hurt: look.hurt }); f.key = key; }
+      const look = plan.look[c.who] || {};
+      const key = look.hurt || '';   // Figur wird nur einmal gezeichnet (bzw. bei neuer Verletzung) – ein Stimmungswechsel tauscht nur die Klasse, sonst würde z. B. das Umfallen (calm → dead) nie animiert
+      if (f.key !== key) { f.el.innerHTML = CsCast.figureHtml(c.who, { mood: c.mood, parts: c.who === 'du' ? els.parts : null, hurt: look.hurt }); f.key = key; f.inner = f.el.firstElementChild; }
+      for (const m of CsDirector.MOODS) f.inner.classList.toggle(`mood-${m}`, m === c.mood);
+      if (!fresh && c.pose !== 'down') f.el.style.removeProperty('--fall');
       f.el.style.setProperty('--x', `${this.SLOT_X[c.slot] * W}px`);
       f.el.style.setProperty('--face', String(c.facing));
       f.el.classList.toggle('far', c.slot === 'far');
@@ -3118,6 +3123,7 @@ const Cutscene = {
       f.el.dataset.pose = walking ? 'walk' : c.pose;
       if (walking) f.timers.push(setTimeout(() => { if (f.el.isConnected) f.el.dataset.pose = c.pose; }, this.WALK_MS));
       f.el.classList.toggle('speaking', c.who === plan.speaker);
+      f.el.classList.remove('talking'); // Skip mitten im Tippen: der alte Sprecher würde sonst weiter den Mund bewegen
       if (c.who === plan.speaker) speaker = f;
     }
     if (plan.cam === 'shake') UI.shake(els.world);
@@ -3211,7 +3217,7 @@ const Cutscene = {
       if (p.sfx) SFX.play(p.sfx);
       const full = this.fill(p.text || '', ctx);
       let typing = false, started = false, finished = false, showAll = false, pos = 0, timer = null, skipWait = null;
-      const waitOr = (ms) => new Promise((r) => { if (!ms || instant) return r(); skipWait = r; setTimeout(r, ms); });
+      const waitOr = (ms) => new Promise((r) => { if (!ms || instant || showAll) return r(); skipWait = r; setTimeout(r, ms); }); // showAll: ein Klick im Auftritt kürzt auch die folgende pause ab
       const renderChoices = () => {
         for (const c of p.choices) els.choices.append(h('button', { class: 'btn ' + (c.cls || ''), onclick: (e) => { e.stopPropagation(); SFX.play('click'); done(c.value); } }, c.label));
       };
@@ -12225,6 +12231,56 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       root.click(); await done;
       T.ok(!Cutscene.active, 'Szene beendet');
     } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.camlive']; }
+  });
+  T.test('Cutscene-Bühne in Echtzeit: Umfallen als Keyframe ohne Neuzeichnen, liegend gefunden ohne Fall, kein talking nach Skip, Klick im Auftritt kürzt die pause ab', async () => {
+    const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
+    State.save = () => {}; State.s = State.fresh();
+    Cutscene.instant = false;
+    Cutscene.define('test.fall', [
+      { bg: 'gasse', who: 'du', mood: 'calm', text: 'Eins – und dieser Satz ist lang genug, dass das Tippen nicht in wenigen Millisekunden fertig wäre.' },
+      { bg: 'gasse', who: 'du', mood: 'dead', text: 'Zwei.' },
+      { bg: 'gasse', who: 'raeuber', mood: 'calm', text: 'Drei – und auch dieser Satz ist lang genug, dass das Tippen nicht in wenigen Millisekunden fertig wäre.' },
+      { bg: 'gasse', who: 'du', mood: 'calm', text: 'Vier.' },
+    ]);
+    Cutscene.define('test.liegt', [{ bg: 'gasse', who: 'du', mood: 'dead', cast: ['du'], pose: 'down', text: 'Liegt.' }]);
+    Cutscene.define('test.pause', [{ bg: 'bar', who: 'wirt', mood: 'calm', enter: 'vito', pause: 1500, text: 'Warte mal.' }]);
+    const root = qs('#cutscene');
+    try {
+      const done = Cutscene.play('test.fall', {});
+      await wait(40); root.click(); await wait(40);          // Auftritt abkürzen, Text komplett
+      const du = qs('.cs-fig.speaking', root), inner = qs('.cs-fig-inner', du), body = qs('.cs-body', du);
+      T.ok(inner.classList.contains('mood-calm') && du.dataset.pose === 'talk', 'Panel 1: du calm, Pose talk');
+      T.eq(getComputedStyle(body).animationName, 'csNod', 'Panel 1: Nicken läuft (Keyframe auf .cs-body)');
+      root.click(); await wait(40);                           // Panel 2: calm → dead
+      T.ok(qs('.cs-fig-inner', du) === inner, 'Stimmungswechsel zeichnet die Figur nicht neu (gleicher Knoten)');
+      T.ok(inner.classList.contains('mood-dead') && !inner.classList.contains('mood-calm'), 'mood-dead per Klasse');
+      T.eq(du.dataset.pose, 'down', 'dead → down');
+      T.eq(getComputedStyle(body).animationName, 'csFall', 'Umfallen als Keyframe-Animation (startet trotz vorherigem csNod)');
+      T.eq(du.style.getPropertyValue('--fall'), '', 'stehend getroffen: Fall mit voller Dauer');
+      T.eq(getComputedStyle(body).animationDuration, '0.5s', 'Fall dauert 0,5 s');
+      root.click(); await wait(10); root.click(); await wait(Cutscene.WALK_MS + 150); // Tippen beenden, weiter – Panel 3: Räuber tritt auf und tippt
+      T.eq(qs('.cs-name', root).textContent, 'Der Räuber', 'Panel 3 aktiv');
+      T.ok(qs('.cs-fig.talking', root), 'Räuber spricht (talking während des Tippens)');
+      qs('.cs-skip', root).click(); await wait(40);           // Skip mitten im Tippen → letztes Panel
+      T.eq(qs('.cs-name', root).textContent, 'Du', 'Skip → letztes Panel');
+      T.eq(qsa('.cs-fig.talking', root).length, 0, 'kein talking mehr nach Skip');
+      T.eq(qsa('.cs-fig', root).length, 2, 'du + Räuber stehen noch');
+      root.click(); await done;
+      T.ok(!Cutscene.active, 'Szene beendet');
+      /* Liegend gefunden: keine Fall-Animation */
+      const done2 = Cutscene.play('test.liegt', {});
+      await wait(40);
+      const lying = qs('.cs-fig', root);
+      T.eq(lying.dataset.pose, 'down'); T.eq(lying.style.getPropertyValue('--fall'), '0s', 'liegend erstellt → --fall: 0s');
+      T.eq(getComputedStyle(qs('.cs-body', lying)).animationDuration, '0s', 'kein sichtbares Umfallen');
+      root.click(); await wait(40); root.click(); await done2;
+      /* Klick während des Auftritts kürzt auch die folgende pause ab */
+      const done3 = Cutscene.play('test.pause', {});
+      await wait(30); root.click(); await wait(100);
+      T.eq(qs('.cs-text', root).textContent, 'Warte mal.', 'Text sofort komplett, obwohl pause: 1500');
+      root.click(); await done3;
+      T.ok(!Cutscene.active, 'Szene beendet');
+    } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; for (const id of ['test.fall', 'test.liegt', 'test.pause']) delete Cutscene.SCENES[id]; }
   });
   T.test('Cutscene-Keyframes (cs*) animieren nur transform oder opacity', () => {
     let n = 0;
