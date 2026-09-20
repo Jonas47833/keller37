@@ -910,6 +910,10 @@ body.mode-story #newgame { display: none; }
 .insider-list { display: flex; flex-wrap: wrap; gap: 10px; }
 .insider-chip { border: 1px solid rgba(76,201,240,.4); border-radius: 8px; padding: 8px 12px; background: rgba(0,0,0,.3); font-family: var(--font-mono); font-size: .8rem; max-width: 280px; }
 .insider-chip b { display: block; color: var(--neon-blue); }
+.insider-chip small { display: block; margin-top: 4px; font-size: .7rem; color: var(--gold-2); }
+.cs-insider-cards { margin-top: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cs-insider-cards .insider-chip { max-width: none; font-size: .75rem; }
+@media (max-width: 600px) { .cs-insider-cards { grid-template-columns: 1fr; } }
 .rcell.excluded { opacity: .28; filter: grayscale(1); pointer-events: none; }
 .insider-hint { font-family: var(--font-mono); font-size: .75rem; color: var(--neon-blue); }
 .runner.lame .horse { filter: grayscale(.8); opacity: .7; }
@@ -1963,6 +1967,8 @@ Object.assign(Rules, {
     while (pool.length && out.length < 3) out.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
     return out;
   },
+  /* Fußzeile für Insider-Karten und -Chips: der Cap gilt nur für die vier Tisch-Insider */
+  insiderCapText(def) { return def.capped ? `wirkt bis ${Rules.INSIDER_CAP.toLocaleString('de-DE')} € Einsatz` : 'wirkt immer'; },
   /* Insider-Wissen wirkt voll bis INSIDER_CAP; Zahlen verlieren darüber anteilig ihren Bonus, Schalter gelten nur darunter */
   effectiveInsider(value, bet) {
     if (typeof value === 'boolean') return value && bet <= Rules.INSIDER_CAP;
@@ -2629,6 +2635,12 @@ const Cutscene = {
       case 'stats': {
         const grid = h('div', { class: 'cs-stats' });
         for (const [k, v] of Object.entries(ctx.stats || {})) grid.append(h('span', {}, k), h('span', {}, String(v)));
+        els.extra.append(grid);
+        break;
+      }
+      case 'insiderCards': {
+        const grid = h('div', { class: 'cs-insider-cards' });
+        for (const d of ctx.insiders || []) grid.append(h('div', { class: 'insider-chip' }, h('b', {}, `${d.icon} ${d.name}`), d.text, h('small', {}, Rules.insiderCapText(d))));
         els.extra.append(grid);
         break;
       }
@@ -5313,7 +5325,7 @@ const Perks = {
     const list = qs('#insiderList', this.root); list.innerHTML = '';
     const ins = (State.meta.insider || []).map((id) => Rules.INSIDER.find((i) => i.id === id)).filter(Boolean);
     if (!ins.length) list.append(h('span', { class: 'empty' }, 'Noch keins – schließe ein Story-Teil ab.'));
-    for (const i of ins) list.append(h('div', { class: 'insider-chip' }, h('b', {}, `${i.icon} ${i.name}`), i.text));
+    for (const i of ins) list.append(h('div', { class: 'insider-chip' }, h('b', {}, `${i.icon} ${i.name}`), i.text, h('small', {}, Rules.insiderCapText(i))));
   },
   pick(id) {
     const s = State.s;
@@ -5354,7 +5366,7 @@ const Perks = {
     const draw = Rules.insiderDraw(meta, Math.random);
     if (!draw.length) { UI.toast({ icon: '🕵️', title: 'Der Insider', text: 'Er hat nichts Neues für dich.', tone: 'info' }); return null; }
     const defs = draw.map((id) => Rules.INSIDER.find((i) => i.id === id));
-    const choice = await Cutscene.play('insider.offer', { choices: defs.map((d) => ({ label: `${d.icon} ${d.name}`, value: d.id, cls: 'blue' })), texts: defs.map((d) => `${d.name}: ${d.text}`).join(' · ') });
+    const choice = await Cutscene.play('insider.offer', { choices: defs.map((d) => ({ label: `${d.icon} ${d.name}`, value: d.id, cls: 'blue' })), insiders: defs });
     if (!choice || !draw.includes(choice)) return null;
     meta.insider.push(choice); meta.insiderClaimed[storyId] = true;
     State.saveMeta();
@@ -5376,8 +5388,8 @@ Cutscene.define('perks.respec', (ctx) => [
     choices: [{ label: 'Ja, alles vergessen', value: 'yes', cls: 'red' }, { label: 'Doch nicht', value: 'no', cls: 'ghost' }] },
 ]);
 Cutscene.define('insider.offer', (ctx) => [
-  { bg: 'hinterzimmer', who: 'insider', mood: 'calm', text: 'Du hast ein Kapitel überlebt. Das sehen nicht viele. Ich habe da ein paar Dinge, die man nicht kaufen kann – nur wissen.' },
-  { bg: 'hinterzimmer', who: 'insider', mood: 'happy', text: `Such dir eins aus. ${ctx.texts}`, choices: ctx.choices },
+  { bg: 'hinterzimmer', who: 'insider', mood: 'calm', text: 'Du hast ein Kapitel überlebt. Das sehen nicht viele. Ich habe da ein paar Dinge, die man nicht kaufen kann – nur wissen. Und was du weißt, bleibt: in jedem Spielstand, nach jedem Absturz.' },
+  { bg: 'hinterzimmer', who: 'insider', mood: 'happy', fx: 'insiderCards', text: 'Eins pro Kapitel. Such dir eins aus.', choices: ctx.choices },
 ]);
 /* XP-Quellen */
 Bus.on('spin:after', () => Perks.addXp(Rules.XP_GAIN.spin, 'spin'));
@@ -6112,7 +6124,7 @@ const Title = {
         grid.append(h('div', { class: 'trophy-sep' }, 'Insider'));
         const ins = (State.meta.insider || []).map((id) => Rules.INSIDER.find((i) => i.id === id)).filter(Boolean);
         if (!ins.length) grid.append(h('div', { class: 'insider-chip' }, 'Noch keins'));
-        else for (const i of ins) grid.append(h('div', { class: 'insider-chip' }, h('b', {}, `${i.icon} ${i.name}`), i.text));
+        else for (const i of ins) grid.append(h('div', { class: 'insider-chip' }, h('b', {}, `${i.icon} ${i.name}`), i.text, h('small', {}, Rules.insiderCapText(i))));
         qs('#titleTrophiesPanel', root).classList.remove('hidden');
       });
       qs('#titleTrophiesClose', root).addEventListener('click', () => qs('#titleTrophiesPanel', root).classList.add('hidden'));
@@ -11527,6 +11539,10 @@ T.test('insiderDraw: 3 ungezogene, weniger wenn Pool kleiner', () => {
   const d2 = Rules.insiderDraw({ insider: all.slice(0, 5) }, seq(0, 0));
   T.eq(d2.length, 2); d2.forEach((id) => T.ok(!all.slice(0, 5).includes(id), 'nie gewählte'));
   T.eq(Rules.insiderDraw({ insider: all }, seq(0)), []);
+});
+T.test('insiderCapText: gedeckelte Insider nennen die 250 €, freie „wirkt immer"', () => {
+  T.eq(Rules.insiderCapText({ capped: true }), 'wirkt bis 250 € Einsatz');
+  T.eq(Rules.insiderCapText({ capped: false }), 'wirkt immer');
 });
 T.test('effectiveInsider: Deckel 250', () => {
   T.eq(Rules.effectiveInsider(1.2, 250), 1.2);
