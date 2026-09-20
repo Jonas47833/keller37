@@ -166,50 +166,169 @@ body.cs-open .toast { max-width: 300px; }
 .floatnum.up { color: var(--gold-2); }
 .floatnum.down { color: var(--neon-red); }
 .shake { animation: shake .35s ease both; }
-/* ==== 5. CUTSCENE ==== */
-#cutscene { position: fixed; inset: 0; z-index: 80; display: flex; flex-direction: column; justify-content: flex-end; background: #000; overflow: hidden; animation: fadeIn .3s ease both; }
+/* ==== 5. CUTSCENE – Bühne ==== */
+#cutscene { position: fixed; inset: 0; z-index: 80; background: #000; overflow: hidden; animation: fadeIn .3s ease both; }
 #cutscene[hidden] { display: none; }
-.cs-bg { position: absolute; inset: 0; transition: background 1s; }
-.cs-bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(0,0,0,.8) 100%); }
-.cs-bg .prop { position: absolute; font-size: 6rem; opacity: .22; filter: blur(1px) grayscale(.4); }
-.cs-bg.bar { background: linear-gradient(180deg, #3a1f0c 0%, #1a0d05 60%, #000 100%); }
-.cs-bg.hinterzimmer { background: radial-gradient(circle at 50% 20%, #5a3a12 0%, #1e1207 40%, #000 100%); }
-.cs-bg.standesamt { background: linear-gradient(180deg, #f3e6c8 0%, #c9b58f 60%, #6b5b3f 100%); }
-.cs-bg.villa { background: linear-gradient(180deg, #0a1636 0%, #16244d 50%, #0a0f1f 100%); }
-.cs-bg.hafen { background: linear-gradient(180deg, #02050f 0%, #0a1a33 55%, #041020 100%); }
-.cs-bg.hafen-morgen { background: linear-gradient(180deg, #2c2a4a 0%, #c4573b 45%, #f0a35a 70%, #3b2a2a 100%); }
-.cs-bg.klinik { background: linear-gradient(180deg, #0d3b3f 0%, #0a2224 60%, #020a0b 100%); }
-.cs-bg.bank { background: linear-gradient(180deg, #0c1f33 0%, #123a5c 50%, #06131f 100%); }
-.cs-bg.strasse { background: linear-gradient(180deg, #7fb2e5 0%, #c7d7e3 50%, #5b5b4d 100%); }
-.cs-bg.keller { background: radial-gradient(circle at 50% 10%, #4a4a3a 0%, #151512 40%, #000 100%); }
-.cs-bg.bahnhof { background: linear-gradient(180deg, #05070d 0%, #1a2233 45%, #3b3a2a 100%); }
-.cs-bg.pfandleihe { background: linear-gradient(180deg, #2a2418 0%, #14110a 60%, #000 100%); }
-.cs-money { position: absolute; top: 16px; left: 20px; z-index: 3; font-family: var(--font-mono); font-size: 1.3rem; font-weight: 700; color: var(--gold-2); background: rgba(0,0,0,.5); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(201,162,39,.4); }
+/* Welt = alles, was die Kamera zoomt: Himmel, Kulisse, Boden, Figuren, Vordergrund */
+.cs-world { position: absolute; inset: 0; contain: paint; transform-origin: 50% 50%; transition: transform .6s ease; }
+.cs-world.cs-fade { animation: csFade .5s ease both; }
+.cs-sky, .cs-back, .cs-actors, .cs-front { position: absolute; inset: 0; }
+.cs-front { pointer-events: none; }
+.cs-sky::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(0,0,0,.7) 100%); }
+.cs-sky.bar { background: linear-gradient(180deg, #3a1f0c 0%, #1a0d05 60%, #000 100%); }
+.cs-sky.hinterzimmer { background: radial-gradient(circle at 50% 20%, #5a3a12 0%, #1e1207 40%, #000 100%); }
+.cs-sky.standesamt { background: linear-gradient(180deg, #f3e6c8 0%, #c9b58f 60%, #6b5b3f 100%); }
+.cs-sky.villa { background: linear-gradient(180deg, #0a1636 0%, #16244d 50%, #0a0f1f 100%); }
+.cs-sky.hafen { background: linear-gradient(180deg, #02050f 0%, #0a1a33 55%, #041020 100%); }
+.cs-sky.hafen-morgen { background: linear-gradient(180deg, #2c2a4a 0%, #c4573b 45%, #f0a35a 70%, #3b2a2a 100%); }
+.cs-sky.klinik { background: linear-gradient(180deg, #0d3b3f 0%, #0a2224 60%, #020a0b 100%); }
+.cs-sky.bank { background: linear-gradient(180deg, #0c1f33 0%, #123a5c 50%, #06131f 100%); }
+.cs-sky.strasse { background: linear-gradient(180deg, #7fb2e5 0%, #c7d7e3 50%, #5b5b4d 100%); }
+.cs-sky.keller { background: radial-gradient(circle at 50% 10%, #4a4a3a 0%, #151512 40%, #000 100%); }
+.cs-sky.bahnhof { background: linear-gradient(180deg, #05070d 0%, #1a2233 45%, #3b3a2a 100%); }
+.cs-sky.pfandleihe { background: linear-gradient(180deg, #2a2418 0%, #14110a 60%, #000 100%); }
+.cs-sky.gasse { background: linear-gradient(180deg, #05070d 0%, #1a1e2a 60%, #2a2a26 100%); }
+.cs-sky.autohaus { background: linear-gradient(180deg, #1a1e26 0%, #2a2e38 100%); }
+.cs-sky.intersport { background: linear-gradient(180deg, #dfe6ee 0%, #b8c4d0 100%); }
+.cs-sky.royal { background: radial-gradient(circle at 50% 0%, #3a0a10 0%, #12060a 60%, #000 100%); }
+.cs-set { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cs-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 12%; background: linear-gradient(#1a1610, #0a0806); border-top: 1px solid rgba(255,255,255,.08); }
+/* Figuren: Position nur per transform (--x in px, von der Engine gesetzt). Aufbau: .cs-fig (Platz) > .cs-fig-inner (Blickrichtung --face,
+   Schwanken) > .cs-body (Atmen, Umfallen, Zucken) > acht gestapelte Teil-SVGs (Beine, Rumpf, Arme, Kopf, Augen, Mund) mit derselben viewBox.
+   Drehpunkte in Prozent der Figur (100×180 Einheiten): Schulter (21|79 %, 45.6 %), Hüfte (38|61 %, 65.6 %), Hals (50 %, 34.4 %), Standlinie (50 %, 95.6 %). */
+.cs-fig { position: absolute; left: 0; bottom: 12%; height: min(42vh, 380px); aspect-ratio: 5 / 9; --x: 0px; --face: 1; transform: translateX(calc(var(--x) - 50%)); transition: transform .6s ease; filter: drop-shadow(0 8px 8px rgba(0,0,0,.7)); z-index: 1; }
+.cs-fig.walking { will-change: transform; }
+.cs-fig.far { transform: translateX(calc(var(--x) - 50%)) translateY(-25%) scale(.6); z-index: 0; }
+.cs-fig::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 120%; height: 24px; transform: translateX(-50%); background: radial-gradient(ellipse, rgba(201,162,39,.35), transparent 70%); opacity: 0; transition: opacity .4s; z-index: -1; }
+.cs-fig.speaking::after { opacity: 1; }
+.cs-fig-inner { position: absolute; inset: 0; transform: scaleX(var(--face)); transform-origin: 50% 50%; }
+.cs-fig-inner.klein { top: 15%; }
+.cs-fig-inner.sway { animation: csSway 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+.cs-body { position: absolute; inset: 0; transform-origin: 50% 95.6%; }
+.cs-fig .part { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+.cs-fig .m { opacity: 0; }
+.mood-calm .m-calm, .mood-angry .m-angry, .mood-happy .m-happy, .mood-shock .m-shock, .mood-dead .m-dead { opacity: 1; }
+.cs-fig .eyes { animation: csBlink 4s infinite; transform-origin: 50% 26.7%; }
+.cs-fig .ember { animation: csGlow 1.4s infinite; }
+.cs-fig.talking .mouth { animation: csMouth .25s steps(2) infinite; transform-origin: 50% 33.9%; }
+/* Posen */
+.cs-fig[data-pose="idle"] .cs-body { animation: csBreathe 3s ease-in-out infinite; }
+.cs-fig[data-pose="talk"] .cs-body { animation: csNod .5s ease-in-out infinite; }
+.cs-fig[data-pose="talk"] .armR { animation: csTalkArm 1.2s ease-in-out infinite; }
+.cs-fig .armL, .cs-fig .armR, .cs-fig .legL, .cs-fig .legR { transition: transform .3s ease; }
+.cs-fig .armL { transform-origin: 21% 45.6%; } .cs-fig .armR { transform-origin: 79% 45.6%; }
+.cs-fig .legL { transform-origin: 38% 65.6%; } .cs-fig .legR { transform-origin: 61% 65.6%; }
+.cs-fig.speaking .mood-happy .cs-body { animation: bounce .7s infinite; }   /* nach talk: froher Sprecher wippt statt zu nicken */
+.cs-fig[data-pose="point"] .armR { transform: rotate(-70deg); }
+.cs-fig[data-pose="arms-crossed"] .armL { transform: rotate(-75deg); }
+.cs-fig[data-pose="arms-crossed"] .armR { transform: rotate(75deg); }
+.cs-fig[data-pose="hands-up"] .armL { transform: rotate(160deg); }
+.cs-fig[data-pose="hands-up"] .armR { transform: rotate(-160deg); }
+.cs-fig[data-pose="walk"] .legL, .cs-fig[data-pose="walk"] .armR { animation: csStepA .4s ease-in-out infinite alternate; }
+.cs-fig[data-pose="walk"] .legR, .cs-fig[data-pose="walk"] .armL { animation: csStepB .4s ease-in-out infinite alternate; }
+.cs-fig[data-pose="down"] .cs-body { transform: rotate(85deg); transition: transform .5s ease-in; }
+.cs-fig[data-pose="flinch"] .cs-body { animation: csFlinch .4s ease both; }
+@keyframes csFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes csBlink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+@keyframes csGlow { 50% { opacity: .4; } }
+@keyframes csSway { 0%, 100% { transform: scaleX(var(--face)) rotate(-2deg); } 50% { transform: scaleX(var(--face)) rotate(2deg); } }
+@keyframes csMouth { from { transform: scaleY(1); } to { transform: scaleY(2.2); } }
+@keyframes csBreathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.02); } }
+@keyframes csNod { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-1.5deg); } }
+@keyframes csTalkArm { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-35deg); } }
+@keyframes csStepA { from { transform: rotate(-20deg); } to { transform: rotate(20deg); } }
+@keyframes csStepB { from { transform: rotate(20deg); } to { transform: rotate(-20deg); } }
+@keyframes csFlinch { 0% { transform: translateX(0) rotate(0); } 30% { transform: translateX(-12px) rotate(-8deg); } 100% { transform: translateX(-4px) rotate(-3deg); } }
+/* Sprechblase, Ausruf, Streifen */
+.cs-bubble { position: absolute; z-index: 5; max-width: min(460px, 70%); background: #f4efe2; color: #1a1208; border-radius: 14px; border-left: 5px solid var(--c, #8b1e1e); padding: 10px 14px 18px; box-shadow: 0 6px 18px rgba(0,0,0,.6); animation: popIn .18s ease both; --tail: 40px; }
+.cs-bubble[hidden] { display: none; }
+.cs-bubble::after { content: ""; position: absolute; left: var(--tail); bottom: -12px; margin-left: -10px; border: 10px solid transparent; border-top-color: #f4efe2; border-bottom: 0; }
+.cs-bubble.narrator { background: rgba(12,12,10,.92); color: var(--text); border: 1px solid var(--gold); }
+.cs-bubble.narrator::after { display: none; }
+.cs-name { font-family: var(--font-display); letter-spacing: .14em; font-size: .8rem; color: #5a3020; margin-bottom: 4px; }
+.cs-bubble.narrator .cs-name { color: var(--gold-2); }
+.cs-text { font-size: 1.05rem; line-height: 1.5; }
+.cs-next { position: absolute; right: 12px; bottom: 4px; color: #8b1e1e; animation: bob 1s infinite; font-size: .9rem; }
+.cs-shout { position: absolute; z-index: 6; font-family: var(--font-display); font-size: 2.6rem; letter-spacing: .06em; color: #fff; text-shadow: 0 0 14px var(--neon-red), 0 0 30px var(--neon-red); opacity: 0; pointer-events: none; transform: translate(-50%, -110%) rotate(-8deg); }
+.cs-shout.on { animation: csShout .9s ease both; }
+@keyframes csShout { 0% { opacity: 0; transform: translate(-50%, -110%) rotate(-8deg) scale(.4); } 15% { opacity: 1; transform: translate(-50%, -110%) rotate(-8deg) scale(1.15); } 25% { transform: translate(-50%, -110%) rotate(-8deg) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -130%) rotate(-8deg) scale(1); } }
+.cs-bar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; align-items: flex-end; gap: 12px; padding: 12px 16px; pointer-events: none; }
+.cs-bar > * { pointer-events: auto; }
+.cs-bar-mid { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.cs-money { font-family: var(--font-mono); font-size: 1.3rem; font-weight: 700; color: var(--gold-2); background: rgba(0,0,0,.5); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(201,162,39,.4); }
 .cs-money.up { animation: pulseGold .6s ease both; }
 .cs-money.down { animation: pulseRed .6s ease both; }
-.cs-stage { position: relative; z-index: 2; display: flex; align-items: flex-end; gap: 24px; padding: 0 6vw 4vh; max-width: 1100px; width: 100%; margin: 0 auto; }
-.cs-portrait { flex: 0 0 auto; width: 170px; height: 170px; border-radius: 50%; border: 5px solid var(--c, var(--gold)); background: radial-gradient(circle at 40% 35%, #3a3a33, #0d0d0b);
-  display: flex; align-items: center; justify-content: center; font-size: 6rem; box-shadow: 0 0 30px rgba(0,0,0,.8), 0 0 24px var(--c, var(--gold)); margin-bottom: 10px; }
-.cs-portrait.calm { animation: breathe 3s ease-in-out infinite; }
-.cs-portrait.angry { animation: shake .5s infinite; }
-.cs-portrait.happy { animation: bounce .7s infinite; }
-.cs-portrait.shock { animation: shockZoom .5s ease both; }
-.cs-portrait.dead { filter: grayscale(1) brightness(.6); transform: rotate(12deg); }
-.cs-box { flex: 1; --c: var(--gold); background: rgba(12,12,10,.92); border: 2px solid var(--c); border-radius: 10px; padding: 18px 22px 26px; min-height: 150px; position: relative; box-shadow: 0 0 40px rgba(0,0,0,.8); }
-.cs-name { font-family: var(--font-display); letter-spacing: .14em; font-size: 1.3rem; color: var(--c); margin-bottom: 8px; text-shadow: 0 0 10px var(--c); }
-.cs-text { font-size: 1.15rem; line-height: 1.55; min-height: 3.2em; }
-.cs-next { position: absolute; right: 16px; bottom: 8px; color: var(--c); animation: bob 1s infinite; font-size: 1.1rem; }
-.cs-choices { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
-.cs-choices:empty { display: none; }
-.cs-skip { position: absolute; top: 16px; right: 20px; z-index: 3; background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.2); color: var(--dim); font-family: var(--font-display); letter-spacing: .1em; padding: 6px 12px; border-radius: 4px; }
+.cs-skip { background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.2); color: var(--dim); font-family: var(--font-display); letter-spacing: .1em; padding: 6px 12px; border-radius: 4px; }
 .cs-skip:hover { color: var(--text); border-color: var(--text); }
+.cs-choices { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.cs-choices:empty { display: none; }
+.cs-extra:empty { display: none; }
+.cs-stats { display: grid; grid-template-columns: 1fr auto; gap: 4px 20px; font-family: var(--font-mono); background: rgba(12,12,10,.92); border: 1px solid var(--gold); border-radius: 8px; padding: 10px 14px; }
+.cs-stats span:nth-child(even) { text-align: right; color: var(--gold-2); }
 .cs-flash { position: absolute; inset: 0; background: #fff; z-index: 4; pointer-events: none; opacity: 0; }
 .cs-flash.on { animation: flash .18s ease both; }
 .cs-black { position: absolute; inset: 0; background: #000; z-index: 4; pointer-events: none; opacity: 0; transition: opacity .5s; }
 .cs-black.on { opacity: 1; }
 .cs-particle { position: absolute; z-index: 3; pointer-events: none; animation: particleUp 1.6s ease-out both; }
-.cs-stats { margin-top: 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 20px; font-family: var(--font-mono); }
-.cs-stats span:nth-child(even) { text-align: right; color: var(--gold-2); }
+/* Sofort-Modus (Tests, Skip, reduced-motion): keine Wege, keine Überblendung */
+.cs-instant .cs-fig, .cs-instant .cs-world { transition: none !important; }
+.cs-instant .cs-world.cs-fade { animation: none; }
+/* Kulissen-Leben – ausschließlich transform/opacity */
+.life-neon { animation: csFlicker 3s infinite; }
+.life-flicker { animation: csFlicker 4s infinite; }
+.life-smoke { animation: csSmoke 4s ease-in-out infinite; }
+.life-blink { animation: csBlinkLight 2s steps(2) infinite; }
+.life-swing { animation: csSwing 5s ease-in-out infinite; }
+.life-candle { animation: csCandle .8s ease-in-out infinite alternate; }
+.life-car { animation: csCar 9s linear infinite; }
+.life-rain { animation: csRain .7s linear infinite; }
+.life-cat { animation: csCat 14s linear infinite; }
+.life-wave { animation: csWave 3s ease-in-out infinite; }
+.life-gull { animation: csGull 12s linear infinite; }
+.life-sun { animation: csSun 30s linear both; }
+.life-ekg { animation: csPulse 1.2s ease-in-out infinite; }
+.life-ticker { animation: csTicker 3s steps(1) infinite; }
+.life-dust { animation: csDust 4s linear infinite; }
+.life-city { animation: csTicker 3s steps(1) infinite; }
+.life-shimmer { animation: csShimmer 2s linear infinite; }
+.life-train { animation: csTrain 12s linear infinite; }
+.life-tick { animation: csTick 60s steps(60) infinite; }
+.life-sway { animation: csLean 4s ease-in-out infinite; }
+.life-spot { animation: csSpot 6s ease-in-out infinite; }
+.life-glitter { animation: csGlitter 1.6s ease-in-out infinite; }
+@keyframes csFlicker { 0%, 92%, 100% { opacity: 1; } 94% { opacity: .3; } 96% { opacity: 1; } 98% { opacity: .5; } }
+@keyframes csSmoke { 0% { transform: translateY(0); opacity: .25; } 100% { transform: translateY(-40px); opacity: 0; } }
+@keyframes csBlinkLight { 50% { opacity: .4; } }
+@keyframes csSwing { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@keyframes csCandle { from { transform: scale(1); } to { transform: scale(.85, 1.1); } }
+@keyframes csCar { 0%, 55% { transform: translateX(0); } 100% { transform: translateX(1300px); } }
+@keyframes csRain { from { transform: translateY(0); } to { transform: translateY(400px); } }
+@keyframes csCat { 0%, 70% { transform: translateX(-60px); } 90%, 100% { transform: translateX(1100px); } }
+@keyframes csWave { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(50px); } }
+@keyframes csGull { from { transform: translate(200px, 120px); } to { transform: translate(900px, 80px); } }
+@keyframes csSun { from { transform: translateY(80px); } to { transform: translateY(0); } }
+@keyframes csPulse { 50% { opacity: .4; } }
+@keyframes csTicker { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes csDust { 0% { transform: translate(0, 0); opacity: 0; } 50% { opacity: .8; } 100% { transform: translate(-20px, 40px); opacity: 0; } }
+@keyframes csShimmer { from { transform: translateX(0); } to { transform: translateX(70px); } }
+@keyframes csTrain { 0%, 60% { transform: translateX(0); } 100% { transform: translateX(2200px); } }
+@keyframes csTick { to { transform: rotate(360deg); } }
+@keyframes csLean { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+@keyframes csSpot { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
+@keyframes csGlitter { 50% { opacity: .2; } }
+/* Hochkant: Kulisse doppelt so breit wie die Bühne zeichnen (zeigt die Mitte), sonst wäre sie nur ein schmaler Streifen am Boden */
+@media (max-aspect-ratio: 4/5) { .cs-set { width: 200%; left: -50%; } }
+@media (max-width: 760px) {
+  .cs-fig { height: min(30vh, 240px); }
+  .cs-bubble { max-width: 70%; padding: 8px 10px 16px; }
+  .cs-text { font-size: .95rem; }
+  .cs-bar { padding: 8px 10px; gap: 8px; }
+  .cs-money { font-size: 1rem; padding: 4px 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #cutscene .cs-set *, .cs-fig, .cs-fig *, .cs-world, .cs-bubble, .cs-shout, .cs-next { animation: none !important; transition: none !important; }
+  .cs-fig-inner { transform: scaleX(var(--face)) !important; }
+}
 /* ==== 6. SPIELE & RÄUME ==== */
 /* -- Kredite -- */
 .finance { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -479,7 +598,6 @@ body.cs-open .toast { max-width: 300px; }
   .fighter .face { width: 90px; height: 90px; font-size: 3rem; }
   .house { width: 70px; } .house .roof { border-left-width: 35px; border-right-width: 35px; } .house .wall { width: 64px; height: 50px; font-size: 1.1rem; }
   .cs-stage { flex-direction: column; align-items: center; padding: 0 4vw 2vh; gap: 10px; }
-  .cs-portrait { width: 110px; height: 110px; font-size: 4rem; margin-bottom: 0; }
   .cs-text { font-size: 1rem; }
   .cs-box { width: 100%; }
   #toasts { right: 10px; left: 10px; bottom: 120px; }
@@ -622,7 +740,7 @@ body[data-zone="royal"] .panel { background: var(--panel); border: 1px solid var
 body.dev-open #toasts { z-index: 99; }
 /* -- Reduced Motion -- */
 @media (prefers-reduced-motion: reduce) {
-  .neon, .cs-portrait, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running::before, .plate.hit, .plate.broken, .taxi-road.running::before, .brake-flash.on, .ticket-pop, .mega-grid .cell.spin, .die.rolling, .lv-badge.point { animation: none !important; }
+  .neon, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running::before, .plate.hit, .plate.broken, .taxi-road.running::before, .brake-flash.on, .ticket-pop, .mega-grid .cell.spin, .die.rolling, .lv-badge.point { animation: none !important; }
   .strip.spinning { animation: none !important; filter: none; }
   .stage, .stage.leaving, .stage.entering { transition: none; animation: none; }
   #wheelCanvas { transition-duration: .3s; }
@@ -767,7 +885,6 @@ body.mode-story #newgame { display: none; }
 .cs-bg.royal::before { content: ""; position: absolute; left: 50%; top: 4%; width: 220px; height: 60px; transform: translateX(-50%); border: 2px solid #c9a961; border-top: 0; border-radius: 0 0 110px 110px;
   background: radial-gradient(circle at 10% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 25% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 40% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 50% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 60% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 75% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px), radial-gradient(circle at 90% 100%, #f1dfa8 0 3px, rgba(241,223,168,.5) 5px, transparent 8px); }
 .cs-bg.royal::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: linear-gradient(180deg, transparent, rgba(0,0,0,.4)), repeating-linear-gradient(45deg, #141216 0 28px, #1a171c 28px 56px); opacity: .7; }
-.cs-portrait.royal-frame { border-color: #c9a961; box-shadow: 0 0 0 3px #0b0a0c, 0 0 0 4px #8a6a2e, 0 0 24px rgba(201,169,97,.4); }
 .gold-drop { position: fixed; top: -5vh; z-index: 79; pointer-events: none; animation: goldDrop 2.2s ease-in both; text-shadow: 0 0 8px rgba(241,223,168,.8); }
 @keyframes goldDrop { from { transform: translateY(0) rotate(0); opacity: 1; } to { transform: translateY(110vh) rotate(360deg); opacity: .2; } }
 .balance.gold-flash { animation: goldFlash .8s ease both; }
@@ -2884,42 +3001,20 @@ CsSets.define('royal', {
 </script>
 
 <script id="cutscene-engine">
-/* ================= CUTSCENE – Visual-Novel-Engine ================= */
+/* ================= CUTSCENE – Bühnen-Engine: Kulissen, Figuren, Sprechblase, Regie ================= */
 const Cutscene = {
   active: false,
+  instant: false,           // Dev/Tests: keine Laufwege, kein Tippen, keine Wartezeiten (wie prefers-reduced-motion)
   SKIP: Symbol('skip'),
-  CAST: {
-    wirt: { name: 'Der Wirt', emoji: '🍺', color: 'var(--neon-amber)' },
-    chantal: { name: 'Chantal-Monique', emoji: '💅', color: 'var(--neon-pink)' },
-    vito: { name: 'Don Vito', emoji: '🕶️', color: 'var(--neon-red)' },
-    igor: { name: 'Igor', emoji: '🐻', color: 'var(--neon-blue)' },
-    doc: { name: 'Der Doc', emoji: '🥼', color: '#5fe0d0' },
-    krause: { name: 'Herr Krause', emoji: '👔', color: 'var(--neon-blue)' },
-    makler: { name: 'Der Makler', emoji: '🧑‍💼', color: 'var(--gold-2)' },
-    schmalz: { name: 'Dr. Schmalz', emoji: '⚖️', color: '#c0c0c0' },
-    kevin: { name: 'Kevin', emoji: '🧢', color: 'var(--neon-purple)' },
-    postmeister: { name: 'Der Postmeister', emoji: '📬', color: 'var(--day)' },
-    verkaeufer: { name: 'Der Verkäufer', emoji: '🤵', color: '#cfd8e3' },
-    du: { name: 'Du', emoji: '🤠', color: '#ffffff' },
-    raeuber: { name: 'Der Räuber', emoji: '🥷', color: 'var(--neon-red)' },
-    sylvie: { name: 'Madame Sylvie', emoji: '🎩', color: '#e8d5a3' },
-    insider: { name: 'Der Insider', emoji: '🕵️', color: 'var(--neon-blue)' },
-    anabi: { name: 'Anabi Stash', emoji: '🕶️', color: '#d4af37' },
-    stumme: { name: 'Der Stumme', emoji: '🃏', color: '#8a8a8a' },
-    kessler: { name: 'Kessler', emoji: '🚬', color: 'var(--neon-red)' },
-    brandt: { name: 'Kommissar Brandt', emoji: '👮', color: 'var(--neon-blue)' },
-    kowalski: { name: 'Kowalski', emoji: '🔧', color: '#b8a070' },
-  },
-  PROPS: {
-    bar: ['🍾', '🪑'], hinterzimmer: ['🕯️', '🚬'], standesamt: ['💐', '🔔'], villa: ['🏙️', '🌙'], hafen: ['🏗️', '🌙'],
-    'hafen-morgen': ['🏗️', '🌅'], klinik: ['🩺', '💡'], bank: ['🏧', '🪴'], strasse: ['🏠', '🚗'], keller: ['💡', '🪑'],
-    autohaus: ['🚗', '🪴'], intersport: ['👟', '🏷️'], gasse: ['🗑️', '🌙'],
-    bahnhof: ['🚉', '🌙'], pfandleihe: ['🔫', '🏷️'],
-  },
+  CAST: CsCast.CAST,
+  SETS: CsSets.SETS,
   SCENES: {},
+  WALK_MS: 600,
+  SLOT_X: { left: 0.18, mid: 0.5, right: 0.82, far: 0.5 },
   define(id, panels) { this.SCENES[id] = panels; },
   bind(eventName, sceneId) { Bus.on(eventName, (ctx) => this.play(sceneId, ctx)); },
   fill(text, ctx) { return text.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in ctx ? String(ctx[k]) : `{{${k}}}`)); },
+  quick() { return this.instant || matchMedia('(prefers-reduced-motion: reduce)').matches; },
   async play(id, ctx = {}) {
     const def = this.SCENES[id];
     if (!def) { console.warn('[cutscene] Szene fehlt:', id); return undefined; }
@@ -2932,28 +3027,33 @@ const Cutscene = {
     root.innerHTML = '';
     const els = {
       root,
-      bg: h('div', { class: 'cs-bg' }),
-      flash: h('div', { class: 'cs-flash' }),
-      black: h('div', { class: 'cs-black' }),
+      world: h('div', { class: 'cs-world' }),
+      sky: h('div', { class: 'cs-sky' }), back: h('div', { class: 'cs-back' }), floor: h('div', { class: 'cs-floor' }),
+      actors: h('div', { class: 'cs-actors' }), front: h('div', { class: 'cs-front' }),
+      flash: h('div', { class: 'cs-flash' }), black: h('div', { class: 'cs-black' }),
+      shout: h('div', { class: 'cs-shout' }),
+      bubble: h('div', { class: 'cs-bubble' }),
+      name: h('div', { class: 'cs-name' }), text: h('div', { class: 'cs-text' }), next: h('div', { class: 'cs-next' }, '▼'),
       money: h('div', { class: 'cs-money money-live' }, UI.fmt(UI.shownBalance)),
-      portrait: h('div', { class: 'cs-portrait' }),
-      name: h('div', { class: 'cs-name' }),
-      text: h('div', { class: 'cs-text' }),
-      extra: h('div', { class: 'cs-extra' }),
-      choices: h('div', { class: 'cs-choices' }),
-      next: h('div', { class: 'cs-next' }, '▼'),
+      extra: h('div', { class: 'cs-extra' }), choices: h('div', { class: 'cs-choices' }),
       skip: h('button', { class: 'cs-skip' }, 'Überspringen ⏭'),
+      figs: new Map(), bg: null, look: {}, parts: CsCast.duParts(State.s), skipping: false,
     };
-    els.box = h('div', { class: 'cs-box' }, els.name, els.text, els.extra, els.choices, els.next);
-    root.append(els.bg, els.flash, els.black, els.money, els.skip, h('div', { class: 'cs-stage' }, els.portrait, els.box));
+    els.bubble.append(els.name, els.text, els.next); els.bubble.hidden = true;
+    els.world.append(els.sky, els.back, els.floor, els.actors, els.front);
+    els.bar = h('div', { class: 'cs-bar' }, els.money, h('div', { class: 'cs-bar-mid' }, els.extra, els.choices), els.skip);
+    root.append(els.world, els.flash, els.black, els.shout, els.bubble, els.bar);
+    root.classList.toggle('cs-instant', this.quick());
     root.hidden = false;
+    const plan = CsDirector.stagePlan(panels);
     let result;
     for (let i = 0; i < panels.length; i++) {
       const isLast = i === panels.length - 1;
-      const r = await this._panel(els, panels[i], ctx, isLast);
+      const r = await this._panel(els, panels[i], plan[i], ctx, isLast);
       if (r === this.SKIP) {
         for (let j = i + 1; j < panels.length - 1; j++) this._fx(els, panels[j].fx, ctx, true);
-        i = panels.length - 2; // nächster Durchlauf zeigt das letzte Panel
+        els.skipping = true; root.classList.add('cs-instant'); els.world.style.transform = ''; // letztes Panel ohne Laufwege in den Endzustand, Kamera zurück
+        i = panels.length - 2;
         continue;
       }
       if (r !== undefined) result = r;
@@ -2966,32 +3066,104 @@ const Cutscene = {
     UI.renderWallet();
     return result;
   },
-  _panel(els, p, ctx, isLast) {
+  offX(side, W) { return side === 'left' ? -0.3 * W : 1.3 * W; },
+  /* Kulisse, Figuren und Kamera eines Panels setzen; liefert die Sprecher-Figur oder null (leere Bühne / Erzähler) */
+  _stage(els, p, plan, instant) {
+    const W = els.actors.clientWidth, H = els.actors.clientHeight;
+    if (plan.bg !== els.bg) {
+      const known = !!this.SETS[plan.bg], set = this.SETS[known ? plan.bg : 'bar'];
+      els.sky.className = `cs-sky ${known ? plan.bg : 'bar'}`;
+      els.back.innerHTML = set.back(); els.front.innerHTML = set.front();
+      if (els.bg !== null && !instant) { els.world.classList.remove('cs-fade'); void els.world.offsetWidth; els.world.classList.add('cs-fade'); }
+      els.bg = plan.bg;
+    }
+    if (p.look) for (const [who, l] of Object.entries(p.look)) els.look[who] = Object.assign({}, els.look[who], l);
+    for (const who of plan.exit) {
+      const f = els.figs.get(who); if (!f) continue;
+      els.figs.delete(who);
+      f.el.classList.add('walking'); f.el.classList.remove('speaking'); f.el.dataset.pose = 'walk';
+      f.el.style.setProperty('--x', `${this.offX(CsDirector.side(who), W)}px`);
+      if (instant || plan.bgChange) f.el.remove(); else setTimeout(() => f.el.remove(), this.WALK_MS); // beim Kulissenwechsel deckt die Überblendung den Abgang
+    }
+    for (const [who, f] of [...els.figs]) if (!plan.cast.some((c) => c.who === who)) { els.figs.delete(who); f.el.remove(); } // nach Skip/Kulissenwechsel: nur die geplante Besetzung bleibt
+    let speaker = null;
+    for (const c of plan.cast) {
+      let f = els.figs.get(c.who);
+      const entering = plan.enter.find((e) => e.who === c.who);
+      if (!f) {
+        f = { who: c.who, el: h('div', { class: 'cs-fig' }), key: null };
+        els.figs.set(c.who, f); els.actors.append(f.el);
+        f.el.style.setProperty('--x', `${this.offX(entering ? entering.from : CsDirector.side(c.who), W)}px`);
+        if (!instant) void f.el.offsetWidth; // Startposition festschreiben, sonst gibt es keinen Weg zu animieren
+      }
+      const look = els.look[c.who] || {};
+      const key = `${c.mood}|${look.hurt || ''}`;
+      if (f.key !== key) { f.el.innerHTML = CsCast.figureHtml(c.who, { mood: c.mood, parts: c.who === 'du' ? els.parts : null, hurt: look.hurt }); f.key = key; }
+      f.el.style.setProperty('--x', `${this.SLOT_X[c.slot] * W}px`);
+      f.el.style.setProperty('--face', String(c.facing));
+      f.el.classList.toggle('far', c.slot === 'far');
+      const walking = !!entering && !instant;
+      f.el.classList.toggle('walking', walking);
+      if (walking) setTimeout(() => f.el.classList.remove('walking'), this.WALK_MS);
+      f.el.dataset.pose = walking ? 'walk' : c.pose;
+      if (walking) setTimeout(() => { if (f.el.isConnected) f.el.dataset.pose = c.pose; }, this.WALK_MS);
+      f.el.classList.toggle('speaking', c.who === plan.speaker);
+      if (c.who === plan.speaker) speaker = f;
+    }
+    if (plan.cam === 'shake') UI.shake(els.world);
+    else if (plan.cam === 'wide') els.world.style.transform = '';
+    else if (plan.cam === 'close' && speaker) {
+      const slot = plan.cast.find((c) => c.who === speaker.who).slot;
+      els.world.style.transformOrigin = `${this.SLOT_X[slot] * W}px ${H * (slot === 'far' ? 0.35 : 0.45)}px`;
+      els.world.style.transform = 'scale(1.8)';
+    }
+    return speaker;
+  },
+  /* Kopfposition einer Figur relativ zur Bühne – einmal pro Panel gemessen, nie pro Frame */
+  _headAt(els, fig) {
+    const R = els.root.getBoundingClientRect(), head = qs('.head', fig.el).getBoundingClientRect();
+    return { x: head.left + head.width / 2 - R.left, y: head.top - R.top, W: R.width };
+  },
+  /* Blase über dem Sprecher; ohne Sprecher (leere Bühne) als Erzähler-Blase oben mittig */
+  _placeBubble(els, speaker, full) {
+    const b = els.bubble;
+    b.hidden = false; b.style.width = ''; b.style.minHeight = '';
+    b.classList.toggle('narrator', !speaker);
+    els.text.textContent = full;                       // volle Größe messen, dann wieder leeren und tippen
+    const bw = b.offsetWidth, bh = b.offsetHeight;
+    b.style.width = `${bw}px`; b.style.minHeight = `${bh}px`;
+    if (!speaker) { b.style.left = `${Math.round((els.root.clientWidth - bw) / 2)}px`; b.style.top = '12%'; return; }
+    const hd = this._headAt(els, speaker);
+    const left = Math.max(8, Math.min(hd.W - bw - 8, Math.round(hd.x - bw / 2)));
+    b.style.left = `${left}px`; b.style.top = `${Math.max(8, Math.round(hd.y - bh - 18))}px`;
+    b.style.setProperty('--tail', `${Math.round(Math.max(18, Math.min(bw - 18, hd.x - left)))}px`);
+  },
+  _shout(els, speaker, text) {
+    const s = els.shout; s.textContent = text;
+    if (speaker) { const hd = this._headAt(els, speaker); s.style.left = `${Math.round(hd.x)}px`; s.style.top = `${Math.round(hd.y)}px`; }
+    else { s.style.left = '50%'; s.style.top = '40%'; }
+    s.classList.remove('on'); void s.offsetWidth; s.classList.add('on');
+  },
+  _panel(els, p, plan, ctx, isLast) {
     return new Promise((resolve) => {
       const who = this.CAST[p.who] || this.CAST.du;
-      els.bg.className = `cs-bg ${p.bg || 'bar'}`;
-      els.bg.innerHTML = '';
-      (this.PROPS[p.bg] || []).forEach((e, i) => els.bg.append(h('span', { class: 'prop', style: `left:${i ? 78 : 12}%; top:${i ? 22 : 30}%` }, e)));
-      els.portrait.className = `cs-portrait ${p.mood || 'calm'}`;
-      els.portrait.classList.toggle('royal-frame', p.bg === 'royal' || p.who === 'sylvie');
-      els.portrait.textContent = who.emoji;
-      els.portrait.style.setProperty('--c', who.color);
-      els.box.style.setProperty('--c', who.color);
-      els.name.textContent = who.name;
-      els.choices.innerHTML = '';
-      els.extra.innerHTML = '';
-      els.next.style.visibility = 'hidden';
+      const instant = this.quick() || els.skipping;
+      els.bubble.hidden = true; els.choices.innerHTML = ''; els.extra.innerHTML = ''; els.next.style.visibility = 'hidden';
       els.skip.style.display = isLast ? 'none' : '';
+      els.name.textContent = who.name; els.bubble.style.setProperty('--c', who.color); // Sprecher sofort bekannt (Blase erscheint nach dem Auftritt)
+      const speaker = this._stage(els, p, plan, instant);
+      const moving = plan.enter.length > 0 || plan.exit.length > 0 || plan.cam === 'close' || plan.cam === 'wide';
       this._fx(els, p.fx, ctx, false);
+      if (p.sfx) SFX.play(p.sfx);
       const full = this.fill(p.text || '', ctx);
-      let typing = true, pos = 0, timer = null;
+      let typing = false, started = false, finished = false, showAll = false, pos = 0, timer = null, skipWait = null;
+      const waitOr = (ms) => new Promise((r) => { if (!ms || instant) return r(); skipWait = r; setTimeout(r, ms); });
       const renderChoices = () => {
-        for (const c of p.choices) {
-          els.choices.append(h('button', { class: 'btn ' + (c.cls || ''), onclick: (e) => { e.stopPropagation(); SFX.play('click'); done(c.value); } }, c.label));
-        }
+        for (const c of p.choices) els.choices.append(h('button', { class: 'btn ' + (c.cls || ''), onclick: (e) => { e.stopPropagation(); SFX.play('click'); done(c.value); } }, c.label));
       };
       const finish = () => {
         typing = false; clearTimeout(timer); els.text.textContent = full;
+        if (speaker) speaker.el.classList.remove('talking');
         if (p.choices) renderChoices(); else els.next.style.visibility = 'visible';
       };
       const tick = () => {
@@ -3005,16 +3177,29 @@ const Cutscene = {
       };
       const onClick = (e) => {
         if (e.target.closest('.cs-choices') || e.target.closest('.cs-skip')) return;
+        if (!started) { showAll = true; if (skipWait) skipWait(); return; }   // Klick während Auftritt/Pause: Weg abkürzen, Text komplett zeigen (wie Klick ins Tippen)
         if (typing) finish(); else if (!p.choices) done(undefined);
       };
       const onKey = (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onClick({ target: els.text }); } };
       const onSkip = (e) => { e.stopPropagation(); done(this.SKIP); };
       const cleanup = () => { typing = false; clearTimeout(timer); els.root.removeEventListener('click', onClick); document.removeEventListener('keydown', onKey); els.skip.removeEventListener('click', onSkip); };
-      const done = (v) => { cleanup(); resolve(v); };
+      const done = (v) => { if (finished) return; finished = true; cleanup(); resolve(v); };
       els.root.addEventListener('click', onClick);
       document.addEventListener('keydown', onKey);
       els.skip.addEventListener('click', onSkip);
-      if (matchMedia('(prefers-reduced-motion: reduce)').matches) finish(); else tick();
+      (async () => {
+        await waitOr(moving ? this.WALK_MS : 0);
+        if (finished) return;
+        await waitOr(p.pause || 0);
+        if (finished) return;
+        if (p.shout) this._shout(els, speaker, p.shout);
+        this._placeBubble(els, speaker, full);
+        started = true;
+        if (instant || showAll) { finish(); return; }
+        typing = true; els.text.textContent = '';
+        if (speaker) speaker.el.classList.add('talking');
+        tick();
+      })();
     });
   },
   _fx(els, fx, ctx, instant) {
@@ -11453,8 +11638,8 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
   });
   if (typeof document !== 'undefined') T.test('Cutscene.CAST: Story-3-Figuren und Hintergründe', () => {
     for (const id of ['anabi', 'stumme', 'kessler', 'brandt', 'kowalski']) T.ok(Cutscene.CAST[id] && Cutscene.CAST[id].name, `Figur ${id}`);
-    T.ok(Cutscene.PROPS.bahnhof && Cutscene.PROPS.pfandleihe, 'Props');
-    const probe = document.createElement('div'); probe.className = 'cs-bg bahnhof'; document.body.append(probe);
+    T.ok(Cutscene.SETS.bahnhof && Cutscene.SETS.pfandleihe, 'Kulissen');
+    const probe = document.createElement('div'); probe.className = 'cs-sky bahnhof'; document.body.append(probe);
     try { T.ok(getComputedStyle(probe).backgroundImage !== 'none', 'Hintergrund bahnhof hat CSS'); } finally { probe.remove(); }
   });
   if (typeof document !== 'undefined') T.test('Story.hudNotes: Zahl-Max, Geld ohne Max, Geld mit Funktions-Max', () => {
@@ -11747,6 +11932,63 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     }
     const base = keyframesOf('hitBase'); T.ok(base, '@keyframes hitBase vorhanden');
     const vals = new Set([...base.cssRules].map((k) => k.style.boxShadow)); T.eq(vals.size, 1, 'hitBase ist konstant (kein Repaint)');
+  });
+  T.test('Cutscene-Bühne: Figuren, eine Blase am Sprecher, Regie, Skip-Endzustand', async () => {
+    const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
+    State.save = () => {}; State.s = State.fresh(); State.s.beers = 3; State.s.beerTimer = 2;
+    Cutscene.instant = true;
+    Cutscene.define('test.buehne', [
+      { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Eins.' },
+      { bg: 'bar', who: 'vito', mood: 'angry', text: 'Zwei.', cam: 'close', shout: 'HEY!' },
+      { bg: 'keller', who: 'du', mood: 'happy', text: 'Drei.', enter: 'igor', pose: { who: 'igor', pose: 'arms-crossed' }, look: { du: { hurt: 'pflaster' } } },
+      { bg: 'keller', who: 'du', mood: 'calm', text: 'Vier.', cast: [], choices: [{ label: 'Ok', value: 'ok' }] },
+    ]);
+    try {
+      const done = Cutscene.play('test.buehne', {});
+      await wait(40);
+      const root = qs('#cutscene');
+      T.eq(qsa('.cs-fig', root).length, 2, 'du + wirt');
+      T.eq(qsa('.cs-bubble:not([hidden])', root).length, 1, 'genau eine Blase');
+      T.ok(qs('.cs-fig.speaking .cs-fig-inner.mood-calm', root), 'Sprecher wirt mit Stimmung');
+      T.eq(qsa('.cs-fig.speaking svg.part', root).length, 8, 'acht Teil-SVGs');
+      T.eq(qs('.cs-name', root).textContent, 'Der Wirt');
+      T.ok(qs('.cs-sky', root).classList.contains('bar'), 'Kulisse bar');
+      T.ok(qs('.cs-back svg.cs-set', root), 'Kulissen-SVG');
+      T.ok(qs('.cs-fig:not(.speaking) circle[fill="#ff6b6b"]', root), 'Bier → rote Wangen bei du');
+      T.ok(qs('.cs-fig:not(.speaking) .cs-fig-inner.sway', root), '3 Bier → Schwanken');
+      T.ok(parseFloat(qs('.cs-bubble', root).style.top) >= 0 && qs('.cs-bubble', root).style.width, 'Blase platziert');
+      root.click(); await wait(40);
+      T.eq(qsa('.cs-fig', root).length, 3, 'vito dazu');
+      T.eq(qs('.cs-fig.speaking', root).dataset.pose, 'point', 'angry → point');
+      T.ok(/scale/.test(qs('.cs-world', root).style.transform), 'Kamera close');
+      T.eq(qs('.cs-shout', root).textContent, 'HEY!');
+      qs('.cs-skip', root).click(); await wait(40);
+      T.ok(qs('.cs-sky', root).classList.contains('keller'), 'Skip → letzte Kulisse');
+      T.eq(qsa('.cs-fig', root).length, 0, 'cast: [] → leere Bühne');
+      T.ok(qs('.cs-bubble', root).classList.contains('narrator'), 'Erzähler-Blase');
+      T.eq(qs('.cs-world', root).style.transform, '', 'Kamera zurück');
+      T.eq(qsa('.cs-choices .btn', root).length, 1, 'Wahl im Streifen');
+      T.ok(document.documentElement.scrollWidth <= window.innerWidth, 'keine Überbreite');
+      qs('.cs-choices .btn', root).click();
+      T.eq(await done, 'ok', 'Wahlwert');
+      T.ok(root.hidden, 'Overlay zu');
+      /* Regie-Ausführung ohne Skip: Kulissenwechsel, Auftritt, Pflaster, Pose-Override */
+      const done2 = Cutscene.play('test.buehne', {});
+      await wait(40); root.click(); await wait(40); root.click(); await wait(40);
+      T.eq(qsa('.cs-fig', root).length, 2, 'Kulissenwechsel: du + igor');
+      T.eq(qs('.cs-fig:not(.speaking)', root).dataset.pose, 'arms-crossed', 'pose-Override');
+      T.ok(qs('.cs-fig.speaking rect[fill="#e8c8a0"]', root), 'look.hurt → Pflaster');
+      qs('.cs-skip', root).click(); await wait(40); qs('.cs-choices .btn', root).click(); await done2;
+      T.ok(!Cutscene.active && !document.body.classList.contains('cs-open'), 'Szene sauber beendet');
+    } finally { Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.buehne']; }
+  });
+  T.test('Cutscene-Keyframes (cs*) animieren nur transform oder opacity', () => {
+    let n = 0;
+    for (const sheet of document.styleSheets) {
+      let rules; try { rules = sheet.cssRules; } catch (e) { continue; }
+      for (const r of rules) if (r.type === CSSRule.KEYFRAMES_RULE && /^cs[A-Z]/.test(r.name)) { n++; for (const p of animatedProps(r)) T.ok(p === 'transform' || p === 'opacity', `${r.name}: ${p}`); }
+    }
+    T.ok(n >= 25, `${n} cs-Keyframes gefunden`);
   });
   const pseudoAnim = (el, pseudo) => getComputedStyle(el, pseudo).animationName;
   T.test('Glücksrad: Rad in Clip-Wrapper (contain: paint), Geometrie unverändert, Zeiger/Lichter/Nabe außerhalb, Glow per ::after', async () => {
