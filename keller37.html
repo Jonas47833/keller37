@@ -12048,6 +12048,9 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     const base = keyframesOf('hitBase'); T.ok(base, '@keyframes hitBase vorhanden');
     const vals = new Set([...base.cssRules].map((k) => k.style.boxShadow)); T.eq(vals.size, 1, 'hitBase ist konstant (kein Repaint)');
   });
+  /* Fällt eine Assertion mitten in einer Szene, bliebe Cutscene.active sonst hängen (der nächste Test mit Cutscene.play würde
+     ewig warten) – im finally notfalls hart zurücksetzen, wie play() es am Ende auch täte. */
+  const csHardReset = () => { if (Cutscene.active) { const root = qs('#cutscene'); root.hidden = true; root.innerHTML = ''; Cutscene.active = false; document.body.classList.remove('cs-open'); } };
   T.test('Cutscene-Bühne: Figuren, eine Blase am Sprecher, Regie, Skip-Endzustand', async () => {
     const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
     State.save = () => {}; State.s = State.fresh(); State.s.beers = 3; State.s.beerTimer = 2;
@@ -12095,7 +12098,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.ok(qs('.cs-fig.speaking rect[fill="#e8c8a0"]', root), 'look.hurt → Pflaster');
       qs('.cs-skip', root).click(); await wait(40); qs('.cs-choices .btn', root).click(); await done2;
       T.ok(!Cutscene.active && !document.body.classList.contains('cs-open'), 'Szene sauber beendet');
-    } finally { Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.buehne']; }
+    } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.buehne']; }
   });
   T.test('Cutscene-Bühne: Klick während Auftritt/Kamerafahrt beendet Weg und Zoom sofort – Blase am Endpunkt', async () => {
     const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
@@ -12127,7 +12130,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.ok(Math.abs(now.left - ref.left) <= 2 && Math.abs(now.top - ref.top) <= 2, `Blase am Endpunkt (${now.left}|${now.top} vs ${ref.left}|${ref.top})`);
       root.click(); await done2;
       T.ok(!Cutscene.active, 'Szene beendet');
-    } finally { Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.snap']; }
+    } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.snap']; }
   });
   T.test('Cutscene-Kamera close: Zoom zielt auf den gemessenen Kopf – auch liegend und schon gezoomt', async () => {
     const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
@@ -12186,7 +12189,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.ok(bl >= 0 && bl + bb.offsetWidth <= R.width + 1 && parseFloat(bb.style.top) >= 0, 'Schwankend: Blase im Rahmen');
       root.click(); await done2;
       T.ok(!Cutscene.active, 'Schwank-Szene beendet');
-    } finally { Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.cam']; delete Cutscene.SCENES['test.camsway']; }
+    } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.cam']; delete Cutscene.SCENES['test.camsway']; }
   });
   T.test('Cutscene-Kamera close in Echtzeit: Kopf aus der Zielpose berechnet, wide zoomt erst nach dem Rückzug', async () => {
     const keep = { s: State.s, save: State.save, instant: Cutscene.instant };
@@ -12221,12 +12224,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       root.click(); await wait(40);
       root.click(); await done;
       T.ok(!Cutscene.active, 'Szene beendet');
-    } finally {
-      // Fällt eine Assertion mitten in der Szene, bliebe Cutscene.active sonst hängen (nächster Test mit
-      // Cutscene.play würde ewig warten) – hier notfalls hart zurücksetzen, wie play() es am Ende auch täte.
-      if (Cutscene.active) { root.hidden = true; root.innerHTML = ''; Cutscene.active = false; document.body.classList.remove('cs-open'); }
-      Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.camlive'];
-    }
+    } finally { csHardReset(); Cutscene.instant = keep.instant; State.s = keep.s; State.save = keep.save; delete Cutscene.SCENES['test.camlive']; }
   });
   T.test('Cutscene-Keyframes (cs*) animieren nur transform oder opacity', () => {
     let n = 0;
