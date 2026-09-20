@@ -12137,14 +12137,13 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       const hd1 = Cutscene._headAt({ root }, { el: duFig, pose: 'down' });
       T.ok(Math.abs(hd1.x - ox1) <= 3 && Math.abs(hd1.cy - oy1) <= 3, `Panel 1: Origin = berechneter Kopf (${hd1.x.toFixed(1)}|${hd1.cy.toFixed(1)} vs ${ox1}|${oy1})`);
       root.click(); await wait(40);  // 1. Klick: Text sofort komplett (Zoom-Warten abgekürzt)
-      root.click(); await wait(40);  // 2. Klick: weiter zu Panel 2
-      await wait(Cutscene.WALK_MS + 100);
-      T.eq(world.style.transform, '', 'Panel 2: wide zurückgezoomt');
-      const wirtFig = qs('.cs-fig.speaking', root);
-      const hd2 = Cutscene._headAt({ root }, { el: wirtFig, pose: wirtFig.dataset.pose });
-      const b = qs('.cs-bubble', root);
-      const left = parseFloat(b.style.left), tail = parseFloat(b.style.getPropertyValue('--tail'));
-      T.ok(Math.abs(left + tail - hd2.x) <= 4, `Panel 2: Blase zeigt auf den Kopf (${left} + ${tail} vs ${hd2.x.toFixed(1)})`);
+      root.click(); await wait(10);  // 2. Klick: weiter zu Panel 2
+      // Strukturprüfung statt Pixel-Vergleich (CSS-Transitions laufen im Headless-Harness mit virtueller Zeit nicht
+      // sichtbar weiter, siehe Bericht): "wide" muss SOFORT (synchron in _stage) zurückgesetzt sein, nicht erst nach
+      // dem Auftritt – die Figuren laufen zu diesem Zeitpunkt noch ein.
+      T.eq(world.style.transform, '', 'Panel 2: wide sofort zurückgesetzt – nicht erst nach dem Auftritt');
+      T.ok(qsa('.cs-fig.walking', root).length >= 1, 'Panel 2: Auftritt läuft noch, während schon zurückgezoomt ist');
+      root.click(); await wait(40);
       root.click(); await done;
       T.ok(!Cutscene.active, 'Szene beendet');
     } finally {
