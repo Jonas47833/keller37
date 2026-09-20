@@ -5262,6 +5262,7 @@ const Achievements = {
     { id: 'strassenkaempfer', title: 'Straßenkämpfer', icon: '🥊', desc: 'Fünf Räuber verprügelt.' },
     { id: 'vollausgestattet', title: 'Vollausgestattet', icon: '🏁', desc: 'Top-Auto und Carbon-Sprinter.' },
     { id: 'royalHigh', title: 'High Roller', icon: '🎩', desc: 'Einzelgewinn von 5.000 € im Casino Royal.' },
+    { id: 'fullhouse', title: 'Full House', icon: '🏠', desc: 'Mit Full House oder besser den Showdown gewonnen.' },
     { id: 'fuenfSiebener', title: 'Fünf Siebener', icon: '7️⃣', desc: 'Fünf 7️⃣ auf einer Linie bei Mega Seven.' },
     { id: 'gegenDieWand', title: 'Gegen die Wand', icon: '🎡', desc: 'Bankrott am Glücksrad mit 5.000 € Einsatz.' },
     { id: 'natural', title: 'Natural', icon: '🂡', desc: 'Fünf Naturals in einer Sitzung am Tisch im Hinterzimmer.' },
@@ -5320,6 +5321,7 @@ Bus.on('spin:before', ({ bet }) => { if (bet >= 500) Achievements.unlock('highRo
 Bus.on('slots:result', ({ res }) => { if (res.every((s) => s === '7️⃣')) Achievements.unlock('jackpot'); });
 Bus.on('roulette:result', ({ hits }) => { if ((hits || []).some((x) => x.win && x.bet.type === 'number')) Achievements.unlock('plein'); });
 Bus.on('rr:result', ({ victim }) => { if (victim === 'igor') Achievements.unlock('igor'); });
+Bus.on('poker:result', ({ outcome, showdown, player }) => { if (showdown && outcome === 'win' && player.rank >= 6) Achievements.unlock('fullhouse'); });
 Bus.on('beer', ({ beers }) => { if (beers >= 3) Achievements.unlock('regular'); });
 Bus.on('kidney.sold', () => Achievements.unlock('donor'));
 Bus.on('house.bought', () => Achievements.unlock('owner'));
@@ -6384,7 +6386,7 @@ const DevRules = {
     for (const list of Object.values(story.jobEffects || {})) effs(list);
     return [...out].sort();
   },
-  KELLER_SCREENS: ['hub', 'roulette', 'slots', 'horses', 'russian', 'blackjack', 'hinterzimmer', 'postman', 'finance', 'invest', 'life', 'skills'],
+  KELLER_SCREENS: ['hub', 'roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker', 'hinterzimmer', 'postman', 'finance', 'invest', 'life', 'skills'],
   ROYAL_SCREENS: ['royal', 'megaslots', 'craps', 'wheel'],
   STORY_SCREENS: ['jobs', 'vito'],
   groupScreens(ids) {
@@ -6536,7 +6538,7 @@ const Stories = {
 };
 
 const Story = {
-  DOORS: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'postman', 'hinterzimmer'],
+  DOORS: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker', 'postman', 'hinterzimmer'],
   ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'], royal: ['royal'], megaslots: ['royal'], craps: ['royal'], wheel: ['royal'] },
   story: null,
   allowOnce: null,
@@ -7750,9 +7752,9 @@ const STORY_SCHULD = {
   },
   chapters: [
     { id: 'k1', title: 'Der Zettel', when: { day: { gte: 1 } } },
-    { id: 'k2', title: 'Kleine Fische', when: { day: { gte: 6 } }, intro: 'schuld.k2', unlock: { jobs: ['kurier', 'praktikant', 'taxi'], doors: ['roulette', 'blackjack', 'russian'], rooms: ['bank'] } },
+    { id: 'k2', title: 'Kleine Fische', when: { day: { gte: 6 } }, intro: 'schuld.k2', unlock: { jobs: ['kurier', 'praktikant', 'taxi'], doors: ['roulette', 'blackjack', 'russian', 'poker'], rooms: ['bank'] } },
     { id: 'k3', title: 'Die Tür', when: { day: { gte: 13 } }, intro: 'schuld.k3', unlock: { jobs: ['docassi'], rooms: ['invest'] } },
-    { id: 'k4', title: 'Abrechnung', when: { day: { gte: 21 } }, intro: 'schuld.k4', unlock: { doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack'] } },
+    { id: 'k4', title: 'Abrechnung', when: { day: { gte: 21 } }, intro: 'schuld.k4', unlock: { doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker'] } },
   ],
   events: [
     { id: 'chantal3', when: { day: { eq: 3 } }, once: true, at: 'night', scene: 'schuld.chantal3', effects: [{ flag: 'chantalKennt' }] },
@@ -7817,7 +7819,7 @@ const STORY_KATER = {
   hudRender: 'kater',
   start: {
     balance: 2000,
-    unlocked: { jobs: ['filialleiter'], doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack'], rooms: ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal'] },
+    unlocked: { jobs: ['filialleiter'], doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker'], rooms: ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal'] },
     vars: { pegel: 0, leber: 100, deckel: 0, bierHeute: 0, brownieHeute: 0, docNein: 0 },
   },
   varMax: { pegel: 3, leber: 100 },
@@ -8083,7 +8085,7 @@ const STORY_STASH = {
   lockText: '„Der Kater“ endete im Bett beim Doc. Wer tot ist, wäscht nichts mehr.',
   start: {
     balance: 5000,
-    unlocked: { jobs: ['eintreiber'], doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack'], rooms: ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal'] },
+    unlocked: { jobs: ['eintreiber'], doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker'], rooms: ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal'] },
     vars: { woche: 0, umsatz: 0, umsatzRoyal: 0, umsatzHinterzimmer: 0, umsatzTotal: 0, ziel: 0, rueckgabe: 0, lieferung: 0, zorn: 0, kredit: 0, belege: 0, belegeOffen: 0, uebergeben: 0, ruf: 0, igorBiere: 0, eintreiberWoche: 0, abrechnungenOk: 0, ausgang: 0, anabiErfaehrt: 0 },
   },
   varMax: { zorn: 3 },
@@ -9185,6 +9187,12 @@ T.test('PokerRules.luckOverride: Glück zieht bei Nicht-Verbesserung neu, Pech b
   T.eq(PokerRules.luckOverride(muell, paar, drawFn, -100, seq(0.5)), neu, 'Verbesserung + Pech → Neuzug'); T.eq(calls, 2);
   T.eq(PokerRules.luckOverride(muell, muell, drawFn, 0, seq(0.0)), null, 'ohne Glück nie'); T.eq(calls, 2);
   T.eq(PokerRules.luckOverride(muell, muell, drawFn, 20, seq(0.5)), null, 'Glück 20 bei rng 0,5 → kein Neuzug');
+});
+
+T.test('Story.DOORS und Story 1 Kapitel 2/4 enthalten poker', () => {
+  T.ok(STORY_SCHULD.chapters.find((c) => c.id === 'k2').unlock.doors.includes('poker'));
+  T.ok(STORY_SCHULD.chapters.find((c) => c.id === 'k4').unlock.doors.includes('poker'));
+  T.ok(DevRules.KELLER_SCREENS.includes('poker'));
 });
 
 T.test('bjDelta', () => {
@@ -10417,7 +10425,7 @@ T.test('STORY_KATER: Start – Flitterwochen', () => {
   const s = katerState();
   T.eq(s.story.vars, { pegel: 0, leber: 100, deckel: 0, bierHeute: 0, brownieHeute: 0, docNein: 0 });
   T.eq(s.story.unlocked.jobs, ['filialleiter']);
-  T.eq(s.story.unlocked.doors, ['roulette', 'slots', 'horses', 'russian', 'blackjack']);
+  T.eq(s.story.unlocked.doors, ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker']);
   T.eq(s.story.unlocked.rooms, ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal']);
   T.eq(s.story.prices, { brownie: 1000, therapy: 5000 });
   T.eq(s.story.disabled, ['tinder', 'house', 'dealer']);
@@ -10870,7 +10878,7 @@ T.test('STORY_STASH ist gültig, setzt Der Kater voraus, nicht nach Bett', () =>
 T.test('STORY_STASH: Start, Tag-1-Morgen je Vorgängerende (Kredit, trocken, Brownie), Auto, Hinterzimmer sichtbar', () => {
   const s = stashState();
   T.eq(s.story.unlocked.jobs, ['eintreiber']);
-  T.eq(s.story.unlocked.doors, ['roulette', 'slots', 'horses', 'russian', 'blackjack']);
+  T.eq(s.story.unlocked.doors, ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker']);
   T.eq(s.story.unlocked.rooms, ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal']);
   T.eq(s.story.disabled, ['tinder', 'house', 'dealer', 'brownie']);
   T.eq(s.story.vars.zorn, 0); T.eq(s.story.vars.woche, 0);
