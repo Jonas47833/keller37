@@ -36,7 +36,7 @@ def record(name, ok, detail=""):
 
 
 # Screens im freien Spiel; jobs ist Story-only und wird unten separat geladen
-FREE_SCREENS = ["hub", "slots", "blackjack", "poker", "roulette", "horses", "russian", "postman", "finance", "invest", "life", "stadt", "skills", "royal", "craps", "megaslots", "wheel"]
+FREE_SCREENS = ["hub", "slots", "blackjack", "poker", "roulette", "horses", "russian", "postman", "finance", "invest", "life", "stadt", "skills", "royal", "craps", "megaslots", "wheel", "stud"]
 
 TAP_SELECTORS = [".side-tabs button", ".icon-btn", ".chip", ".bet-bar .btn", ".bet-field button", ".rcell", ".table-bar .btn", ".door", ".side-btn", ".portal", ".facade", "#pkPlayerCards .pcard"]
 
@@ -120,11 +120,11 @@ async def main():
 
         # Zone: Royal-Screens setzen body[data-zone=royal], Keller-Screens keller
         zones = {}
-        for sc in ["hub", "royal", "craps", "megaslots", "wheel", "stadt"]:
+        for sc in ["hub", "royal", "craps", "megaslots", "wheel", "stud", "stadt"]:
             await cdp.navigate(URL + "?fresh&mode=free&screen=" + sc, wait=1.2)
             zones[sc] = await cdp.eval("document.body.dataset.zone", await_promise=False)
         record("zone: Royal-Screens royal, Keller-Screens keller",
-               all(zones[k] == "royal" for k in ["royal", "craps", "megaslots", "wheel"]) and zones["hub"] == "keller" and zones["stadt"] == "keller", zones)
+               all(zones[k] == "royal" for k in ["royal", "craps", "megaslots", "wheel", "stud"]) and zones["hub"] == "keller" and zones["stadt"] == "keller", zones)
 
         # Story: Pinnwand + Tagesleiste
         await cdp.navigate(URL + "?fresh&story=schuld&day=1", wait=2.0)
