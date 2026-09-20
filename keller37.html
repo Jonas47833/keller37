@@ -5426,7 +5426,9 @@ const Stud = {
   async showdown(round) {
     if (this.alive(round.gen)) {
       const cards = qsa('#studDealerCards .pcard.hidden-card', this.root);
-      for (const c of cards) { c.classList.remove('hidden-card'); SFX.play('cardSlide'); await wait(160); }
+      for (const c of cards) { if (!this.alive(round.gen)) break; c.classList.remove('hidden-card'); SFX.play('cardSlide'); await wait(160); }
+    }
+    if (this.alive(round.gen)) {
       qs('#studDealerName', this.root).textContent = StudRules.qualifies(round.dHand) ? PokerRules.evaluate(round.dHand).name : 'qualifiziert sich nicht';
       await wait(400);
     }
