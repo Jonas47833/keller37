@@ -291,6 +291,11 @@ body.cs-open .toast { max-width: 300px; }
 .pcard .back { background: repeating-linear-gradient(45deg, #7a2a2a 0 4px, #5a1a1a 4px 8px); border: 4px solid #fdfaf0; transform: rotateY(180deg); }
 .pcard.bust .face { box-shadow: 0 0 18px 4px rgba(255,59,59,.7); }
 .pcard.bust { animation: bustSlide .6s ease .2s both; }
+/* Poker: Karten zum Tausch markieren */
+#pkPlayerCards .pcard { cursor: pointer; transition: transform .2s; }
+#pkPlayerCards .pcard.picked { transform: translateY(-12px); }
+#pkPlayerCards .pcard.picked .face { box-shadow: 0 0 0 3px var(--gold-2), 0 4px 8px rgba(0,0,0,.6); }
+.pk-note { font-family: var(--font-mono); font-size: .8rem; color: var(--dim); margin-left: 8px; letter-spacing: 0; }
 /* -- Roulette -- */
 .roulette-top { display: flex; gap: 24px; align-items: center; justify-content: center; flex-wrap: wrap; }
 .wheel-box { position: relative; width: 320px; height: 320px; flex: 0 0 auto; }
@@ -1005,6 +1010,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     <div class="door" data-screen="horses" style="--neon: var(--neon-green)"><div class="sign">Rennbahn</div><div class="glyph">🏇</div><div class="chalk-tag">Quote 4.0</div><div class="knob"></div></div>
     <div class="door" data-screen="russian" style="--neon: var(--neon-blue)"><div class="sign">Igor</div><div class="glyph">🔫</div><div class="chalk-tag">Duell · 1 Kugel</div><div class="knob"></div></div>
     <div class="door" data-screen="blackjack" style="--neon: var(--neon-green)"><div class="sign">Black Jack</div><div class="glyph">🃏</div><div class="chalk-tag">bis 21</div><div class="knob"></div></div>
+    <div class="door" data-screen="poker" style="--neon: var(--neon-green)"><div class="sign">Poker</div><div class="glyph">♠️</div><div class="chalk-tag">Draw · gegen den Wirt</div><div class="knob"></div></div>
     <div class="door" data-screen="hinterzimmer" style="--neon: var(--gold-2)" hidden><div class="sign">Hinterzimmer</div><div class="glyph">🂡</div><div class="chalk-tag">Baccarat · 500–10.000 €</div><div class="knob"></div></div>
     <div class="door day" data-screen="postman" style="--neon: var(--day)"><div class="sign">Ausgang</div><div class="glyph">📬</div><div class="chalk-tag">Post austragen</div><div class="knob"></div></div>
     <div class="door day" data-screen="stadt" style="--neon: var(--day)"><div class="sign">Stadt</div><div class="glyph">🏙️</div><div class="chalk-tag">Autohaus · INTERSPORT</div><div class="knob"></div></div>
@@ -1152,6 +1158,41 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     <div class="bet-bar hidden" id="bjActionControls">
       <button class="btn green" id="btnHit">Hit</button>
       <button class="btn red" id="btnStand">Stand</button>
+    </div>
+  </div>
+</template>
+<template id="tpl-poker">
+  <div class="panel bj-panel felt">
+    <div class="bj-table">
+      <div class="bj-hand dealer">
+        <div class="hand-label">Der Wirt <span class="pk-note" id="pkWirtDraw"></span> <span class="insider-hint hidden" id="pkTell"></span></div>
+        <div class="cards" id="pkWirtCards"></div>
+      </div>
+      <div class="bj-arc" id="pkPot">Pot · –</div>
+      <div class="bj-hand player">
+        <div class="cards" id="pkPlayerCards"></div>
+        <div class="hand-label">Du <span class="hand-val" id="pkHandName">–</span></div>
+      </div>
+    </div>
+    <div class="status" id="pkStatus">Ante setzen</div>
+    <div class="bet-bar" id="pkBetControls">
+      <div class="bet-field"><button data-step="-5">−</button><input type="number" id="pkBet" value="10" min="1"><button data-step="5">+</button></div>
+      <button class="chip" data-chip="10" data-v="10">10</button>
+      <button class="chip" data-chip="25" data-v="25">25</button>
+      <button class="chip" data-chip="50" data-v="50">50</button>
+      <button class="chip" data-chip="max" data-v="max">MAX</button>
+      <button class="btn solid" id="btnPkDeal">Geben</button>
+    </div>
+    <div class="bet-bar hidden" id="pkDrawControls">
+      <button class="btn green" id="btnPkDraw">Behalten</button>
+    </div>
+    <div class="bet-bar hidden" id="pkBetRound">
+      <button class="btn green" id="btnPkBet">Setzen</button>
+      <button class="btn ghost" id="btnPkCheck">Checken</button>
+    </div>
+    <div class="bet-bar hidden" id="pkCallRound">
+      <button class="btn green" id="btnPkCall">Mitgehen</button>
+      <button class="btn red" id="btnPkFold">Aussteigen</button>
     </div>
   </div>
 </template>
@@ -2262,6 +2303,17 @@ const UI = {
   shownBalance: 0,
   tweenId: null,
   fmt(n) { return Math.round(n).toLocaleString('de-DE') + ' €'; },
+  /* Spielkarte für Blackjack, Baccarat, Poker – hidden = Rückseite oben */
+  cardEl(c, hidden = false) {
+    const red = ['♥', '♦'].includes(c.suit);
+    return h('div', { class: `pcard dealing${hidden ? ' hidden-card' : ''}` },
+      h('div', { class: 'inner' },
+        h('div', { class: `face${red ? ' red' : ''}` },
+          h('span', { class: 'corner tl' }, c.val, h('br'), c.suit),
+          h('span', { class: 'pip' }, c.suit),
+          h('span', { class: 'corner br' }, c.val, h('br'), c.suit)),
+        h('div', { class: 'back' })));
+  },
   register(id, def) { this.screens.set(id, def); },
   mobile() { return window.matchMedia('(max-width: 760px)').matches; },
   /* Gold-Vorhang beim Zonenwechsel Keller ↔ Royal; Reduced-Motion: sofort */
@@ -3880,7 +3932,7 @@ const Baccarat = {
       const cards = side === 'p' ? hand.player : hand.banker;
       if (!cards[i]) continue;
       if (!this.alive(gen)) return;
-      (side === 'p' ? p : b).append(Blackjack.cardEl(cards[i]));
+      (side === 'p' ? p : b).append(UI.cardEl(cards[i]));
       SFX.play('cardSlide');
       qs(side === 'p' ? '#bacPlayerVal' : '#bacBankerVal', this.root).textContent = BaccaratRules.total(cards.slice(0, i + 1));
       await wait(reduced ? 60 : 420);
@@ -4116,19 +4168,9 @@ UI.register('slots', {
 const Blackjack = {
   root: null, deck: [], pHand: [], dHand: [], bet: 0, dealing: false, inRound: false, gen: 0, round: null,
   alive(gen) { return !!this.root && this.gen === gen; },
-  cardEl(c, hidden = false) {
-    const red = ['♥', '♦'].includes(c.suit);
-    return h('div', { class: `pcard dealing${hidden ? ' hidden-card' : ''}` },
-      h('div', { class: 'inner' },
-        h('div', { class: `face${red ? ' red' : ''}` },
-          h('span', { class: 'corner tl' }, c.val, h('br'), c.suit),
-          h('span', { class: 'pip' }, c.suit),
-          h('span', { class: 'corner br' }, c.val, h('br'), c.suit)),
-        h('div', { class: 'back' })));
-  },
   async dealTo(elId, card, hidden = false) {
     if (!this.round || !this.alive(this.round.gen)) return;
-    qs('#' + elId, this.root).append(this.cardEl(card, hidden));
+    qs('#' + elId, this.root).append(UI.cardEl(card, hidden));
     SFX.play('cardSlide');
     await wait(240);
   },
