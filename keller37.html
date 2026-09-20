@@ -1501,12 +1501,12 @@ const Rules = {
   POST_PENALTY: 25,
   BEER_LUCK: [0, 10, 15, 20, 25],
   BROWNIE_LUCK: 40,
-  BEER_SPINS: 2,
-  BROWNIE_SPINS: 1,
+  BEER_SPINS: 4,       // 3 Bier = 150 € für 4 Spins: lohnt sich ab ~220 € Einsatz am Roulette (Balancing 2026-09-20, tests/balance-sim.mjs)
+  BROWNIE_SPINS: 4,
   MARRIAGE_SPINS: 2,
   MAFIA_SPINS: 5,
   MAX_BEERS: 3,
-  LUCK_CAP: 100,   // Glück wirkt voll bis zu diesem Einsatz, darüber proportional weniger
+  LUCK_CAP: 1000,  // Glück wirkt voll bis zu diesem Einsatz, darüber proportional weniger
 
   luck(s, mods = Rules.NEUTRAL_MODS) {
     let l = 0;
@@ -1516,7 +1516,9 @@ const Rules = {
     if (s.story && s.story.luckMod) l += s.story.luckMod; // Story-Modifikator (z. B. Zitter-Tag); negativ = Pech
     return l;
   },
-  /* Glück ist ein Trinkgeld, keine Geldmaschine: voll bis LUCK_CAP, darüber im Verhältnis kleiner (Pech genauso) */
+  /* Glück ist ein echter, aber teurer Vorteil: voll bis LUCK_CAP, darüber im Verhältnis kleiner (Pech genauso).
+     Mit 3 Bier liegt Roulette Rot/Schwarz bei ~117 %, das Rad bei ~114 %, die Slots bei ~105 % – wer die Bankroll
+     hält und den Einsatz am Cap ausrichtet, kommt voran; wer alles setzt, fällt trotzdem. */
   effectiveLuck(luck, bet) {
     if (!luck) return 0;
     if (!bet || bet <= Rules.LUCK_CAP) return luck;
@@ -1623,11 +1625,14 @@ const Rules = {
   /* ---- Slots ---- */
   SYMBOLS: ['🍒', '🍋', '🍇', '🔔', '💎', '7️⃣'],
   slotRoll(rng) { return [0, 1, 2].map(() => Rules.SYMBOLS[Math.floor(rng() * Rules.SYMBOLS.length)]); },
-  /* Glück erzwingt höchstens ein Paar – Jackpots bleiben Glückssache; Pech würfelt einen Gewinn einmal neu */
+  CHEAP: ['🍒', '🍋', '🍇'],
+  /* Glück erzwingt ein Paar; wird daraus zufällig ein Drilling, dann nur bei den billigen Symbolen (5×) –
+     Glocke, Diamant und Sieben bleiben Glückssache, sonst wären Slots mit Bier eine Gelddruckmaschine.
+     Pech würfelt einen Gewinn einmal neu. */
   slotLuckOverride(res, luck, rng) {
     if (luck < 0) return Rules.slotMultiplier(...res) > 0 && Rules.pech(luck, rng) ? Rules.slotRoll(rng) : res;
     const [a, b, c] = res;
-    if (rng() * 100 < luck) return [a, a, c];
+    if (rng() * 100 < luck) return [a, a, c === a && !Rules.CHEAP.includes(a) ? Rules.SYMBOLS[(Rules.SYMBOLS.indexOf(a) + 1) % Rules.SYMBOLS.length] : c];
     return [a, b, c];
   },
   slotMultiplier(a, b, c, mods = Rules.NEUTRAL_MODS) {
@@ -1904,7 +1909,7 @@ Object.assign(Rules, {
     { id: 'kalterkopf', name: 'Kalter Kopf', icon: '🧊', light: 'Roulette-Zahlen zahlen 36:1', shadow: 'Brownie wirkt nur halb', mods: { rouletteNumberPayout: 36, brownieLuckMult: 0.5 } },
     { id: 'zockerhaende', name: 'Zockerhände', icon: '🎰', light: 'Slots: Paar zahlt 1,3×', shadow: 'Bank-Zinsen +2 %', mods: { slotPairMult: 1.3, bankRateAdd: 0.02 }, excludes: ['brieftraeger'] },
     { id: 'pferdefluesterer', name: 'Pferdeflüsterer', icon: '🐎', light: 'Pferde zahlen 3,3:1 (bis 250 €)', shadow: 'Überfälle 50 % häufiger', mods: { horsePayout: 3.3, mugChanceMult: 1.5 } },
-    { id: 'eisenmagen', name: 'Eisenmagen', icon: '🍺', light: '4 Bier möglich (+25 %), Brownie hält 2 Spins', shadow: 'Postbote: −1 s pro Brief', mods: { maxBeers: 4, brownieSpins: 2, postTimeAdd: -1 } },
+    { id: 'eisenmagen', name: 'Eisenmagen', icon: '🍺', light: '4 Bier möglich (+25 %), Brownie hält 6 Spins', shadow: 'Postbote: −1 s pro Brief', mods: { maxBeers: 4, brownieSpins: 6, postTimeAdd: -1 } },
     { id: 'verhandler', name: 'Verhandler', icon: '🤝', light: 'Bank-Zinsen −2 %, Vito-Frist 7 Spins', shadow: 'Anlagen zahlen 10 % weniger', mods: { bankRateAdd: -0.02, mafiaSpins: 7, investRateMult: 0.9 } },
     { id: 'strassenkoeter', name: 'Straßenköter', icon: '🐕', light: 'Kampfchance +15 %, Brieftasche ×2', shadow: 'Bank-Limit −1.000 €', mods: { fightAdd: 0.15, walletMult: 2, bankLimitAdd: -1000 } },
     { id: 'brieftraeger', name: 'Briefträgerherz', icon: '📬', light: 'Postbote +1 s und +5 € pro Brief', shadow: 'Slots: Paare zahlen nichts', mods: { postTimeAdd: 1, postPayAdd: 5, slotPairMult: 0 }, excludes: ['zockerhaende'] },
@@ -2375,7 +2380,7 @@ const UI = {
       btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/${mods.maxBeers})` : ''}`, this.fmt(StoryRules.price(s, 'beer')), 'beer', !Rules.canBeer(s, StoryRules.price(s, 'beer'), mods).ok || StoryRules.purchaseAllowed(s, 'beer') === false),
       btn('🍪 Brownie', this.fmt(s.brownieCost), 'brownie', !Rules.canBrownie(s).ok || StoryRules.purchaseAllowed(s, 'brownie') === false),
       ...acts('bar'),
-      h('p', { class: 'side-hint' }, `Bier hält 2 Spins, Brownie ${mods.brownieSpins} Spin${mods.brownieSpins === 1 ? '' : 's'}. Glück wirkt voll bis 100 € Einsatz, nie auf Zahlen.`)));
+      h('p', { class: 'side-hint' }, `Bier hält ${Rules.BEER_SPINS} Spins, Brownie ${mods.brownieSpins} Spin${mods.brownieSpins === 1 ? '' : 's'}. Glück wirkt voll bis ${this.fmt(Rules.LUCK_CAP)} Einsatz, nie auf Zahlen.`)));
     const hz = [];
     if (room('doc') || !inStory) hz.push(btn(s.kidneySold ? '🫁 Niere verkauft' : '🫁 Niere verkaufen', s.kidneySold ? '' : '+2.000 €', 'kidney', s.kidneySold));
     if (room('bank') || room('mafia')) hz.push(btn('🏦 Kredite', s.bankDebt + s.mafiaDebt > 0 ? `−${this.fmt(s.bankDebt + s.mafiaDebt)}` : '', 'finance'));
@@ -2838,7 +2843,7 @@ Actions.beer = async () => {
   UI.renderWallet(); UI.renderSide();
   SFX.play('coin');
   const luckGain = Rules.BEER_LUCK[s.beers] * mods.beerLuckMult;
-  UI.toast({ icon: '🍺', title: `Prost! Bier #${s.beers}`, text: luckGain > 0 ? `+${luckGain} % Glück für 2 Spins.` : 'Bier schmeckt, wirkt aber nicht – Pokerface.', tone: 'gold' });
+  UI.toast({ icon: '🍺', title: `Prost! Bier #${s.beers}`, text: luckGain > 0 ? `+${luckGain} % Glück für ${Rules.BEER_SPINS} Spins.` : 'Bier schmeckt, wirkt aber nicht – Pokerface.', tone: 'gold' });
   await Bus.emit('beer', { beers: s.beers });
   if (typeof Story !== 'undefined') await Story.hook('buy:beer');
 };
@@ -2892,7 +2897,7 @@ Actions.kidney = async () => {
 };
 
 Cutscene.define('brownie.first', [
-  { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Der Brownie. Vierzig Prozent Glück, einen Spin lang. Nur dass du es weißt: Der nächste kostet zehntausend. Beschwer dich beim Lieferanten.' },
+  { bg: 'bar', who: 'wirt', mood: 'calm', text: 'Der Brownie. Vierzig Prozent Glück, vier Spins lang. Nur dass du es weißt: Der nächste kostet zehntausend. Beschwer dich beim Lieferanten.' },
 ]);
 Cutscene.define('kidney.offer', [
   { bg: 'klinik', who: 'doc', mood: 'calm', text: 'Ah, der Kandidat. Setz dich. Zwei Nieren, ein Hobby – das geht sich rechnerisch nicht aus.' },
@@ -5700,17 +5705,18 @@ const RoyalRules = {
     g[reel] = dir > 0 ? [c[1], c[2], c[0]] : [c[2], c[0], c[1]];
     return g;
   },
-  /* Glück: gewinnt keine Linie, wird die Walze/Richtung gewählt, deren Ein-Schritt-Verschiebung am meisten zahlt.
-     Pech: ein gewinnendes Gitter wird mit |luck| % einmal neu gewürfelt. */
+  /* Glück: gewinnt keine Linie, wird die Walze/Richtung gewählt, deren Ein-Schritt-Verschiebung den kleinsten
+     zahlenden Treffer ergibt – ein Schubs, kein Jackpot (der „beste" Schubs hob die Quote mit 3 Bier auf 125 %,
+     der kleinste liegt bei ~112 % wie Roulette und Rad). Pech: ein gewinnendes Gitter wird mit |luck| % einmal neu gewürfelt. */
   megaLuckOverride(grid, luck, rng) {
     if (luck < 0) return RoyalRules.megaLineWins(grid).length && Rules.pech(luck, rng) ? RoyalRules.megaRoll(rng) : grid;
     if (RoyalRules.megaLineWins(grid).length) return grid;
     if (!(rng() * 100 < luck)) return grid;
-    let best = null, bestPay = 0;
+    let best = null, bestPay = Infinity;
     for (let reel = 0; reel < 5; reel++) for (const dir of [1, -1]) {
       const g = RoyalRules.megaShift(grid, reel, dir);
       const pay = RoyalRules.megaLineWins(g).reduce((a, w) => a + w.mult, 0);
-      if (pay > bestPay) { best = g; bestPay = pay; }
+      if (pay > 0 && pay < bestPay) { best = g; bestPay = pay; }
     }
     return best || grid;
   },
@@ -8494,7 +8500,7 @@ T.test('luck: Story-Modifikator kann negativ werden (Pech)', () => {
   T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, story: { luckMod: -15 } })), 5);
   T.eq(Rules.luck(base({ beers: 1, beerTimer: 2, story: { luckMod: -15 } })), -5);
 });
-T.test('effectiveLuck: Pech wird wie Glück gedeckelt', () => { T.eq(Rules.effectiveLuck(-60, 200), -30); T.eq(Rules.effectiveLuck(-15, 50), -15); });
+T.test('effectiveLuck: Pech wird wie Glück gedeckelt', () => { T.eq(Rules.effectiveLuck(-60, 2000), -30); T.eq(Rules.effectiveLuck(-15, 500), -15); });
 T.test('pech: nur bei negativem Glück, Wahrscheinlichkeit |luck| %', () => {
   let calls = 0; const counting = () => { calls++; return 0; };
   T.eq(Rules.pech(20, counting), false); T.eq(Rules.pech(0, counting), false); T.eq(calls, 0, 'bei luck ≥ 0 kein rng-Aufruf');
@@ -8613,6 +8619,38 @@ T.test('slotRoll: drei Züge', () => T.eq(Rules.slotRoll(seq(0, 0.5, 0.99)), ['�
 T.test('slotLuckOverride: nur Paar, nie Jackpot', () => {
   T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.2, 0.4)), ['🍒', '🍒', '🍇']);
   T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.5)), ['🍒', '🍒', '🍇']);
+});
+T.test('slotLuckOverride: erzwungenes Paar wird nur bei 🍒🍋🍇 zum Drilling', () => {
+  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍒'], 100, seq(0)), ['🍒', '🍒', '🍒'], 'Kirsch-Drilling erlaubt');
+  T.eq(Rules.slotLuckOverride(['🍇', '🍋', '🍇'], 100, seq(0)), ['🍇', '🍇', '🍇']);
+  for (const sym of ['🔔', '💎', '7️⃣']) {
+    const r = Rules.slotLuckOverride([sym, '🍋', sym], 100, seq(0));
+    T.ok(r[0] === sym && r[1] === sym && r[2] !== sym, `${sym}: Paar ja, Drilling nein – ${r.join('')}`);
+  }
+  T.eq(Rules.slotLuckOverride(['7️⃣', '🍋', '🍒'], 100, seq(0)), ['7️⃣', '7️⃣', '🍒'], 'drittes Symbol bleibt, wenn es kein Drilling wäre');
+});
+T.test('Glücks-Ökonomie: Bier 4 Spins, Brownie 4 Spins, Cap 1.000 – Bier lohnt sich ab ~220 € am Roulette, Slots bleiben ein Spaßgerät', () => {
+  T.eq(Rules.BEER_SPINS, 4); T.eq(Rules.BROWNIE_SPINS, 4); T.eq(Rules.LUCK_CAP, 1000);
+  const N = 100000, mods = Rules.NEUTRAL_MODS;
+  let rng = seeded(5), sum = 0;
+  for (let i = 0; i < N; i++) { const res = Rules.slotLuckOverride(Rules.slotRoll(rng), 20, rng); sum += Rules.slotDelta(100, Rules.slotMultiplier(...res, mods)); }
+  const slots = 100 + sum / N;
+  T.ok(slots > 101 && slots < 110, `Slots bei +20 Glück: RTP ${slots.toFixed(1)} % (erwartet 101–110)`);
+  rng = seeded(5); sum = 0;
+  for (let i = 0; i < N; i++) { const rolled = Rules.rouletteLuckOverride('red', null, Rules.rouletteRoll(rng), 20, rng); sum += Rules.roulettePayout('red', null, rolled, 100, mods); }
+  const rot = 100 + sum / N;
+  T.ok(rot > 113 && rot < 121, `Roulette Rot bei +20 Glück: RTP ${rot.toFixed(1)} % (erwartet 113–121)`);
+  rng = seeded(5); sum = 0; let paid = 0, free = 0;
+  for (let i = 0; i < N; i++) {
+    const isFree = free > 0; if (isFree) free--; else paid += 100;
+    const w = RoyalRules.megaWin(RoyalRules.megaLuckOverride(RoyalRules.megaRoll(rng), 20, rng), 100, isFree);
+    sum += w.payout; if (w.freeSpins) free = Math.min(RoyalRules.MEGA.FREE_MAX, free + w.freeSpins);
+  }
+  const mega = 100 * sum / paid;
+  T.ok(mega > 106 && mega < 118, `Mega Seven bei +20 Glück: RTP ${mega.toFixed(1)} % (erwartet 106–118)`);
+  /* 3 Bier = 150 € für BEER_SPINS Spins: Gewinnschwelle am Roulette = 150 / (BEER_SPINS × Vorteil) */
+  const schwelle = 150 / (Rules.BEER_SPINS * (rot - 100) / 100);
+  T.ok(schwelle > 180 && schwelle < 260, `Bier rechnet sich ab ${schwelle.toFixed(0)} € Einsatz`);
 });
 T.test('slotLuckOverride: kein Glück', () => {
   T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.5)), ['🍒', '🍋', '🍇']);
@@ -8902,16 +8940,17 @@ T.test('megaShift: Spalte rotieren', () => {
   T.eq(RoyalRules.megaShift(g, 1, 1)[0], ['a', 'b', 'c'], 'andere Walzen unverändert');
   T.eq(g[1], ['d', 'e', 'f'], 'Original unverändert');
 });
-T.test('megaLuckOverride: kein Glück / Pech-Wurf / bester Ein-Schritt-Gewinn / bestehender Gewinn', () => {
-  // keine Linie trifft; Walze 1 um −1 → Mitte 7️⃣×5 (500) schlägt die beiden 💎×3-Alternativen (10)
+T.test('megaLuckOverride: kein Glück / Pech-Wurf / kleinster Ein-Schritt-Gewinn / bestehender Gewinn', () => {
+  // keine Linie trifft; Walze 1 um −1 ergäbe Mitte 7️⃣×5 (500) – Glück nimmt aber die kleinste zahlende Verschiebung (💎×3, 10)
   const g = G(['🔔 7️⃣ 💎', '7️⃣ BAR 💎', '💎 7️⃣ 🔔', '🔔 7️⃣ BAR', 'BAR 7️⃣ 💎']);
   T.eq(RoyalRules.megaLineWins(g), [], 'Ausgangsgitter gewinnt nichts');
   T.eq(RoyalRules.megaLuckOverride(g, 0, seq(0.5)), g, 'ohne Glück unverändert');
   T.eq(RoyalRules.megaLuckOverride(g, 50, seq(0.6)), g, 'rng ≥ luck/100 → unverändert');
   const o = RoyalRules.megaLuckOverride(g, 100, seq(0));
-  T.eq(o[1], ['💎', '7️⃣', 'BAR'], 'Walze 1 um −1 rotiert');
-  T.eq(RoyalRules.megaLineWins(o).map((w) => [w.line, w.sym, w.count, w.mult]), [[0, '7️⃣', 5, 500]], 'Mittellinie 7️⃣×5');
+  T.ok(o !== g && RoyalRules.megaLineWins(o).length > 0, 'ein Schubs mit Treffer');
+  T.eq(RoyalRules.megaLineWins(o).reduce((a, w) => a + w.mult, 0), 10, 'kleinster Treffer (💎×3), nicht 7️⃣×5');
   T.eq(g[1], ['7️⃣', 'BAR', '💎'], 'Original unverändert');
+  T.eq(RoyalRules.megaLuckOverride(G(['🍒 🍋 🍇', '🍋 🍇 🍒', '🍇 🍒 🍋', '🍒 🍋 🍇', '🍋 🍇 🍒']), 100, seq(0)).length, 5, 'ohne zahlende Verschiebung bleibt das Gitter');
   const win = G(['🍒 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒', '🔔 🔔 🔔', '🔔 🔔 🔔']);
   T.eq(RoyalRules.megaLuckOverride(win, 100, seq(0)), win, 'bestehender Gewinn bleibt');
 });
@@ -11265,12 +11304,12 @@ T.test('rouletteLuckTarget: höchster Außenfeld-Chip, Zahlen nie, dann Reihenfo
   T.eq(Rules.rouletteLuckTarget([{ type: 'red', n: null, amount: 50 }, { type: 'black', n: null, amount: 50 }]), 0);
 });
 /* ---- Glück: Einsatzdeckel ---- */
-T.test('effectiveLuck: voll bis 100 €, darüber proportional weniger', () => {
-  T.eq(Rules.LUCK_CAP, 100);
+T.test('effectiveLuck: voll bis 1.000 €, darüber proportional weniger', () => {
+  T.eq(Rules.LUCK_CAP, 1000);
   T.eq(Rules.effectiveLuck(60, 10), 60);
-  T.eq(Rules.effectiveLuck(60, 100), 60);
-  T.eq(Rules.effectiveLuck(60, 200), 30);
-  T.eq(Rules.effectiveLuck(60, 400), 15);
+  T.eq(Rules.effectiveLuck(60, 1000), 60);
+  T.eq(Rules.effectiveLuck(60, 2000), 30);
+  T.eq(Rules.effectiveLuck(60, 4000), 15);
   T.eq(Rules.effectiveLuck(0, 10), 0);
   T.eq(Rules.effectiveLuck(20, 0), 20);
 });
@@ -11306,7 +11345,7 @@ T.test('mods: Skills und Insider stapeln', () => {
   T.eq(m.postLetters, 15); T.eq(m.horsePayout, 3);
   const k = Rules.mods(base({ skills: ['pferdefluesterer', 'strassenkoeter', 'eisenmagen'] }), { insider: ['postmeister', 'vitosneffe'] });
   T.eq(k.horsePayout, 3.3); near(k.mugChanceMult, 1.5 * 0.5); T.eq(k.fightAdd, 0.15); T.eq(k.walletMult, 2); T.eq(k.bankLimitAdd, -1000);
-  T.eq(k.maxBeers, 4); T.eq(k.brownieSpins, 2); T.eq(k.postTimeAdd, -1); T.eq(k.postPayAdd, 5); T.eq(k.postLetters, 20);
+  T.eq(k.maxBeers, 4); T.eq(k.brownieSpins, 6); T.eq(k.postTimeAdd, -1); T.eq(k.postPayAdd, 5); T.eq(k.postLetters, 20);
   T.eq(Rules.mods(base({ skills: ['unbekannt'] })), Rules.NEUTRAL_MODS, 'unbekannte IDs ignoriert');
 });
 T.test('canPickSkill / skillPointsFree', () => {

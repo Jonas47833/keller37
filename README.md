@@ -7,7 +7,7 @@ Ein satirisches Casino-Lebenssimulations-Spiel in einer einzigen HTML-Datei. Fü
 ## Was drin ist
 
 - **Sechs Spiele:** Roulette mit Setztisch und laufender Kugel, Slots mit echten Walzen, Pferderennen mit Live-Kommentar, Russisches Roulette gegen Igor, Blackjack am Filztisch, Post austragen als ehrlicher Ausweg (eine Schicht endet nach 15 Briefen oder beim ersten Fehler). Beim Roulette Chips mit dem gewählten Wert auf Zahlen und Außenfelder legen (mehrere gleichzeitig), „Chip zurück", „Tisch leeren" oder „Wie zuletzt" nutzen; ein Dreh wertet alle liegenden Chips auf einmal aus.
-- **Leben:** Villa kaufen, auf Tinder Chantal-Monique heiraten, geschieden werden, Therapie zahlen, einen Dealer anheuern. Bier und Brownies an der Bar geben Glück – es wirkt voll bis 100 € Einsatz, darüber anteilig, und nie auf Roulette-Zahlen (ein Trinkgeld, keine Geldmaschine); negatives Glück ist Pech (Zitter-Tag in Story 2): mit |x| % wird ein Gewinn einmal neu ausgewürfelt. Eine Niere fürs Hinterzimmer.
+- **Leben:** Villa kaufen, auf Tinder Chantal-Monique heiraten, geschieden werden, Therapie zahlen, einen Dealer anheuern. Bier und Brownies an der Bar geben Glück – Bier hält 4 Spins, Brownie 4; es wirkt voll bis 1.000 € Einsatz, darüber anteilig, und nie auf Roulette-Zahlen. Mit drei Bier liegt Roulette Rot/Schwarz bei ~117 %, das Rad bei ~114 %, die Slots bei ~105 % (Glück erzwingt ein Paar, ein Drilling daraus nur bei 🍒🍋🍇) – 150 € Bier rechnen sich ab ~220 € Einsatz, wer die Bankroll hält, kommt voran, wer alles setzt, fällt trotzdem (`tests/balance-sim.mjs`); negatives Glück ist Pech (Zitter-Tag in Story 2): mit |x| % wird ein Gewinn einmal neu ausgewürfelt. Eine Niere fürs Hinterzimmer.
 - **Kredite:** Bank (8 % Zinsen pro Spin, Limit 3.000 €, nur ein Kredit auf einmal) oder Don Vito (5 Spins Frist, danach der Doc).
 - **Anlagen:** Festgeld +8 % nach 6 Spins (10 % Risiko), Aktien +100 % nach 2 Spins (85 %), Trickbetrug +50 % nach 10 Spins (55 %) – je Sorte eine laufende Anlage.
 - **Stadt:** Autohaus (Audi-Linie senkt das Überfallrisiko und erhöht die Fluchtchance, Mercedes-Linie hebt Bank-Limit und senkt die Zinsen) und INTERSPORT (Laufschuhe verbessern die Flucht, bringen mehr Zeit/Lohn beim Postboten und helfen bei den Job-Minispielen). Ein neues Auto nimmt das alte mit 50 % seines Preises in Zahlung, Schuhe gibt es nur zum vollen Preis.
@@ -84,7 +84,7 @@ acht möglichen. Jeder Skill hat eine Lichtseite und einen Haken an anderer Stel
 | 🧊 Kalter Kopf | Roulette-Zahlen zahlen 36:1 | Brownie wirkt nur halb |
 | 🎰 Zockerhände | Slots: Paar zahlt 1,3× | Bank-Zinsen +2 % |
 | 🐎 Pferdeflüsterer | Pferde zahlen 3,3:1 (bis 250 €) | Überfälle 50 % häufiger |
-| 🍺 Eisenmagen | 4 Bier möglich (+25 %), Brownie hält 2 Spins | Postbote: −1 s pro Brief |
+| 🍺 Eisenmagen | 4 Bier möglich (+25 %), Brownie hält 6 Spins | Postbote: −1 s pro Brief |
 | 🤝 Verhandler | Bank-Zinsen −2 %, Vito-Frist 7 Spins | Anlagen zahlen 10 % weniger |
 | 🐕 Straßenköter | Kampfchance +15 %, Brieftasche ×2 | Bank-Limit −1.000 € |
 | 📬 Briefträgerherz | Postbote +1 s und +5 € pro Brief | Slots: Paare zahlen nichts |
@@ -153,7 +153,13 @@ python3 tests/desktop-diff.py       # Keller-Screens pixelidentisch zu main? (12
 python3 tests/mobile-check.py       # Handy-Ansicht 400×800: Screenshots + Layout-Checks (Port 9361)
 python3 tests/playtest-dev.py       # CDP-Playtest Admin-Panel: Login, Werte, Screens, Story, Szenen (Port 9371)
 python3 tests/perf-trace.py --mobile  # Chrome-Trace je Szene: Paints, Raster, Layouts pro Sekunde (Port 9377)
+node tests/balance-sim.mjs          # Auszahlungsquoten je Spiel/Glück/Einsatz + Erreichbarkeit der Story-Ziele (echte Regelblöcke)
 ```
+
+`balance-sim.mjs` rechnet mit den echten Regelfunktionen: eine RTP-Tabelle (Glück 0 / +20 / +60, Einsatz unter und über dem Cap) und
+zwei Spieler-Modelle über Story 1 und 2 (diszipliniert: Bankroll aufbauen, Einsatz ≈ 10 % bis zum Cap, Bier nur wenn es sich rechnet,
+Stop-Loss; wild: halbe Bankroll pro Spin). Referenz nach dem Balancing vom 2026-09-20: disziplinierter Spieler erreicht das gute Ende in
+Story 1 zu ~45 %, in Story 2 zu ~36 % (bei langen Abenden ~50 %), der wilde zu ~4 % mit 25 Abenden auf null.
 
 `perf-trace.py` misst, was der Browser während Rad-Spin, Walzen, Taxi, Spüler und im Leerlauf pro Frame wirklich tut. Faustregel:
 während einer Compositor-Animation (`transform`/`opacity`) sollen Paint und Layout bei ~0 liegen; alles, was `background-position`,
