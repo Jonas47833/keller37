@@ -46,7 +46,7 @@ Referenz-Mockups (nicht versioniert, nur zur Anschauung): `.superpowers/brainsto
 
 ### Kulissen-Register
 
-`Cutscene.SETS[id] = { sky, back, front, life }` – IDs sind die 16 heutigen `bg`-Werte (`bar, keller, hinterzimmer, strasse, gasse, hafen, hafen-morgen, klinik, bank, standesamt, villa, bahnhof, pfandleihe, autohaus, intersport, royal`), damit kein Panel angefasst werden muss. Unbekannte `bg`-Werte fallen auf `bar` zurück (wie heute). `sky/back/front` sind Funktionen, die SVG-/DOM-Fragmente liefern; `life` benennt die Ambient-Animation (CSS-Keyframes, transform/opacity).
+`Cutscene.SETS[id] = { back, front, life }` – IDs sind die 16 heutigen `bg`-Werte (`bar, keller, hinterzimmer, strasse, gasse, hafen, hafen-morgen, klinik, bank, standesamt, villa, bahnhof, pfandleihe, autohaus, intersport, royal`), damit kein Panel angefasst werden muss. Unbekannte `bg`-Werte fallen auf `bar` zurück (wie heute). `back/front` sind Funktionen, die SVG-Fragmente liefern; der Himmel ist kein Fragment, sondern eine CSS-Klasse `.cs-sky.<id>` (Farbverlauf); `life` benennt die Ambient-Animation (CSS-Keyframes, transform/opacity).
 
 | Kulisse | Formen | Leben |
 |---|---|---|
@@ -155,7 +155,7 @@ Rund 25 Szenen bekommen Regie-Schlüssel: `intro`, `gameover`, `mafia.loan`, `ma
 
 ### Effekte
 
-Bestehende sieben bleiben. Neu, alle transform/opacity: `rain`, `smoke`, `headlights` (Kulissen-Leben, nicht per Panel), `muzzle` (Mündungsblitz an der Waffenhand – Vorarbeit für Stufe 2, in Stufe 1 nur definiert), `shout` und `cam` (Abschnitt 3). Kein Blut: Treffer sind Zucken + Umkippen.
+Bestehende sieben bleiben. Neu, alle transform/opacity: `rain`, `smoke`, `headlights` (Kulissen-Leben, nicht per Panel), `shout` und `cam` (Abschnitt 3). Der Mündungsblitz `muzzle` wird nicht in Stufe 1 vordefiniert, sondern kommt mit der Schießerei (Stufe 2) – kein toter Code. Kein Blut: Treffer sind Zucken + Umkippen.
 
 ### Performance
 
@@ -167,7 +167,7 @@ Bestehende sieben bleiben. Neu, alle transform/opacity: `rain`, `smoke`, `headli
 
 ### Tests
 
-- **Node** (`tests/run-selftest.mjs`): jeder `who`-Wert aller Szenen hat einen Cast-Eintrag mit `look`; jede Kulisse hat `sky/back/front/life`; `stagePlan` liefert für Beispiel-Szenen die erwartete Besetzung („Vito betritt bei Panel 2 von rechts", „vierte Figur → älteste geht", `cast: []` leert die Bühne, Skip-Endzustand); Regie-Validierung schlägt bei unbekanntem Schlüssel/Pose/Cast/SFX fehl.
+- **Node** (`tests/run-selftest.mjs`): jeder `who`-Wert aller Szenen hat einen Cast-Eintrag mit `look`; jede Kulisse hat `back/front/life` (Himmel als CSS-Klasse `.cs-sky.<id>`); `stagePlan` liefert für Beispiel-Szenen die erwartete Besetzung („Vito betritt bei Panel 2 von rechts", „vierte Figur → älteste geht", `cast: []` leert die Bühne, Skip-Endzustand); Regie-Validierung schlägt bei unbekanntem Schlüssel/Pose/Cast/SFX fehl.
 - **DOM** (`tests/dom-selftest.sh`): Szene abspielen → genau eine Blase, am Sprecher verankert; mobil kein `scrollWidth > innerWidth`; alle Cutscene-Keyframes animieren nur `transform`/`opacity`; Skip landet im Endzustand; Zustands-Teile (Bier → Wangen, Story 3 → Anzug) im DOM gesetzt; Wahl-Buttons liefern weiterhin ihren `value`.
 - **Playtest** (`tests/playtest-story.py`): alle 165 Checks bleiben grün – Klick-, Tasten- und Wahl-Verhalten ändern sich nicht.
 
