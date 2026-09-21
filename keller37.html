@@ -1073,7 +1073,7 @@ body.mode-story #newgame { display: none; }
 .wheel { position: absolute; inset: 30px 30px 48px; border-radius: 50%; border: 8px solid var(--gold); box-shadow: var(--shadow), inset 0 0 30px rgba(0,0,0,.6); transition: transform 4.5s cubic-bezier(.12,.88,.22,1); }
 .wheel.snap { transition: none; }
 .wheel .seg { position: absolute; left: 50%; top: 50%; width: 50%; height: 1.2em; line-height: 1.2em; margin-top: -.6em; transform-origin: 0 50%; font-family: var(--font-display); font-weight: 700; font-size: .72rem; letter-spacing: .06em; text-align: right; padding-right: 14px; color: var(--gold-2); }
-.wheel .seg.x10, .wheel .seg.x5 { color: #141216; }
+.wheel .seg.x5, .wheel .seg.x3 { color: #141216; }
 .wheel .seg.bust { color: var(--bronze); }
 .wheel-pointer { position: absolute; left: 50%; top: -20px; transform: translateX(-50%); width: 18px; height: 26px; background: var(--gold); clip-path: polygon(0 0, 100% 0, 50% 100%); z-index: 3; filter: drop-shadow(0 0 6px rgba(201,169,97,.7)); font-size: 0; }
 .wheel-hub { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 64px; height: 64px; border-radius: 50%; background: #141216; border: 3px solid var(--gold); box-shadow: inset 0 0 0 2px var(--bronze), 0 4px 10px rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; z-index: 2; }
@@ -1741,8 +1741,8 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     <div class="chalk paytable">
       <h4>24 Felder</h4>
       <table>
-        <tr><td>×10</td><td>1 Feld</td></tr><tr><td>×5</td><td>1 Feld</td></tr><tr><td>×2</td><td>1 Feld</td></tr>
-        <tr><td>Hälfte</td><td>13 Felder</td></tr><tr><td>Bankrott</td><td>8 Felder</td></tr>
+        <tr><td>×5</td><td>1 Feld</td></tr><tr><td>×3</td><td>1 Feld</td></tr><tr><td>×2</td><td>2 Felder</td></tr>
+        <tr><td>Einsatz zurück</td><td>8 Felder</td></tr><tr><td>Hälfte</td><td>8 Felder</td></tr><tr><td>Bankrott</td><td>4 Felder</td></tr>
       </table>
     </div>
     <div class="status" id="wheelStatus">Einsatz wählen und drehen</div>
@@ -7233,7 +7233,7 @@ const RoyalRules = {
     return rows.slice(0, count).map((row, r) => [pad + r * (cell + gap) + cell / 2, pad + row * (cell + gap) + cell / 2]);
   },
   /* Glücksrad-Farben (Art déco): Gold ×10, Champagner ×5, Smaragd ×2, Onyx-hell ×1, Bordeaux Hälfte, Onyx-dunkel Bankrott */
-  WHEEL_COLORS: { 10: '#c9a961', 5: '#f1dfa8', 2: '#1d6b4a', 1: '#2a262e', 0.5: '#5a1a24', 0: '#141216' },
+  WHEEL_COLORS: { 5: '#f1dfa8', 3: '#c9a961', 2: '#1d6b4a', 1: '#2a262e', 0.5: '#5a1a24', 0: '#141216' },
   wheelTone(m) { return m === 0 ? 'bust' : m === 0.5 ? 'half' : `x${m}`; },
   /* ---- Eintritt ---- */
   canEnter(s) {
@@ -7400,12 +7400,12 @@ const RoyalRules = {
     }
     return dice;
   },
-  /* ---- Glücksrad: 24 Segmente, Multiplikator auf den Einsatz (0 = Bankrott, 0,5 = Hälfte zurück) ----
-     Summe 23,5 → 97,9 % ohne Glück. Balancing 2026-09-21: 8 Bankrott, 13 Hälfte, ×2/×5/×10 – alle Tische ~97 % wie Roulette Rot
-     (vorher 13 Bankrott, 93,75 %). ×2/×5/×10 liegen direkt hinter einem Bankrott, weil Glück Bankrott auf das nächste Feld
-     schiebt; so liegt das Rad mit 3 Bier bei ~114 % (tests/balance-sim.mjs). */
+  /* ---- Glücksrad: 24 Segmente, Multiplikator auf den Einsatz (0 = Bankrott, 0,5 = Hälfte zurück, 1 = Einsatz zurück) ----
+     Summe 24 → 100 % ohne Glück. Balancing 2026-09-21 (Jeder Tisch): ×5 ×3 ×2 ×2, 8× Einsatz zurück, 8× Hälfte, 4× Bankrott;
+     Glück hebt ein Feld < 1 aufs nächste Feld ≥ 1 (bis 2 weiter), Pech drückt ein Feld > 0 auf einen Bankrott in Reichweite 2.
+     Mit Grundglück ~104 %, mit 3 Bier ~121 % (tests/balance-sim.mjs); vorher ×10/×5/×2, 13× Hälfte, 8× Bankrott = 97,9 %. */
   WHEEL: {
-    SEGMENTS: [0, 10, 0.5, 0, 0.5, 0.5, 0, 5, 0.5, 0, 0.5, 0.5, 0, 2, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5],
+    SEGMENTS: [0, 5, 0.5, 1, 0.5, 2, 0, 1, 1, 1, 0.5, 3, 0, 1, 0.5, 1, 0.5, 2, 0, 1, 0.5, 1, 0.5, 0.5], // ×5 ×3 ×2 ×2 · 8× Einsatz zurück · 8× Hälfte · 4× Bankrott = 24 → 100 %; Reihenfolge balancerelevant (Balancing 2026-09-21, Jeder Tisch: Story 81/74 % statt 21/17; vorher ×10/×5/×2, 13× Hälfte, 8× Bankrott)
     BETS: [100, 500, 1000, 5000],
   },
   wheelSpin(rng) { return Math.floor(rng() * RoyalRules.WHEEL.SEGMENTS.length); },
@@ -7426,8 +7426,8 @@ const RoyalRules = {
       for (let k = 1; k <= 2; k++) { const j = (index + k) % S.length; if (S[j] === 0) return j; }
       return index;
     }
-    if (S[index] !== 0 || !(rng() * 100 < luck)) return index;
-    for (let k = 1; k <= 2; k++) { const j = (index + k) % S.length; if (S[j] !== 0) return j; }
+    if (S[index] >= 1 || !(rng() * 100 < luck)) return index;
+    for (let k = 1; k <= 2; k++) { const j = (index + k) % S.length; if (S[j] >= 1) return j; }
     return index;
   },
   /* Kater-HUD: Leber-Farbstufe und Strichliste auf dem Bierdeckel (ein Strich je 50 €, höchstens 8) */
@@ -10804,7 +10804,7 @@ T.test('Glücks-Ökonomie: Bier 8 Spins, Brownie 4 Spins, Cap 1.000 – 3 Bier l
   T.ok(schwelle > 90 && schwelle < 130, `Bier rechnet sich ab ${schwelle.toFixed(0)} € Einsatz`);
   T.ok(Math.abs(Rules.BEER_WORTH_FROM - schwelle) < 20, `Bar-Hinweis BEER_WORTH_FROM ${Rules.BEER_WORTH_FROM} passt zur Schwelle ${schwelle.toFixed(0)}`);
   /* nüchtern ~97 %: Slots exakt 211/216, Rad 23,5/24 */
-  T.ok(Math.abs(RoyalRules.WHEEL.SEGMENTS.reduce((a, b) => a + b, 0) / 24 - 23.5 / 24) < 1e-9, 'Rad 97,9 % ohne Glück');
+  T.eq(RoyalRules.WHEEL.SEGMENTS.reduce((a, b) => a + b, 0), 24, 'Rad 100 % ohne Glück');
 });
 T.test('slotLuckOverride: kein Glück', () => {
   T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.5)), ['🍒', '🍋', '🍇']);
@@ -11390,19 +11390,18 @@ T.test('crapsLuckOverride: Pech würfelt einen Gewinn neu (Pass oder Field), Ver
 
 /* ---- RoyalRules: Glücksrad ---- */
 T.test('RoyalRules.wheelTone: Segmentklasse je Multiplikator', () => {
-  T.eq([10, 5, 2, 1, 0.5, 0].map(RoyalRules.wheelTone), ['x10', 'x5', 'x2', 'x1', 'half', 'bust']);
-  T.eq(Object.keys(RoyalRules.WHEEL_COLORS).sort(), ['0', '0.5', '1', '10', '2', '5']);
+  T.eq([5, 3, 2, 1, 0.5, 0].map(RoyalRules.wheelTone), ['x5', 'x3', 'x2', 'x1', 'half', 'bust']);
+  T.eq(Object.keys(RoyalRules.WHEEL_COLORS).sort(), ['0', '0.5', '1', '2', '3', '5']);
 });
-T.test('WHEEL: 24 Segmente, Verteilung, Erwartungswert 97,9 %', () => {
+T.test('WHEEL: 24 Felder ×5 ×3 ×2 ×2 · 8× Einsatz zurück · 8× Hälfte · 4× Bankrott = 100 % (Balancing 2026-09-21, Jeder Tisch)', () => {
   const S = RoyalRules.WHEEL.SEGMENTS;
-  T.eq(S.length, 24);
+  T.eq(S, [0, 5, 0.5, 1, 0.5, 2, 0, 1, 1, 1, 0.5, 3, 0, 1, 0.5, 1, 0.5, 2, 0, 1, 0.5, 1, 0.5, 0.5], 'Reihenfolge ist balancerelevant (Reichweite 2 des Glücks)');
   const count = (v) => S.filter((x) => x === v).length;
-  T.eq([count(0), count(0.5), count(1), count(2), count(5), count(10)], [8, 13, 0, 1, 1, 1], 'Balancing 2026-09-21: 8 Bankrott, 13 Hälfte – ~97 % wie alle Tische');
-  T.eq(S.reduce((a, b) => a + b, 0) / 24, 23.5 / 24);
-  S.forEach((v, i) => { if (v === 0) T.ok(S[(i + 1) % 24] !== 0 || S[(i + 2) % 24] !== 0, `Bankrott ${i} hat binnen 2 Schritten ein Nicht-Bankrott-Segment`); });
-  S.forEach((v, i) => { if (v !== 0) T.ok(S[(i + 1) % 24] === 0 || S[(i + 2) % 24] === 0, `Segment ${i} hat binnen 2 Schritten ein Bankrott-Segment (Pech)`); });
-  /* Glück schiebt Bankrott aufs nächste Feld – die drei Gewinnfelder liegen direkt hinter einem Bankrott, sonst wirkt Bier am Rad kaum */
-  [2, 5, 10].forEach((m) => T.eq(S[(S.indexOf(m) + 23) % 24], 0, `×${m} liegt direkt hinter einem Bankrott`));
+  T.eq([count(0), count(0.5), count(1), count(2), count(3), count(5), count(10)], [4, 8, 8, 2, 1, 1, 0]);
+  T.eq(S.reduce((a, b) => a + b, 0), 24, 'Summe 24 → 100 % ohne Glück');
+  /* Glück: jedes Feld < 1 außer Index 22 erreicht binnen 2 Schritten ein Feld ≥ 1 */
+  S.forEach((v, i) => { if (v < 1 && i !== 22) T.ok(S[(i + 1) % 24] >= 1 || S[(i + 2) % 24] >= 1, `Feld ${i} (${v}) hat binnen 2 Schritten ein Feld ≥ 1`); });
+  T.ok(S[23] < 1 && S[0] < 1, 'Index 22 ist die dokumentierte Ausnahme');
 });
 T.test('megaWinTier: Gewinnstufe nach Vielfachem des Einsatzes', () => {
   T.eq(RoyalRules.megaWinTier(0, 100), 'none');
@@ -11456,12 +11455,14 @@ T.test('wheelSpin / wheelPayout / wheelDelta', () => {
   T.eq(RoyalRules.wheelSpin(seq(0.999)), 23);
   T.eq(RoyalRules.wheelSpin(seq(0.5)), 12);
   const S = RoyalRules.WHEEL.SEGMENTS;
-  const i10 = S.indexOf(10), iH = S.indexOf(0.5), i0 = S.indexOf(0);
-  T.eq(RoyalRules.wheelPayout(i10, 500), 5000);
+  const i5 = S.indexOf(5), iH = S.indexOf(0.5), i0 = S.indexOf(0), i1 = S.indexOf(1);
+  T.eq(RoyalRules.wheelPayout(i5, 500), 2500);
   T.eq(RoyalRules.wheelPayout(iH, 500), 250);
   T.eq(RoyalRules.wheelPayout(i0, 500), 0);
-  T.eq(RoyalRules.wheelDelta(i10, 500), 4500);
+  T.eq(RoyalRules.wheelDelta(i5, 500), 2000);
   T.eq(RoyalRules.wheelDelta(iH, 500), -250);
+  T.eq(RoyalRules.wheelDelta(i1, 500), 0, 'Einsatz zurück');
+  T.eq(RoyalRules.wheelDelta(S.indexOf(3), 500), 1000);
   T.eq(RoyalRules.wheelDelta(S.indexOf(2), 500), 500);
 });
 T.test('wheelIndexAt / wheelAngleOf: Segment unter dem Zeiger für eine Drehung, Hinweg = Rückweg', () => {
@@ -11479,23 +11480,22 @@ T.test('wheelIndexAt / wheelAngleOf: Segment unter dem Zeiger für eine Drehung,
   T.ok(Math.abs(RoyalRules.wheelMatrixAngle('matrix(0.70710678, -0.70710678, 0.70710678, 0.70710678, 0, 0)') + 45) < 1e-6, '−45°');
   T.eq(RoyalRules.wheelMatrixAngle('none'), 0);
 });
-T.test('wheelLuckOverride: Bankrott rückt auf das nächste Nicht-Bankrott-Segment', () => {
+T.test('wheelLuckOverride: Glück hebt ein Feld < 1 aufs nächste Feld ≥ 1 (bis 2 weiter), Pech drückt ein Feld > 0 auf einen Bankrott in Reichweite', () => {
   const S = RoyalRules.WHEEL.SEGMENTS;
-  const i0 = S.indexOf(0);
-  T.eq(RoyalRules.wheelLuckOverride(i0, 0, seq(0)), i0, 'ohne Glück');
-  const o = RoyalRules.wheelLuckOverride(i0, 100, seq(0));
-  T.ok(S[o] !== 0 && (o === (i0 + 1) % 24 || o === (i0 + 2) % 24), 'nächstes Nicht-Bankrott, 1–2 Schritte weiter');
-  T.eq(RoyalRules.wheelLuckOverride(S.indexOf(10), 100, seq(0)), S.indexOf(10), 'Gewinn bleibt');
-  T.eq(RoyalRules.wheelLuckOverride(i0, 50, seq(0.999)), i0, 'Glück greift nicht (rng ≥ luck/100)');
-});
-T.test('wheelLuckOverride: Pech rückt einen Gewinn auf das nächste Bankrott-Segment', () => {
-  const S = RoyalRules.WHEEL.SEGMENTS;
-  const i10 = S.indexOf(10), i0 = S.indexOf(0);
-  T.eq(i10, 1); T.eq(S[2], 0.5); T.eq(S[3], 0);
-  T.eq(RoyalRules.wheelLuckOverride(i10, -100, seq(0)), 3, '×10 (Index 1) → Index 3 ist das nächste Bankrott');
-  T.eq(RoyalRules.wheelLuckOverride(i10, -15, seq(0.15)), i10, 'rng 15 ≥ |luck| 15 → bleibt');
-  T.eq(RoyalRules.wheelLuckOverride(i0, -100, seq(0)), i0, 'Bankrott bleibt');
-  T.eq(RoyalRules.wheelLuckOverride(i10, 0, seq(0)), i10, 'luck 0 unverändert');
+  T.eq(RoyalRules.wheelLuckOverride(2, 100, seq(0)), 3, '0,5 an 2 → ×1 an 3');
+  T.eq(RoyalRules.wheelLuckOverride(0, 100, seq(0)), 1, 'Bankrott an 0 → ×5 an 1');
+  T.eq(RoyalRules.wheelLuckOverride(10, 100, seq(0)), 11, '0,5 an 10 → ×3 an 11');
+  T.eq(RoyalRules.wheelLuckOverride(4, 100, seq(0)), 5, '0,5 an 4 → ×2 an 5');
+  T.eq(RoyalRules.wheelLuckOverride(22, 100, seq(0)), 22, 'Index 22: kein Feld ≥ 1 in Reichweite → bleibt (nicht auf den Bankrott an 0)');
+  T.eq(RoyalRules.wheelLuckOverride(3, 100, seq(0)), 3, 'Feld ≥ 1 bleibt');
+  T.eq(RoyalRules.wheelLuckOverride(2, 30, seq(0.5)), 2, 'rng 0.5 ≥ 0.3 → bleibt');
+  T.eq(RoyalRules.wheelLuckOverride(2, 0, seq(0)), 2, 'ohne Glück');
+  /* Pech wie bisher */
+  T.eq(RoyalRules.wheelLuckOverride(5, -100, seq(0)), 6, '×2 an 5 → Bankrott an 6');
+  T.eq(RoyalRules.wheelLuckOverride(3, -100, seq(0)), 3, '×1 an 3: kein Bankrott in Reichweite 2 (4, 5) → bleibt');
+  T.eq(RoyalRules.wheelLuckOverride(0, -100, seq(0)), 0, 'Bankrott bleibt Bankrott');
+  T.eq(RoyalRules.wheelLuckOverride(5, -15, seq(0.15)), 5, 'rng 15 ≥ |luck| 15 → bleibt');
+  T.ok(S[6] === 0 && S[4] !== 0 && S[5] !== 0, 'Voraussetzungen der Pech-Fälle');
 });
 
 T.test('RoyalRules.leberTone/deckelMarks', () => {
