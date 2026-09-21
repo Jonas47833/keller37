@@ -7132,6 +7132,15 @@ const StoryRules = {
   /* Ruf-Stufen: Titel im HUD und Schwellen der Angebote (Story 1 und 3). Events nutzen weiterhin { var: 'ruf', gte: ab }. */
   RUF_STUFEN: [{ id: 'niemand', ab: 0, titel: 'Niemand' }, { id: 'bekannt', ab: 2, titel: 'Bekannt' }, { id: 'respektiert', ab: 5, titel: 'Respektiert' }, { id: 'legende', ab: 8, titel: 'Legende' }],
   rufStufe(ruf) { const r = ruf || 0; let cur = StoryRules.RUF_STUFEN[0]; for (const s of StoryRules.RUF_STUFEN) if (r >= s.ab) cur = s; return cur; },
+  /* Stufen-Toast: vergleicht die Stufe aus vars.ruf mit vars.rufStufe (Index), setzt sie nach und liefert bei Wechsel einen Toast */
+  RUF_SAETZE: { bekannt: 'Man hat deinen Namen gehört.', respektiert: 'Man kennt deinen Namen.', legende: 'Man erzählt sich Geschichten.' },
+  rufStufeToast(vars) {
+    const stufe = StoryRules.rufStufe(vars.ruf), idx = StoryRules.RUF_STUFEN.indexOf(stufe), alt = vars.rufStufe || 0;
+    if (idx === alt) return {};
+    vars.rufStufe = idx;
+    const auf = idx > alt;
+    return { toast: { icon: '🔥', title: auf ? stufe.titel : `${stufe.titel} – Ruf sinkt`, text: auf ? StoryRules.RUF_SAETZE[stufe.id] : 'Der Bahnhof redet weniger über dich.', tone: auf ? 'win' : 'loss' } };
+  },
   validate(story, sceneIds, jobIds, storyIds = null, stories = {}) {
     const errs = [];
     const scene = (id, where) => { if (id && !sceneIds.includes(id)) errs.push(`${story.id}: Szene "${id}" fehlt (${where})`); };
@@ -9259,9 +9268,9 @@ if (typeof Stories !== 'undefined') Stories.define(STORY_PROBE);
 /* ================= STORY 1: DIE SCHULD ================= */
 const STORY_SCHULD = {
   id: 'schuld', title: 'Die Schuld', days: 30,
-  start: { balance: 50, unlocked: { jobs: ['spueler', 'post'], doors: ['slots', 'horses'], rooms: ['bar', 'vito'] }, vars: { schuld: 50000, vertrauen: 0, ruf: 0, gezahlt: 0, duellSiege: 0, tuerSauber: 0 } },
+  start: { balance: 50, unlocked: { jobs: ['spueler', 'post'], doors: ['slots', 'horses'], rooms: ['bar', 'vito'] }, vars: { schuld: 50000, vertrauen: 0, ruf: 0, rufStufe: 0, gezahlt: 0, duellSiege: 0, tuerSauber: 0 } },
   varMax: { vertrauen: 10, ruf: 10 },
-  hud: [{ var: 'schuld', label: '🕶️ Vito', fmt: 'money', tone: 'danger' }, { var: 'vertrauen', label: '🤝', max: 10 }, { var: 'ruf', label: '🔥 Ruf', max: 10 }],
+  hud: [{ var: 'schuld', label: '🕶️ Vito', fmt: 'money', tone: 'danger' }, { var: 'vertrauen', label: '🤝', max: 10 }, { var: 'ruf', label: (s) => '🔥 ' + StoryRules.rufStufe(s.story.vars.ruf).titel, max: 10 }],
   goal: (s) => `Ziel: Vito ${UI.fmt(s.story.vars.schuld)} bis Tag 30`,
   lockReason: { roulette: 'Vito sagt nein', blackjack: 'Vito sagt nein', poker: 'Vito sagt nein', russian: 'Igor hat keine Zeit' },
   intro: 'schuld.intro',
@@ -9525,6 +9534,9 @@ const STORY_SCHULD = {
     { id: 'fluchtFrage', when: { all: [{ flag: 'fluchtBereit' }, { notFlag: 'fluchtHeute' }] }, at: 'night', scene: 'schuld.fluchtFrage' },
     { id: 'igorSah', when: { all: [{ flag: 'fluchtBereit' }, { notFlag: 'igorSah' }, { jobToday: 'tuersteher' }] }, once: true, at: 'night', scene: 'schuld.igorSah', effects: [{ flag: 'igorSah' }, { var: 'vertrauen', add: -3 }] },
     { id: 'sturzFrage', when: { all: [{ day: { gte: 28 } }, { flag: 'hauptbuch' }, { flag: 'safe' }, { flag: 'igorZweifelt' }, { notFlag: 'sturzJetzt' }] }, at: 'night', scene: 'schuld.sturzFrage' },
+    /* Ruf-Stufen: Toast beim Wechsel – am Ende der Liste, damit er den Stand nach Abrechnung und Angeboten zeigt (Spec 2026-09-21 Ruf-Stufen §2.2) */
+    { id: 'rufStufeNacht', daily: true, at: 'night', effects: [{ call: 'rufStufe' }] },
+    { id: 'rufStufeMorgen', daily: true, at: 'morning', effects: [{ call: 'rufStufe' }] },
   ],
   jobScenes: {
     kurier: ['schuld.kurier.polizei', 'schuld.kurier.doc', 'schuld.kurier.igor'],
@@ -9538,6 +9550,10 @@ const STORY_SCHULD = {
     'schuld.prakt.praemie': [{ balance: 100 }], 'schuld.kurier.doc': [{ var: 'ruf', add: 1 }], 'schuld.prakt.konto': [{ flag: 'vitoPleite' }],
     'schuld.doc.vorbesitzer': [{ var: 'ruf', add: 1 }], 'schuld.doc.igor': [{ var: 'vertrauen', add: 1 }, { flag: 'igorDank' }],
     'schuld.eintreiber.kiosk': [{ var: 'ruf', add: 1 }], 'schuld.eintreiber.zahnarzt': [{ var: 'ruf', add: 1 }],
+  },
+  /* ---- Story-Funktionen (Effekt call) ---- */
+  fns: {
+    rufStufe(s) { return StoryRules.rufStufeToast(s.story.vars); },
   },
   endings: [
     { id: 'ehrlich', title: 'Der Ehrliche', priority: 30, when: { var: 'schuld', lte: 0 }, scene: 'schuld.ende.ehrlich' },
@@ -9836,9 +9852,9 @@ const STORY_STASH = {
   start: {
     balance: 5000,
     unlocked: { jobs: ['eintreiber'], doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker'], rooms: ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal'] },
-    vars: { woche: 0, umsatz: 0, umsatzRoyal: 0, umsatzHinterzimmer: 0, umsatzTotal: 0, ziel: 0, rueckgabe: 0, lieferung: 0, zorn: 0, kredit: 0, belege: 0, belegeOffen: 0, uebergeben: 0, ruf: 0, igorBiere: 0, eintreiberWoche: 0, abrechnungenOk: 0, ausgang: 0, anabiErfaehrt: 0 },
+    vars: { woche: 0, umsatz: 0, umsatzRoyal: 0, umsatzHinterzimmer: 0, umsatzTotal: 0, ziel: 0, rueckgabe: 0, lieferung: 0, zorn: 0, kredit: 0, belege: 0, belegeOffen: 0, uebergeben: 0, ruf: 0, rufStufe: 0, igorBiere: 0, eintreiberWoche: 0, abrechnungenOk: 0, ausgang: 0, anabiErfaehrt: 0 },
   },
-  varMax: { zorn: 3 },
+  varMax: { zorn: 3, ruf: 10 },
   prices: { brownie: 1000 },
   disabled: ['tinder', 'house', 'dealer', 'brownie'],
   turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel', 'stud', 'sicbo'], umsatzHinterzimmer: ['baccarat'] },
@@ -9851,6 +9867,7 @@ const STORY_STASH = {
     { var: 'umsatz', label: '🧺 Umsatz', fmt: 'money', max: (s) => s.story.vars.ziel || null },
     { var: 'zorn', label: '😡 Zorn', max: 3, tone: 'danger' },
     { var: 'kredit', label: '🧾 Kredit', fmt: 'money' },
+    { var: 'ruf', label: (s) => '🔥 ' + StoryRules.rufStufe(s.story.vars.ruf).titel, max: 10 },
   ],
   goal: (s) => {
     const v = s.story.vars, f = s.story.flags, fmt = StoryRules.fmtMoney;
@@ -9863,6 +9880,7 @@ const STORY_STASH = {
   intro: 'stash.intro',
   /* ---- Story-Funktionen (Effekt call) – rechnen, setzen Vars/Flags, geben Szene/Toast/Force zurück ---- */
   fns: {
+    rufStufe(s) { return StoryRules.rufStufeToast(s.story.vars); },
     lieferung(s) {
       const st = s.story, v = st.vars;
       const w = GangRules.week(v.woche + 1, !!st.flags.bahnhof);
@@ -9994,6 +10012,9 @@ const STORY_STASH = {
     { id: 'royalBannSpin', when: { all: [{ var: 'umsatzRoyal', gte: 15000 }, { notFlag: 'royalBann' }] }, at: 'spin:after', scene: 'stash.sylvie.bann', effects: [{ flag: 'royalBann' }, { lock: { rooms: ['royal'] } }, { show: 'stadt' }] },
     /* ---- Hinterzimmer ---- */
     { id: 'stummeNickt', when: { all: [{ var: 'umsatzHinterzimmer', gte: 100000 }, { notFlag: 'stummeNickt' }] }, once: true, at: 'spin:after', effects: [{ flag: 'stummeNickt' }, { achievement: 'stummeNickt' }] },
+    /* Ruf-Stufen: Toast beim Wechsel – am Ende der Liste, damit er den Stand nach Abrechnung und Angeboten zeigt (Spec 2026-09-21 Ruf-Stufen §2.2) */
+    { id: 'rufStufeNacht', daily: true, at: 'night', effects: [{ call: 'rufStufe' }] },
+    { id: 'rufStufeMorgen', daily: true, at: 'morning', effects: [{ call: 'rufStufe' }] },
   ],
   actions: [
     { id: 'igorBier', room: 'bar', label: '🍺 Bier mit Igor · 100 €', when: { all: [{ day: { gte: 8 } }, { notFlag: 'trocken' }, { notFlag: 'igor' }, { notFlag: 'igorHeute' }, { balance: { gte: 100 } }] }, scene: 'stash.igor' },
@@ -12111,11 +12132,12 @@ T.test('STORY_SCHULD ist gültig', () => {
 T.test('STORY_SCHULD: Kontrolle Tag 10 und Enden', () => {
   const s = Object.assign(base({ balance: 100 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
   s.story.day = 10;
-  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id), ['kontrolleFail']);
+  const ids = (at) => StoryRules.dueEvents(STORY_SCHULD, s, at).map((e) => e.id).filter((id) => !id.startsWith('rufStufe'));
+  T.eq(ids('night'), ['kontrolleFail']);
   s.story.stats.jobs = 7;
-  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id), ['kontrolleOk'], 'sieben Jobs reichen für die Kontrolle');
+  T.eq(ids('night'), ['kontrolleOk'], 'sieben Jobs reichen für die Kontrolle');
   s.story.stats.jobs = 0; s.balance = 5000;
-  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id), ['kontrolleOk']);
+  T.eq(ids('night'), ['kontrolleOk']);
   s.story.vars.schuld = 0;
   T.eq(StoryRules.ending(STORY_SCHULD, s).id, 'ehrlich');
   s.story.vars.schuld = 1; s.story.day = 31;
@@ -12141,27 +12163,48 @@ T.test('STORY_SCHULD: Kapitel 3/4 und Job-Freischaltung per Vertrauen', () => {
   s.story.seen.push('stadtOffen'); // Tag ist bereits > 4: für diesen Test irrelevant, sonst stört es dueEvents('morning')
   s.story.day = 13;
   T.eq(StoryRules.chapterFor(STORY_SCHULD, s).id, 'k3');
-  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), []);
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id).filter((id) => !id.startsWith('rufStufe')), []);
   s.story.vars.vertrauen = 4;
-  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), ['tuerJob']);
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id).filter((id) => !id.startsWith('rufStufe')), ['tuerJob']);
   s.story.day = 21; s.story.vars.vertrauen = 7; s.story.seen.push('tuerJob', 'buero');
   s.story.jobsDone.tuersteher = 3;
   T.eq(StoryRules.chapterFor(STORY_SCHULD, s).id, 'k4');
-  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), ['croupierJob']);
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id).filter((id) => !id.startsWith('rufStufe')), ['croupierJob']);
   T.eq(STORY_SCHULD.jobScenes.tuersteher.length, 3); T.eq(STORY_SCHULD.jobScenes.croupier.length, 3); T.eq(STORY_SCHULD.jobScenes.docassi.length, 3);
 });
 T.test('STORY_SCHULD: Flucht braucht Ruf, Igor sieht sie nur nach einer Tür-Schicht', () => {
   const s = Object.assign(base({ balance: 8000 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
   s.story.day = 22; s.story.jobsDone.taxi = 1; s.story.seen.push('croupierJob', 'stadtOffen');
-  const night = () => StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id);
+  const night = () => StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id).filter((id) => !id.startsWith('rufStufe'));
   T.eq(night(), [], 'ohne Ruf kein Angebot');
   s.story.vars.ruf = 2;
   T.eq(night(), ['fluchtAngebot']);
   s.story.flags.fluchtBereit = true; s.story.seen.push('fluchtAngebot');
   T.eq(night(), ['fluchtFrage'], 'kein Türsteher-Job heute → Igor sieht nichts');
-  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), []);
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id).filter((id) => !id.startsWith('rufStufe')), []);
   s.story.jobToday = 'tuersteher';
   T.eq(night(), ['fluchtFrage', 'igorSah']);
+});
+T.test('Ruf-Stufen: HUD zeigt Titel, Stufen-Toast genau beim Wechsel (Story 1 und 3, auch ohne rufStufe im alten Spielstand)', () => {
+  for (const [story, mk] of [[STORY_SCHULD, () => Object.assign(base({ balance: 500 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) })], [STORY_STASH, () => stashState()]]) {
+    const s = mk(); const v = s.story.vars;
+    T.eq(v.rufStufe, 0, `${story.id}: Start Stufe 0`);
+    T.eq(story.varMax.ruf, 10, `${story.id}: varMax.ruf`);
+    const hud = story.hud.find((h) => h.var === 'ruf');
+    T.ok(hud && typeof hud.label === 'function' && hud.max === 10, `${story.id}: HUD-Eintrag ruf`);
+    T.eq(hud.label(s), '🔥 Niemand'); v.ruf = 5; T.eq(hud.label(s), '🔥 Respektiert');
+    const nightIds = StoryRules.dueEvents(story, s, 'night').map((e) => e.id);
+    T.ok(nightIds.includes('rufStufeNacht'), `${story.id}: rufStufeNacht fällig`);
+    T.ok(StoryRules.dueEvents(story, s, 'morning').map((e) => e.id).includes('rufStufeMorgen'), `${story.id}: rufStufeMorgen fällig`);
+    const out1 = story.fns.rufStufe(s);
+    T.eq(out1.toast && out1.toast.tone, 'win', `${story.id}: Aufstieg → win-Toast`); T.ok(out1.toast.title.includes('Respektiert')); T.eq(v.rufStufe, 2);
+    T.eq(story.fns.rufStufe(s), {}, `${story.id}: unverändert → kein Toast`);
+    v.ruf = 4; const out2 = story.fns.rufStufe(s);
+    T.eq(out2.toast && out2.toast.tone, 'loss', `${story.id}: Abstieg → loss-Toast`); T.eq(v.rufStufe, 1);
+    /* alter Spielstand: rufStufe fehlt, Ruf 6 → genau ein Toast Respektiert */
+    const alt = mk(); delete alt.story.vars.rufStufe; alt.story.vars.ruf = 6;
+    const o = story.fns.rufStufe(alt); T.ok(o.toast && o.toast.title.includes('Respektiert')); T.eq(alt.story.vars.rufStufe, 2); T.eq(story.fns.rufStufe(alt), {});
+  }
 });
 
 /* ---- Baccarat ---- */
