@@ -1199,7 +1199,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     <div class="door" data-screen="roulette" style="--neon: var(--neon-red)"><div class="sign">Roulette</div><div class="glyph">🎡</div><div class="chalk-tag">Plein 35:1</div><div class="knob"></div></div>
     <div class="door" data-screen="slots" style="--neon: var(--neon-amber)"><div class="sign">Slots</div><div class="glyph">🎰</div><div class="chalk-tag">bis 40×</div><div class="knob"></div></div>
     <div class="door" data-screen="horses" style="--neon: var(--neon-green)"><div class="sign">Rennbahn</div><div class="glyph">🏇</div><div class="chalk-tag">Quote 4.0</div><div class="knob"></div></div>
-    <div class="door" data-screen="russian" style="--neon: var(--neon-blue)"><div class="sign">Igor</div><div class="glyph">🔫</div><div class="chalk-tag">Duell · 1 Kugel</div><div class="knob"></div></div>
+    <div class="door" data-screen="russian" style="--neon: var(--neon-blue)"><div class="sign">Igor</div><div class="glyph">🔫</div><div class="chalk-tag">Duell · 5:1</div><div class="knob"></div></div>
     <div class="door" data-screen="blackjack" style="--neon: var(--neon-green)"><div class="sign">Black Jack</div><div class="glyph">🃏</div><div class="chalk-tag">bis 21</div><div class="knob"></div></div>
     <div class="door" data-screen="poker" style="--neon: var(--neon-purple)"><div class="sign">Poker</div><div class="glyph">♠️</div><div class="chalk-tag">Draw · gegen den Wirt</div><div class="knob"></div></div>
     <div class="door" data-screen="hinterzimmer" style="--neon: var(--gold-2)" hidden><div class="sign">Hinterzimmer</div><div class="glyph">🂡</div><div class="chalk-tag">Baccarat · 500–10.000 €</div><div class="knob"></div></div>
@@ -1497,7 +1497,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
   <div class="panel rr-panel">
     <div class="duel-stage" id="rrStage"></div>
     <div class="chambers-left" id="chambersLeft">6 Kammern</div>
-    <div class="status" id="rrStatus">Duell gegen Igor. Streifschuss = 100 € Spital.</div>
+    <div class="status" id="rrStatus">Duell gegen Igor. Igor zahlt 5:1 – ein Streifschuss kostet 5× Einsatz und 100 € Spital.</div>
     <div class="bet-bar" id="rrBetControls">
       <div class="bet-field"><button data-step="-5">−</button><input type="number" id="rrBet" value="10" min="1"><button data-step="5">+</button></div>
       <button class="chip" data-chip="10" data-v="10">10</button>
@@ -1779,6 +1779,7 @@ const Rules = {
   PRICES: { beer: 50, brownie: 1000, brownieNext: 10000, kidney: 2000, house: 2500, tinder: 50, therapy: 5000, dealer: 5000 },
   MEDS_PER_SPIN: 20,
   HOSPITAL_RR: 100,
+  RR_MULT: 5, // Igor zahlt 5:1, ein Streifschuss kostet 5× Einsatz + Spital (Balancing 2026-09-21, Jeder Tisch; vorher 1:1 – bei 10 € riskierte man 110 für 10)
   HEARTBREAK_BILL: 250,
   BANK_LIMIT: 3000,
   BANK_RATE: 0.08,
@@ -1961,7 +1962,8 @@ const Rules = {
     c[Math.floor(rng() * 6)] = true;
     return c;
   },
-  rrDelta(victim, bet) { return victim === 'player' ? -(bet + Rules.HOSPITAL_RR) : bet; },
+  rrStake(bet) { return bet * Rules.RR_MULT; }, // liegt auf dem Tisch (Escrow bei Duellstart, MAX-Chip = maxBet / RR_MULT)
+  rrDelta(victim, bet) { return victim === 'player' ? -(bet * Rules.RR_MULT + Rules.HOSPITAL_RR) : bet * Rules.RR_MULT; },
 
   /* ---- Blackjack ---- */
   SUITS: ['♠', '♥', '♦', '♣'],
@@ -6161,7 +6163,7 @@ const Russian = {
     if (this.inDuel || !this.root) return;
     const forced = !!opts.forced;
     const bet = forced ? 0 : Game.readBet('rrBet');
-    if (!forced && !Game.beginSpin(bet)) return;
+    if (!forced && !Game.beginSpin(Rules.rrStake(bet))) return; // 5× Einsatz liegt auf dem Tisch
     const gen = this.gen;
     const duel = { cylinder: Rules.rrCylinder(Math.random), idx: 0, bet, gen, run: forced ? null : Game.run, done: false, forced, spent: [] };
     this.duel = duel;
@@ -6197,7 +6199,7 @@ const Russian = {
       this.chambers(duel.idx, duel.spent, gen);
       await wait(this.TIMES.spin);
       if (duel.cylinder[duel.idx]) {
-        if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = duel.forced ? `<span class="loss">PÄNG · Streifschuss</span>` : `<span class="loss">PÄNG · Streifschuss · −${UI.fmt(duel.bet)} & 100 € Spital</span>`;
+        if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = duel.forced ? `<span class="loss">PÄNG · Streifschuss</span>` : `<span class="loss">PÄNG · Streifschuss · −${UI.fmt(-Rules.rrDelta('player', duel.bet))} & 100 € Spital</span>`;
         await this.bang('player', gen);
         await this.end('player', duel);
         return;
@@ -6212,7 +6214,7 @@ const Russian = {
       this.chambers(duel.idx, duel.spent, gen);
       await wait(this.TIMES.spin);
       if (duel.cylinder[duel.idx]) {
-        if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = duel.forced ? `<span class="win">PÄNG · Igor liegt</span>` : `<span class="win">PÄNG · Igor liegt · +${UI.fmt(duel.bet)}</span>`;
+        if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = duel.forced ? `<span class="win">PÄNG · Igor liegt</span>` : `<span class="win">PÄNG · Igor liegt · +${UI.fmt(Rules.rrDelta('igor', duel.bet))}</span>`;
         await this.bang('igor', gen);
         await this.end('igor', duel);
         return;
@@ -6251,7 +6253,7 @@ const Russian = {
     const delta = Rules.rrDelta(victim, duel.bet);
     await Bus.emit('rr:result', { victim, bet: duel.bet });
     if (victim === 'player' && this.alive(gen)) await Cutscene.play('rr.headshot', {});
-    await Game.settle(delta, { from: this.alive(gen) ? this.stageEl() : null, game: 'russian', bet: duel.bet, run: duel.run });
+    await Game.settle(delta, { from: this.alive(gen) ? this.stageEl() : null, game: 'russian', bet: Rules.rrStake(duel.bet), run: duel.run });
   },
 };
 
@@ -6261,7 +6263,7 @@ UI.register('russian', {
     Russian.gen++;
     Russian.root = root;
     Russian.mountStage();
-    Game.bindBet(root, 'rrBet');
+    Game.bindBet(root, 'rrBet', () => Math.max(1, Math.floor(Rules.maxBet(State.s, Perks.mods()) / Rules.RR_MULT))); // MAX = was 5× auf den Tisch passt
     qs('#btnDuel', root).addEventListener('click', () => Russian.start());
     qs('#btnTrigger', root).addEventListener('click', () => Russian.pull());
     qs('#rrStage', root).addEventListener('pointerdown', (e) => { e.preventDefault(); Russian.pull(); });
@@ -10868,7 +10870,12 @@ T.test('rrCylinder: 6 Kammern, eine Kugel', () => {
   T.eq(c.filter(Boolean).length, 1);
   T.eq(c[3], true);
 });
-T.test('rrDelta', () => { T.eq(Rules.rrDelta('player', 10), -110); T.eq(Rules.rrDelta('igor', 10), 10); });
+T.test('rrDelta/rrStake: Igor zahlt 5:1, Streifschuss kostet 5× Einsatz + Spital (Balancing 2026-09-21, Jeder Tisch)', () => {
+  T.eq(Rules.RR_MULT, 5); T.eq(Rules.HOSPITAL_RR, 100);
+  T.eq(Rules.rrStake(10), 50); T.eq(Rules.rrStake(1000), 5000);
+  T.eq(Rules.rrDelta('player', 10), -150); T.eq(Rules.rrDelta('igor', 10), 50);
+  T.eq(Rules.rrDelta('player', 1000), -5100); T.eq(Rules.rrDelta('igor', 1000), 5000);
+});
 
 /* ---- Rules: Blackjack ---- */
 T.test('newDeck: 52 eindeutige Karten', () => {
@@ -14415,25 +14422,25 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       Rules.rrCylinder = () => [false, false, true, false, false, false];
       qs('#rrBet').value = '10';
       await Russian.start();
-      T.eq([Russian.inDuel, State.s.balance, qs('#rrActionControls').classList.contains('hidden'), EgoStage.handKind, qs('#rrStage .duel-gun').classList.contains('muzzle'), qs('#rrStage .duel-gun').classList.contains('up'), EgoStage.tenseFrom > 0], [true, 990, false, 'revolverMuzzle', true, true, true], 'Einsatz abgezogen, Revolver hebt sich in Mündungssicht, Anspannung');
+      T.eq([Russian.inDuel, State.s.balance, qs('#rrActionControls').classList.contains('hidden'), EgoStage.handKind, qs('#rrStage .duel-gun').classList.contains('muzzle'), qs('#rrStage .duel-gun').classList.contains('up'), EgoStage.tenseFrom > 0], [true, 950, false, 'revolverMuzzle', true, true, true], 'Einsatz abgezogen, Revolver hebt sich in Mündungssicht, Anspannung');
       /* Zug 1 per Leertaste: Klick beim Spieler → Igor (Revolver gleitet, Schläfe) → Klick → Erleichterung → wieder Spieler */
       key('Space'); T.eq([Russian.busy, qs('#btnTrigger').disabled], [true, true], 'Leertaste drückt ab, Knopf gesperrt');
       const seen = new Set(); for (let i = 0; i < 200 && Russian.busy; i++) { seen.add(qs('#rrStage .duel-foe').dataset.pose); await wait(5); }
       T.ok(seen.has('temple') && seen.has('relief'), `Igor: Schläfe und Erleichterung (${[...seen].join(',')})`);
       T.eq([Russian.inDuel, Russian.busy, EgoStage.cyl.idx, EgoStage.cyl.spent, qs('#chambersLeft').textContent, qs('#btnTrigger').disabled, EgoStage.handKind, qs('#rrStage .duel-foe').dataset.pose, EgoStage.parts.some((p) => p.kind === 'prop')], [true, false, 1, [0, 1], '4 Kammern übrig', false, 'revolverMuzzle', 'idle', true], 'zwei leere Kammern (Trommel dreht erst beim nächsten Abzug weiter), Revolver wieder bei dir');
-      /* Zug 2: Kugel beim Spieler → Blitz, roter Rand, rr:result, rr.headshot, Abrechnung −(10 + 100) */
+      /* Zug 2: Kugel beim Spieler → Blitz, roter Rand, rr:result, rr.headshot, Abrechnung −(5 × 10 + 100) */
       await Russian.pull();
-      T.eq([Russian.inDuel, ev, scenes, State.s.balance, qs('#rrBetControls').classList.contains('hidden'), EgoStage.redUntil > EgoStage.t, qs('#rrStage .duel-gun').classList.contains('up')], [false, [['result', 'player', 10]], ['rr.headshot'], 890, false, true, false], 'Streifschuss abgerechnet, Hand gesenkt');
+      T.eq([Russian.inDuel, ev, scenes, State.s.balance, qs('#rrBetControls').classList.contains('hidden'), EgoStage.redUntil > EgoStage.t, qs('#rrStage .duel-gun').classList.contains('up')], [false, [['result', 'player', 10]], ['rr.headshot'], 850, false, true, false], 'Streifschuss abgerechnet, Hand gesenkt');
       /* forced (Vitos Prüfung): kein Einsatz, Igor erwischt es → rr:forced igor, Igor fällt */
       ev.length = 0; Rules.rrCylinder = () => [false, true, false, false, false, false];
-      await Russian.start({ forced: true }); T.eq([Russian.inDuel, State.s.balance, qs('#rrStatus').textContent.includes('Vitos Prüfung')], [true, 890, true]);
+      await Russian.start({ forced: true }); T.eq([Russian.inDuel, State.s.balance, qs('#rrStatus').textContent.includes('Vitos Prüfung')], [true, 850, true]);
       await Russian.pull();
-      T.eq([Russian.inDuel, ev, State.s.balance, qs('#rrStage .duel-foe').dataset.pose, EgoStage.stains.length >= 1, qs('#rrStage .duel-gun').classList.contains('up')], [false, [['forced', 'igor']], 890, 'down', true, false], 'Igor liegt (und bleibt liegen), kein Geld bewegt, Hand unten');
+      T.eq([Russian.inDuel, ev, State.s.balance, qs('#rrStage .duel-foe').dataset.pose, EgoStage.stains.length >= 1, qs('#rrStage .duel-gun').classList.contains('up')], [false, [['forced', 'igor']], 850, 'down', true, false], 'Igor liegt (und bleibt liegen), kein Geld bewegt, Hand unten');
       /* drop: Screen mitten im Duell verlassen → Einsatz verfällt, Bühne abgebaut */
       ev.length = 0; Rules.rrCylinder = () => [false, false, false, false, false, true];
-      await Russian.start(); T.eq([Russian.inDuel, State.s.balance, Game.inFlight], [true, 880, 1]);
+      await Russian.start(); T.eq([Russian.inDuel, State.s.balance, Game.inFlight], [true, 800, 1]);
       await UI.show('hub');
-      T.eq([Russian.inDuel, Russian.root, Game.inFlight, State.s.balance, EgoStage.mounted, ev], [false, null, 0, 880, false, []], 'drop: Einsatz weg, kein Event, Bühne weg');
+      T.eq([Russian.inDuel, Russian.root, Game.inFlight, State.s.balance, EgoStage.mounted, ev], [false, null, 0, 800, false, []], 'drop: Einsatz weg, kein Event, Bühne weg');
       for (const name of ['egoBob', 'egoJerk']) { const kf = keyframesOf(name); T.ok(kf, `@keyframes ${name}`); for (const p of animatedProps(kf)) T.ok(p === 'transform' || p === 'opacity', `${name}: ${p}`); }
     } finally {
       off1(); off2(); Cutscene.play = keep.play; Rules.rrCylinder = keep.cyl; Russian.TIMES = keep.times; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
