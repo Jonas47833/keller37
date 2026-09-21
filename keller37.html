@@ -7135,6 +7135,18 @@ const StoryRules = {
   },
   jobMod(s) { return (s.story && s.story.jobMod) || {}; },
   shiftPay(base, bonus, jobMod) { return Math.round((base + bonus) * (jobMod.shiftPay != null ? jobMod.shiftPay : 1)); },
+  /* Ruf-Stufen: Titel im HUD und Schwellen der Angebote (Story 1 und 3). Events nutzen weiterhin { var: 'ruf', gte: ab }. */
+  RUF_STUFEN: [{ id: 'niemand', ab: 0, titel: 'Niemand' }, { id: 'bekannt', ab: 2, titel: 'Bekannt' }, { id: 'respektiert', ab: 5, titel: 'Respektiert' }, { id: 'legende', ab: 8, titel: 'Legende' }],
+  rufStufe(ruf) { const r = ruf || 0; let cur = StoryRules.RUF_STUFEN[0]; for (const s of StoryRules.RUF_STUFEN) if (r >= s.ab) cur = s; return cur; },
+  /* Stufen-Toast: vergleicht die Stufe aus vars.ruf mit vars.rufStufe (Index), setzt sie nach und liefert bei Wechsel einen Toast */
+  RUF_SAETZE: { bekannt: 'Man hat deinen Namen gehört.', respektiert: 'Man kennt deinen Namen.', legende: 'Man erzählt sich Geschichten.' },
+  rufStufeToast(vars) {
+    const stufe = StoryRules.rufStufe(vars.ruf), idx = StoryRules.RUF_STUFEN.indexOf(stufe), alt = vars.rufStufe || 0;
+    if (idx === alt) return {};
+    vars.rufStufe = idx;
+    const auf = idx > alt;
+    return { toast: { icon: '🔥', title: auf ? stufe.titel : `${stufe.titel} – Ruf sinkt`, text: auf ? StoryRules.RUF_SAETZE[stufe.id] : 'Der Bahnhof redet weniger über dich.', tone: auf ? 'win' : 'loss' } };
+  },
   validate(story, sceneIds, jobIds, storyIds = null, stories = {}) {
     const errs = [];
     const scene = (id, where) => { if (id && !sceneIds.includes(id)) errs.push(`${story.id}: Szene "${id}" fehlt (${where})`); };
@@ -7769,7 +7781,8 @@ const GangRules = {
   REPAIR: { roulette: 6000, blackjack: 5000, slots: 4000, horses: 3000, russian: 2000 },
   repairPrice(door, igor) { const p = GangRules.REPAIR[door]; return igor ? Math.round(p / 2 / 100) * 100 : p; },
   RAID: { base: 0.25, igor: 0.15 },
-  raidChance(flags) { return flags.bahnhof ? 0 : flags.igor ? GangRules.RAID.igor : GangRules.RAID.base; },
+  WACHE_PREIS: 200, // Bahnhof-Jungs vor der Tür (Ruf-Angebot „Die Wache“): je Nacht, Türen bleiben ganz
+  raidChance(flags) { return flags.bahnhof || flags.wache ? 0 : flags.igor ? GangRules.RAID.igor : GangRules.RAID.base; },
   /* rng 1: Chance; rng 2: Wahl unter den intakten Türen (KELLER_DOORS-Reihenfolge) */
   raid(broken = {}, flags = {}, rng = Math.random) {
     const chance = GangRules.raidChance(flags);
@@ -9265,9 +9278,9 @@ if (typeof Stories !== 'undefined') Stories.define(STORY_PROBE);
 /* ================= STORY 1: DIE SCHULD ================= */
 const STORY_SCHULD = {
   id: 'schuld', title: 'Die Schuld', days: 30,
-  start: { balance: 50, unlocked: { jobs: ['spueler', 'post'], doors: ['slots', 'horses'], rooms: ['bar', 'vito'] }, vars: { schuld: 50000, vertrauen: 0, ruf: 0, gezahlt: 0, duellSiege: 0, tuerSauber: 0 } },
+  start: { balance: 50, unlocked: { jobs: ['spueler', 'post'], doors: ['slots', 'horses'], rooms: ['bar', 'vito'] }, vars: { schuld: 50000, vertrauen: 0, ruf: 0, rufStufe: 0, gezahlt: 0, duellSiege: 0, tuerSauber: 0 } },
   varMax: { vertrauen: 10, ruf: 10 },
-  hud: [{ var: 'schuld', label: '🕶️ Vito', fmt: 'money', tone: 'danger' }, { var: 'vertrauen', label: '🤝', max: 10 }, { var: 'ruf', label: '🔥 Ruf', max: 10 }],
+  hud: [{ var: 'schuld', label: '🕶️ Vito', fmt: 'money', tone: 'danger' }, { var: 'vertrauen', label: '🤝', max: 10 }, { var: 'ruf', label: (s) => '🔥 ' + StoryRules.rufStufe(s.story.vars.ruf).titel, max: 10 }],
   goal: (s) => `Ziel: Vito ${UI.fmt(s.story.vars.schuld)} bis Tag 30`,
   lockReason: { roulette: 'Vito sagt nein', blackjack: 'Vito sagt nein', poker: 'Vito sagt nein', russian: 'Igor hat keine Zeit' },
   intro: 'schuld.intro',
@@ -9375,6 +9388,27 @@ const STORY_SCHULD = {
     'schuld.eintreiber.zahnarzt': [
       { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Ein Zahnarzt. Spielt bei uns, verliert bei uns, zahlt nicht bei uns. Erste Etage, Praxis Dr. Leuchtenberg.' },
       { bg: 'strasse', who: 'du', mood: 'calm', text: 'Er zahlt, bevor du das Wartezimmer verlässt. Und bietet dir eine Prophylaxe an. Umsonst. Du sagst ja.' },
+    ],
+    /* ---- Ruf-Angebote ---- */
+    'schuld.vitoRespekt': [
+      { bg: 'hinterzimmer', who: 'du', mood: 'calm', cast: ['du'], text: 'Igor holt dich von der Bar. Kein Wort. Hinterzimmer, Vito, ein Glas, das er nicht anrührt.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Man redet über dich. Am Bahnhof, im Taxi, an meiner Tür. Ich höre viel. Meistens Unsinn. Diesmal nicht.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', cam: 'close', text: 'Zehntausend weniger auf dem Zettel. Dafür trägst du ab heute meinen Namen, wenn jemand fragt, für wen du arbeitest. Das ist kein Geschenk. Das ist ein Preis.',
+        choices: [
+          { label: 'Annehmen', value: 'ja', cls: 'red', effects: [{ var: 'schuld', add: -10000 }, { var: 'vertrauen', add: 2 }, { flag: 'vitosMann' }] },
+          { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ var: 'ruf', add: 1 }] },
+        ] },
+      { bg: 'hinterzimmer', who: 'igor', mood: 'calm', text: 'Igor bringt dich zurück. An der Tür sagt er, ohne dich anzusehen: „Am Bahnhof sagen sie, du zahlst selbst. Egal, was du eben gesagt hast.“' },
+    ],
+    'schuld.igorHoert': [
+      { bg: 'bar', who: 'du', mood: 'calm', cast: ['du'], text: 'Kurz vor Schluss. Der Wirt wischt. Igor setzt sich neben dich. Igor setzt sich nie.' },
+      { bg: 'bar', who: 'igor', mood: 'calm', text: 'Ich stehe seit elf Jahren an dieser Tür. Ich weiß, wer reinkommt und wer nicht mehr rauskommt. Und ich weiß, wie man am Bahnhof über Vito redet. Und wie über dich.' },
+      { bg: 'bar', who: 'igor', mood: 'calm', cam: 'close', text: 'Sie haben mehr Respekt vor dir als vor ihm. Das hat er noch nicht gemerkt. Ich schon. Willst du wissen, was ich sonst noch gemerkt habe?',
+        choices: [
+          { label: 'Zuhören', value: 'ja', cls: 'blue', effects: [{ flag: 'igorZweifelt' }] },
+          { label: 'Abwinken', value: 'nein', cls: 'ghost' },
+        ] },
+      { bg: 'bar', who: 'igor', mood: 'calm', text: 'Er steht auf, legt einen Schein auf den Tresen. „Für das Bier. Und für das Gespräch, das wir nicht hatten.“' },
     ],
     'schuld.buero': [
       { bg: 'keller', who: 'igor', mood: 'calm', text: 'Vito will seinen Mantel. Büro, hinten. Ich bleibe an der Tür.' },
@@ -9523,7 +9557,10 @@ const STORY_SCHULD = {
     { id: 'tuerJob', when: { all: [{ day: { gte: 13 } }, { var: 'vertrauen', gte: 4 }] }, once: true, at: 'morning', scene: 'schuld.tuerJob', effects: [{ unlock: { jobs: ['tuersteher', 'eintreiber'] } }] },
     { id: 'buero', when: { all: [{ jobDone: 'tuersteher', gte: 1 }, { notFlag: 'bueroGesehen' }] }, once: true, at: 'morning', scene: 'schuld.buero', effects: [{ flag: 'bueroGesehen' }] },
     { id: 'chantalBeichte', when: { all: [{ day: { gte: 15 } }, { flag: 'chantalKennt' }] }, once: true, at: 'night', scene: 'schuld.chantalBeichte', effects: [{ flag: 'chantalBeichte' }] },
-    { id: 'igorZweifel', when: { var: 'duellSiege', gte: 3 }, once: true, at: 'spin:after', scene: 'schuld.igorZweifel', effects: [{ flag: 'igorZweifelt' }] },
+    { id: 'igorZweifel', when: { all: [{ var: 'duellSiege', gte: 3 }, { notFlag: 'igorZweifelt' }] }, once: true, at: 'spin:after', scene: 'schuld.igorZweifel', effects: [{ flag: 'igorZweifelt' }] },
+    /* Ruf-Angebote (Spec 2026-09-21 Ruf-Stufen §3): Respektiert → Vito, Legende → Igor */
+    { id: 'vitoRespekt', when: { var: 'ruf', gte: 5 }, once: true, at: 'night', scene: 'schuld.vitoRespekt' },
+    { id: 'igorHoert', when: { all: [{ var: 'ruf', gte: 8 }, { notFlag: 'igorZweifelt' }] }, once: true, at: 'night', scene: 'schuld.igorHoert' },
     { id: 'tuerSauber', when: { var: 'tuerSauber', gte: 3 }, at: 'night', scene: 'schuld.tuerSauber', effects: [{ var: 'vertrauen', add: 1 }, { var: 'tuerSauber', set: 0 }] },
     { id: 'croupierJob', when: { all: [{ day: { gte: 21 } }, { var: 'vertrauen', gte: 7 }, { jobDone: 'tuersteher', gte: 3 }] }, once: true, at: 'morning', scene: 'schuld.croupierJob', effects: [{ unlock: { jobs: ['croupier'] } }] },
     { id: 'erinnerung', when: { day: { eq: 25 } }, once: true, at: 'night', scene: 'schuld.erinnerung', effects: [{ balancePct: -20, min: 100 }] },
@@ -9531,6 +9568,9 @@ const STORY_SCHULD = {
     { id: 'fluchtFrage', when: { all: [{ flag: 'fluchtBereit' }, { notFlag: 'fluchtHeute' }] }, at: 'night', scene: 'schuld.fluchtFrage' },
     { id: 'igorSah', when: { all: [{ flag: 'fluchtBereit' }, { notFlag: 'igorSah' }, { jobToday: 'tuersteher' }] }, once: true, at: 'night', scene: 'schuld.igorSah', effects: [{ flag: 'igorSah' }, { var: 'vertrauen', add: -3 }] },
     { id: 'sturzFrage', when: { all: [{ day: { gte: 28 } }, { flag: 'hauptbuch' }, { flag: 'safe' }, { flag: 'igorZweifelt' }, { notFlag: 'sturzJetzt' }] }, at: 'night', scene: 'schuld.sturzFrage' },
+    /* Ruf-Stufen: Toast beim Wechsel – am Ende der Liste, damit er den Stand nach Abrechnung und Angeboten zeigt (Spec 2026-09-21 Ruf-Stufen §2.2) */
+    { id: 'rufStufeNacht', daily: true, at: 'night', effects: [{ call: 'rufStufe' }] },
+    { id: 'rufStufeMorgen', daily: true, at: 'morning', effects: [{ call: 'rufStufe' }] },
   ],
   jobScenes: {
     kurier: ['schuld.kurier.polizei', 'schuld.kurier.doc', 'schuld.kurier.igor'],
@@ -9544,6 +9584,10 @@ const STORY_SCHULD = {
     'schuld.prakt.praemie': [{ balance: 100 }], 'schuld.kurier.doc': [{ var: 'ruf', add: 1 }], 'schuld.prakt.konto': [{ flag: 'vitoPleite' }],
     'schuld.doc.vorbesitzer': [{ var: 'ruf', add: 1 }], 'schuld.doc.igor': [{ var: 'vertrauen', add: 1 }, { flag: 'igorDank' }],
     'schuld.eintreiber.kiosk': [{ var: 'ruf', add: 1 }], 'schuld.eintreiber.zahnarzt': [{ var: 'ruf', add: 1 }],
+  },
+  /* ---- Story-Funktionen (Effekt call) ---- */
+  fns: {
+    rufStufe(s) { return StoryRules.rufStufeToast(s.story.vars); },
   },
   endings: [
     { id: 'ehrlich', title: 'Der Ehrliche', priority: 30, when: { var: 'schuld', lte: 0 }, scene: 'schuld.ende.ehrlich' },
@@ -9842,9 +9886,9 @@ const STORY_STASH = {
   start: {
     balance: 5000,
     unlocked: { jobs: ['eintreiber'], doors: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker'], rooms: ['bar', 'doc', 'bank', 'invest', 'life', 'stadt', 'royal'] },
-    vars: { woche: 0, umsatz: 0, umsatzRoyal: 0, umsatzHinterzimmer: 0, umsatzTotal: 0, ziel: 0, rueckgabe: 0, lieferung: 0, zorn: 0, kredit: 0, belege: 0, belegeOffen: 0, uebergeben: 0, ruf: 0, igorBiere: 0, eintreiberWoche: 0, abrechnungenOk: 0, ausgang: 0, anabiErfaehrt: 0 },
+    vars: { woche: 0, umsatz: 0, umsatzRoyal: 0, umsatzHinterzimmer: 0, umsatzTotal: 0, ziel: 0, rueckgabe: 0, lieferung: 0, zorn: 0, kredit: 0, belege: 0, belegeOffen: 0, uebergeben: 0, ruf: 0, rufStufe: 0, igorBiere: 0, eintreiberWoche: 0, abrechnungenOk: 0, ausgang: 0, anabiErfaehrt: 0 },
   },
-  varMax: { zorn: 3 },
+  varMax: { zorn: 3, ruf: 10 },
   prices: { brownie: 1000 },
   disabled: ['tinder', 'house', 'dealer', 'brownie'],
   turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel', 'stud', 'sicbo'], umsatzHinterzimmer: ['baccarat'] },
@@ -9857,6 +9901,7 @@ const STORY_STASH = {
     { var: 'umsatz', label: '🧺 Umsatz', fmt: 'money', max: (s) => s.story.vars.ziel || null },
     { var: 'zorn', label: '😡 Zorn', max: 3, tone: 'danger' },
     { var: 'kredit', label: '🧾 Kredit', fmt: 'money' },
+    { var: 'ruf', label: (s) => '🔥 ' + StoryRules.rufStufe(s.story.vars.ruf).titel, max: 10 },
   ],
   goal: (s) => {
     const v = s.story.vars, f = s.story.flags, fmt = StoryRules.fmtMoney;
@@ -9864,15 +9909,16 @@ const STORY_STASH = {
     if (!v.woche) return 'Der Keller gehört dir. Auf dem Papier.';
     if (v.woche > 0 && s.story.day > v.woche * 7) return `Woche ${v.woche} abgerechnet. ${s.story.day >= 29 ? 'Woche 5 kommt – Zeit für einen Ausweg.' : 'Heute Nacht: neue Lieferung.'}`;
     const heute = [7, 14, 21, 28].includes(s.story.day);
-    return `Woche ${v.woche}: Umsatz ${fmt(v.umsatz)} / ${fmt(v.ziel)} · ${heute ? 'HEUTE ABEND' : `Tag ${v.woche * 7}`}: ${fmt(v.rueckgabe)} fällig`;
+    return `Woche ${v.woche}: Umsatz ${fmt(v.umsatz)} / ${fmt(v.ziel)} · ${heute ? 'HEUTE ABEND' : `Tag ${v.woche * 7}`}: ${fmt(v.rueckgabe)} fällig${f.wache ? ` · Wache ${GangRules.WACHE_PREIS} €/Nacht` : ''}`;
   },
   intro: 'stash.intro',
   /* ---- Story-Funktionen (Effekt call) – rechnen, setzen Vars/Flags, geben Szene/Toast/Force zurück ---- */
   fns: {
+    rufStufe(s) { return StoryRules.rufStufeToast(s.story.vars); },
     lieferung(s) {
       const st = s.story, v = st.vars;
       const w = GangRules.week(v.woche + 1, !!st.flags.bahnhof);
-      v.woche++; v.umsatz = 0; v.umsatzRoyal = 0; v.eintreiberWoche = 0;
+      v.woche++; v.umsatz = 0; v.umsatzRoyal = 0; v.eintreiberWoche = 0; delete st.flags.rufReparaturWoche;
       v.ziel = w.ziel; v.rueckgabe = w.rueckgabe; v.lieferung = w.lieferung;
       s.balance += w.lieferung;
       delete st.flags.royalWarn;
@@ -9885,7 +9931,7 @@ const STORY_STASH = {
       v.kredit = Math.max(0, (v.kredit || 0) + r.kreditDelta);
       v.zorn = GangRules.zorn(v.zorn, r.zornDelta);
       v.belege += r.belegDelta; v.belegeOffen += r.belegDelta;
-      if (r.ausgang === 'ok') v.abrechnungenOk++;
+      if (r.ausgang === 'ok') { v.abrechnungenOk++; v.ruf = Math.min(10, (v.ruf || 0) + 1); v.rufAbrechnung = 1; } else v.rufAbrechnung = 0;
       v.anabiErfaehrt = 0;
       if (f.bahnhof && !f.anabiWeiss) { f.anabiWeiss = true; v.zorn = GangRules.zorn(v.zorn, 1); v.anabiErfaehrt = 1; }
       v.ausgang = { ok: 0, umsatz: 1, geld: 2, beides: 3 }[r.ausgang];
@@ -9945,7 +9991,30 @@ const STORY_STASH = {
       const v = s.story.vars, amt = Math.min(GangRules.KREDIT_SCHRITT, v.kredit || 0, s.balance);
       if (amt <= 0) return {};
       s.balance -= amt; v.kredit -= amt;
-      return { toast: { icon: '🧾', title: `−${StoryRules.fmtMoney(amt)}`, text: `Kredit noch ${StoryRules.fmtMoney(v.kredit)}.`, tone: 'info' } };
+      /* Ruf nur für eine volle Rate oder die Tilgung, einmal am Tag – sonst wäre die Stufen-Schranke per Kleinstbeträgen umgehbar (Review 2026-09-21) */
+      const rate = (amt === GangRules.KREDIT_SCHRITT || v.kredit === 0) && !s.story.flags.kreditRufHeute;
+      if (rate) { s.story.flags.kreditRufHeute = true; v.ruf = Math.min(10, (v.ruf || 0) + 1); }
+      return { toast: { icon: '🧾', title: `−${StoryRules.fmtMoney(amt)}`, text: `Kredit noch ${StoryRules.fmtMoney(v.kredit)}.${rate ? ' Ruf +1 – Anabi merkt sich, wer zahlt.' : ''}`, tone: 'info' } };
+    },
+    /* Reparatur nach Überfall: Ruf +1, einmal je Woche (Flag fällt bei der Lieferung) – aufgerufen vom Bus-Hook story:repair */
+    reparaturRuf(s) {
+      const st = s.story;
+      if (st.flags.rufReparaturWoche) return {};
+      st.flags.rufReparaturWoche = true; st.vars.ruf = Math.min(10, (st.vars.ruf || 0) + 1);
+      return { toast: { icon: '🔥', title: 'Ruf +1', text: 'Er lässt sich nicht kleinkriegen, sagen sie am Bahnhof.', tone: 'win' } };
+    },
+    /* Die Wache: 200 € je Nacht; reicht die Kasse nicht, gehen die Jungs (Flag fällt, kommt nicht wieder) */
+    wacheNacht(s) {
+      const f = s.story.flags;
+      if (s.balance >= GangRules.WACHE_PREIS) { s.balance -= GangRules.WACHE_PREIS; return {}; }
+      delete f.wache; f.wacheWeg = true;
+      return { toast: { icon: '🚪', title: 'Die Wache geht', text: 'Kein Geld, keine Jungs. Die Tür ist wieder deine Sache.', tone: 'loss' } };
+    },
+    /* Anabi hört zu (Legende): Kredit auf volle Tausend halbiert, Zorn 0 */
+    anabiNachlass(s) {
+      const v = s.story.vars;
+      v.kredit = Math.round((v.kredit || 0) / 2 / 1000) * 1000; v.zorn = 0;
+      return { toast: { icon: '🤝', title: 'Kredit halbiert', text: `Zettel jetzt ${StoryRules.fmtMoney(v.kredit)}. Zorn: null.`, tone: 'win' } };
     },
     /* Dev-Start mitten in der Story (?day=N): ohne diese Nachbesserung stünde Woche/Ziel/Rückgabe auf 0,
        bis die nächste reguläre Lieferung/Abrechnung sie setzt. Kein Kontostand-Effekt, keine Lieferung heute Nacht. */
@@ -9969,9 +10038,13 @@ const STORY_STASH = {
     { id: 'abrechnung', when: { any: [{ day: { eq: 7 } }, { day: { eq: 14 } }, { day: { eq: 21 } }, { day: { eq: 28 } }] }, daily: true, at: 'night', effects: [{ call: 'abrechnung' }] },
     { id: 'lieferung', when: { any: [{ day: { eq: 1 } }, { day: { eq: 8 } }, { day: { eq: 15 } }, { day: { eq: 22 } }] }, daily: true, at: 'night', effects: [{ call: 'lieferung' }] },
     { id: 'tutorial', when: { day: { eq: 10 } }, once: true, at: 'night', scene: 'stash.tutorial', effects: [{ call: 'tutorial' }] },
+    /* Die Wache (Ruf-Angebot): Kosten vor dem Überfall abrechnen – eine gegangene Wache schützt in derselben Nacht nicht mehr */
+    { id: 'wacheNacht', when: { flag: 'wache' }, daily: true, at: 'night', effects: [{ call: 'wacheNacht' }] },
     { id: 'ueberfall', when: { day: { gte: 8 } }, daily: true, at: 'night', effects: [{ call: 'ueberfall' }] },
     { id: 'hinterhalt', when: { day: { gte: 8 } }, daily: true, at: 'night', effects: [{ call: 'hinterhalt' }] },
     { id: 'angebot', when: { all: [{ day: { gte: 15 } }, { var: 'ruf', gte: 2 }, { notFlag: 'bahnhof' }, { notFlag: 'bahnhofNein' }] }, once: true, at: 'night', scene: 'stash.angebot' },
+    { id: 'wache', when: { all: [{ var: 'ruf', gte: 5 }, { notFlag: 'bahnhof' }, { notFlag: 'wache' }, { notFlag: 'wacheNein' }] }, once: true, at: 'night', scene: 'stash.wache' },
+    { id: 'anabiHoert', when: { var: 'ruf', gte: 8 }, once: true, at: 'night', scene: 'stash.anabiHoert' },
     /* ---- Morgen ---- */
     { id: 'einrichten', when: { day: { gte: 1 } }, once: true, at: 'morning', effects: [{ set: { car: 'mercC' } }, { enable: ['hinterzimmer'] }, { call: 'devWoche' }] },
     { id: 'startKredit30', when: { all: [{ day: { gte: 1 } }, { any: [{ prevEnding: { story: 'kater', id: 'nuechtern' } }, { prevEnding: { story: 'kater', id: 'taxi' } }] }] }, once: true, at: 'morning', effects: [{ var: 'kredit', set: 30000 }] },
@@ -9979,7 +10052,7 @@ const STORY_STASH = {
     { id: 'startTrocken', when: { all: [{ day: { gte: 1 } }, { prevEnding: { story: 'kater', id: 'nuechtern' } }] }, once: true, at: 'morning', effects: [{ flag: 'trocken' }, { disable: ['beer'] }] },
     { id: 'startBrownie', when: { all: [{ day: { gte: 1 } }, { prevEnding: { story: 'kater', id: 'brownie' } }] }, once: true, at: 'morning', effects: [{ enable: ['brownie'] }] },
     { id: 'tisch', when: { day: { gte: 2 } }, once: true, at: 'morning', scene: 'stash.tisch', effects: [{ unlock: { doors: ['hinterzimmer'] } }] },
-    { id: 'tagesstart', when: { day: { gte: 1 } }, daily: true, at: 'morning', effects: [{ unflag: 'ueberfallHeute' }, { unflag: 'igorHeute' }] },
+    { id: 'tagesstart', when: { day: { gte: 1 } }, daily: true, at: 'morning', effects: [{ unflag: 'ueberfallHeute' }, { unflag: 'igorHeute' }, { unflag: 'kreditRufHeute' }] },
     { id: 'nachtkasse', when: { day: { gte: 2 } }, daily: true, at: 'morning', effects: [{ call: 'nachtkasse' }] },
     { id: 'pfandleihe', when: { day: { gte: 8 } }, once: true, at: 'morning', effects: [{ enable: ['pfandleihe'] }] },
     { id: 'hausmeister', when: { all: [{ var: 'repariert_roulette', gte: 1 }, { var: 'repariert_slots', gte: 1 }, { var: 'repariert_horses', gte: 1 }, { var: 'repariert_russian', gte: 1 }, { var: 'repariert_blackjack', gte: 1 }] }, once: true, at: 'morning', effects: [{ achievement: 'hausmeister' }] },
@@ -9994,14 +10067,19 @@ const STORY_STASH = {
     { id: 'finaleLost', when: { all: [{ flag: 'fight_finale' }, { flag: 'fightLost' }] }, at: 'fight:after', effects: [{ flag: 'kanal' }] },
     /* ---- Kurierfahrt: Kontrolle ---- */
     { id: 'kontrolle', when: { flag: 'kontrolle' }, at: 'job:after', scene: 'stash.kontrolle', effects: [{ unflag: 'kontrolle' }, { var: 'zorn', add: 1 }, { var: 'belege', add: 1 }, { var: 'belegeOffen', add: 1 }] },
+    { id: 'eintreiberRuf', when: { jobToday: 'eintreiber' }, daily: true, at: 'job:after', effects: [{ var: 'ruf', add: 1 }, { toast: { icon: '🥊', title: 'Ruf +1', text: 'Die Liste ist kürzer. Der Bahnhof hat es gesehen.', tone: 'win' } }] },
     /* ---- Royal: Sylvie ---- */
     { id: 'sylvieWarn', when: { all: [{ var: 'umsatzRoyal', gte: 10000 }, { var: 'umsatzRoyal', lt: 15000 }, { notFlag: 'royalWarn' }, { notFlag: 'royalBann' }] }, at: 'royal:enter', scene: 'stash.sylvie.warn', effects: [{ flag: 'royalWarn' }] },
     { id: 'royalBannEnter', when: { all: [{ var: 'umsatzRoyal', gte: 15000 }, { notFlag: 'royalBann' }] }, at: 'royal:enter', scene: 'stash.sylvie.bann', effects: [{ flag: 'royalBann' }, { lock: { rooms: ['royal'] } }, { show: 'stadt' }] },
     { id: 'royalBannSpin', when: { all: [{ var: 'umsatzRoyal', gte: 15000 }, { notFlag: 'royalBann' }] }, at: 'spin:after', scene: 'stash.sylvie.bann', effects: [{ flag: 'royalBann' }, { lock: { rooms: ['royal'] } }, { show: 'stadt' }] },
     /* ---- Hinterzimmer ---- */
     { id: 'stummeNickt', when: { all: [{ var: 'umsatzHinterzimmer', gte: 100000 }, { notFlag: 'stummeNickt' }] }, once: true, at: 'spin:after', effects: [{ flag: 'stummeNickt' }, { achievement: 'stummeNickt' }] },
+    /* Ruf-Stufen: Toast beim Wechsel – am Ende der Liste, damit er den Stand nach Abrechnung und Angeboten zeigt (Spec 2026-09-21 Ruf-Stufen §2.2) */
+    { id: 'rufStufeNacht', daily: true, at: 'night', effects: [{ call: 'rufStufe' }] },
+    { id: 'rufStufeMorgen', daily: true, at: 'morning', effects: [{ call: 'rufStufe' }] },
   ],
   actions: [
+    { id: 'wacheWeg', room: 'bar', label: '🚪 Wache heimschicken', when: { flag: 'wache' }, scene: 'stash.wacheWeg' },
     { id: 'igorBier', room: 'bar', label: '🍺 Bier mit Igor · 100 €', when: { all: [{ day: { gte: 8 } }, { notFlag: 'trocken' }, { notFlag: 'igor' }, { notFlag: 'igorHeute' }, { balance: { gte: 100 } }] }, scene: 'stash.igor' },
     { id: 'igorCola', room: 'bar', label: '🥤 Cola mit Igor · 100 €', when: { all: [{ day: { gte: 8 } }, { flag: 'trocken' }, { notFlag: 'igor' }, { notFlag: 'igorHeute' }, { balance: { gte: 100 } }] }, scene: 'stash.igor' },
     { id: 'brandt', room: 'bar', label: '👮 Mit Brandt reden', when: { all: [{ day: { gte: 15 } }, { notFlag: 'razzia' }] }, scene: 'stash.brandt' },
@@ -10108,7 +10186,7 @@ const STORY_STASH = {
         { bg: 'keller', who: 'du', mood: 'calm', text: 'Sonntagabend. Der Keller ist leer, bis auf den Mann, der zählt.' },
         Object.assign({ bg: 'keller' }, ausgang),
         ...(bahnhof ? [{ bg: 'keller', who: 'anabi', mood: 'angry', text: 'Ach – und man erzählt sich, du wäschst auch für den Bahnhof. Zwei Herren. Ich mag keine Gemeinschaftsgüter.' }] : []),
-        { bg: 'keller', who: 'igor', mood: 'calm', text: `Zorn: ${v.zorn} von 3. Zettel: ${fmt(v.kredit)}. Ich sag es nur, damit du es weißt.` },
+        { bg: 'keller', who: 'igor', mood: 'calm', text: `Zorn: ${v.zorn} von 3. Zettel: ${fmt(v.kredit)}.${v.rufAbrechnung ? ' Und am Bahnhof wissen sie, dass du sauber abgeliefert hast – Ruf +1.' : ''} Ich sag es nur, damit du es weißt.` },
       ];
     },
     'stash.ueberfall': (ctx) => {
@@ -10144,9 +10222,36 @@ const STORY_STASH = {
     'stash.tutorial.lost': [
       { bg: 'bahnhof', who: 'anabi', mood: 'calm', text: 'Er ist weg, die Tasche auch, du hast ein Loch in der Jacke. Meine Pistole – danke. Nächstes Mal zieh nicht, bevor er zieht. Oder zieh schneller danach. Eins von beidem.' },
     ],
-    'stash.angebot': [
+    'stash.wache': [
+      { bg: 'strasse', who: 'du', mood: 'calm', cast: ['du'], text: 'Vor dem Keller stehen zwei. Kapuzen, Bahnhof. Sie stehen nicht so, wie man steht, wenn man etwas kaputt machen will.' },
+      { bg: 'strasse', who: 'junge', mood: 'calm', text: 'Kessler sagt, du bist keiner, den man beklaut. Dann sind wir eben keine, die klauen. Zweihundert die Nacht, und keiner fasst deine Tür an. Keiner.' },
+      { bg: 'strasse', who: 'junge', mood: 'calm', cam: 'close', text: 'Wenn das Geld nicht da ist, sind wir es auch nicht. So läuft das. Deal?',
+        choices: [
+          { label: 'Annehmen', value: 'ja', cls: 'blue', effects: [{ flag: 'wache' }] },
+          { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ flag: 'wacheNein' }] },
+        ] },
+    ],
+    'stash.wacheWeg': [
+      { bg: 'strasse', who: 'junge', mood: 'calm', text: 'Die zwei stehen da wie jede Nacht. Einer nickt. „Chef?“',
+        choices: [
+          { label: 'Heimschicken', value: 'ja', cls: 'red', effects: [{ unflag: 'wache' }, { flag: 'wacheWeg' }] },
+          { label: 'Bleiben', value: 'nein', cls: 'ghost' },
+        ] },
+    ],
+    'stash.anabiHoert': [
+      { bg: 'keller', who: 'du', mood: 'calm', cast: ['du'], text: 'Kein Igor, kein Anruf. Anabi kommt selbst. Er setzt sich an den Tisch, an dem sonst gezählt wird, und zählt nichts.' },
+      { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Am Bahnhof sagen sie deinen Namen, bevor sie meinen sagen. Ich habe das lange nicht gehört. Bei niemandem.' },
+      { bg: 'keller', who: 'anabi', mood: 'calm', cam: 'close', text: 'So einen Namen kauft man nicht. Man hält ihn. Ich streiche die Hälfte vom Zettel und vergesse, worüber ich mich geärgert habe. Einmal.',
+        choices: [
+          { label: 'Annehmen', value: 'ja', cls: 'red', effects: [{ call: 'anabiNachlass' }] },
+          { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ var: 'ruf', add: 1 }] },
+        ] },
+      { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Er steht auf. An der Treppe dreht er sich nicht um. Wer sich nicht umdreht, hat verstanden, was er gesehen hat.' },
+    ],
+    'stash.angebot': (ctx) => [
       { bg: 'bahnhof', who: 'du', mood: 'calm', cast: ['du'], text: 'Kessler wartet an der Unterführung. Allein. Das ist entweder Respekt oder eine Falle. Bei Kessler ist es meistens beides.' },
       { bg: 'bahnhof', who: 'kessler', mood: 'calm', text: 'Du hast meine Jungs hingelegt. Zweimal. Ich könnte sauer sein. Ich bin lieber praktisch: Wasch für uns, dann lassen wir dich in Ruhe.' },
+      ...(ctx.raw.flags.wache ? [{ bg: 'bahnhof', who: 'kessler', mood: 'calm', text: 'Deine zwei vor der Tür kannst du behalten. Oder heimschicken. Mir egal – sie kriegen ihr Geld so oder so von dir.' }] : []),
       { bg: 'bahnhof', who: 'kessler', mood: 'calm', cam: 'close', text: 'Keine Überfälle mehr, keine Hinterhalte. Dafür wächst dein Umsatzziel – zwei Herren wollen waschen. Und Anabi erfährt es. Irgendwann. Dann brauchst du uns wirklich.',
         choices: [{ label: 'Annehmen', value: 'ja', cls: 'red', effects: [{ flag: 'bahnhof' }] }, { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ flag: 'bahnhofNein' }] }] },
     ],
@@ -10246,6 +10351,13 @@ const STORY_STASH = {
   },
 };
 if (typeof Stories !== 'undefined') Stories.define(STORY_STASH);
+/* Ruf: +1 je Woche für die erste Reparatur nach einem Überfall (Spec 2026-09-21 Ruf-Stufen §4.1) */
+if (typeof Bus !== 'undefined') Bus.on('story:repair', () => {
+  if (State.mode !== 'story' || !State.s.story || State.s.story.id !== 'stash') return;
+  const out = STORY_STASH.fns.reparaturRuf(State.s);
+  if (out.toast) UI.toast(out.toast);
+  State.save(); UI.renderWallet();
+});
 </script>
 
 <script id="dev">
@@ -12158,11 +12270,12 @@ T.test('STORY_SCHULD ist gültig', () => {
 T.test('STORY_SCHULD: Kontrolle Tag 10 und Enden', () => {
   const s = Object.assign(base({ balance: 100 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
   s.story.day = 10;
-  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id), ['kontrolleFail']);
+  const ids = (at) => StoryRules.dueEvents(STORY_SCHULD, s, at).map((e) => e.id).filter((id) => !id.startsWith('rufStufe'));
+  T.eq(ids('night'), ['kontrolleFail']);
   s.story.stats.jobs = 7;
-  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id), ['kontrolleOk'], 'sieben Jobs reichen für die Kontrolle');
+  T.eq(ids('night'), ['kontrolleOk'], 'sieben Jobs reichen für die Kontrolle');
   s.story.stats.jobs = 0; s.balance = 5000;
-  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id), ['kontrolleOk']);
+  T.eq(ids('night'), ['kontrolleOk']);
   s.story.vars.schuld = 0;
   T.eq(StoryRules.ending(STORY_SCHULD, s).id, 'ehrlich');
   s.story.vars.schuld = 1; s.story.day = 31;
@@ -12188,27 +12301,83 @@ T.test('STORY_SCHULD: Kapitel 3/4 und Job-Freischaltung per Vertrauen', () => {
   s.story.seen.push('stadtOffen'); // Tag ist bereits > 4: für diesen Test irrelevant, sonst stört es dueEvents('morning')
   s.story.day = 13;
   T.eq(StoryRules.chapterFor(STORY_SCHULD, s).id, 'k3');
-  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), []);
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id).filter((id) => !id.startsWith('rufStufe')), []);
   s.story.vars.vertrauen = 4;
-  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), ['tuerJob']);
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id).filter((id) => !id.startsWith('rufStufe')), ['tuerJob']);
   s.story.day = 21; s.story.vars.vertrauen = 7; s.story.seen.push('tuerJob', 'buero');
   s.story.jobsDone.tuersteher = 3;
   T.eq(StoryRules.chapterFor(STORY_SCHULD, s).id, 'k4');
-  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), ['croupierJob']);
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id).filter((id) => !id.startsWith('rufStufe')), ['croupierJob']);
   T.eq(STORY_SCHULD.jobScenes.tuersteher.length, 3); T.eq(STORY_SCHULD.jobScenes.croupier.length, 3); T.eq(STORY_SCHULD.jobScenes.docassi.length, 3);
 });
 T.test('STORY_SCHULD: Flucht braucht Ruf, Igor sieht sie nur nach einer Tür-Schicht', () => {
   const s = Object.assign(base({ balance: 8000 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
   s.story.day = 22; s.story.jobsDone.taxi = 1; s.story.seen.push('croupierJob', 'stadtOffen');
-  const night = () => StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id);
+  const night = () => StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id).filter((id) => !id.startsWith('rufStufe'));
   T.eq(night(), [], 'ohne Ruf kein Angebot');
   s.story.vars.ruf = 2;
   T.eq(night(), ['fluchtAngebot']);
   s.story.flags.fluchtBereit = true; s.story.seen.push('fluchtAngebot');
   T.eq(night(), ['fluchtFrage'], 'kein Türsteher-Job heute → Igor sieht nichts');
-  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id), []);
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'morning').map((e) => e.id).filter((id) => !id.startsWith('rufStufe')), []);
   s.story.jobToday = 'tuersteher';
   T.eq(night(), ['fluchtFrage', 'igorSah']);
+});
+T.test('Ruf-Stufen: HUD zeigt Titel, Stufen-Toast genau beim Wechsel (Story 1 und 3, auch ohne rufStufe im alten Spielstand)', () => {
+  for (const [story, mk] of [[STORY_SCHULD, () => Object.assign(base({ balance: 500 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) })], [STORY_STASH, () => stashState()]]) {
+    const s = mk(); const v = s.story.vars;
+    T.eq(v.rufStufe, 0, `${story.id}: Start Stufe 0`);
+    T.eq(story.varMax.ruf, 10, `${story.id}: varMax.ruf`);
+    const hud = story.hud.find((h) => h.var === 'ruf');
+    T.ok(hud && typeof hud.label === 'function' && hud.max === 10, `${story.id}: HUD-Eintrag ruf`);
+    T.eq(hud.label(s), '🔥 Niemand'); v.ruf = 5; T.eq(hud.label(s), '🔥 Respektiert');
+    const nightIds = StoryRules.dueEvents(story, s, 'night').map((e) => e.id);
+    T.ok(nightIds.includes('rufStufeNacht'), `${story.id}: rufStufeNacht fällig`);
+    T.ok(StoryRules.dueEvents(story, s, 'morning').map((e) => e.id).includes('rufStufeMorgen'), `${story.id}: rufStufeMorgen fällig`);
+    const out1 = story.fns.rufStufe(s);
+    T.eq(out1.toast && out1.toast.tone, 'win', `${story.id}: Aufstieg → win-Toast`); T.ok(out1.toast.title.includes('Respektiert')); T.eq(v.rufStufe, 2);
+    T.eq(story.fns.rufStufe(s), {}, `${story.id}: unverändert → kein Toast`);
+    v.ruf = 4; const out2 = story.fns.rufStufe(s);
+    T.eq(out2.toast && out2.toast.tone, 'loss', `${story.id}: Abstieg → loss-Toast`); T.eq(v.rufStufe, 1);
+    /* alter Spielstand: rufStufe fehlt, Ruf 6 → genau ein Toast Respektiert */
+    const alt = mk(); delete alt.story.vars.rufStufe; alt.story.vars.ruf = 6;
+    const o = story.fns.rufStufe(alt); T.ok(o.toast && o.toast.title.includes('Respektiert')); T.eq(alt.story.vars.rufStufe, 2); T.eq(story.fns.rufStufe(alt), {});
+  }
+});
+/* Wahl in einer Story-1-Szene anwenden (Szenen sind Arrays ohne ctx) */
+const schuldChoose = (s, sceneId, value) => {
+  const panels = STORY_SCHULD.scenes[sceneId];
+  for (const p of panels) for (const c of p.choices || []) if (c.value === value) for (const eff of c.effects || []) StoryRules.applyEffect(s, eff, STORY_SCHULD);
+};
+T.test('STORY_SCHULD: Vitos Respekt ab Ruf 5 (once), Annehmen −10.000/Vertrauen +2, nicht unter 0, Ablehnen Ruf +1', () => {
+  const s = Object.assign(base({ balance: 500 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
+  s.story.day = 12; s.story.seen.push('chantal3', 'wirt5', 'stadtOffen');
+  const night = () => StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id).filter((id) => !id.startsWith('rufStufe'));
+  s.story.vars.ruf = 4; T.eq(night().includes('vitoRespekt'), false, 'Ruf 4: kein Angebot');
+  s.story.vars.ruf = 5; T.ok(night().includes('vitoRespekt'));
+  schuldChoose(s, 'schuld.vitoRespekt', 'ja');
+  T.eq(s.story.vars.schuld, 40000); T.eq(s.story.vars.vertrauen, 2); T.eq(s.story.flags.vitosMann, true);
+  s.story.seen.push('vitoRespekt'); s.story.vars.ruf = 3; s.story.vars.ruf = 5;
+  T.eq(night().includes('vitoRespekt'), false, 'once: kommt nicht wieder, auch wenn Ruf erneut 5 erreicht');
+  const n = Object.assign(base({ balance: 500 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) }); n.story.vars.ruf = 5;
+  schuldChoose(n, 'schuld.vitoRespekt', 'nein'); T.eq(n.story.vars.ruf, 6); T.eq(n.story.vars.schuld, 50000);
+  const k = Object.assign(base({ balance: 500 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) }); k.story.vars.schuld = 4000; k.story.vars.vertrauen = 9;
+  schuldChoose(k, 'schuld.vitoRespekt', 'ja'); T.eq(k.story.vars.schuld, 0, 'nicht unter 0'); T.eq(k.story.vars.vertrauen, 10, 'varMax');
+  const end = StoryRules.ending(STORY_SCHULD, k); T.ok(end && end.id === 'ehrlich', 'Schuld 0 → Der Ehrliche am Nachtende');
+});
+T.test('STORY_SCHULD: Igor hört zu ab Ruf 8 nur ohne igorZweifelt; Zuhören setzt das Flag; igorZweifel dann nicht mehr', () => {
+  const s = Object.assign(base({ balance: 500 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
+  s.story.day = 20; s.story.seen.push('chantal3', 'wirt5', 'stadtOffen', 'vitoRespekt');
+  const night = () => StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id).filter((id) => !id.startsWith('rufStufe'));
+  s.story.vars.ruf = 7; T.eq(night().includes('igorHoert'), false);
+  s.story.vars.ruf = 8; T.ok(night().includes('igorHoert'));
+  schuldChoose(s, 'schuld.igorHoert', 'nein'); T.eq(!!s.story.flags.igorZweifelt, false, 'Abwinken: nichts');
+  schuldChoose(s, 'schuld.igorHoert', 'ja'); T.eq(s.story.flags.igorZweifelt, true);
+  T.eq(night().includes('igorHoert'), false, 'mit Flag kein igorHoert mehr');
+  s.story.vars.duellSiege = 3;
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'spin:after').map((e) => e.id), [], 'igorZweifel feuert nicht mehr, wenn das Flag steht');
+  const z = Object.assign(base({ balance: 500 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) }); z.story.vars.duellSiege = 3;
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, z, 'spin:after').map((e) => e.id), ['igorZweifel'], 'ohne Flag wie bisher');
 });
 
 /* ---- Baccarat ---- */
@@ -12866,6 +13035,25 @@ T.test('StoryRules.validate: Räume', () => {
   st.events = [{ id: 'x', when: { day: { gte: 1 } }, at: 'morning', scene: 'p.e1', effects: [{ unlock: { rooms: ['keller'] } }] }];
   T.ok(StoryRules.validate(st, ['p.k2', 'p.e1', 'p.gut', 'p.mid', 'p.aus'], ['spueler']).some((e) => e.includes('keller')));
 });
+T.test('StoryRules.rufStufe: vier Stufen 0/2/5/8, negative Werte sind Niemand', () => {
+  T.eq(StoryRules.RUF_STUFEN.map((s) => s.ab), [0, 2, 5, 8]);
+  T.eq(StoryRules.RUF_STUFEN.map((s) => s.titel), ['Niemand', 'Bekannt', 'Respektiert', 'Legende']);
+  for (const [ruf, id] of [[0, 'niemand'], [1, 'niemand'], [2, 'bekannt'], [4, 'bekannt'], [5, 'respektiert'], [7, 'respektiert'], [8, 'legende'], [10, 'legende'], [-1, 'niemand'], [undefined, 'niemand']]) {
+    T.eq(StoryRules.rufStufe(ruf).id, id, `Ruf ${ruf}`);
+  }
+});
+T.test('Ruf-Events beider Stories nutzen nur die Stufen-Schwellen 2/5/8', () => {
+  const schwellen = StoryRules.RUF_STUFEN.map((s) => s.ab).filter((x) => x > 0);
+  const rufConds = (cond, out = []) => {
+    if (!cond || typeof cond !== 'object') return out;
+    if (cond.var === 'ruf' && 'gte' in cond) out.push(cond.gte);
+    for (const k of ['all', 'any']) for (const c of cond[k] || []) rufConds(c, out);
+    return out;
+  };
+  for (const story of [STORY_SCHULD, STORY_STASH]) for (const e of story.events) for (const g of rufConds(e.when)) {
+    T.ok(schwellen.includes(g), `${story.id}/${e.id}: Ruf-Schwelle ${g} ist keine Stufe`);
+  }
+});
 T.test('advanceDay: Überfall-Cooldown sinkt pro Tag', () => {
   const s = storyBase(); s.mugCooldown = 3;
   StoryRules.advanceDay(s); T.eq(s.mugCooldown, 2);
@@ -13101,6 +13289,106 @@ T.test('STORY_STASH: Eintreiber – 1.000 €, keine Stärke nötig, Zorn −1, 
   for (const sc of STORY_STASH.jobScenes.eintreiber) for (const eff of STORY_STASH.jobEffects[sc]) StoryRules.applyEffect(s, eff, STORY_STASH);
   T.eq([s.story.vars.zorn, s.story.vars.eintreiberWoche], [0, 2]);
   T.eq(StoryRules.jobAvailable(job, s).ok, false, 'zwei pro Woche');
+});
+T.test('STORY_STASH: Ruf-Quellen – Abrechnung ok, Eintreiber-Schicht, Kredit-Rate, Reparatur einmal je Woche; alle klemmen bei 10', () => {
+  /* Abrechnung: nur Ausgang ok gibt Ruf */
+  const a = stashState({ balance: 50000 }); a.story.day = 7; a.story.vars.woche = 1; a.story.vars.ziel = 20000; a.story.vars.rueckgabe = 11000; a.story.vars.lieferung = 10000;
+  a.story.vars.umsatz = 20000; STORY_STASH.fns.abrechnung(a); T.eq(a.story.vars.ruf, 1, 'sauber → +1');
+  const b = stashState({ balance: 50000 }); b.story.vars.woche = 1; b.story.vars.ziel = 20000; b.story.vars.rueckgabe = 11000; b.story.vars.umsatz = 5000;
+  STORY_STASH.fns.abrechnung(b); T.eq(b.story.vars.ruf, 0, 'Umsatz zu niedrig → nichts');
+  /* Eintreiber-Schicht */
+  const e = stashState(); e.story.day = 3; e.story.jobToday = 'eintreiber';
+  const [ids] = stashHook(e, 'job:after'); T.ok(ids.includes('eintreiberRuf')); T.eq(e.story.vars.ruf, 1);
+  T.eq(stashHook(e, 'job:after')[0].includes('eintreiberRuf'), false, 'daily: nur einmal am Tag');
+  e.story.jobToday = 'kurierfahrt'; e.story.day = 4; T.eq(stashHook(e, 'job:after')[0].includes('eintreiberRuf'), false, 'anderer Job: nichts');
+  /* Kredit-Rate */
+  const k = stashState({ balance: 9000 }); k.story.vars.kredit = 12000;
+  const out = STORY_STASH.fns.kreditZahlen(k); T.eq(k.story.vars.kredit, 7000); T.eq(k.story.vars.ruf, 1); T.ok(out.toast && /Ruf \+1/.test(out.toast.text), 'Toast nennt Ruf');
+  const k0 = stashState({ balance: 0 }); k0.story.vars.kredit = 5000; STORY_STASH.fns.kreditZahlen(k0); T.eq(k0.story.vars.ruf, 0, 'ohne Zahlung kein Ruf');
+  /* Reparatur: einmal je Woche, nach lieferung wieder */
+  const r = stashState(); r.story.vars.woche = 1;
+  T.ok(STORY_STASH.fns.reparaturRuf(r).toast); T.eq(r.story.vars.ruf, 1); T.eq(r.story.flags.rufReparaturWoche, true);
+  T.eq(STORY_STASH.fns.reparaturRuf(r), {}); T.eq(r.story.vars.ruf, 1, 'zweite Reparatur derselben Woche: nichts');
+  r.story.day = 8; STORY_STASH.fns.lieferung(r); T.eq(!!r.story.flags.rufReparaturWoche, false, 'Wochenwechsel setzt zurück');
+  T.ok(STORY_STASH.fns.reparaturRuf(r).toast); T.eq(r.story.vars.ruf, 2);
+  /* Klemmen bei 10 */
+  const m = stashState({ balance: 50000 }); m.story.vars.ruf = 10; m.story.vars.woche = 1; m.story.vars.ziel = 1; m.story.vars.rueckgabe = 1; m.story.vars.umsatz = 1;
+  STORY_STASH.fns.abrechnung(m); STORY_STASH.fns.reparaturRuf(m); m.story.vars.kredit = 5000; STORY_STASH.fns.kreditZahlen(m);
+  m.story.jobToday = 'eintreiber'; m.story.day = 5; stashHook(m, 'job:after');
+  T.eq(m.story.vars.ruf, 10);
+});
+T.test('GangRules.raidChance: Wache stoppt Überfälle wie der Bahnhof-Deal; Hinterhalt-Chance bleibt', () => {
+  T.eq(GangRules.WACHE_PREIS, 200);
+  T.eq(GangRules.raidChance({ wache: true }), 0);
+  T.eq(GangRules.raidChance({ bahnhof: true }), 0);
+  T.eq(GangRules.raidChance({}), GangRules.RAID.base);
+  T.eq(GangRules.ambushChance({ wache: true }, null), GangRules.AMBUSH.base, 'Wache steht vor dem Keller, nicht in der Gasse');
+  T.eq(GangRules.raid({}, { wache: true }, seq(0.0, 0.0)), null, 'raid liefert mit Wache keine Tür');
+});
+T.test('STORY_STASH: Die Wache ab Ruf 5 ohne Bahnhof-Deal (once); 200 €/Nacht; geht bei leerer Kasse; goal zeigt Wache', () => {
+  const nightIds = (s, rng = seq(0.99, 0.99, 0.99)) => stashHook(s, 'night', rng)[0];
+  /* Tage ohne eigene Nacht-Events wählen: 10 = Tutorial, 14 = Abrechnung, 15 = Lieferung + Kessler-Angebot */
+  const s = stashState({ balance: 5000 }); s.story.day = 9; s.story.vars.woche = 2; s.story.vars.ruf = 4;
+  T.eq(nightIds(s).includes('wache'), false, 'Ruf 4: nichts');
+  s.story.day = 11; s.story.vars.ruf = 5; s.story.flags.bahnhof = true;
+  T.eq(nightIds(s).includes('wache'), false, 'mit Bahnhof-Deal kein Angebot');
+  delete s.story.flags.bahnhof; s.story.day = 12;
+  T.ok(nightIds(s).includes('wache'), 'Ruf 5, Tag 12: Angebot');   // stashHook markiert once-Events als gesehen
+  stashChoose(s, 'stash.wache', 'ja'); T.eq(s.story.flags.wache, true);
+  /* Nacht mit Wache: 200 € weg, kein Überfall (raid fragt den rng mit Wache gar nicht); rng 0.99 → kein Hinterhalt */
+  s.story.day = 13; const bal = s.balance;
+  const [ids] = stashHook(s, 'night', seq(0.99, 0.99, 0.99));
+  T.ok(ids.indexOf('wacheNacht') < ids.indexOf('ueberfall'), 'wacheNacht läuft vor ueberfall');
+  T.eq(s.balance, bal - 200); T.eq(Object.keys(s.story.broken || {}).length, 0, 'keine Tür kaputt');
+  T.ok(STORY_STASH.goal(s).includes('Wache 200'), 'goal nennt die Wache');
+  /* leere Kasse: Wache geht, Flag fällt, Toast; Überfall in derselben Nacht: rng 0.0 (Überfall ja), 0.0 (erste Tür); Hinterhalt entfällt wegen ueberfallHeute */
+  s.balance = 150; s.story.day = 16;
+  const [ids2, outs2] = stashHook(s, 'night', seq(0.0, 0.0, 0.99));
+  T.eq(!!s.story.flags.wache, false); T.eq(s.story.flags.wacheWeg, true); T.eq(s.balance, 150, 'nichts abgezogen');
+  T.ok(outs2.some((o) => o.toast && o.toast.title === 'Die Wache geht'));
+  T.ok(Object.keys(s.story.broken || {}).length > 0, 'ohne Wache: Überfall trifft eine Tür');
+  T.eq(STORY_STASH.goal(s).includes('Wache'), false);
+  s.story.day = 17; s.story.vars.ruf = 6; T.eq(nightIds(s).includes('wache'), false, 'once: kein zweites Angebot');
+  /* Ablehnen */
+  const n = stashState(); n.story.day = 12; n.story.vars.ruf = 5; stashChoose(n, 'stash.wache', 'nein'); T.eq(n.story.flags.wacheNein, true);
+  n.story.seen.push('wache'); n.story.day = 13; T.eq(nightIds(n).includes('wacheNacht'), false, 'ohne Flag keine Kosten');
+  /* Wache + später Bahnhof-Deal: kostet weiter */
+  const w = stashState({ balance: 5000 }); w.story.day = 16; w.story.flags.wache = true; w.story.flags.bahnhof = true;
+  stashHook(w, 'night', seq(0.99, 0.99, 0.99)); T.eq(w.balance, 4800);
+});
+T.test('STORY_STASH: Anabi hört zu ab Ruf 8 (once) – Annehmen halbiert Kredit auf volle Tausend und setzt Zorn 0; Ablehnen Ruf +1', () => {
+  const nightIds = (s) => stashHook(s, 'night', seq(0.99, 0.99, 0.99))[0];
+  const s = stashState({ balance: 5000 }); s.story.day = 18; s.story.vars.woche = 3; s.story.vars.ruf = 7; s.story.vars.kredit = 7000; s.story.vars.zorn = 2; s.story.flags.bahnhofNein = true;
+  T.eq(nightIds(s).includes('anabiHoert'), false);
+  s.story.vars.ruf = 8; s.story.day = 19; T.ok(nightIds(s).includes('anabiHoert'));   // stashHook markiert once
+  stashChoose(s, 'stash.anabiHoert', 'ja'); T.eq(s.story.vars.kredit, 4000, '7.000 → 4.000 (auf volle Tausend)'); T.eq(s.story.vars.zorn, 0);
+  s.story.day = 20; T.eq(nightIds(s).includes('anabiHoert'), false, 'once');
+  const t = stashState(); t.story.vars.kredit = 10000; STORY_STASH.fns.anabiNachlass(t); T.eq(t.story.vars.kredit, 5000);
+  const z = stashState(); z.story.vars.kredit = 0; T.ok(STORY_STASH.fns.anabiNachlass(z).toast); T.eq(z.story.vars.kredit, 0, 'ohne Kredit bleibt 0');
+  const n = stashState(); n.story.vars.ruf = 8; n.story.vars.kredit = 7000; stashChoose(n, 'stash.anabiHoert', 'nein'); T.eq(n.story.vars.ruf, 9); T.eq(n.story.vars.kredit, 7000);
+});
+T.test('STORY_STASH: Kredit-Ruf nur für volle Rate oder Tilgung, einmal am Tag (Review-Fix)', () => {
+  const t = stashState({ balance: 300 }); t.story.vars.kredit = 30000;
+  STORY_STASH.fns.kreditZahlen(t); T.eq(t.story.vars.kredit, 29700); T.eq(t.story.vars.ruf, 0, 'Teilzahlung: kein Ruf');
+  const k = stashState({ balance: 20000 }); k.story.vars.kredit = 30000;
+  STORY_STASH.fns.kreditZahlen(k); T.eq(k.story.vars.ruf, 1, 'volle Rate: +1'); T.eq(k.story.flags.kreditRufHeute, true);
+  STORY_STASH.fns.kreditZahlen(k); T.eq(k.story.vars.kredit, 20000); T.eq(k.story.vars.ruf, 1, 'zweite Rate am selben Tag: kein Ruf');
+  k.story.day = 2; stashHook(k, 'morning'); T.eq(!!k.story.flags.kreditRufHeute, false, 'tagesstart setzt zurück');
+  STORY_STASH.fns.kreditZahlen(k); T.eq(k.story.vars.ruf, 2, 'nächster Tag wieder +1');
+  const z = stashState({ balance: 9000 }); z.story.vars.kredit = 2000;
+  STORY_STASH.fns.kreditZahlen(z); T.eq(z.story.vars.kredit, 0); T.eq(z.story.vars.ruf, 1, 'Tilgung unter der Rate zählt');
+});
+T.test('STORY_STASH: Wache heimschicken – Bar-Aktion nur mit Wache; danach keine Kosten, kein neues Angebot (Review-Fix)', () => {
+  const s = stashState({ balance: 5000 }); s.story.day = 13; s.story.vars.ruf = 5;
+  const ids = () => StoryRules.actionsFor(STORY_STASH, s, 'bar').map((a) => a.id);
+  T.eq(ids().includes('wacheWeg'), false, 'ohne Wache keine Aktion');
+  s.story.flags.wache = true; T.ok(ids().includes('wacheWeg'));
+  stashChoose(s, 'stash.wacheWeg', 'nein'); T.eq(s.story.flags.wache, true, 'Bleiben: nichts');
+  stashChoose(s, 'stash.wacheWeg', 'ja'); T.eq(!!s.story.flags.wache, false); T.eq(s.story.flags.wacheWeg, true);
+  s.story.seen.push('wache');
+  const night = stashHook(s, 'night', seq(0.99, 0.99, 0.99))[0];
+  T.eq(night.includes('wacheNacht'), false, 'keine Kosten mehr'); T.eq(s.balance, 5000);
+  T.eq(ids().includes('wacheWeg'), false, 'Aktion weg');
 });
 T.test('STORY_STASH: Sylvie – Warnung ab 10.000 einmal pro Woche, Hausverbot ab 15.000 (Betreten und mitten im Spiel)', () => {
   const s = stashState(); s.story.vars.umsatzRoyal = 10000;

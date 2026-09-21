@@ -73,7 +73,7 @@ Heute: Tutorial-Duell (+1, Tag 10) und gewonnene Hinterhalte (+1, nur mit Waffe;
 |---|---|---|
 | Wochenabrechnung „sauber" | +1 | `fns.abrechnung`: bei `r.ausgang === 'ok'` zusätzlich `v.ruf = Math.min(10, v.ruf + 1)`; der Abrechnungs-Text bekommt eine Zeile „Ruf +1" |
 | Eintreiber-Schicht | +1 | Event `eintreiberRuf`: `when: { jobToday: 'eintreiber' }`, `at: 'job:after'`, `daily: true`, `effects: [{ var: 'ruf', add: 1 }, { toast: { icon: '🥊', title: 'Ruf +1', text: 'Die Liste ist kürzer. Der Bahnhof hat es gesehen.', tone: 'win' } }]` |
-| Kredit-Rate gezahlt | +1 | `fns.kreditZahlen` (bestehend, Szene `stash.kredit`): nach erfolgreicher Zahlung `v.ruf + 1` und ein Toast-Rückgabewert |
+| Kredit-Rate gezahlt | +1 | `fns.kreditZahlen` (bestehend, Szene `stash.kredit`): nur für eine **volle Rate** (5.000 €) oder die Tilgung, **einmal am Tag** (Flag `kreditRufHeute`, `tagesstart` setzt zurück) – Teilzahlungen geben keinen Ruf, sonst wäre die Stufe per Kleinstbeträgen erreichbar (Review 2026-09-21) |
 | Tür nach Überfall repariert | +1, einmal pro Woche | `Story.repair(id)` → nach erfolgreichem `StoryRules.repair` in Story 3: wenn `!f.rufReparaturWoche` → `v.ruf + 1`, `f.rufReparaturWoche = true`, Toast „Er lässt sich nicht kleinkriegen." `fns.lieferung` löscht das Flag beim Wochenwechsel (`v.woche++`) |
 
 Alle vier klemmen bei `varMax.ruf = 10` (`applyEffect` klemmt an `varMax`; die `fns` nutzen `Math.min`). Erwartung: bei gutem Spiel 8+ bis Tag ~25 auch ohne Duelle; wer nur zockt und nichts repariert, bleibt „Bekannt".
@@ -86,7 +86,7 @@ Alle vier klemmen bei `varMax.ruf = 10` (`applyEffect` klemmt an `varMax`; die `
 | Respektiert (5) | `wache` | `all: [{ var: 'ruf', gte: 5 }, { notFlag: 'bahnhof' }, { notFlag: 'wache' }, { notFlag: 'wacheNein' }]`, `once`, `at: 'night'` | `stash.wache` |
 | Legende (8) | `anabiHoert` | `{ var: 'ruf', gte: 8 }`, `once`, `at: 'night'` | `stash.anabiHoert` |
 
-Das Wache-Angebot kommt nicht, wenn Kesslers Deal steht (`bahnhof` stoppt Überfälle ohnehin). Nimmt der Spieler die Wache und später Kesslers Deal, bleibt die Wache stehen und kostet weiter – das ist seine Entscheidung; die Kessler-Szene bekommt einen Satz, wenn `wache` gesetzt ist („Deine zwei vor der Tür kannst du behalten. Oder heimschicken.").
+Das Wache-Angebot kommt nicht, wenn Kesslers Deal steht (`bahnhof` stoppt Überfälle ohnehin). Nimmt der Spieler die Wache und später Kesslers Deal, bleibt die Wache stehen und kostet weiter – das ist seine Entscheidung; die Kessler-Szene bekommt einen Satz, wenn `wache` gesetzt ist („Deine zwei vor der Tür kannst du behalten. Oder heimschicken."). Heimschicken geht jederzeit über die Bar-Aktion `wacheWeg` („🚪 Wache heimschicken", nur mit `wache`; Szene `stash.wacheWeg`: *Heimschicken* → `unflag wache`, `flag wacheWeg`; *Bleiben* → nichts). Danach kommt das Angebot nicht wieder (`once`).
 
 ### 4.3 `stash.wache` – „Die Wache"
 
