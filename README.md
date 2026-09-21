@@ -56,7 +56,10 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
   🩺 Arzthelfer, 🏦 Filialleiter, 🥊 Eintreiber), die jeweils kurze Szenen mit echten
   Entscheidungen zeigen und Geld sowie Story-Variablen verändern.
 - **Enden:** Story 1 „Die Schuld" hat vier unterschiedliche Enden, je nachdem wie die 30 Tage
-  verlaufen – mehr wird hier nicht verraten. Erreichte Enden werden pro Story gemerkt; die
+  verlaufen – mehr wird hier nicht verraten.
+  Ruf hat vier Stufen (Niemand · Bekannt ab 2 · Respektiert ab 5 · Legende ab 8, Titel im HUD, Toast beim Wechsel). Ab
+  „Respektiert" macht Vito ein Angebot (10.000 € vom Zettel gegen seinen Namen – oder ablehnen und Ruf +1), ab „Legende"
+  setzt sich Igor abends zu dir und zweifelt an seinem Chef – ein zweiter Weg zum „Sturz" neben den drei Duellsiegen. Erreichte Enden werden pro Story gemerkt; die
   Trophäenwand bekommt einen eigenen Abschnitt für Story-Erfolge. Stories können eine
   Voraussetzung haben (`requires`); der Titelscreen zeigt dann an, welche Story als Nächstes
   startet und welche noch gesperrt ist.
@@ -79,6 +82,10 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
   (ab Tag 20 mit mindestens 30.000 €) und **Der Strohmann** als Fallback nach Tag 30. Story 3
   bringt dafür Umsatzzähler (`stake`), kaputte Türen (`broken`/🔧), Story-Funktionen (`call`),
   Waffen-Slot, `prevEndings` und Job-Overrides – alles generisch für spätere Stories nutzbar.
+  Ruf (🔥 im HUD, dieselben vier Stufen wie in Story 1) wächst hier durch saubere Wochenabrechnungen, Eintreiber-Schichten,
+  Kredit-Raten und die erste Reparatur je Woche – nicht nur durch Duelle. Ab „Respektiert" bieten zwei Bahnhof-Jungs die
+  Wache an (200 € je Nacht, keine Tür geht mehr kaputt; ist die Kasse leer, gehen sie), ab „Legende" kommt Anabi selbst
+  und halbiert den Zettel (Zorn auf null) – die Ablöse wird bezahlbar.
 
 ## Skills & Insider
 

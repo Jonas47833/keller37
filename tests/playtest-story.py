@@ -1567,6 +1567,7 @@ async def scenario_stash(cdp):
     record("stash: Makarov gekauft", w["weapon"] == 1 and w["balance"] == 25000, str(w))
     # Schießerei (Hinterhalt) erzwingen: Nacht 9 mit gestubbtem rng über GangRules
     await cdp.eval("GangRules.raid = () => null; GangRules.ambushChance = () => 1; GangRules.ambushCount = () => 1; GangRules.drawWait = () => 40; Story.s.day = 9; Story.s.phase = 'evening'; State.save(); Story.renderDaybar();", await_promise=False)
+    ruf_before = await cdp.eval("Story.s.vars.ruf", await_promise=False)  # Ruf ist bis hier schon gestiegen (Abrechnung ok, Reparatur) -- relativ pruefen
     await cdp.eval("Story.night()", await_promise=False)
     await cdp.wait_for("__pt.cutsceneActive()", timeout=4.0)
     await cdp.advance_cutscene(max_steps=6)
@@ -1588,7 +1589,7 @@ async def scenario_stash(cdp):
     await cdp.wait_for("Story.s.day === 10 && !Story.sleeping", timeout=8.0)
     await cdp.advance_cutscene(max_steps=8)
     ruf = await cdp.eval("Story.s.vars.ruf", await_promise=False)
-    record("stash: Ruf +1 nach gewonnenem Hinterhalt", ruf == 1, "ruf=%s" % ruf)
+    record("stash: Ruf +1 nach gewonnenem Hinterhalt", ruf == ruf_before + 1, "ruf=%s (vorher %s)" % (ruf, ruf_before))
     # Brandt, Belege, Razzia → Ende Kommissar
     await cdp.eval("Story.s.day = 26; Story.s.phase = 'evening'; Story.s.vars.belege = 3; Story.s.vars.belegeOffen = 3; Story.s.flags.igor = true; State.save(); UI.renderSide(); Story.renderDaybar();", await_promise=False)
     await cdp.eval("Story.action('brandt')", await_promise=False)
@@ -1638,6 +1639,94 @@ async def scenario_stash(cdp):
     await cdp.wait_for("document.querySelector('#title').hidden === false", timeout=8.0)
     on_title = await cdp.eval("document.querySelector('#title').hidden === false", await_promise=False)
     record("stash: danach der Titel, keine andere Story gestartet", on_title, "on_title=%s" % on_title)
+
+
+async def scenario_ruf(cdp):
+    """Ruf-Stufen: Wache (Ruf 5) und Anabi (Ruf 8) in Story 3, Vitos Respekt (Ruf 5) in Story 1, HUD-Titel."""
+
+    async def settle(max_rounds=60):
+        for _ in range(max_rounds):
+            if await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+                await cdp.advance_cutscene(max_steps=4)
+            sleeping = await cdp.eval("Story.sleeping", await_promise=False)
+            cs = await cdp.eval("__pt.cutsceneActive()", await_promise=False)
+            busy = await cdp.eval("UI.busy", await_promise=False)
+            if not sleeping and not cs and not busy:
+                return True
+            await asyncio.sleep(0.15)
+        return False
+
+    async def click_choice(hint, max_steps=8):
+        for _ in range(max_steps):
+            if not await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+                return False
+            found = await cdp.eval(
+                "(function(){var b=[...document.querySelectorAll('.cs-choices button')].find(function(x){return x.textContent.includes(%s)}); if(!b) return false; b.click(); return true;})()" % json.dumps(hint),
+                await_promise=False)
+            if found:
+                return True
+            await cdp.eval("__pt.advance(null)", await_promise=False)
+            await asyncio.sleep(0.15)
+        return False
+
+    async def night_and_choose(label, shot=None, max_steps=20):
+        """Schlafen, warten bis eine Cutscene laeuft, bis zum Choice-Button mit label vorklicken (Screenshot, sobald er da ist), klicken, Nacht zu Ende bringen."""
+        await cdp.eval("Story.evening()")
+        await cdp.wait_for("Story.s.phase === 'evening' && !UI.busy && !__pt.cutsceneActive()", timeout=5.0)
+        # Story.night() kehrt still zurueck, solange UI.busy/Cutscene steht -- so lange erneut anstossen, bis sleeping steht
+        for _ in range(10):
+            await cdp.eval("Story.night()", await_promise=False)
+            if await cdp.wait_for("Story.sleeping || __pt.cutsceneActive()", timeout=1.0):
+                break
+        if not await cdp.wait_for("__pt.cutsceneActive()", timeout=6.0):
+            return False
+        for _ in range(max_steps):
+            if not await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+                return False
+            there = await cdp.eval("[...document.querySelectorAll('.cs-choices button')].some(b => b.textContent.includes(%s))" % json.dumps(label), await_promise=False)
+            if there:
+                break
+            await cdp.eval("__pt.advance(null)", await_promise=False)
+            await asyncio.sleep(0.15)
+        if shot:
+            await asyncio.sleep(0.3)
+            await cdp.screenshot(shot)
+        ok = await click_choice(label, max_steps=2)
+        await settle()
+        return ok
+
+    # Story 3, Tag 16 (keine Lieferung, kein Kessler-Angebot dank bahnhofNein), Ruf 5 -> Wache.
+    # Ueberfall/Hinterhalt vor der Annahme ausschalten, damit die Nacht deterministisch ist.
+    # Kaltstart: erst warten, bis die Engine da ist (typeof-Ausdruck wirft nicht), dann Helfer injizieren
+    await cdp.navigate(URL_BASE + "?fresh&story=stash&prev=wirt&day=16")
+    await cdp.wait_for("typeof State !== 'undefined' && !!State.s && !!State.s.story && State.s.story.day === 16", timeout=10.0)
+    await cdp.inject_helpers()
+    await cdp.advance_cutscene(max_steps=20)
+    await cdp.wait_for("State.mode === 'story' && Story.s.day === 16 && UI.current && !UI.busy && !__pt.cutsceneActive()", timeout=6.0)
+    # mugCooldown 999: kein zufaelliger Ueberfall auf dem Weg in den Keller (Story.evening() haengt sonst in dessen Cutscene)
+    await cdp.eval("Story.s.vars.ruf = 5; Story.s.flags.bahnhofNein = true; State.s.balance = 3000; State.s.mugCooldown = 999; GangRules.RAID.base = 0; GangRules.AMBUSH.base = 0; State.save(); UI.renderWallet();", await_promise=False)
+    hud = await cdp.eval("[...document.querySelectorAll('#notes .note')].map(n => n.textContent)", await_promise=False) or []
+    record("ruf: HUD zeigt Respektiert 5/10", any("Respektiert 5/10" in t for t in hud), str(hud))
+    ok = await night_and_choose("Annehmen", shot="ruf-wache.png")
+    v = await cdp.eval("({ wache: !!Story.s.flags.wache, balance: State.s.balance, day: Story.s.day, goal: (document.querySelector('#daybarSlot') || {}).textContent || '' })", await_promise=False)
+    record("ruf: Wache-Szene bei Ruf 5, angenommen; Tagesleiste nennt Wache", ok and v["wache"] and v["day"] == 17 and "Wache" in v["goal"], str(v))
+    # Ruf 8 -> Anabi; in derselben Nacht kostet die Wache erstmals 200 EUR
+    await cdp.eval("Story.s.vars.ruf = 8; Story.s.vars.kredit = 7000; Story.s.vars.zorn = 2; State.save(); UI.renderWallet();", await_promise=False)
+    before = await cdp.eval("State.s.balance", await_promise=False)
+    ok = await night_and_choose("Annehmen", shot="ruf-anabi.png")
+    # Erwartung: -200 EUR Wache in der Nacht, plus die Nachtkasse am Morgen (alle Tische intakt)
+    v = await cdp.eval("({ kredit: Story.s.vars.kredit, zorn: Story.s.vars.zorn, balance: State.s.balance, kasse: GangRules.nachtkasse(Story.s.broken || {}).sum, hud: [...document.querySelectorAll('#notes .note')].map(n => n.textContent).join(' | ') })", await_promise=False)
+    record("ruf: Anabi bei Ruf 8 - Kredit 4.000, Zorn 0, Wache 200 EUR abgezogen, HUD Legende", ok and v["kredit"] == 4000 and v["zorn"] == 0 and v["balance"] == before - 200 + v["kasse"] and "Legende" in v["hud"], "before=%s %s" % (before, v))
+    # Story 1, Tag 12, Ruf 5 -> Vito, ablehnen
+    await cdp.navigate(URL_BASE + "?fresh&story=schuld&day=12")
+    await cdp.wait_for("typeof State !== 'undefined' && !!State.s && !!State.s.story && State.s.story.day === 12", timeout=10.0)
+    await cdp.inject_helpers()
+    await cdp.advance_cutscene(max_steps=20)
+    await cdp.wait_for("State.mode === 'story' && Story.s.day === 12 && UI.current && !UI.busy && !__pt.cutsceneActive()", timeout=6.0)
+    await cdp.eval("Story.s.vars.ruf = 5; State.s.mugCooldown = 999; State.save(); UI.renderWallet();", await_promise=False)
+    ok = await night_and_choose("Ablehnen", shot="ruf-vito.png")
+    v = await cdp.eval("({ ruf: Story.s.vars.ruf, schuld: Story.s.vars.schuld, hud: [...document.querySelectorAll('#notes .note')].map(n => n.textContent).join(' | ') })", await_promise=False)
+    record("ruf: Vito bei Ruf 5 abgelehnt -> Ruf 6, Schuld unveraendert, HUD Respektiert", ok and v["ruf"] == 6 and v["schuld"] == 50000 and "Respektiert 6/10" in v["hud"], str(v))
 
 
 async def scenario_roulette_chips(cdp):
@@ -2247,6 +2336,7 @@ async def main():
         await scenario_poker(cdp)
         await scenario_stud(cdp)
         await scenario_sicbo(cdp)
+        await scenario_ruf(cdp)
     finally:
         n_errors = len(cdp.console_errors)
         for e in cdp.console_errors:
