@@ -7310,6 +7310,56 @@ const StudRules = {
 };
 </script>
 
+<script id="sicbo-rules">
+/* ================= SIC BO – drei Würfel, ein Wurf, kompaktes Wettfeld (rein, kein DOM) ================= */
+const SicBoRules = {
+  BET: { MIN: 50, MAX: 2000 },
+  /* Quoten (Gewinn : Einsatz); Einzelzahl je Anzahl Würfel mit der Zahl (Index 0 = kein Treffer) */
+  PAY: {
+    small: 1, big: 1, tripleAny: 30, triple: 180, one: [0, 1, 2, 3],
+    sum: { 4: 60, 5: 30, 6: 18, 7: 12, 8: 8, 9: 6, 10: 6, 11: 6, 12: 6, 13: 8, 14: 12, 15: 18, 16: 30, 17: 60 },
+  },
+  /* Alle 29 Felder in Tisch-Reihenfolge: Klein, Summen 4–17, Groß, Triple 1–6, Beliebiger Triple, Einzelzahl 1–6 */
+  FIELDS: ['small', ...Array.from({ length: 14 }, (_, i) => `sum${i + 4}`), 'big', ...[1, 2, 3, 4, 5, 6].map((n) => `triple${n}`), 'tripleAny', ...[1, 2, 3, 4, 5, 6].map((n) => `one${n}`)],
+  roll(rng) { return [0, 1, 2].map(() => Math.floor(rng() * 6) + 1); },
+  risk(bets) { return Object.values(bets).reduce((a, b) => a + b, 0); },
+  /* Quote eines Felds für diesen Wurf: > 0 gewinnt (Faktor), 0 verliert. Klein/Groß verlieren bei jedem Triple. */
+  odds(id, dice) {
+    const P = SicBoRules.PAY;
+    const sum = dice[0] + dice[1] + dice[2];
+    const triple = dice[0] === dice[1] && dice[1] === dice[2];
+    if (id === 'small') return !triple && sum <= 10 ? P.small : 0;
+    if (id === 'big') return !triple && sum >= 11 ? P.big : 0;
+    if (id === 'tripleAny') return triple ? P.tripleAny : 0;
+    if (id.startsWith('triple')) return triple && dice[0] === +id.slice(6) ? P.triple : 0;
+    if (id.startsWith('sum')) return sum === +id.slice(3) ? P.sum[sum] : 0;
+    if (id.startsWith('one')) return P.one[dice.filter((d) => d === +id.slice(3)).length];
+    return 0;
+  },
+  /* Nettobetrag über alle gesetzten Felder; won/lost in Tisch-Reihenfolge */
+  settle(bets, dice) {
+    const won = [], lost = [];
+    let delta = 0;
+    for (const id of SicBoRules.FIELDS) {
+      const bet = bets[id] || 0;
+      if (!bet) continue;
+      const q = SicBoRules.odds(id, dice);
+      if (q > 0) { won.push(id); delta += bet * q; } else { lost.push(id); delta -= bet; }
+    }
+    return { delta, won, lost, sum: dice[0] + dice[1] + dice[2], triple: dice[0] === dice[1] && dice[1] === dice[2] };
+  },
+  /* Gezinkter Becher: der vorab gewürfelte Wert ersetzt Würfel 1 */
+  peekDice(peekDie, dice) { return peekDie == null ? dice : [peekDie, dice[1], dice[2]]; },
+  /* Glück: ein verlierender Wurf wird mit luck % einmal komplett neu gewürfelt. Pech: ein gewinnender Wurf mit |luck| %. Sonst unverändert. */
+  luckOverride(dice, bets, luck, rng) {
+    const delta = SicBoRules.settle(bets, dice).delta;
+    if (luck > 0 && delta < 0 && rng() * 100 < luck) return SicBoRules.roll(rng);
+    if (luck < 0 && delta > 0 && Rules.pech(luck, rng)) return SicBoRules.roll(rng);
+    return dice;
+  },
+};
+</script>
+
 <script id="gang-rules">
 /* ================= GANG – Waffen, Duell, Kurier (rein, kein DOM); Wochen-/Wäsche-Logik der Story 3 folgt unten ================= */
 const GangRules = {
@@ -10563,6 +10613,50 @@ T.test('StudRules.luckOverride: Glück gibt Verlust neu, Pech gibt Gewinn neu, s
   T.ok(StudRules.luckOverride(win, 50, rng) === win, 'Gewinn + Glück → unverändert'); T.eq(calls, 0, 'kein rng-Aufruf');
   T.ok(StudRules.luckOverride(lose, 0, rng) === lose, 'ohne Glück nie'); T.eq(calls, 0);
   T.ok(StudRules.luckOverride(lose, -50, rng) === lose, 'Verlust + Pech → unverändert'); T.eq(calls, 0);
+});
+T.test('SicBoRules.PAY und FIELDS: Quotentabelle, 29 Felder in Tisch-Reihenfolge', () => {
+  T.eq([SicBoRules.PAY.sum[4], SicBoRules.PAY.sum[10], SicBoRules.PAY.sum[15], SicBoRules.PAY.sum[17]], [60, 6, 18, 60]);
+  T.eq([SicBoRules.PAY.small, SicBoRules.PAY.big, SicBoRules.PAY.tripleAny, SicBoRules.PAY.triple], [1, 1, 30, 180]);
+  T.eq(SicBoRules.PAY.one, [0, 1, 2, 3]);
+  T.eq(SicBoRules.FIELDS.length, 29);
+  T.eq(SicBoRules.FIELDS.slice(0, 3), ['small', 'sum4', 'sum5']);
+  T.eq(SicBoRules.FIELDS.slice(14, 17), ['sum17', 'big', 'triple1']);
+  T.eq(SicBoRules.FIELDS.slice(-8), ['triple6', 'tripleAny', 'one1', 'one2', 'one3', 'one4', 'one5', 'one6']);
+  T.eq(SicBoRules.BET, { MIN: 50, MAX: 2000 });
+});
+T.test('SicBoRules.settle: Klein/Summe/Einzelzahl gewinnen, Groß verliert', () => {
+  const r = SicBoRules.settle({ small: 100, big: 100, sum9: 100, one3: 100, one5: 100 }, [2, 3, 4]);
+  T.eq(r, { delta: 600, won: ['small', 'sum9', 'one3'], lost: ['big', 'one5'], sum: 9, triple: false });
+});
+T.test('SicBoRules.settle: Triple – Klein und Groß verlieren, Triple 4 und Beliebig zahlen', () => {
+  const r = SicBoRules.settle({ small: 100, big: 100, triple4: 100, tripleAny: 100, sum12: 100, one4: 100 }, [4, 4, 4]);
+  T.eq(r.delta, 21700, '−100 −100 +600 +18000 +3000 +300');
+  T.eq(r.won, ['sum12', 'triple4', 'tripleAny', 'one4']); T.eq(r.lost, ['small', 'big']);
+  T.eq([r.sum, r.triple], [12, true]);
+  T.eq(SicBoRules.settle({ triple5: 100 }, [4, 4, 4]).delta, -100, 'falscher Triple verliert');
+});
+T.test('SicBoRules.settle: Einzelzahl zahlt je Treffer, leerer Tisch 0', () => {
+  T.eq(SicBoRules.settle({ one5: 100 }, [5, 5, 1]).delta, 200, 'zwei Fünfen → 2:1');
+  T.eq(SicBoRules.settle({ one5: 100 }, [5, 5, 5]).delta, 300, 'drei Fünfen → 3:1');
+  T.eq(SicBoRules.settle({ one5: 100 }, [1, 2, 3]).delta, -100);
+  T.eq(SicBoRules.settle({}, [1, 2, 3]), { delta: 0, won: [], lost: [], sum: 6, triple: false });
+  T.eq(SicBoRules.risk({ small: 50, sum9: 200, one1: 0 }), 250);
+});
+T.test('SicBoRules.roll und peekDice', () => {
+  T.eq(SicBoRules.roll(seq(0, 0.5, 0.99)), [1, 4, 6]);
+  T.eq(SicBoRules.peekDice(4, [1, 2, 3]), [4, 2, 3]);
+  const d = [1, 2, 3]; T.ok(SicBoRules.peekDice(null, d) === d, 'ohne Becher gleiche Referenz');
+});
+T.test('SicBoRules.luckOverride: Glück wirft Verlust neu, Pech wirft Gewinn neu, sonst unverändert', () => {
+  const lose = [6, 6, 6], win = [1, 2, 3], bets = { small: 100 };
+  T.eq(SicBoRules.luckOverride(lose, bets, 50, seq(0.1, 0, 0, 0)), [1, 1, 1], 'Verlust + Glück → Neuwurf');
+  T.ok(SicBoRules.luckOverride(lose, bets, 50, seq(0.9)) === lose, 'rng über luck → gleiche Referenz');
+  T.eq(SicBoRules.luckOverride(win, bets, -50, seq(0.1, 0.5, 0.5, 0.5)), [4, 4, 4], 'Gewinn + Pech → Neuwurf');
+  let calls = 0; const rng = () => { calls++; return 0; };
+  T.ok(SicBoRules.luckOverride(win, bets, 50, rng) === win, 'Gewinn + Glück → unverändert'); T.eq(calls, 0);
+  T.ok(SicBoRules.luckOverride(lose, bets, -50, rng) === lose, 'Verlust + Pech → unverändert'); T.eq(calls, 0);
+  T.ok(SicBoRules.luckOverride(lose, {}, 50, rng) === lose, 'ohne Einsatz nie'); T.eq(calls, 0);
+  T.ok(SicBoRules.luckOverride(lose, bets, 0, rng) === lose, 'ohne Glück nie'); T.eq(calls, 0);
 });
 
 T.test('Story 1 Kapitel 2/4 und Dev-Panel enthalten poker', () => {
