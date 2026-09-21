@@ -7377,6 +7377,7 @@ const RoyalRules = {
   },
   /* Glück: ein verlierender Pass-Wurf (7 in der Punktphase, 2/3/12 im Come-out) wird um ±1 auf einem Würfel verschoben.
      Pech: ein gewinnender Wurf (Pass oder Field) wird mit |luck| % einmal neu gewürfelt. */
+  CRAPS_WIN_SHARE: 0.3, // Anteil der Glückschance, mit dem ein Verlustwurf zum Gewinnwurf wird (Balancing 2026-09-21, Jeder Tisch: Craps 88/81 % Story statt 22/19)
   crapsLuckOverride(dice, point, hasPass, luck, rng, hasField = false) {
     if (luck < 0) {
       const s = dice[0] + dice[1];
@@ -7385,7 +7386,14 @@ const RoyalRules = {
     }
     if (!hasPass) return dice;
     const losing = (d) => { const s = d[0] + d[1]; return point != null ? s === 7 : (s === 2 || s === 3 || s === 12); };
-    if (!losing(dice) || !(rng() * 100 < luck)) return dice;
+    if (!losing(dice)) return dice;
+    /* Erst die Gewinnchance (CRAPS_WIN_SHARE × luck): 7/11 im Come-out, sonst der Punkt – Paar [a, want − a] mit dem kleinsten a */
+    if (rng() * 100 < luck * RoyalRules.CRAPS_WIN_SHARE) {
+      const want = point != null ? point : (rng() < 0.5 ? 7 : 11);
+      for (let a = 1; a <= 6; a++) { const b = want - a; if (b >= 1 && b <= 6) return [a, b]; }
+    }
+    /* sonst wie bisher: mit luck % ein Würfel um ±1 auf einen nicht verlierenden Wurf */
+    if (!(rng() * 100 < luck)) return dice;
     for (const [i, dir] of [[0, 1], [0, -1], [1, 1], [1, -1]]) {
       const d = dice.slice(); d[i] += dir;
       if (d[i] >= 1 && d[i] <= 6 && !losing(d)) return d;
@@ -11341,15 +11349,31 @@ T.test('crapsSettle: Punktphase, nur Pass', () => {
 });
 T.test('crapsLuckOverride: verlierender Wurf wird verschoben, Gewinner nie', () => {
   T.eq(RoyalRules.crapsLuckOverride([3, 4], 8, true, 0, seq(0)), [3, 4], 'ohne Glück');
-  const o = RoyalRules.crapsLuckOverride([3, 4], 8, true, 100, seq(0));
+  const o = RoyalRules.crapsLuckOverride([3, 4], 8, true, 100, seq(0.5, 0)); // 0.5 ≥ 0.3: kein Gewinnwurf, dann Schub
   T.ok(o[0] + o[1] !== 7, 'Sieben in der Punktphase wird vermieden');
   T.ok(Math.abs(o[0] - 3) + Math.abs(o[1] - 4) === 1, 'genau ein Würfel um 1');
-  const c = RoyalRules.crapsLuckOverride([1, 2], null, true, 100, seq(0));
+  const c = RoyalRules.crapsLuckOverride([1, 2], null, true, 100, seq(0.5, 0));
   T.eq(c, [2, 2], 'Craps 3 im Come-out → erster Würfel +1 → 4');
-  T.eq(RoyalRules.crapsLuckOverride([1, 1], null, true, 100, seq(0)), [1, 1], 'Craps 2: kein ±1-Schritt entkommt (3 bleibt Craps) → unverändert');
+  T.eq(RoyalRules.crapsLuckOverride([1, 1], null, true, 100, seq(0.5, 0)), [1, 1], 'Craps 2: kein ±1-Schritt entkommt (3 bleibt Craps) → unverändert');
   T.eq(RoyalRules.crapsLuckOverride([1, 2], null, false, 100, seq(0)), [1, 2], 'ohne Pass-Einsatz gibt es nichts zu retten');
   T.eq(RoyalRules.crapsLuckOverride([4, 4], 8, true, 100, seq(0)), [4, 4], 'Gewinner bleibt');
   T.eq(RoyalRules.crapsLuckOverride([6, 6], 6, true, 100, seq(0)), [6, 6], 'neutraler Wurf (12 in Punktphase) bleibt');
+});
+T.test('crapsLuckOverride: Glück macht mit CRAPS_WIN_SHARE der Glückschance aus dem Verlustwurf einen Gewinnwurf (Balancing 2026-09-21, Jeder Tisch)', () => {
+  T.eq(RoyalRules.CRAPS_WIN_SHARE, 0.3);
+  /* Punktphase, Punkt 6, Wurf 3+4 = 7 verliert. luck 100 → Gewinnchance 30 %: rng 0.2 < 0.3 → Summe 6, erstes Paar [1, 5] */
+  T.eq(RoyalRules.crapsLuckOverride([3, 4], 6, true, 100, seq(0.2)), [1, 5], 'Verlustwurf → Punkt getroffen');
+  /* rng 0.4 ≥ 0.3 → kein Gewinnwurf; dann wie bisher: rng 0 < luck → Schub um ±1 auf einen nicht verlierenden Wurf */
+  const o = RoyalRules.crapsLuckOverride([3, 4], 6, true, 100, seq(0.4, 0));
+  T.ok(o[0] + o[1] !== 7 && Math.abs(o[0] - 3) + Math.abs(o[1] - 4) === 1, 'Fallback: Schub wie bisher');
+  /* Come-out: 1+2 = 3 verliert; rng 0.1 < 0.3 → Gewinnwurf, zweites rng 0.7 ≥ 0.5 → 11 = [5, 6] */
+  T.eq(RoyalRules.crapsLuckOverride([1, 2], null, true, 100, seq(0.1, 0.7)), [5, 6], 'Come-out → 11');
+  T.eq(RoyalRules.crapsLuckOverride([1, 2], null, true, 100, seq(0.1, 0.2)), [1, 6], 'Come-out → 7 (rng < 0.5)');
+  T.eq(RoyalRules.crapsLuckOverride([4, 4], 8, true, 100, seq(0)), [4, 4], 'Gewinner bleibt');
+  T.eq(RoyalRules.crapsLuckOverride([1, 2], null, false, 100, seq(0)), [1, 2], 'ohne Pass-Einsatz nichts');
+  /* luck 20: Gewinnchance 6 %: rng 0.05 → Gewinn, rng 0.07 → kein Gewinn, Schub-Zweig prüft dann rng 0.5 ≥ 0.2 → bleibt */
+  T.eq(RoyalRules.crapsLuckOverride([3, 4], 6, true, 20, seq(0.05)), [1, 5]);
+  T.eq(RoyalRules.crapsLuckOverride([3, 4], 6, true, 20, seq(0.07, 0.5)), [3, 4]);
 });
 T.test('crapsLuckOverride: Pech würfelt einen Gewinn neu (Pass oder Field), Verlust bleibt', () => {
   T.eq(RoyalRules.crapsLuckOverride([3, 4], null, true, -100, seq(0, 0.5, 0.17)), [4, 2], 'Natural 7 im Come-out → crapsRoll(seq(0.5, 0.17))');
