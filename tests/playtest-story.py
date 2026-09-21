@@ -83,6 +83,12 @@ __pt.advance = function(labelHint) {
   return true;
 };
 __pt.cutsceneActive = function() { return typeof Cutscene !== 'undefined' && Cutscene.active; };
+__pt.duelShoot = function() {
+  // Schuss auf die Gegnerfigur (Ego-Duell): Tipp in die Mitte der Figuren-Box
+  const b = DuelStage.foeBox(), R = document.querySelector('#duelStage').getBoundingClientRect();
+  Shootout.shoot({ clientX: R.left + b.left + b.width / 2, clientY: R.top + b.top + b.height / 2, pointerType: 'mouse' });
+  return true;
+};
 __pt.autoplaySpueler = function(mode) {
   // mode: 'win' (immer treffen) oder 'loss' (immer verfehlen)
   return new Promise((resolve) => {
@@ -1545,7 +1551,7 @@ async def scenario_stash(cdp):
     await cdp.wait_for("UI.current && UI.current.id === 'shootout' && Shootout.running && !UI.busy", timeout=5.0)
     await cdp.eval("Shootout.ready()", await_promise=False)
     await cdp.wait_for("Shootout.phase === 'draw'", timeout=3.0)
-    await cdp.eval("Shootout.tap()", await_promise=False)
+    await cdp.eval("__pt.duelShoot()", await_promise=False)
     await asyncio.sleep(0.3)
     won = await cdp.eval("({ running: Shootout.running, won: Shootout.results[0] && Shootout.results[0].won })", await_promise=False)
     record("stash: Hinterhalt – Duell gewonnen", won["running"] is False and won["won"] is True, str(won))
@@ -1801,7 +1807,7 @@ async def scenario_royal_look(cdp):
     record("zone: Vorhang beim Betreten, Zone royal, Untertitel sichtbar", zone_before == "keller" and fade_on is True and zone_after == "royal" and sub == "block",
            "before=%s fade=%s after=%s sub=%s" % (zone_before, fade_on, zone_after, sub))
     portals = await cdp.eval("document.querySelectorAll('.portal').length", await_promise=False)
-    record("lobby: drei Portale", portals == 3, "portals=%s" % portals)
+    record("lobby: vier Portale", portals == 4, "portals=%s" % portals)
     # Mega Seven: Freispiel-Banner + Gewinnlinie
     await cdp.eval("UI.show('megaslots')")
     mega = await cdp.eval("""(async function(){
@@ -1966,6 +1972,115 @@ async def scenario_poker(cdp):
     record("poker: in Story 1 Tag 1 gesperrt", locked is True, "locked=%s" % locked)
 
 
+async def scenario_stud(cdp):
+    """Caribbean Stud im Royal: Portal, festes Deck (Zwei Paare gegen Paar), Mitgehen -> Bonus 2:1, Dealer nicht
+    qualifiziert -> Ante 1:1, Passen, Flush -> Achievement, Screen verlassen laesst die Hand fallen, Insider-Blick mit Kappe."""
+    await cdp.navigate(URL_BASE + "?fresh&mode=free&screen=royal")
+    await asyncio.sleep(0.8)
+    await cdp.inject_helpers()
+    portal = await cdp.eval("!!document.querySelector('.portal[data-screen=\"stud\"]')", await_promise=False)
+    record("stud: Portal in der Royal-Lobby", portal is True)
+    await cdp.screenshot("royal-lobby.png")
+    await cdp.eval("State.s.car = 'audiA3'; State.s.balance = 1000; State.save(); UI.renderWallet(); 0", await_promise=False)
+    await cdp.eval("UI.show('stud'); 0", await_promise=False)
+    await asyncio.sleep(0.6)
+    zone = await cdp.eval("document.body.dataset.zone", await_promise=False)
+    record("stud: Zone royal", zone == "royal", zone)
+    # forceDeck wird von oben abwechselnd verteilt: Index 0,2,4,6,8 Spieler, 1,3,5,7,9 Dealer
+    def deck_js(player, dealer):
+        cards = []
+        for p, d in zip(player, dealer):
+            cards.append(p); cards.append(d)
+        arr = ", ".join("C('%s','%s')" % (c[:-1], c[-1]) for c in cards)
+        return ("(function(){ const C = (val, suit) => ({ val, suit }); const top = [%s];"
+                " const rest = Rules.newDeck(Math.random).filter(c => !top.some(x => x.val === c.val && x.suit === c.suit));"
+                " Stud.forceDeck = [...top, ...rest]; })(); 0") % arr
+
+    async def play(player, dealer, ante, action):
+        await cdp.eval(deck_js(player, dealer), await_promise=False)
+        await cdp.eval("document.querySelector('.chip[data-chip=\"%d\"]').click(); 0" % ante, await_promise=False)
+        before = await cdp.eval("State.s.balance", await_promise=False)
+        await cdp.click("#btnStudDeal")
+        await cdp.wait_for("Stud.round && Stud.round.phase === 'decide'", timeout=5.0)
+        after_deal = await cdp.eval("State.s.balance", await_promise=False)
+        hidden = await cdp.eval("document.querySelectorAll('#studDealerCards .pcard.hidden-card').length", await_promise=False)
+        if action == "shot":
+            await cdp.screenshot("royal-stud.png")
+            action = "call"
+        await cdp.click("#btnStudCall" if action == "call" else "#btnStudFold")
+        await cdp.wait_for("!Stud.inRound", timeout=8.0)
+        await asyncio.sleep(0.5)
+        after = await cdp.eval("State.s.balance", await_promise=False)
+        status = await cdp.eval("document.querySelector('#studStatus').textContent", await_promise=False)
+        return before, after_deal, hidden, after, status
+
+    # Trophaeen und Insider-Wissen (State.meta.insider) liegen im Meta-Speicher und ueberleben ?fresh und fruehere Laeufe im selben Chrome-Profil: hier zuruecksetzen
+    await cdp.eval("State.meta.insider = []; State.meta.achievements = State.meta.achievements.filter(id => id !== 'karibik'); State.saveMeta(); 0", await_promise=False)
+    # 1) Zwei Paare gegen Paar 9, Ante 100: Bet 200, Bonus 2:1 -> net +500
+    b0, bd, hidden, b1, status = await play(["K♠", "K♥", "7♣", "7♠", "2♥"], ["9♦", "9♣", "5♠", "4♦", "Q♥"], 100, "shot")
+    ach = await cdp.eval("Achievements.has('karibik')", await_promise=False)
+    record("stud: Geben bucht Ante ab, 4 Dealer-Karten verdeckt, Mitgehen gewinnt Bonus 2:1 (+500)",
+           bd == b0 - 100 and hidden == 4 and b1 == b0 + 500 and "Bonus 2:1" in status and ach is False,
+           "b0=%s deal=%s hidden=%s b1=%s status=%s ach=%s" % (b0, bd, hidden, b1, status, ach))
+    # 2) Dealer A-Q nicht qualifiziert: Ante 1:1, Bet zurueck -> net +100
+    b0, bd, hidden, b1, status = await play(["9♠", "9♥", "K♦", "4♣", "2♠"], ["A♠", "Q♦", "J♣", "9♥", "2♠"], 100, "call")
+    record("stud: Dealer nicht qualifiziert zahlt Ante 1:1 (+100)", b1 == b0 + 100 and "nicht qualifiziert" in status, "b0=%s b1=%s status=%s" % (b0, b1, status))
+    # 3) Passen: Ante weg
+    b0, bd, hidden, b1, status = await play(["9♠", "9♥", "K♦", "4♣", "2♠"], ["A♠", "K♦", "J♣", "9♥", "2♠"], 100, "fold")
+    hidden_after = await cdp.eval("document.querySelectorAll('#studDealerCards .pcard.hidden-card').length", await_promise=False)
+    record("stud: Passen verliert die Ante, Dealer bleibt verdeckt", b1 == b0 - 100 and hidden_after == 4 and "Gepasst" in status, "b0=%s b1=%s hidden=%s status=%s" % (b0, b1, hidden_after, status))
+    # 4) Flush gegen Paar -> Achievement
+    b0, bd, hidden, b1, status = await play(["2♥", "5♥", "8♥", "J♥", "K♥"], ["9♦", "9♣", "5♠", "4♦", "Q♠"], 100, "call")
+    ach = await cdp.eval("Achievements.has('karibik')", await_promise=False)
+    record("stud: Flush gewinnt Bonus 5:1 (+1100) und Trophaee Karibische Nacht", b1 == b0 + 1100 and ach is True, "b0=%s b1=%s ach=%s status=%s" % (b0, b1, ach, status))
+    # 5) Screen verlassen mitten in der Hand -> Ante verfallen
+    await cdp.eval(deck_js(["9♠", "9♥", "K♦", "4♣", "2♠"], ["A♠", "Q♦", "J♣", "9♥", "2♠"]), await_promise=False)
+    await cdp.click("#btnStudDeal")
+    await cdp.wait_for("Stud.round && Stud.round.phase === 'decide'", timeout=5.0)
+    before = await cdp.eval("State.s.balance", await_promise=False)
+    await cdp.eval("UI.show('royal'); 0", await_promise=False)
+    await asyncio.sleep(0.5)
+    after = await cdp.eval("State.s.balance", await_promise=False)
+    in_round = await cdp.eval("Stud.inRound", await_promise=False)
+    rnd = await cdp.eval("Stud.round === null", await_promise=False)
+    toast = await cdp.eval("document.querySelector('#toasts').textContent.includes('Hand aufgegeben')", await_promise=False)
+    record("stud: Screen verlassen laesst die Hand fallen (Ante weg, Toast)", after == before and in_round is False and rnd is True and toast is True,
+           "before=%s after=%s inRound=%s round=null:%s toast=%s" % (before, after, in_round, rnd, toast))
+    # 6) Insider Sylvies Blick: Ante 100 -> zweite Dealer-Karte offen; Ante 500 -> verdeckt + Hinweis
+    await cdp.eval("State.meta.insider = ['sylviesblick']; State.saveMeta(); 0", await_promise=False)
+    await cdp.eval("UI.show('stud'); 0", await_promise=False)
+    await asyncio.sleep(0.5)
+    await cdp.eval(deck_js(["9♠", "9♥", "K♦", "4♣", "2♠"], ["A♠", "Q♦", "J♣", "9♥", "2♠"]), await_promise=False)
+    await cdp.eval("document.querySelector('.chip[data-chip=\"100\"]').click(); 0", await_promise=False)
+    await cdp.click("#btnStudDeal")
+    await cdp.wait_for("Stud.round && Stud.round.phase === 'decide'", timeout=5.0)
+    hidden_peek = await cdp.eval("document.querySelectorAll('#studDealerCards .pcard.hidden-card').length", await_promise=False)
+    hint_peek = await cdp.eval("document.querySelector('#studPeek').textContent", await_promise=False)
+    await cdp.click("#btnStudFold")
+    await cdp.wait_for("!Stud.inRound", timeout=5.0)
+    await cdp.eval("State.s.balance = 5000; State.save(); UI.renderWallet(); 0", await_promise=False)
+    await cdp.eval(deck_js(["9♠", "9♥", "K♦", "4♣", "2♠"], ["A♠", "Q♦", "J♣", "9♥", "2♠"]), await_promise=False)
+    await cdp.eval("document.querySelector('.chip[data-chip=\"500\"]').click(); 0", await_promise=False)
+    await cdp.click("#btnStudDeal")
+    await cdp.wait_for("Stud.round && Stud.round.phase === 'decide'", timeout=5.0)
+    hidden_cap = await cdp.eval("document.querySelectorAll('#studDealerCards .pcard.hidden-card').length", await_promise=False)
+    hint_cap = await cdp.eval("document.querySelector('#studPeek').textContent", await_promise=False)
+    await cdp.click("#btnStudFold")
+    await cdp.wait_for("!Stud.inRound", timeout=5.0)
+    record("stud: Sylvies Blick zeigt bei Ante 100 die zweite Dealer-Karte, bei 500 verdeckt mit Kappen-Hinweis",
+           hidden_peek == 3 and hint_peek == "🎩 Sylvies Blick" and hidden_cap == 4 and "wirkt bis 250" in hint_cap,
+           "hidden100=%s hint100=%s hidden500=%s hint500=%s" % (hidden_peek, hint_peek, hidden_cap, hint_cap))
+    await cdp.eval("State.meta.insider = []; State.saveMeta(); 0", await_promise=False)
+    # 7) Ante ausserhalb 100-1000: Toast, keine Karten
+    await cdp.eval("document.querySelector('#studBet').value = '50'; 0", await_promise=False)
+    await cdp.click("#btnStudDeal")
+    await asyncio.sleep(0.4)
+    cards = await cdp.eval("document.querySelectorAll('#studPlayerCards .pcard').length", await_promise=False)
+    toast = await cdp.eval("document.querySelector('#toasts').textContent.includes('Zwischen 100')", await_promise=False)
+    in_round = await cdp.eval("Stud.inRound", await_promise=False)
+    record("stud: Ante 50 wird abgelehnt", in_round is False and toast is True, "cards=%s toast=%s inRound=%s" % (cards, toast, in_round))
+
+
 async def main():
     cdp = CDP()
     cdp.launch(mobile=MOBILE)
@@ -1996,6 +2111,7 @@ async def main():
         await scenario_roulette_chips(cdp)
         await scenario_perks(cdp)
         await scenario_poker(cdp)
+        await scenario_stud(cdp)
     finally:
         n_errors = len(cdp.console_errors)
         for e in cdp.console_errors:

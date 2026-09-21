@@ -839,21 +839,29 @@ body.mode-story #newgame { display: none; }
 .ticket-pop { position: absolute; left: 50%; top: 40%; transform: translateX(-50%) rotate(-8deg); font-family: var(--font-display); font-size: 2rem; color: #fff; background: #b3261e; padding: 4px 14px; letter-spacing: .1em; animation: stampIn .4s cubic-bezier(.3,1.6,.5,1) both; }
 @media (max-width: 760px) { .taxi-road { height: 340px; } }
 .duel-panel { align-items: stretch; }
-.duel-stage { position: relative; height: 300px; border-radius: 10px; background: linear-gradient(180deg, #05070d 0%, #141a28 55%, #2a2820 100%); overflow: hidden; touch-action: none; user-select: none; cursor: crosshair; }
-.duel-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 70px; background: #1a1812; border-top: 2px dashed rgba(255,255,255,.15); }
-.duel-moon { position: absolute; right: 8%; top: 8%; font-size: 2rem; opacity: .7; }
-.duel-fighter { position: absolute; bottom: 58px; font-size: 4rem; z-index: 2; filter: drop-shadow(0 0 10px rgba(0,0,0,.8)); transition: transform .3s; }
-.duel-fighter.you { left: 14%; }
-.duel-fighter.foe { right: 14%; transform: scaleX(-1); }
-.duel-fighter.down { transform: rotate(80deg) translateY(30px); opacity: .6; }
-.duel-fighter.foe.down { transform: scaleX(-1) rotate(80deg) translateY(30px); }
-.duel-fighter.hit { animation: shake .4s; }
-.duel-signal { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%); font-family: var(--font-display); font-size: 1.6rem; letter-spacing: .2em; color: rgba(255,255,255,.5); z-index: 3; }
-.duel-signal.wait { color: rgba(255,255,255,.35); }
-.duel-signal.draw { font-size: 3.4rem; color: #fff; text-shadow: 0 0 20px var(--neon-red), 0 0 40px var(--neon-red); animation: stampIn .15s both; }
-.duel-name { position: absolute; right: 10%; top: 12%; font-family: var(--font-mono); font-size: .8rem; color: rgba(255,255,255,.7); }
-.duel-count { position: absolute; left: 10%; top: 12%; font-family: var(--font-mono); font-size: .8rem; color: rgba(255,255,255,.7); }
-@media (max-width: 760px) { .duel-stage { height: 240px; } .duel-fighter { font-size: 3rem; } }
+/* Ego-Sicht: Welt-Canvas hinten, Gegnerfigur, Effekt-Canvas, eigene Waffe, Anzeige – alles absolut in der Bühne */
+.duel-stage { position: relative; width: 100%; height: min(72vh, 720px); min-height: 360px; border-radius: 10px; background: #000; overflow: hidden; touch-action: none; user-select: none; cursor: crosshair; contain: paint; }
+.duel-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.duel-world { z-index: 0; }
+.duel-fx { z-index: 3; pointer-events: none; }
+.duel-stage .cs-fig.duel-foe { left: 50%; bottom: 34%; height: 46%; z-index: 1; --x: 0px; --s: 1; transform: translateX(-50%) scale(var(--s)); transform-origin: 50% 100%; transition: transform .8s ease-out; }
+.duel-gun { position: absolute; right: 0; bottom: 0; width: 38%; max-width: 360px; aspect-ratio: 200 / 160; z-index: 4; pointer-events: none; transform: translateY(100%); transition: transform .5s ease-out; filter: drop-shadow(0 0 12px rgba(0,0,0,.8)); }
+.duel-gun.up { transform: translateY(0); }
+.duel-gun.recoil { animation: duelRecoil .18s ease-out both; }
+.duel-gun svg { width: 100%; height: 100%; display: block; }
+.duel-tag { position: absolute; left: 12px; top: 10px; z-index: 5; display: flex; gap: 10px; font-family: var(--font-mono); font-size: .8rem; color: rgba(255,255,255,.8); background: rgba(0,0,0,.45); padding: 4px 10px; border-radius: 4px; pointer-events: none; }
+.duel-flash { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%); z-index: 6; font-family: var(--font-display); font-size: 3.4rem; letter-spacing: .2em; color: #fff; text-shadow: 0 0 20px var(--neon-red), 0 0 40px var(--neon-red); opacity: 0; pointer-events: none; }
+.duel-flash.on { animation: stampIn .15s both; opacity: 1; }
+.duel-foe[data-pose="idle"] .armR { animation: duelTwitch 2.6s ease-in-out infinite; }   /* die Hand zuckt zur Waffe */
+.cs-fig[data-pose="draw"] .armR { transform: rotate(-100deg); transition-duration: .1s; }
+.cs-fig[data-pose="hit"] .cs-body { animation: csHit .35s ease both; }
+@keyframes duelTwitch { 0%, 88%, 100% { transform: rotate(0); } 92% { transform: rotate(-14deg); } 96% { transform: rotate(-4deg); } }
+@keyframes duelRecoil { 0% { transform: translate(0, 0) rotate(0); } 30% { transform: translate(6px, 18px) rotate(-6deg); } 100% { transform: translate(0, 0) rotate(0); } }
+@keyframes csHit { 0% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-8px) rotate(4deg); } 100% { transform: translateY(0) rotate(-2deg); } }
+/* Handy: Bühne so hoch, dass Status + „Bereit“ noch über der Tab-Leiste stehen (410 px = Kopfzeile (2 Zeilen) + Panel-Rand/Abstände + 3-zeiliger Status + Knopf + Tab-Leiste) */
+@media (max-width: 760px) { .duel-stage { height: calc(100vh - 410px); min-height: 300px; } .duel-stage .cs-fig.duel-foe { height: 44%; bottom: 36%; } .duel-gun { width: 46%; } }
+@media (orientation: landscape) and (max-height: 500px) { .duel-stage { height: 80vh; min-height: 280px; } .duel-stage .cs-fig.duel-foe { height: 55%; bottom: 30%; } }
+@media (prefers-reduced-motion: reduce) { .duel-stage .cs-fig.duel-foe, .duel-gun { transition: none; } .duel-gun.recoil, .duel-flash.on, .duel-foe[data-pose="idle"] .armR { animation: none; } }
 
 /* -- Große Bildschirme: Spielfläche mitwachsen lassen (zoom skaliert Layout + Canvas sauber) -- */
 @media (min-width: 1440px) and (min-height: 820px) { .body, .title-inner { zoom: 1.15; } }
@@ -1345,6 +1353,35 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     </div>
   </div>
 </template>
+<template id="tpl-stud">
+  <div class="panel bj-panel felt">
+    <div class="bj-table">
+      <div class="bj-hand dealer">
+        <div class="hand-label">Madame Sylvie <span class="hand-val" id="studDealerName">–</span> <span class="insider-hint hidden" id="studPeek"></span></div>
+        <div class="cards" id="studDealerCards"></div>
+      </div>
+      <div class="bj-arc" id="studArc">Ante · –</div>
+      <div class="bj-hand player">
+        <div class="cards" id="studPlayerCards"></div>
+        <div class="hand-label">Du <span class="hand-val" id="studHandName">–</span></div>
+      </div>
+    </div>
+    <div class="status" id="studStatus">Ante setzen</div>
+    <div class="bet-bar" id="studBetControls">
+      <div class="bet-field bet-view"><input type="number" id="studBet" value="100" min="100" readonly></div>
+      <button class="chip" data-chip="100" data-v="100">100</button>
+      <button class="chip" data-chip="250" data-v="25">250</button>
+      <button class="chip" data-chip="500" data-v="500">500</button>
+      <button class="chip" data-chip="1000" data-v="max">1000</button>
+      <button class="btn solid" id="btnStudDeal">Geben</button>
+    </div>
+    <div class="bet-bar hidden" id="studCallControls">
+      <button class="btn green" id="btnStudCall">Mitgehen</button>
+      <button class="btn ghost" id="btnStudFold">Passen</button>
+    </div>
+    <div class="bet-bar"><button class="btn ghost sm" id="studBack">← Lobby</button></div>
+  </div>
+</template>
 <template id="tpl-roulette">
   <div class="panel roulette-panel felt">
     <div class="roulette-top">
@@ -1518,15 +1555,8 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
 </template>
 <template id="tpl-shootout">
   <div class="panel duel-panel">
-    <div class="duel-stage" id="duelStage">
-      <div class="duel-moon">🌙</div>
-      <div class="duel-fighter you" id="duelYou">🤠</div>
-      <div class="duel-signal" id="duelSignal">…</div>
-      <div class="duel-fighter foe" id="duelFoe">🧢</div>
-      <div class="duel-name" id="duelFoeName"></div>
-      <div class="duel-count" id="duelCount"></div>
-    </div>
-    <div class="status" id="duelStatus">Warte auf ZIEH! – dann tippen oder Leertaste. Zu früh ist ein Fehlschuss.</div>
+    <div class="duel-stage" id="duelStage"></div>
+    <div class="status" id="duelStatus">Warte, bis er zieht – dann auf ihn tippen (oder Leertaste). Zu früh ist ein Fehlschuss.</div>
     <div class="bet-bar">
       <button class="btn solid" id="btnDuelStart">Bereit</button>
       <button class="btn ghost hidden" id="btnDuelDone">Weiter</button>
@@ -1549,6 +1579,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
       <button class="portal" data-screen="megaslots"><span class="portal-crown"></span><span class="plaque">Mega Seven</span><span class="glyph">🎰</span><span class="engraved">5 Walzen · Freispiele</span></button>
       <button class="portal" data-screen="craps"><span class="portal-crown"></span><span class="plaque">Craps</span><span class="glyph">🎲</span><span class="engraved">Pass Line · Field</span></button>
       <button class="portal" data-screen="wheel"><span class="portal-crown"></span><span class="plaque">Glücksrad</span><span class="glyph">🎡</span><span class="engraved">bis 10×</span></button>
+      <button class="portal" data-screen="stud"><span class="portal-crown"></span><span class="plaque">Caribbean Stud</span><span class="glyph">🃏</span><span class="engraved">Ante · Bonus bis 100:1</span></button>
     </div>
     <div class="bet-bar"><button class="btn ghost sm" id="royalLeave">← Zurück in die Stadt</button></div>
   </div>
@@ -2095,7 +2126,7 @@ Object.assign(Rules, {
     bankRateAdd: 0, bankLimitAdd: 0, mafiaSpins: Rules.MAFIA_SPINS, mafiaMult: 3, investRateMult: 1,
     mugChanceMult: 1, fightAdd: 0, walletMult: 1,
     postTimeAdd: 0, postPayAdd: 0, postLetters: 15,
-    pokerPeekDraw: false, pokerTell: false, bjDealerStand: 17,
+    pokerPeekDraw: false, pokerTell: false, bjDealerStand: 17, studPeek: false,
   },
   /* Wie ein Schlüssel gestapelt wird: add = Summe, mult = Produkt, max = Maximum, set = letzter Wert */
   MOD_STACK: {
@@ -2107,7 +2138,7 @@ Object.assign(Rules, {
     bankRateAdd: 'add', bankLimitAdd: 'add', mafiaSpins: 'max', mafiaMult: 'set', investRateMult: 'mult',
     mugChanceMult: 'mult', fightAdd: 'add', walletMult: 'mult',
     postTimeAdd: 'add', postPayAdd: 'add', postLetters: 'max',
-    pokerPeekDraw: 'set', pokerTell: 'set', bjDealerStand: 'max',
+    pokerPeekDraw: 'set', pokerTell: 'set', bjDealerStand: 'max', studPeek: 'set',
   },
   SKILLS: [
     { id: 'pokerface', name: 'Pokerface', icon: '🃏', light: 'Blackjack: natürlicher Blackjack zahlt 3:2, Push bringt +10 %', shadow: 'Bier gibt kein Glück', mods: { bjNatural: 1.5, bjPushBonus: 0.1, beerLuckMult: 0 } },
@@ -2129,6 +2160,7 @@ Object.assign(Rules, {
     { id: 'vitosneffe', name: 'Vitos Neffe', icon: '🕶️', text: 'Vito-Frist 8 Spins, Rechnung ×2 statt ×3, Überfälle halb so oft.', capped: false, mods: { mafiaSpins: 8, mafiaMult: 2, mugChanceMult: 0.5 } },
     { id: 'postmeister', name: 'Postmeister', icon: '📮', text: 'Postbote: 20 Briefe pro Schicht, +5 € pro Brief.', capped: false, mods: { postLetters: 20, postPayAdd: 5 } },
     { id: 'wirtstell', name: 'Wirts Tell', icon: '🧔', text: 'Poker: der Wirt kratzt sich am Bart, wenn er nichts auf der Hand hat.', capped: true, mods: { pokerTell: true } },
+    { id: 'sylviesblick', name: 'Sylvies Blick', icon: '🎩', text: 'Caribbean Stud: Madame Sylvie lässt dich eine zweite Dealer-Karte sehen, bevor du mitgehst.', capped: true, mods: { studPeek: true } },
   ],
   xpLevel(xp) {
     let level = 1;
@@ -2434,6 +2466,7 @@ const SFX = {
     gallop() { this.noise({ dur: 0.05, vol: 0.12, freq: 250 }); this.noise({ dur: 0.05, vol: 0.1, freq: 250, delay: 0.09 }); },
     heartbeat() { this.tone({ freq: 60, type: 'sine', dur: 0.12, vol: 0.5 }); this.tone({ freq: 50, type: 'sine', dur: 0.15, vol: 0.4, delay: 0.16 }); },
     dryfire() { this.tone({ freq: 800, type: 'square', dur: 0.02, vol: 0.2 }); this.noise({ dur: 0.05, vol: 0.15, freq: 3000, type: 'highpass' }); },
+    ricochet() { this.noise({ dur: 0.12, vol: 0.25, freq: 2500, type: 'highpass' }); this.tone({ freq: 1800, type: 'square', dur: 0.05, vol: 0.12, slide: -900, delay: 0.02 }); },
     gunshot() { this.noise({ dur: 0.45, vol: 0.6, freq: 900 }); this.tone({ freq: 90, type: 'sine', dur: 0.4, vol: 0.5, slide: -60 }); },
     cardSlide() { this.noise({ dur: 0.09, vol: 0.12, freq: 3500, type: 'highpass' }); },
     neonBuzz() { this.tone({ freq: 60, type: 'sawtooth', dur: 0.12, vol: 0.05 }); this.tone({ freq: 120, type: 'square', dur: 0.1, vol: 0.03 }); },
@@ -2711,7 +2744,7 @@ UI.register('hub', {
 /* ================= CUTSCENE DIRECTOR – Auto-Regie als reine Funktion (DOM-frei, testbar) ================= */
 const CsDirector = {
   SLOTS: ['left', 'mid', 'right', 'far'],
-  POSES: ['idle', 'talk', 'point', 'arms-crossed', 'hands-up', 'walk', 'down', 'flinch'],
+  POSES: ['idle', 'talk', 'point', 'arms-crossed', 'hands-up', 'walk', 'down', 'flinch', 'draw', 'hit'],
   CAMS: ['close', 'wide', 'shake'],
   MOODS: ['calm', 'angry', 'happy', 'shock', 'dead'],
   HURTS: ['pflaster', 'kruecke'],
@@ -2851,6 +2884,8 @@ const CsCast = {
     stumme:      { name: 'Der Stumme',       emoji: '🃏', color: '#8a8a8a',           look: { skin: '#e8c8a8', cloth: '#8a8a8a', accent: '#5a5a5a', hair: 'glatze', hairColor: '#333',    hat: null,   extra: [],                                 build: 'schmal' } },
     kessler:     { name: 'Kessler',          emoji: '🚬', color: 'var(--neon-red)',   look: { skin: '#e8b48a', cloth: '#5a1a1a', accent: '#2a0a0a', hair: 'kurz',   hairColor: '#111',    hat: null,   extra: ['zigarette', 'narbe'],             build: 'normal' } },
     brandt:      { name: 'Kommissar Brandt', emoji: '👮', color: 'var(--neon-blue)',  look: { skin: '#e8c8a8', cloth: '#1e3a5c', accent: '#4cc9f0', hair: 'kurz',   hairColor: '#6a5040', hat: 'kappe', hatColor: '#1e3a5c', extra: ['schnurrbart'], build: 'normal' } },
+    laeufer:     { name: 'Bahnhof-Läufer',   emoji: '🏃', color: 'var(--neon-red)',   look: { skin: '#e8c8a8', cloth: '#2a5a3a', accent: '#f2f2f2', hair: 'kurz',   hairColor: '#3a2414', hat: 'muetze', hatColor: '#222', extra: [],           build: 'schmal' } },
+    junge:       { name: 'Bahnhof-Junge',    emoji: '🧢', color: 'var(--neon-red)',   look: { skin: '#e8b48a', cloth: '#3a3a3a', accent: '#ff7a1a', hair: 'kurz',   hairColor: '#111',    hat: 'cap', hatColor: '#1e3a5c', extra: [],          build: 'klein' } },
     kowalski:    { name: 'Kowalski',         emoji: '🔧', color: '#b8a070',           look: { skin: '#e0b08a', cloth: '#3a4a5a', accent: '#b8a070', hair: 'kurz',   hairColor: '#3a2414', hat: null,   extra: ['schnurrbart'],                    build: 'breit' } },
   },
   SHOES: { basic: '#f2f2f2', trail: '#ff7a1a', carbon: '#111' },
@@ -2898,7 +2933,8 @@ const CsCast = {
     const arm = (side) => {
       const x = side === 'L' ? 14 - armShift : 72 + armShift, cx = side === 'L' ? 21 - armShift : 79 + armShift;
       return part(`arm${side}`, `<rect x="${x}" y="76" width="14" height="52" rx="7" fill="${P.cloth}"/><circle cx="${cx}" cy="130" r="6" fill="${P.skin}"/>
-        ${side === 'L' && opts.hurt === 'kruecke' ? `<path d="M${cx - 14} 118 L${cx - 14} 172" stroke="#8a6a3a" stroke-width="4"/><path d="M${cx - 22} 118 L${cx - 6} 118" stroke="#8a6a3a" stroke-width="4"/>` : ''}`);
+        ${side === 'L' && opts.hurt === 'kruecke' ? `<path d="M${cx - 14} 118 L${cx - 14} 172" stroke="#8a6a3a" stroke-width="4"/><path d="M${cx - 22} 118 L${cx - 6} 118" stroke="#8a6a3a" stroke-width="4"/>` : ''}
+        ${side === 'R' && opts.gun ? `<path class="pistole" d="M${cx - 4} 126 h18 v6 h-10 v9 h-8z" fill="#1a1a1a"/>` : ''}`);
     };
     const face = this.face(mood, P, parts, opts.hurt);
     const hair = this.hair(P);
@@ -4202,7 +4238,7 @@ Bus.on('gear:shoes', () => Stadt.checkFullSet());
 <script id="casino-royal">
 /* ================= CASINO ROYAL – Lobby, Eintritt, Madame Sylvie ================= */
 const Royal = {
-  GAMES: ['megaslots', 'craps', 'wheel'],
+  GAMES: ['megaslots', 'craps', 'wheel', 'stud'],
   SYLVIE: {
     first: 'Madame Sylvie sieht kurz von ihren Zahlen auf. Sie sieht alles. Sie sagt nichts.',
     guest: 'Madame Sylvie nickt. „Gast des Hauses. Der Eintritt entfällt. Das Haus behält sich alles andere vor.“',
@@ -4278,7 +4314,7 @@ UI.register('royal', {
 });
 Cutscene.define('royal.first', [
   { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Willkommen. Sie sind neu. Man sieht es an den Schuhen, nicht am Auto.' },
-  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Drei Tische. Höhere Einsätze, bessere Beleuchtung, dieselbe Mathematik. Viel Vergnügen.' },
+  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Vier Tische. Höhere Einsätze, bessere Beleuchtung, dieselbe Mathematik. Viel Vergnügen.' },
 ]);
 Cutscene.define('royal.leave', [
   { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Sie gehen? Der Eintritt gilt nicht für den Rückweg – die nächsten {{fee}} nehmen wir wieder an der Tür.',
@@ -5323,6 +5359,146 @@ UI.register('poker', {
 });
 </script>
 
+<script id="game-stud">
+/* ================= CARIBBEAN STUD – Ante, fünf Karten, Mitgehen oder Passen gegen das Haus ================= */
+const Stud = {
+  root: null, gen: 0, round: null, inRound: false, busy: false,
+  forceDeck: null, // Dev/Test: festes Deck für die nächste Hand (StudRules.deal verteilt von oben, abwechselnd Spieler/Dealer)
+  GROUPS: ['studBetControls', 'studCallControls'],
+  alive(gen) { return !!this.root && this.gen === gen; },
+  /* Hand ohne Abrechnung fallen lassen (Screen verlassen) – Einsätze sind bereits abgezogen */
+  drop(round) { if (round && !round.done) { round.done = true; Game.forfeit(); } },
+  show(group) { for (const g of this.GROUPS) qs('#' + g, this.root).classList.toggle('hidden', g !== group); },
+  status(html) { qs('#studStatus', this.root).innerHTML = html; },
+  renderArc(round) { qs('#studArc', this.root).textContent = round.called ? `Ante ${UI.fmt(round.ante)} · Bet ${UI.fmt(2 * round.ante)}` : `Ante ${UI.fmt(round.ante)}`; },
+  async deal() {
+    if (this.inRound || !this.root) return;
+    const ante = Game.readBet('studBet');
+    if (!(ante >= StudRules.ANTE.MIN && ante <= StudRules.ANTE.MAX)) { UI.toast({ icon: '🃏', title: 'Einsatz', text: `Zwischen ${UI.fmt(StudRules.ANTE.MIN)} und ${UI.fmt(StudRules.ANTE.MAX)}.`, tone: 'loss' }); SFX.play('lose'); return; }
+    const mods = Perks.mods();
+    const chk = Rules.checkSpin(State.s, 3 * ante, mods);
+    if (!chk.ok && chk.reason === 'funds') { UI.toast({ icon: '🃏', title: 'Zu wenig für diesen Tisch', text: `Du brauchst 3× Ante (${UI.fmt(3 * ante)}).`, tone: 'loss' }); SFX.play('lose'); return; }
+    if (!Game.beginSpin(ante)) return;
+    const gen = this.gen;
+    this.inRound = true; this.busy = true;
+    const deck = this.forceDeck ? this.forceDeck.slice() : Rules.newDeck(Math.random);
+    this.forceDeck = null;
+    let hands = StudRules.deal(deck);
+    hands = StudRules.luckOverride(hands, Rules.effectiveLuck(Rules.luck(State.s, mods), ante), Math.random);
+    const peek = Rules.effectiveInsider(mods.studPeek, ante);
+    const round = { pHand: hands.player, dHand: hands.dealer, ante, called: false, phase: 'deal', gen, run: Game.run, done: false };
+    this.round = round;
+    try {
+      qs('#studPlayerCards', this.root).innerHTML = ''; qs('#studDealerCards', this.root).innerHTML = '';
+      qs('#studHandName', this.root).textContent = '–'; qs('#studDealerName', this.root).textContent = '–';
+      qsa('.hand-val', this.root).forEach((v) => v.classList.remove('push'));
+      const hint = qs('#studPeek', this.root);
+      hint.classList.toggle('hidden', !mods.studPeek);
+      hint.textContent = mods.studPeek && !peek ? `🎩 Sylvies Blick: wirkt bis ${UI.fmt(Rules.INSIDER_CAP)}` : mods.studPeek ? '🎩 Sylvies Blick' : '';
+      qs('#btnStudCall', this.root).textContent = `Mitgehen (${UI.fmt(2 * ante)})`;
+      this.show('studCallControls');
+      this.renderArc(round);
+      this.status(`Mitgehen (${UI.fmt(2 * ante)}) oder passen?`);
+      for (let i = 0; i < 5; i++) {
+        if (!this.alive(gen)) break;
+        qs('#studPlayerCards', this.root).append(UI.cardEl(round.pHand[i]));
+        qs('#studDealerCards', this.root).append(UI.cardEl(round.dHand[i], !(i === 0 || (i === 1 && peek))));
+        SFX.play('cardSlide');
+        await wait(180);
+      }
+      if (this.alive(gen)) qs('#studHandName', this.root).textContent = PokerRules.evaluate(round.pHand).name;
+      round.phase = 'decide';
+    } finally {
+      if (this.gen === gen) this.busy = false;
+      else this.drop(round);
+    }
+  },
+  async call() {
+    const round = this.round;
+    if (!round || round.phase !== 'decide' || this.busy) return;
+    const gen = this.gen;
+    this.busy = true; round.phase = 'showdown';
+    try {
+      Game.applyDelta(-2 * round.ante, { quiet: true }); round.called = true;
+      if (this.alive(gen)) { this.renderArc(round); this.show(null); this.status('Showdown'); }
+      await this.showdown(round);
+    } finally {
+      if (this.gen === gen) this.busy = false;
+      else this.drop(round);
+    }
+  },
+  async fold() {
+    const round = this.round;
+    if (!round || round.phase !== 'decide' || this.busy) return;
+    const gen = this.gen;
+    this.busy = true; round.phase = 'end';
+    try { await this.finish(round, 'fold', -round.ante); }
+    finally { if (this.gen === gen) this.busy = false; else this.drop(round); }
+  },
+  async showdown(round) {
+    if (this.alive(round.gen)) {
+      const cards = qsa('#studDealerCards .pcard.hidden-card', this.root);
+      for (const c of cards) { if (!this.alive(round.gen)) break; c.classList.remove('hidden-card'); SFX.play('cardSlide'); await wait(160); }
+    }
+    if (this.alive(round.gen)) {
+      qs('#studDealerName', this.root).textContent = StudRules.qualifies(round.dHand) ? PokerRules.evaluate(round.dHand).name : 'qualifiziert sich nicht';
+      await wait(400);
+    }
+    const r = StudRules.settle(round.pHand, round.dHand, round.ante);
+    await this.finish(round, r.outcome, r.net, r.bonus);
+  },
+  async finish(round, outcome, net, bonus = 0) {
+    if (round.done) return;
+    round.done = true;
+    const pe = PokerRules.evaluate(round.pHand), de = PokerRules.evaluate(round.dHand);
+    const stake = round.called ? 3 * round.ante : round.ante;
+    if (this.alive(round.gen)) {
+      const msg = outcome === 'fold' ? `<span class="loss">Gepasst · −${UI.fmt(round.ante)}</span>`
+        : outcome === 'noqual' ? `<span class="win">Dealer nicht qualifiziert (A-K nötig) · +${UI.fmt(net)}</span>`
+        : outcome === 'win' ? `<span class="win">${pe.name} schlägt ${de.name} · Bonus ${bonus}:1 · +${UI.fmt(net)}</span>`
+        : outcome === 'lose' ? `<span class="loss">${de.name} schlägt ${pe.name} · −${UI.fmt(-net)}</span>`
+        : 'Gleichstand · Push';
+      this.status(msg);
+      if (outcome === 'push') qsa('.hand-val', this.root).forEach((v) => v.classList.add('push'));
+      this.show('studBetControls');
+    }
+    if (this.gen === round.gen) { this.inRound = false; this.busy = false; }
+    await Bus.emit('stud:result', { outcome, player: pe, dealer: de, ante: round.ante, net });
+    await Game.settle(net, { from: this.alive(round.gen) ? qs('#studPlayerCards', this.root) : null, game: 'stud', bet: stake, run: round.run });
+  },
+  /* Leertaste wie an den anderen Royal-Tischen: Geben bzw. Mitgehen */
+  onKey(e) {
+    if (e.code !== 'Space' || !qs('#cutscene').hidden || e.repeat || !Stud.root) return;
+    e.preventDefault();
+    if (Stud.round && Stud.round.phase === 'decide') Stud.call(); else Stud.deal();
+  },
+};
+
+UI.register('stud', {
+  template: 'tpl-stud',
+  mount(root) {
+    Stud.gen++;
+    Stud.root = root;
+    Game.bindBet(root, 'studBet');
+    qs('#btnStudDeal', root).addEventListener('click', () => Stud.deal());
+    qs('#btnStudCall', root).addEventListener('click', () => Stud.call());
+    qs('#btnStudFold', root).addEventListener('click', () => Stud.fold());
+    qs('#studBack', root).addEventListener('click', () => { SFX.play('click'); UI.show('royal'); });
+    document.addEventListener('keydown', Stud.onKey);
+  },
+  unmount() {
+    Stud.gen++;
+    document.removeEventListener('keydown', Stud.onKey);
+    if (Stud.inRound && !(Stud.busy && Stud.round && Stud.round.phase === 'showdown')) {
+      /* Zwischen zwei Aktionen verlassen: Hand sofort fallen lassen. Läuft noch eine Kette (busy), räumt die selbst auf. Ein laufender Showdown rechnet dagegen fertig ab und zahlt aus, ganz ohne diesen Toast. */
+      if (!Stud.busy) Stud.drop(Stud.round);
+      UI.toast({ icon: '🃏', title: 'Hand aufgegeben', text: 'Einsatz verfallen.', tone: 'loss' });
+    }
+    Stud.root = null; Stud.inRound = false; Stud.busy = false; Stud.round = null;
+  },
+});
+</script>
+
 <script id="game-roulette">
 /* ================= ROULETTE ================= */
 const Roulette = {
@@ -6060,6 +6236,7 @@ const Achievements = {
     { id: 'vollausgestattet', title: 'Vollausgestattet', icon: '🏁', desc: 'Top-Auto und Carbon-Sprinter.' },
     { id: 'royalHigh', title: 'High Roller', icon: '🎩', desc: 'Einzelgewinn von 5.000 € im Casino Royal.' },
     { id: 'fullhouse', title: 'Full House', icon: '🏠', desc: 'Mit Full House oder besser den Showdown gewonnen.' },
+    { id: 'karibik', title: 'Karibische Nacht', icon: '🌴', desc: 'Bei Caribbean Stud mit Flush oder besser gegen einen qualifizierten Dealer gewonnen.' },
     { id: 'fuenfSiebener', title: 'Fünf Siebener', icon: '7️⃣', desc: 'Fünf 7️⃣ auf einer Linie bei Mega Seven.' },
     { id: 'gegenDieWand', title: 'Gegen die Wand', icon: '🎡', desc: 'Bankrott am Glücksrad mit 5.000 € Einsatz.' },
     { id: 'natural', title: 'Natural', icon: '🂡', desc: 'Fünf Naturals in einer Sitzung am Tisch im Hinterzimmer.' },
@@ -6119,6 +6296,7 @@ Bus.on('slots:result', ({ res }) => { if (res.every((s) => s === '7️⃣')) Ach
 Bus.on('roulette:result', ({ hits }) => { if ((hits || []).some((x) => x.win && x.bet.type === 'number')) Achievements.unlock('plein'); });
 Bus.on('rr:result', ({ victim }) => { if (victim === 'igor') Achievements.unlock('igor'); });
 Bus.on('poker:result', ({ outcome, showdown, player }) => { if (showdown && outcome === 'win' && player.rank >= 6) Achievements.unlock('fullhouse'); });
+Bus.on('stud:result', ({ outcome, player }) => { if (outcome === 'win' && player.rank >= 5) Achievements.unlock('karibik'); });
 Bus.on('beer', ({ beers }) => { if (beers >= 3) Achievements.unlock('regular'); });
 Bus.on('kidney.sold', () => Achievements.unlock('donor'));
 Bus.on('house.bought', () => Achievements.unlock('owner'));
@@ -6747,7 +6925,7 @@ const RoyalRules = {
   ENTRY_FEE: 100,
   GUEST_WIN: 5000,
   /* Screens, die in der Zone „royal“ liegen (Body-Attribut data-zone, Gold-Vorhang beim Wechsel) */
-  SCREENS: ['royal', 'megaslots', 'craps', 'wheel'],
+  SCREENS: ['royal', 'megaslots', 'craps', 'wheel', 'stud'],
   zoneFor(id) { return RoyalRules.SCREENS.includes(id) ? 'royal' : 'keller'; },
   /* Mittelpunkte der ersten `count` Zellen einer Gewinnlinie (für die goldene Linie über dem Raster) */
   megaLinePoints(line, count, cell, gap, pad) {
@@ -7091,6 +7269,47 @@ const PokerRules = {
 };
 </script>
 
+<script id="stud-rules">
+/* ================= CARIBBEAN STUD – gegen das Haus (rein, kein DOM) ================= */
+const StudRules = {
+  ANTE: { MIN: 100, MAX: 1000 },
+  /* Bonus auf den Bet (2× Ante) je PokerRules-Rang: High Card … Straight Flush; Royal Flush gesondert */
+  BONUS: [1, 1, 2, 3, 4, 5, 7, 20, 50],
+  ROYAL_BONUS: 100,
+  /* Der Dealer spielt ab Ass-König (oder Paar und besser); sonst nur Ante 1:1 */
+  qualifies(hand) {
+    const e = PokerRules.evaluate(hand);
+    return e.rank >= 1 || (e.tiebreak[0] === 14 && e.tiebreak[1] === 13);
+  },
+  bonus(hand) {
+    const e = PokerRules.evaluate(hand);
+    return e.rank === 8 && e.tiebreak[0] === 14 ? StudRules.ROYAL_BONUS : StudRules.BONUS[e.rank];
+  },
+  /* Abwechselnd von oben: gerade Indizes Spieler, ungerade Dealer; Rest bleibt im Deck (forceDeck im Test lesbar) */
+  deal(deck) {
+    const player = [], dealer = [];
+    for (let i = 0; i < 10; i++) (i % 2 === 0 ? player : dealer).push(deck[i]);
+    return { player, dealer, deck: deck.slice(10) };
+  },
+  /* Nettobetrag für den Spieler nach Mitgehen (Einsatz Ante + Bet = 3× Ante) */
+  settle(player, dealer, ante) {
+    if (!StudRules.qualifies(dealer)) return { outcome: 'noqual', net: ante, bonus: 0 };
+    const c = PokerRules.compare(PokerRules.evaluate(player), PokerRules.evaluate(dealer));
+    if (c > 0) { const bonus = StudRules.bonus(player); return { outcome: 'win', net: ante + 2 * ante * bonus, bonus }; }
+    if (c < 0) return { outcome: 'lose', net: -3 * ante, bonus: 0 };
+    return { outcome: 'push', net: 0, bonus: 0 };
+  },
+  /* Glück: eine Verlusthand (als würde der Spieler mitgehen) wird mit luck % einmal neu vom Restdeck gegeben.
+     Pech: eine Gewinnhand mit |luck| %. Höchstens ein rng-Aufruf, höchstens ein Neugeben. */
+  luckOverride(hands, luck, rng) {
+    const net = StudRules.settle(hands.player, hands.dealer, 1).net;
+    if (luck > 0 && net < 0 && rng() * 100 < luck) return StudRules.deal(hands.deck);
+    if (luck < 0 && net > 0 && Rules.pech(luck, rng)) return StudRules.deal(hands.deck);
+    return hands;
+  },
+};
+</script>
+
 <script id="gang-rules">
 /* ================= GANG – Waffen, Duell, Kurier (rein, kein DOM); Wochen-/Wäsche-Logik der Story 3 folgt unten ================= */
 const GangRules = {
@@ -7118,10 +7337,32 @@ const GangRules = {
     return { ok: true };
   },
   DRAW_WAIT: [1500, 4000],
+  /* ---- Duell in Ego-Sicht: Zielen, Fehlschüsse, Gegnerschuss ---- */
+  HIT_MARGIN: { mouse: 24, touch: 32 },
+  /* Tipp trifft, wenn er in der um margin vergrößerten Figuren-Box liegt (Bühnenkoordinaten) */
+  hitTest(tap, box, margin = 24) {
+    return tap.x >= box.left - margin && tap.x <= box.left + box.width + margin && tap.y >= box.top - margin && tap.y <= box.top + box.height + margin;
+  },
+  /* Gegnerzeit für eine Runde: base ± spread, gleichverteilt, genau ein rng-Aufruf */
+  foeTime(foe, rng) { return Math.round(foe.base + (rng() * 2 - 1) * foe.spread); },
+  /* Zeitpunkt (ms nach dem Signal), zu dem der Gegner schießt, wenn bis dahin kein Treffer kam – genau der Punkt, ab dem duelRound verliert */
+  foeFiresAt(foeTime, bonus = 0) { return foeTime + bonus; },
+  /* taps: [{ t (ms relativ zum Signal, < 0 = vor dem Signal), hit }]. Der erste Tipp vor dem Signal ist ein Fehlschuss (Runde verloren),
+     sonst entscheidet der erste treffende Tipp; daneben getippte Schüsse zählen als misses und kosten nur Zeit. */
+  resolveRound({ taps, foeTime, bonus = 0 }) {
+    let misses = 0;
+    for (const tap of taps) {
+      if (tap.t < 0) return { won: false, misfire: true, foeTime, you: null, misses };
+      if (!tap.hit) { misses++; continue; }
+      const you = Math.max(0, tap.t - bonus);
+      return { won: you < foeTime, misfire: false, foeTime, you, misses };
+    }
+    return { won: false, misfire: false, foeTime, you: null, misses };
+  },
   drawWait(rng) { const [a, b] = GangRules.DRAW_WAIT; return Math.round(a + rng() * (b - a)); },
   /* reaction: ms nach dem Blitz, null = vor dem Blitz getippt (Fehlschuss). Gegnerzeit streut gleichverteilt ±spread. */
   duelRound({ reaction, bonus = 0, foe, rng }) {
-    const foeTime = Math.round(foe.base + (rng() * 2 - 1) * foe.spread);
+    const foeTime = GangRules.foeTime(foe, rng);
     if (reaction == null) return { won: false, misfire: true, foeTime, you: null };
     const you = Math.max(0, reaction - bonus);
     return { won: you < foeTime, misfire: false, foeTime, you };
@@ -7234,7 +7475,7 @@ const DevRules = {
     return [...out].sort();
   },
   KELLER_SCREENS: ['hub', 'roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker', 'hinterzimmer', 'postman', 'finance', 'invest', 'life', 'skills'],
-  ROYAL_SCREENS: ['royal', 'megaslots', 'craps', 'wheel'],
+  ROYAL_SCREENS: ['royal', 'megaslots', 'craps', 'wheel', 'stud'],
   STORY_SCREENS: ['jobs', 'vito'],
   groupScreens(ids) {
     const g = { keller: [], royal: [], stadt: [], story: [], sonst: [] };
@@ -7389,7 +7630,7 @@ const Stories = {
 
 const Story = {
   DOORS: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker', 'postman', 'hinterzimmer'],
-  ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'], royal: ['royal'], megaslots: ['royal'], craps: ['royal'], wheel: ['royal'] },
+  ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'], royal: ['royal'], megaslots: ['royal'], craps: ['royal'], wheel: ['royal'], stud: ['royal'] },
   story: null,
   allowOnce: null,
   forcedNext: null,
@@ -8201,65 +8442,294 @@ UI.register('job-taxi', {
 </script>
 
 <script id="game-shootout">
+/* ================= DUEL STAGE – Ego-Sicht: Welt-Canvas, Gegnerfigur aus dem Cutscene-Rig, Effekt-Canvas, eigene Waffe =================
+   Rein darstellend: trifft keine Spielentscheidung. Shootout ruft enter/signal/shot/foeShoots/foeDown/flash. */
+const DuelStage = {
+  root: null, world: null, fx: null, back: null, fig: null, gun: null, tag: null, flashEl: null,
+  W: 0, H: 0, dpr: 1, raf: 0, last: 0, t: 0, timeScale: 1, slowUntil: 0, flashUntil: 0, redUntil: 0, shakeUntil: 0, tenseFrom: 0, lamp: 1,
+  parts: [], stains: [], set: 'gasse', reduced: false, ro: null, mounted: false,
+  /* Kulissen: Farben + welche Silhouetten/Ambient-Elemente gezeichnet werden */
+  SETS: {
+    gasse: { sky: ['#05070d', '#1a1e2a'], wall: '#23232b', ground: '#1c1a16', rain: true, lamp: true, bins: true },
+    bahnhof: { sky: ['#05070d', '#1a2233'], wall: '#1b2130', ground: '#2a2820', rain: false, lamp: true, rails: true },
+    keller: { sky: ['#1a1914', '#050503'], wall: '#1e1c16', ground: '#171410', rain: false, lamp: true, table: true },
+  },
+  SET_BY_KIND: { tutorial: 'bahnhof', hinterhalt: 'gasse', finale: 'keller', dev: 'gasse' },
+  MAX_PARTS: 160,
+  /* Waffe des Spielers: Stufe 0 = geliehene Pistole (Story: Anabis Makarov), 3 = „Die Goldene" */
+  WEAPON_COLORS: [['#2a2a2e', '#4a4a50'], ['#2a2a2e', '#4a4a50'], ['#1e2226', '#3a4048'], ['#8a6a1a', '#d4af37']],
+  mount(root, { set = 'gasse', weapon = 0, reduced = false } = {}) {
+    this.unmount();
+    this.root = root; this.set = this.SETS[set] ? set : 'gasse'; this.reduced = reduced;
+    this.dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.world = h('canvas', { class: 'duel-world' }); this.fx = h('canvas', { class: 'duel-fx' });
+    this.fig = h('div', { class: 'cs-fig duel-foe' });
+    this.gun = h('div', { class: 'duel-gun', html: this.gunSvg(weapon) });
+    this.tag = h('div', { class: 'duel-tag' }, h('span', { id: 'duelFoeName' }), h('span', { id: 'duelCount' }));
+    this.flashEl = h('div', { class: 'duel-flash' });
+    root.append(this.world, this.fig, this.fx, this.gun, this.tag, this.flashEl);
+    this.parts = []; this.stains = []; this.timeScale = 1; this.slowUntil = this.flashUntil = this.redUntil = this.shakeUntil = this.tenseFrom = 0; this.t = 0; this.last = 0;
+    this.mounted = true;
+    this.resize();
+    if (typeof ResizeObserver !== 'undefined') { this.ro = new ResizeObserver(() => this.resize()); this.ro.observe(root); }
+    this.raf = requestAnimationFrame((now) => this.loop(now));
+    requestAnimationFrame(() => { if (this.mounted) this.gun.classList.add('up'); });
+  },
+  unmount() {
+    if (!this.mounted) return;
+    cancelAnimationFrame(this.raf); this.raf = 0;
+    clearTimeout(this.flashTimer); clearTimeout(this.downTimer);
+    if (this.ro) { this.ro.disconnect(); this.ro = null; }
+    for (const el of [this.world, this.fx, this.fig, this.gun, this.tag, this.flashEl]) if (el) el.remove();
+    this.root = this.world = this.fx = this.back = this.fig = this.gun = this.tag = this.flashEl = null;
+    this.parts = []; this.stains = []; this.mounted = false;
+  },
+  resize() {
+    if (!this.mounted) return;
+    const w = this.root.clientWidth, h = this.root.clientHeight;
+    if (w === this.W && h === this.H && this.back) return; // unveränderte Größe: nicht neu vorrendern
+    this.W = w; this.H = h;
+    for (const c of [this.world, this.fx]) { c.width = Math.round(this.W * this.dpr); c.height = Math.round(this.H * this.dpr); }
+    this.back = document.createElement('canvas'); this.back.width = this.world.width; this.back.height = this.world.height;
+    this.drawBackdrop(this.back.getContext('2d'));
+    this.draw();
+  },
+  /* Viewport-Koordinaten → Bühnenpixel: die Seite zoomt .body auf großen Bildschirmen (zoom 1.15–1.65), Rechtecke kommen dann gezoomt zurück */
+  toStage(clientX, clientY) {
+    const R = this.root.getBoundingClientRect(), z = R.width / this.W || 1;
+    return { x: (clientX - R.left) / z, y: (clientY - R.top) / z };
+  },
+  /* Kulisse einmal vorrendern: Himmel, Wand-Silhouetten, Boden mit Fluchtpunkt */
+  drawBackdrop(ctx) {
+    const S = this.SETS[this.set], W = this.W, H = this.H, hz = H * 0.58;
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    const sky = ctx.createLinearGradient(0, 0, 0, hz); sky.addColorStop(0, S.sky[0]); sky.addColorStop(1, S.sky[1]);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, hz);
+    ctx.fillStyle = S.ground; ctx.fillRect(0, hz, W, H - hz);
+    ctx.strokeStyle = 'rgba(255,255,255,.06)'; ctx.lineWidth = 1;
+    for (let i = -6; i <= 6; i++) { ctx.beginPath(); ctx.moveTo(W / 2 + i * W * 0.06, hz); ctx.lineTo(W / 2 + i * W * 0.5, H); ctx.stroke(); }
+    for (let k = 1; k <= 5; k++) { const y = hz + (H - hz) * (k * k) / 25; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    ctx.fillStyle = S.wall;
+    ctx.fillRect(0, hz * 0.25, W * 0.16, hz * 0.75); ctx.fillRect(W * 0.84, hz * 0.18, W * 0.16, hz * 0.82);
+    ctx.fillRect(W * 0.16, hz * 0.45, W * 0.1, hz * 0.55); ctx.fillRect(W * 0.74, hz * 0.4, W * 0.1, hz * 0.6);
+    if (S.bins) { ctx.fillStyle = '#2f2f36'; ctx.fillRect(W * 0.05, hz - 40, 34, 44); ctx.fillRect(W * 0.1, hz - 32, 30, 36); }
+    if (S.rails) { ctx.strokeStyle = 'rgba(200,200,220,.18)'; ctx.lineWidth = 3; for (const dx of [-0.12, 0.12]) { ctx.beginPath(); ctx.moveTo(W * (0.5 + dx * 0.4), hz); ctx.lineTo(W * (0.5 + dx * 4), H); ctx.stroke(); } }
+    if (S.table) { ctx.fillStyle = '#3a2410'; ctx.fillRect(W * 0.3, hz - 6, W * 0.4, 8); ctx.fillRect(W * 0.32, hz, 6, H * 0.12); ctx.fillRect(W * 0.66, hz, 6, H * 0.12); }
+    if (S.lamp) { ctx.fillStyle = '#555'; ctx.fillRect(W * 0.5 - 2, 0, 4, hz * 0.22); ctx.fillStyle = '#8a8a70'; ctx.fillRect(W * 0.5 - 26, hz * 0.22, 52, 10); }
+    const vig = ctx.createRadialGradient(W / 2, H * 0.5, H * 0.3, W / 2, H * 0.5, H); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,.75)');
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+  },
+  /* Gegner tritt aus dem Dunkel auf: Figur klein setzen, dann per Transition auf volle Größe */
+  enter(foeId, idx, n, foeName) {
+    if (!this.mounted) return;
+    this.fig.innerHTML = CsCast.figureHtml(foeId, { mood: 'angry', gun: true });
+    this.fig.dataset.pose = 'idle'; this.fig.style.setProperty('--fall', '');
+    this.fig.style.transition = 'none'; this.fig.style.setProperty('--s', '0.4');
+    void this.fig.offsetWidth; // Startgröße ohne Transition festschreiben
+    this.fig.style.transition = ''; this.fig.style.setProperty('--s', '1');
+    qs('#duelFoeName', this.tag).textContent = foeName; qs('#duelCount', this.tag).textContent = `${idx + 1} / ${n}`;
+  },
+  /* Anspannung: der Rand dunkelt über ~4 s langsam ab, bis das Signal kommt */
+  tension(on) { if (this.mounted) this.tenseFrom = on ? this.t || 1 : 0; },
+  /* Signal: Arm hoch, Blitz */
+  signal() { if (!this.mounted) return; this.fig.dataset.pose = 'draw'; if (!this.reduced) this.flashUntil = this.t + 110; },
+  /* Rechteck der Figur in Bühnenkoordinaten (für die Trefferprüfung) */
+  foeBox() {
+    if (!this.mounted) return { left: 0, top: 0, width: 0, height: 0 };
+    const r = this.fig.getBoundingClientRect(), a = this.toStage(r.left, r.top), b = this.toStage(r.right, r.bottom);
+    return { left: a.x, top: a.y, width: b.x - a.x, height: b.y - a.y };
+  },
+  gunTip() {
+    const r = this.gun.getBoundingClientRect(), a = this.toStage(r.left, r.top), b = this.toStage(r.right, r.bottom);
+    return { x: a.x + (b.x - a.x) * 0.3, y: a.y + (b.y - a.y) * 0.12 };
+  },
+  foeHand() { const b = this.foeBox(); return { x: b.left + b.width * 0.9, y: b.top + b.height * 0.42 }; },
+  /* Eigener Schuss: Rückstoß, Mündungsfeuer, Hülse, Spur – Treffer: Blut am Gegner; daneben: Funken am Tippunkt; Fehlschuss (kein Punkt): in den Boden */
+  shot({ x = null, y = null, hit = false, early = false } = {}) {
+    if (!this.mounted) return;
+    this.gun.classList.remove('recoil'); void this.gun.offsetWidth; this.gun.classList.add('recoil');
+    const tip = this.gunTip();
+    this.burst(tip.x, tip.y, 'muzzle', 10);
+    this.spawn({ x: tip.x + 10, y: tip.y + 10, vx: 60 + Math.random() * 60, vy: -160, g: 500, ttl: 700, size: 3, color: '#d4af37', kind: 'shell' });
+    if (early) { const b = this.foeBox(); this.trace(tip, { x: b.left + b.width / 2, y: this.H * 0.95 }); this.burst(b.left + b.width / 2, this.H * 0.95, 'dust', 10); return; }
+    if (hit) { const b = this.foeBox(); const p = { x: b.left + b.width * 0.5, y: b.top + b.height * 0.42 }; this.trace(tip, p); this.burst(p.x, p.y, 'blood', 22); }
+    else if (x != null) { this.trace(tip, { x, y }); this.burst(x, y, 'spark', 12); }
+  },
+  /* Gegner fällt: Zucken, dann Fall in Zeitlupe, Staub und Fleck am Boden */
+  foeDown() {
+    if (!this.mounted) return;
+    this.fig.dataset.pose = 'hit';
+    const b = this.foeBox();
+    this.downTimer = setTimeout(() => { if (this.mounted) { this.fig.dataset.pose = 'down'; this.burst(b.left + b.width / 2, b.top + b.height, 'dust', 16); this.stains.push({ x: b.left + b.width * 0.6, y: b.top + b.height - 4, r: b.width * 0.35 }); } }, 220);
+    if (!this.reduced) { this.timeScale = 0.3; this.slowUntil = this.t + 150; this.fig.style.setProperty('--fall', '1.2s'); } // Zeitlupe (Bühnen-Uhr): Partikel langsamer, Fall länger
+  },
+  /* Gegner schießt: sein Mündungsfeuer, Ruck, roter Rand, Tropfen über die Kamera */
+  foeShoots() {
+    if (!this.mounted) return;
+    const hp = this.foeHand();
+    this.burst(hp.x, hp.y, 'muzzle', 12);
+    this.redUntil = this.t + 1400;
+    if (!this.reduced) { this.shakeUntil = this.t + 350; for (let i = 0; i < 7; i++) this.spawn({ x: this.W * (0.3 + Math.random() * 0.4), y: this.H * (0.1 + Math.random() * 0.3), vx: 0, vy: 40 + Math.random() * 60, g: 30, ttl: 1400, size: 5 + Math.random() * 5, color: '#8a0f1a', kind: 'drop' }); }
+  },
+  flash(text, ms = 700) {
+    if (!this.mounted) return;
+    this.flashEl.textContent = text; this.flashEl.classList.remove('on'); void this.flashEl.offsetWidth; this.flashEl.classList.add('on');
+    clearTimeout(this.flashTimer); this.flashTimer = setTimeout(() => { if (this.flashEl) this.flashEl.classList.remove('on'); }, ms);
+  },
+  setTimeScale(k) { this.timeScale = k; },
+  spawn(p) { if (this.parts.length >= this.MAX_PARTS) this.parts.shift(); p.age = 0; this.parts.push(p); },
+  burst(x, y, kind, n) {
+    if (this.reduced && (kind === 'spark' || kind === 'dust')) n = Math.min(n, 4);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, sp = kind === 'muzzle' ? 40 + Math.random() * 120 : kind === 'blood' ? 60 + Math.random() * 220 : kind === 'spark' ? 80 + Math.random() * 200 : 20 + Math.random() * 60;
+      this.spawn({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (kind === 'dust' ? 20 : 0), g: kind === 'muzzle' ? 0 : kind === 'dust' ? -10 : 600,
+        ttl: kind === 'muzzle' ? 90 : kind === 'dust' ? 900 : 500, size: kind === 'muzzle' ? 6 + Math.random() * 10 : kind === 'blood' ? 2 + Math.random() * 4 : 2, kind,
+        color: kind === 'muzzle' ? '#ffd27a' : kind === 'blood' ? '#a3121e' : kind === 'spark' ? '#ffe7a0' : 'rgba(180,170,150,.5)' });
+      if (this.reduced && kind !== 'muzzle') { const p = this.parts[this.parts.length - 1]; p.vx = p.vy = 0; p.g = 0; p.ttl = 150; }
+    }
+  },
+  trace(a, b) { this.spawn({ x: a.x, y: a.y, x2: b.x, y2: b.y, vx: 0, vy: 0, g: 0, ttl: 70, size: 2, color: 'rgba(255,240,200,.85)', kind: 'trace' }); },
+  loop(now) {
+    if (!this.mounted) return;
+    const raw = this.last ? Math.min(50, now - this.last) : 16; this.last = now;
+    const dt = raw * this.timeScale; this.t += dt;
+    if (this.slowUntil && this.t >= this.slowUntil) { this.slowUntil = 0; this.timeScale = 1; }
+    for (const p of this.parts) { p.age += dt; const s = dt / 1000; p.vy += (p.g || 0) * s; p.x += p.vx * s; p.y += p.vy * s; }
+    this.parts = this.parts.filter((p) => p.age < p.ttl);
+    if (!this.reduced) { this.lamp = 0.85 + Math.random() * 0.15; if (Math.random() < 0.04) this.lamp = 0.4; if (this.parts.length < 60 && Math.random() < 0.3) this.spawn({ x: Math.random() * this.W, y: this.H * 0.2 + Math.random() * this.H * 0.5, vx: 8 + Math.random() * 10, vy: -4 + Math.random() * 8, g: 0, ttl: 4000, size: 1.5, color: 'rgba(220,210,180,.35)', kind: 'dust' }); }
+    this.draw();
+    this.raf = requestAnimationFrame((n) => this.loop(n));
+  },
+  draw() {
+    if (!this.mounted || !this.W || !this.H) return;
+    const W = this.W, H = this.H, S = this.SETS[this.set];
+    const wc = this.world.getContext('2d'), fc = this.fx.getContext('2d');
+    wc.setTransform(1, 0, 0, 1, 0, 0); wc.drawImage(this.back, 0, 0);
+    wc.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    if (S.lamp) { const g = wc.createRadialGradient(W / 2, H * 0.14, 0, W / 2, H * 0.14, H * 0.5); g.addColorStop(0, `rgba(255,240,200,${0.22 * this.lamp})`); g.addColorStop(1, 'rgba(255,240,200,0)'); wc.fillStyle = g; wc.fillRect(0, 0, W, H); }
+    if (S.rain && !this.reduced) { wc.strokeStyle = 'rgba(160,180,200,.25)'; wc.lineWidth = 1; const off = (this.t * 0.6) % 40; for (let i = 0; i < 24; i++) { const x = (i * 97) % W, y = ((i * 53) + off * 4) % H; wc.beginPath(); wc.moveTo(x, y); wc.lineTo(x - 4, y + 18); wc.stroke(); } }
+    for (const st of this.stains) { wc.fillStyle = 'rgba(90,8,14,.85)'; wc.beginPath(); wc.ellipse(st.x, st.y, st.r, st.r * 0.28, 0, 0, Math.PI * 2); wc.fill(); }
+    for (const p of this.parts) if (p.kind === 'dust') { wc.fillStyle = p.color; wc.globalAlpha = 1 - p.age / p.ttl; wc.fillRect(p.x, p.y, p.size, p.size); }
+    wc.globalAlpha = 1;
+    fc.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); fc.clearRect(0, 0, W, H);
+    const shake = this.shakeUntil > this.t ? (Math.random() - 0.5) * 12 : 0;
+    if (shake) fc.translate(shake, (Math.random() - 0.5) * 12);
+    for (const p of this.parts) {
+      if (p.kind === 'dust') continue;
+      const k = 1 - p.age / p.ttl;
+      if (p.kind === 'trace') { fc.strokeStyle = p.color; fc.globalAlpha = k; fc.lineWidth = p.size; fc.beginPath(); fc.moveTo(p.x, p.y); fc.lineTo(p.x2, p.y2); fc.stroke(); continue; }
+      fc.globalAlpha = p.kind === 'muzzle' ? k : Math.min(1, k * 1.5);
+      fc.fillStyle = p.color;
+      if (p.kind === 'drop') { fc.beginPath(); fc.ellipse(p.x, p.y, p.size * 0.55, p.size * (1.2 + p.age / p.ttl * 2), 0, 0, Math.PI * 2); fc.fill(); continue; } // Tropfen laufen als Streifen nach unten
+      fc.beginPath(); fc.arc(p.x, p.y, p.size, 0, Math.PI * 2); fc.fill();
+    }
+    fc.globalAlpha = 1;
+    if (this.tenseFrom) { const a = Math.min(0.4, (this.t - this.tenseFrom) / 4000 * 0.4); const g = fc.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.85); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${a})`); fc.fillStyle = g; fc.fillRect(0, 0, W, H); }
+    if (this.flashUntil > this.t) { fc.fillStyle = `rgba(255,255,255,${0.9 * (this.flashUntil - this.t) / 110})`; fc.fillRect(-20, -20, W + 40, H + 40); }
+    if (this.redUntil > this.t) { const a = Math.min(0.75, (this.redUntil - this.t) / 1400); const g = fc.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.8); g.addColorStop(0, 'rgba(120,0,10,0)'); g.addColorStop(1, `rgba(120,0,10,${a})`); fc.fillStyle = g; fc.fillRect(-20, -20, W + 40, H + 40); }
+    if (this.timeScale < 1) { const g = fc.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.9); g.addColorStop(0, 'rgba(40,60,120,0)'); g.addColorStop(1, 'rgba(40,60,120,.45)'); fc.fillStyle = g; fc.fillRect(0, 0, W, H); }
+    fc.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+  },
+  /* Hand mit Waffe von hinten, unten rechts – Farben nach Waffenstufe */
+  gunSvg(tier) {
+    const [dark, light] = this.WEAPON_COLORS[Math.max(0, Math.min(3, tier | 0))];
+    /* Schlitten und Lauf zeigen zum Fluchtpunkt (oben links), Griff in der Faust, Daumen außen */
+    return `<svg viewBox="0 0 200 160" preserveAspectRatio="xMaxYMax meet">
+      <path d="M56 89 L117 11 L136 25 L75 103 Z" fill="${dark}"/>
+      <path d="M62 86 L116 17 L126 24 L72 93 Z" fill="${light}"/>
+      <path d="M70 100 L96 112 L106 160 L74 160 Z" fill="${dark}"/>
+      <path d="M52 108 Q42 150 60 160 L118 160 Q124 130 104 112 Q86 100 66 104 Z" fill="#e8b48a"/>
+      <path d="M62 104 Q48 96 52 116 Q60 124 78 118 Z" fill="#d9a67c"/>
+      <circle cx="126" cy="18" r="4.5" fill="#000"/>
+    </svg>`;
+  },
+};
 /* ================= SCHIESSEREI „ZIEH!“ – Reaktionsduell, ein Gegner nach dem anderen ================= */
 const Shootout = {
-  root: null, gen: 0, running: false, forced: false, pending: null, cfg: null, foes: [], idx: 0, phase: 'idle', signalAt: 0, timer: null, nextTimer: null, results: [], won: false,
+  root: null, gen: 0, running: false, forced: false, pending: null, cfg: null, foes: [], foeIds: [], idx: 0, phase: 'idle', signalAt: 0, foeTime: 0, taps: [],
+  timer: null, foeTimer: null, nextTimer: null, pulseTimer: null, results: [], won: false,
+  NEXT_MS: 1400,            // nächster Gegner erst, wenn der Fall (Zeitlupe) durch ist
   alive(gen) { return !!this.root && this.gen === gen; },
   /* cfg: { kind, foes: ['junge', …], bonus (ms), forced } */
   start(cfg) {
     if (!this.root || this.running) return;
-    this.cfg = cfg; this.foes = cfg.foes.map((id) => GangRules.FOES[id]).filter(Boolean); this.idx = 0; this.results = [];
+    this.cfg = cfg; this.foeIds = cfg.foes.filter((id) => GangRules.FOES[id]); this.foes = this.foeIds.map((id) => GangRules.FOES[id]); this.idx = 0; this.results = [];
     if (!this.foes.length) { qs('#duelStatus', this.root).textContent = 'Kein Gegner.'; return; }
     this.running = true; this.forced = !!cfg.forced; this.phase = 'idle';
+    DuelStage.mount(qs('#duelStage', this.root), { set: DuelStage.SET_BY_KIND[cfg.kind] || 'gasse', weapon: State.s.weapon || 0, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches });
     qs('#btnDuelStart', this.root).classList.remove('hidden'); qs('#btnDuelDone', this.root).classList.add('hidden');
     qs('#btnDuelStart', this.root).textContent = 'Bereit';
-    qs('#duelStatus', this.root).textContent = `${this.foes.length} Gegner. ${cfg.bonus ? `Waffe: ${cfg.bonus} ms Vorsprung.` : 'Ohne Vorsprung.'} „Bereit“ – dann warten, bis ZIEH! aufblitzt.`;
+    qs('#duelStatus', this.root).textContent = `${this.foes.length} Gegner. ${cfg.bonus ? `Waffe: ${cfg.bonus} ms Vorsprung.` : 'Ohne Vorsprung.'} „Bereit“ – dann warten, bis er zieht, und auf ihn tippen.`;
     this.renderFoe();
   },
   renderFoe() {
     if (!this.root) return;
     const foe = this.foes[this.idx];
-    qs('#duelFoe', this.root).textContent = foe ? foe.emoji : ''; qs('#duelFoe', this.root).className = 'duel-fighter foe';
-    qs('#duelYou', this.root).className = 'duel-fighter you';
-    qs('#duelFoeName', this.root).textContent = foe ? foe.name : '';
-    qs('#duelCount', this.root).textContent = `${Math.min(this.idx + 1, this.foes.length)} / ${this.foes.length}`;
-    const sig = qs('#duelSignal', this.root); sig.textContent = '…'; sig.className = 'duel-signal';
+    if (foe) DuelStage.enter(this.foeIds[this.idx], this.idx, this.foes.length, foe.name);
   },
   ready() {
     if (!this.running || this.phase !== 'idle' || !this.root) return;
     const gen = this.gen;
     this.phase = 'wait';
     qs('#btnDuelStart', this.root).classList.add('hidden');
-    const sig = qs('#duelSignal', this.root); sig.textContent = 'Warte…'; sig.className = 'duel-signal wait';
-    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    qs('#duelStatus', this.root).textContent = 'Warte, bis er zieht.';
+    SFX.loop('heartbeat', 900); DuelStage.tension(true);
+    this.pulseTimer = setTimeout(() => { if (this.alive(gen) && this.phase === 'wait') SFX.loop('heartbeat', 550); }, 1200); // Anspannung: Herz schlägt schneller
     this.timer = setTimeout(() => {
       if (!this.alive(gen) || this.phase !== 'wait') return;
-      this.phase = 'draw'; this.signalAt = performance.now();
-      sig.textContent = 'ZIEH!'; sig.className = 'duel-signal draw';
-      SFX.play('reelStop');
-    }, reduced ? 800 : GangRules.drawWait(Math.random));
+      const foe = this.foes[this.idx], bonus = this.cfg.bonus || 0;
+      this.phase = 'draw'; this.signalAt = performance.now(); this.taps = [];
+      this.foeTime = GangRules.foeTime(foe, Math.random);
+      clearTimeout(this.pulseTimer); SFX.stop('heartbeat'); SFX.play('reelStop');
+      DuelStage.tension(false); DuelStage.signal(); DuelStage.flash('ZIEH!', 500);
+      /* Der Gegner wartet nicht: zu seiner Zeit (plus dein Vorsprung) schießt er, wenn bis dahin kein Treffer kam */
+      this.foeTimer = setTimeout(() => { if (this.alive(gen) && this.phase === 'draw') this.resolve(); }, GangRules.foeFiresAt(this.foeTime, bonus));
+    }, GangRules.drawWait(Math.random));
   },
-  tap() {
+  /* Schuss per Zeiger: Trefferprüfung gegen die Figuren-Box (Rand: Maus 24 px, Touch 32 px) */
+  shoot(ev) {
+    if (!this.running || !this.root || (this.phase !== 'wait' && this.phase !== 'draw')) return;
+    const pt = DuelStage.toStage(ev.clientX, ev.clientY);
+    const margin = ev.pointerType === 'touch' ? GangRules.HIT_MARGIN.touch : GangRules.HIT_MARGIN.mouse;
+    this.tap(GangRules.hitTest(pt, DuelStage.foeBox(), margin), pt);
+  },
+  /* tap(): Tastatur/Playtest = Schuss mit automatischem Treffer; hit=false = daneben (kostet nur Zeit) */
+  tap(hit = true, pt = null) {
     if (!this.running) return;
-    if (this.phase === 'wait') { clearTimeout(this.timer); this.resolve(null); }
-    else if (this.phase === 'draw') this.resolve(Math.round(performance.now() - this.signalAt));
+    if (this.phase === 'wait') {
+      clearTimeout(this.timer); SFX.stop('heartbeat'); SFX.play('gunshot'); if (navigator.vibrate) navigator.vibrate(30);
+      this.taps = [{ t: -1, hit }]; DuelStage.shot({ early: true });
+      this.resolve();
+    } else if (this.phase === 'draw') {
+      const t = Math.round(performance.now() - this.signalAt);
+      this.taps.push({ t, hit });
+      SFX.play(hit ? 'gunshot' : 'ricochet'); if (navigator.vibrate) navigator.vibrate(30);
+      DuelStage.shot({ x: pt ? pt.x : null, y: pt ? pt.y : null, hit });
+      if (hit) this.resolve(); else if (this.root) qs('#duelStatus', this.root).textContent = 'Daneben!';
+    }
   },
-  resolve(reaction) {
+  resolve() {
     const gen = this.gen;
+    clearTimeout(this.foeTimer); clearTimeout(this.timer); clearTimeout(this.pulseTimer); SFX.stop('heartbeat'); DuelStage.tension(false);
     this.phase = 'result';
     const foe = this.foes[this.idx];
-    const r = GangRules.duelRound({ reaction, bonus: this.cfg.bonus || 0, foe, rng: Math.random });
+    const r = GangRules.resolveRound({ taps: this.taps, foeTime: this.foeTime, bonus: this.cfg.bonus || 0 });
     this.results.push(r);
+    if (r.won) DuelStage.foeDown();
+    else if (r.misfire) DuelStage.flash('Zu früh!', 900);
+    else { DuelStage.foeShoots(); SFX.play('gunshot'); if (navigator.vibrate) navigator.vibrate([40, 40, 80]); }
     if (this.root) {
-      qs(r.won ? '#duelFoe' : '#duelYou', this.root).classList.add(r.won ? 'down' : 'hit');
+      const missTxt = r.misses ? ` ${r.misses}× daneben.` : '';
       qs('#duelStatus', this.root).innerHTML = r.misfire ? `<span class="loss">Zu früh! Der Schuss geht in den Asphalt. ${foe.name} nicht.</span>`
-        : r.won ? `<span class="win">${foe.name}: ${r.foeTime} ms. Du: ${r.you} ms. Er liegt.</span>` : `<span class="loss">${foe.name}: ${r.foeTime} ms. Du: ${r.you} ms. Zu langsam.</span>`;
+        : r.won ? `<span class="win">${foe.name}: ${r.foeTime} ms. Du: ${r.you} ms.${missTxt} Er liegt.</span>`
+        : r.you == null ? `<span class="loss">${foe.name}: ${r.foeTime} ms.${missTxt} Er war schneller.</span>`
+        : `<span class="loss">${foe.name}: ${r.foeTime} ms. Du: ${r.you} ms.${missTxt} Zu langsam.</span>`;
     }
     SFX.play(r.won ? 'cash' : 'lose');
     if (!r.won) return this.finish(false);
     this.idx++;
     if (this.idx >= this.foes.length) return this.finish(true);
-    this.nextTimer = setTimeout(() => { if (!this.alive(gen)) return; this.phase = 'idle'; this.renderFoe(); const b = qs('#btnDuelStart', this.root); b.textContent = 'Nächster'; b.classList.remove('hidden'); }, 900);
+    this.nextTimer = setTimeout(() => { if (!this.alive(gen)) return; this.phase = 'idle'; this.renderFoe(); const b = qs('#btnDuelStart', this.root); b.textContent = 'Nächster'; b.classList.remove('hidden'); }, this.NEXT_MS);
   },
   finish(won) {
     this.running = false; this.phase = 'done'; this.won = won;
@@ -8279,7 +8749,8 @@ const Shootout = {
   },
   onKey(e) {
     if (!qs('#cutscene').hidden || e.repeat) return;
-    if (e.code === 'Space') { e.preventDefault(); if (Shootout.phase === 'idle') Shootout.ready(); else Shootout.tap(); }
+    if (!Shootout.running) return; // z. B. „Weiter"/„Fertig": Enter/Leertaste soll den normalen Klickpfad treffen
+    if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); if (Shootout.phase === 'idle') Shootout.ready(); else Shootout.tap(); }
   },
 };
 UI.register('shootout', {
@@ -8288,7 +8759,7 @@ UI.register('shootout', {
     Shootout.gen++; Shootout.root = root; Shootout.running = false; Shootout.phase = 'idle';
     qs('#btnDuelStart', root).addEventListener('click', () => { SFX.play('click'); Shootout.ready(); });
     qs('#btnDuelDone', root).addEventListener('click', (e) => { e.currentTarget.disabled = true; SFX.play('click'); Shootout.leave(); });
-    qs('#duelStage', root).addEventListener('pointerdown', () => Shootout.tap());
+    qs('#duelStage', root).addEventListener('pointerdown', (e) => { e.preventDefault(); Shootout.shoot(e); });
     document.addEventListener('keydown', Shootout.onKey);
     if (Shootout.pending) { const c = Shootout.pending; Shootout.pending = null; Shootout.start(c); return; }
     const params = new URLSearchParams(location.search);
@@ -8303,7 +8774,8 @@ UI.register('shootout', {
   },
   unmount() {
     document.removeEventListener('keydown', Shootout.onKey);
-    clearTimeout(Shootout.timer); clearTimeout(Shootout.nextTimer);
+    clearTimeout(Shootout.timer); clearTimeout(Shootout.foeTimer); clearTimeout(Shootout.nextTimer); clearTimeout(Shootout.pulseTimer); SFX.stop('heartbeat');
+    DuelStage.unmount();
     const wasRunning = Shootout.running;
     const kind = Shootout.cfg ? Shootout.cfg.kind : null;
     Shootout.gen++; Shootout.root = null; Shootout.running = false; Shootout.phase = 'idle';
@@ -8938,7 +9410,7 @@ const STORY_STASH = {
   varMax: { zorn: 3 },
   prices: { brownie: 1000 },
   disabled: ['tinder', 'house', 'dealer', 'brownie'],
-  turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel'], umsatzHinterzimmer: ['baccarat'] },
+  turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel', 'stud'], umsatzHinterzimmer: ['baccarat'] },
   jobOverrides: {
     eintreiber: { base: 1000, requires: { var: 'eintreiberWoche', lt: 2 }, requireText: 'Anabi hat nicht jeden Tag Schuldner', pay: '1.000 €', desc: 'Anabi hat eine Liste. Wer sie abarbeitet, macht ihn ruhiger.' },
   },
@@ -10047,6 +10519,51 @@ T.test('PokerRules.luckOverride: Glück zieht bei Nicht-Verbesserung neu, Pech b
   T.eq(PokerRules.luckOverride(muell, muell, drawFn, 0, seq(0.0)), null, 'ohne Glück nie'); T.eq(calls, 2);
   T.eq(PokerRules.luckOverride(muell, muell, drawFn, 20, seq(0.5)), null, 'Glück 20 bei rng 0,5 → kein Neuzug');
 });
+T.test('StudRules.qualifies: Ass-König oder Paar und besser', () => {
+  const Q = StudRules.qualifies;
+  T.ok(Q(P('A♠', 'K♥', '9♦', '5♣', '2♠')), 'A-K qualifiziert');
+  T.ok(!Q(P('A♠', 'Q♥', 'J♦', '9♣', '2♠')), 'A-Q nicht');
+  T.ok(!Q(P('K♠', 'Q♥', 'J♦', '9♣', '2♠')), 'K-Q nicht');
+  T.ok(Q(P('2♠', '2♥', '9♦', '5♣', '3♠')), 'Paar 2 qualifiziert');
+});
+T.test('StudRules.bonus: Tabelle je Rang, Royal Flush 100', () => {
+  const B = StudRules.bonus;
+  T.eq(StudRules.BONUS, [1, 1, 2, 3, 4, 5, 7, 20, 50]); T.eq(StudRules.ROYAL_BONUS, 100);
+  T.eq(B(P('A♠', '9♥', '7♦', '4♣', '2♠')), 1, 'High Card 1:1');
+  T.eq(B(P('9♠', '9♥', 'A♦', '4♣', '2♠')), 1, 'Paar');
+  T.eq(B(P('9♠', '9♥', '4♦', '4♣', 'A♠')), 2, 'Zwei Paare');
+  T.eq(B(P('7♠', '7♥', '7♦', 'K♣', 'K♠')), 7, 'Full House');
+  T.eq(B(P('9♥', '10♥', 'J♥', 'Q♥', 'K♥')), 50, 'Straight Flush');
+  T.eq(B(P('10♠', 'J♠', 'Q♠', 'K♠', 'A♠')), 100, 'Royal Flush');
+});
+T.test('StudRules.settle: noqual, win mit Bonus, push, lose, Royal', () => {
+  const S = StudRules.settle;
+  const paar9 = P('9♦', '9♣', '5♠', '4♦', 'Q♥'), zweiPaare = P('K♠', 'K♥', '7♣', '7♠', '2♥');
+  T.eq(S(paar9, P('A♠', 'Q♦', 'J♣', '9♥', '2♠'), 200), { outcome: 'noqual', net: 200, bonus: 0 }, 'Dealer A-Q: Ante 1:1, Bet zurück');
+  T.eq(S(zweiPaare, paar9, 200), { outcome: 'win', net: 1000, bonus: 2 }, '200 + 400·2');
+  T.eq(S(P('9♠', '9♥', 'K♦', '4♣', '2♠'), P('9♦', '9♣', 'K♥', '4♥', '2♥'), 200), { outcome: 'push', net: 0, bonus: 0 });
+  T.eq(S(zweiPaare, P('5♠', '5♥', '5♦', '8♣', '3♠'), 200), { outcome: 'lose', net: -600, bonus: 0 }, 'Drilling schlägt Zwei Paare');
+  T.eq(S(P('10♠', 'J♠', 'Q♠', 'K♠', 'A♠'), paar9, 200), { outcome: 'win', net: 40200, bonus: 100 }, 'Royal: 200 + 400·100');
+});
+T.test('StudRules.deal: abwechselnd Spieler/Dealer von oben, Rest bleibt im Deck', () => {
+  const d = StudRules.deal(P('A♠', '2♠', '3♠', '4♠', '5♠', '6♠', '7♠', '8♠', '9♠', '10♠', 'J♠', 'Q♠'));
+  T.eq(d.player.map((c) => c.val), ['A', '3', '5', '7', '9']);
+  T.eq(d.dealer.map((c) => c.val), ['2', '4', '6', '8', '10']);
+  T.eq(d.deck.map((c) => c.val), ['J', 'Q']);
+});
+T.test('StudRules.luckOverride: Glück gibt Verlust neu, Pech gibt Gewinn neu, sonst unverändert', () => {
+  const rest = P('2♣', '3♣', '4♣', '5♣', '6♣', '7♣', '8♣', '9♣', '10♣', 'J♣');
+  const lose = { player: P('A♠', '9♥', '7♦', '4♣', '2♠'), dealer: P('9♦', '9♣', '5♠', '4♦', 'Q♥'), deck: rest };
+  const win = { player: P('K♠', 'K♥', '7♣', '7♠', '2♥'), dealer: P('9♦', '9♣', '5♠', '4♦', 'Q♥'), deck: rest };
+  const neu = StudRules.luckOverride(lose, 50, seq(0.1));
+  T.ok(neu !== lose && neu.player[0].val === '2' && neu.dealer[0].val === '3' && neu.deck.length === 0, 'Verlust + Glück → neu vom Restdeck');
+  T.ok(StudRules.luckOverride(lose, 50, seq(0.9)) === lose, 'rng über luck → unverändert');
+  T.ok(StudRules.luckOverride(win, -50, seq(0.1)) !== win, 'Gewinn + Pech → neu');
+  let calls = 0; const rng = () => { calls++; return 0; };
+  T.ok(StudRules.luckOverride(win, 50, rng) === win, 'Gewinn + Glück → unverändert'); T.eq(calls, 0, 'kein rng-Aufruf');
+  T.ok(StudRules.luckOverride(lose, 0, rng) === lose, 'ohne Glück nie'); T.eq(calls, 0);
+  T.ok(StudRules.luckOverride(lose, -50, rng) === lose, 'Verlust + Pech → unverändert'); T.eq(calls, 0);
+});
 
 T.test('Story 1 Kapitel 2/4 und Dev-Panel enthalten poker', () => {
   T.ok(STORY_SCHULD.chapters.find((c) => c.id === 'k2').unlock.doors.includes('poker'));
@@ -10489,9 +11006,19 @@ T.test('RoyalRules.canEnter / entryFee', () => {
   T.eq(RoyalRules.entryFee(base({ car: 'audiA3', story: { day: 5, royalPaidDay: 4 } })), 100);
 });
 T.test('RoyalRules.zoneFor: Royal-Screens sind Zone royal, alles andere keller', () => {
-  T.eq(RoyalRules.SCREENS, ['royal', 'megaslots', 'craps', 'wheel']);
+  T.eq(RoyalRules.SCREENS, ['royal', 'megaslots', 'craps', 'wheel', 'stud']);
   for (const id of RoyalRules.SCREENS) T.eq(RoyalRules.zoneFor(id), 'royal');
   for (const id of ['hub', 'roulette', 'stadt', 'jobs', 'skills', undefined, null]) T.eq(RoyalRules.zoneFor(id), 'keller');
+});
+T.test('stud hängt in allen Royal-Listen', () => {
+  T.ok(DevRules.ROYAL_SCREENS.includes('stud'), 'Dev-Panel');
+  T.ok(STORY_STASH.turnoverGroups.umsatzRoyal.includes('stud'), 'Story 3 Royal-Umsatz');
+});
+if (typeof document !== 'undefined') T.test('stud: Royal.GAMES, ROOM_OF und Lobby-Portal', () => {
+  T.ok(Royal.GAMES.includes('stud'), 'Royal.GAMES');
+  T.eq(Story.ROOM_OF.stud, ['royal'], 'ROOM_OF');
+  const tpl = qs('#tpl-royal').content;
+  T.ok(!!tpl.querySelector('.portal[data-screen="stud"] .plaque') && tpl.querySelector('.portal[data-screen="stud"] .plaque').textContent === 'Caribbean Stud', 'Portal in der Lobby');
 });
 T.test('StoryRules.gate: bedingte Sperre mit Text', () => {
   const st = Object.assign({}, STORY_PROBE, { gates: { royal: [{ when: { flag: 'zitter' }, text: 'Sie zittern.' }, { when: { var: 'mut', lte: 0 }, text: 'Zu wenig Mut.' }] } });
@@ -10935,7 +11462,7 @@ T.test('StoryRules.recordSpin: Serie, Siege, größter Gewinn', () => {
   T.eq([st.streak, st.bestStreak, st.biggestWin], [1, 2, 700]);
 });
 T.test('StoryRules.recordStake: Umsatz gesamt, Gruppen je Spiel, bet ≤ 0 zählt nicht', () => {
-  const story = { turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel'], umsatzHinterzimmer: ['baccarat'] } };
+  const story = { turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel', 'stud'], umsatzHinterzimmer: ['baccarat'] } };
   const st = { vars: {} };
   StoryRules.recordStake(st, 500, 'roulette', story);
   T.eq(st.vars, { umsatz: 500, umsatzTotal: 500 });
@@ -11267,6 +11794,49 @@ T.test('GangRules.duelRound: Fehlschuss verliert, Bonus zieht ab, Streuung ±spr
   T.eq(GangRules.duelRound({ reaction: 300, bonus: 0, foe, rng: seq(1) }).foeTime, 380, 'rng 1 → base + spread');
   T.eq(GangRules.duelRound({ reaction: 250, bonus: 0, foe: GangRules.FOES.anabi, rng: seq(0.5) }).won, false, 'Anabi 220');
 });
+T.test('GangRules.hitTest: innen, am Rand, außen, Touch-Rand', () => {
+  const box = { left: 100, top: 50, width: 80, height: 160 };
+  T.eq(GangRules.hitTest({ x: 140, y: 120 }, box), true, 'innen');
+  T.eq(GangRules.hitTest({ x: 80, y: 120 }, box, 24), true, 'im Rand (24)');
+  T.eq(GangRules.hitTest({ x: 70, y: 120 }, box, 24), false, 'außerhalb des Rands');
+  T.eq(GangRules.hitTest({ x: 70, y: 120 }, box, 32), true, 'Touch-Rand 32');
+  T.eq(GangRules.hitTest({ x: 140, y: 240 }, box, 24), false, 'unterhalb');
+  T.eq(GangRules.HIT_MARGIN, { mouse: 24, touch: 32 });
+});
+T.test('GangRules.foeTime/foeFiresAt: base ± spread, ein rng-Aufruf; Gegner schießt bei foeTime + bonus', () => {
+  const foe = { base: 320, spread: 60 };
+  let calls = 0; const counting = () => { calls++; return 0.5; };
+  T.eq(GangRules.foeTime(foe, counting), 320); T.eq(calls, 1);
+  T.eq(GangRules.foeTime(foe, seq(0)), 260); T.eq(GangRules.foeTime(foe, seq(1)), 380);
+  T.eq(GangRules.foeFiresAt(320, 100), 420); T.eq(GangRules.foeFiresAt(320), 320);
+});
+T.test('GangRules.resolveRound: Fehlschuss vor dem Signal, erster Treffer zählt, misses, Bonus, kein Treffer', () => {
+  T.eq(GangRules.resolveRound({ taps: [{ t: -1, hit: true }], foeTime: 320, bonus: 100 }), { won: false, misfire: true, foeTime: 320, you: null, misses: 0 });
+  T.eq(GangRules.resolveRound({ taps: [{ t: 250, hit: true }], foeTime: 320, bonus: 0 }), { won: true, misfire: false, foeTime: 320, you: 250, misses: 0 });
+  T.eq(GangRules.resolveRound({ taps: [{ t: 120, hit: false }, { t: 260, hit: false }, { t: 380, hit: true }], foeTime: 320, bonus: 100 }), { won: true, misfire: false, foeTime: 320, you: 280, misses: 2 }, 'daneben kostet nur Zeit');
+  T.eq(GangRules.resolveRound({ taps: [{ t: 120, hit: false }], foeTime: 320, bonus: 0 }), { won: false, misfire: false, foeTime: 320, you: null, misses: 1 }, 'kein Treffer: der Gegner war schneller');
+  T.eq(GangRules.resolveRound({ taps: [], foeTime: 320, bonus: 0 }), { won: false, misfire: false, foeTime: 320, you: null, misses: 0 });
+  T.eq(GangRules.resolveRound({ taps: [{ t: 50, hit: true }, { t: 900, hit: true }], foeTime: 320, bonus: 300 }).you, 0, 'Bonus zieht ab, nie unter 0; spätere Tipps egal');
+  T.eq(GangRules.resolveRound({ taps: [{ t: 100, hit: false }, { t: -5, hit: true }], foeTime: 320 }).misfire, true, 'ein negativer Tipp irgendwo in der Liste = Fehlschuss');
+});
+T.test('GangRules.resolveRound ≡ duelRound bei genau einem Treffer (Balance-Invariante)', () => {
+  const foe = GangRules.FOES.junge;
+  for (const [t, bonus, r] of [[250, 0, 0.5], [90, 300, 0.1], [400, 100, 0.9], [330, 0, 0.5]]) {
+    const old = GangRules.duelRound({ reaction: t, bonus, foe, rng: seq(r) });
+    const neu = GangRules.resolveRound({ taps: [{ t, hit: true }], foeTime: GangRules.foeTime(foe, seq(r)), bonus });
+    T.eq([neu.won, neu.you, neu.foeTime, neu.misfire], [old.won, old.you, old.foeTime, old.misfire], `t=${t} bonus=${bonus}`);
+  }
+});
+if (typeof CsCast !== 'undefined') {
+  T.test('CsCast: Looks für Bahnhof-Läufer und -Junge, gun: true zeichnet die Pistole in die rechte Hand', () => {
+    for (const id of ['laeufer', 'junge']) { T.ok(CsCast.CAST[id] && CsCast.CAST[id].look, `Look ${id}`); T.eq(CsCast.CAST[id].name, GangRules.FOES[id].name, `${id}: Name wie in FOES`); }
+    T.ok(CsCast.figureHtml('junge', { gun: true }).includes('class="pistole"'), 'Pistole');
+    T.ok(!CsCast.figureHtml('junge').includes('class="pistole"'), 'ohne gun keine Pistole');
+    const html = CsCast.figureHtml('anabi', { gun: true });
+    T.ok(html.indexOf('class="pistole"') > html.indexOf('class="part armR"') && html.indexOf('class="pistole"') < html.indexOf('class="part head"'), 'Pistole liegt im rechten Arm-Teil');
+  });
+  T.test('CsDirector.POSES kennt draw und hit', () => { T.ok(CsDirector.POSES.includes('draw') && CsDirector.POSES.includes('hit')); });
+}
 T.test('GangRules.kurierPay: 0 → 3.000, 1 → 1.500, ≥ 2 → Kontrolle', () => {
   T.eq(GangRules.kurierPay(0), { pay: 3000, kontrolle: false });
   T.eq(GangRules.kurierPay(1), { pay: 1500, kontrolle: false });
@@ -12474,7 +13044,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     State.save = () => {}; State.saveMeta = () => {};
     try {
       State.mode = 'free'; State.s = State.fresh(); State.s.balance = 50000;
-      for (const [screen, id, start, chip] of [['megaslots', 'megaBet', '100', '500'], ['craps', 'crapsBet', '50', '200'], ['wheel', 'wheelBet', '100', '1000'], ['hinterzimmer', 'bacBet', '500', '5000']]) {
+      for (const [screen, id, start, chip] of [['megaslots', 'megaBet', '100', '500'], ['craps', 'crapsBet', '50', '200'], ['wheel', 'wheelBet', '100', '1000'], ['stud', 'studBet', '100', '500'], ['hinterzimmer', 'bacBet', '500', '5000']]) {
         await UI.show(screen);
         const root = qs('#stage');
         const input = qs('#' + id, root);
@@ -12548,7 +13118,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       await wait(120); // Blitz nach 30 ms (gestubbt)
       Shootout.tap(); // Runde 1 gewonnen: ≈ 90 ms − 300 Bonus → 0 < Läufer (≥ 320)
       T.eq([Shootout.running, Shootout.idx, Shootout.phase, events], [true, 1, 'result', []], 'Mehr-Gegner-Pfad: läuft weiter, noch kein fight:done');
-      await wait(1000); // nextTimer (900 ms) räumt auf Runde 2 um
+      await wait(Shootout.NEXT_MS + 100); // nextTimer räumt auf Runde 2 um
       T.eq([Shootout.phase, qs('#duelCount').textContent, qs('#btnDuelStart').classList.contains('hidden'), qs('#btnDuelStart').textContent], ['idle', '2 / 2', false, 'Nächster']);
       Shootout.ready();
       await wait(120);
@@ -13030,6 +13600,114 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     T.eq(skipped, [], 'jede Szene lässt sich mit dem Test-Kontext erzeugen');
     T.ok(n >= 60, `${n} Szenen geprüft`);
   });
+  T.test('DuelStage: Canvas, Gegnerfigur, Waffe; enter/signal/shot/foeDown/foeShoots/flash/unmount; reduced-motion', async () => {
+    const host = h('div', { class: 'duel-stage', style: 'width:600px;height:400px;position:relative' }); document.body.append(host);
+    try {
+      DuelStage.mount(host, { set: 'bahnhof', weapon: 3, reduced: false });
+      T.eq([qsa('canvas', host).length, DuelStage.set, DuelStage.mounted, DuelStage.W, DuelStage.H], [2, 'bahnhof', true, 600, 400]);
+      T.ok(qs('.duel-gun svg path[fill="#8a6a1a"]', host), 'Stufe 3: „Die Goldene“'); T.ok(DuelStage.raf > 0, 'Schleife läuft');
+      DuelStage.enter('junge', 0, 3, 'Bahnhof-Junge');
+      const m0 = getComputedStyle(qs('.duel-foe', host)).transform, a0 = parseFloat(m0.slice(m0.indexOf('(') + 1).split(',')[0]);
+      T.ok(Math.abs(a0 - 0.4) < 0.05, `Annäherung startet wirklich bei Skalierung 0.4 (a=${a0})`);
+      T.eq([qs('#duelCount', host).textContent, qs('#duelFoeName', host).textContent, qsa('.duel-foe svg.part', host).length, qs('.duel-foe', host).dataset.pose, qs('.duel-foe', host).style.getPropertyValue('--s')], ['1 / 3', 'Bahnhof-Junge', 8, 'idle', '1']);
+      T.ok(qs('.duel-foe .pistole', host), 'Gegner mit Pistole');
+      DuelStage.signal(); T.eq(qs('.duel-foe', host).dataset.pose, 'draw'); T.ok(DuelStage.flashUntil > DuelStage.t, 'Blitz');
+      const before = DuelStage.parts.length; DuelStage.shot({ x: 50, y: 50, hit: false });
+      T.ok(DuelStage.parts.length > before && DuelStage.parts.some((p) => p.kind === 'spark') && DuelStage.parts.some((p) => p.kind === 'trace'), 'daneben: Funken + Spur'); T.ok(qs('.duel-gun', host).classList.contains('recoil'), 'Rückstoß');
+      DuelStage.shot({ hit: true }); T.ok(DuelStage.parts.some((p) => p.kind === 'blood'), 'Treffer: Blut');
+      DuelStage.foeDown(); T.eq([qs('.duel-foe', host).dataset.pose, DuelStage.timeScale, qs('.duel-foe', host).style.getPropertyValue('--fall')], ['hit', 0.3, '1.2s'], 'Zucken + Zeitlupe');
+      await wait(300); T.eq([qs('.duel-foe', host).dataset.pose, DuelStage.stains.length], ['down', 1], 'Fall + Fleck');
+      DuelStage.foeShoots(); T.ok(DuelStage.redUntil > DuelStage.t && DuelStage.shakeUntil > DuelStage.t && DuelStage.parts.some((p) => p.kind === 'drop'), 'Gegnerschuss: roter Rand, Ruck, Tropfen');
+      DuelStage.flash('ZIEH!'); T.eq([qs('.duel-flash', host).textContent, qs('.duel-flash', host).classList.contains('on')], ['ZIEH!', true]);
+      T.eq(DuelStage.SET_BY_KIND, { tutorial: 'bahnhof', hinterhalt: 'gasse', finale: 'keller', dev: 'gasse' });
+      // .body zoomt auf großen Bildschirmen (1.15–1.65) – getBoundingClientRect() kommt dann gezoomt zurück, this.W/H nicht: toStage() muss das herausrechnen
+      host.style.zoom = '1.5'; void host.offsetWidth;
+      const hr = host.getBoundingClientRect();
+      T.ok(Math.abs(DuelStage.foeBox().width - qs('.duel-foe', host).getBoundingClientRect().width / 1.5) <= 2, 'foeBox(): Zoom herausgerechnet');
+      const stagePt = DuelStage.toStage(hr.left + 150, hr.top + 60);
+      T.ok(Math.abs(stagePt.x - 100) <= 1 && Math.abs(stagePt.y - 40) <= 1, 'toStage(): Viewport- → Bühnenkoordinaten');
+      host.style.zoom = ''; void host.offsetWidth;
+      DuelStage.unmount(); T.eq([DuelStage.mounted, DuelStage.raf, host.children.length], [false, 0, 0], 'abgebaut');
+      DuelStage.mount(host, { set: 'nirgendwo', weapon: 0, reduced: true }); T.eq(DuelStage.set, 'gasse', 'unbekannte Kulisse → gasse');
+      DuelStage.enter('anabi', 0, 1, 'Anabi Stash'); DuelStage.signal(); T.eq(DuelStage.flashUntil, 0, 'reduced: kein Blitz');
+      DuelStage.foeDown(); T.eq(DuelStage.timeScale, 1, 'reduced: keine Zeitlupe'); DuelStage.foeShoots(); T.eq(DuelStage.shakeUntil, 0, 'reduced: kein Ruck');
+    } finally { DuelStage.unmount(); host.remove(); }
+  });
+  T.test('Duell in Ego-Sicht: Bühne, Trefferprüfung, Fehlschuss kostet Zeit, Gegner schießt von sich aus, Fehlschuss vor dem Signal', async () => {
+    const keep = { cur: UI.current, wait: GangRules.drawWait, s: State.s, mode: State.mode, save: State.save, ft: GangRules.foeTime };
+    State.save = () => {}; State.mode = 'free'; State.s = State.fresh(); State.s.weapon = 1;
+    const events = []; const off = Bus.on('fight:done', (e) => events.push([e.kind, e.won, e.rounds.map((r) => r.misses)]));
+    const stageRect = () => qs('#duelStage').getBoundingClientRect();
+    const shootAt = (x, y, type = 'mouse') => { const R = stageRect(); Shootout.shoot({ clientX: R.left + x, clientY: R.top + y, pointerType: type }); };
+    const foeCenter = () => { const b = DuelStage.foeBox(); return [b.left + b.width / 2, b.top + b.height / 2]; };
+    try {
+      GangRules.drawWait = () => 30; GangRules.foeTime = () => 300;
+      await UI.show('shootout');
+      Shootout.start({ kind: 'e1', foes: ['junge', 'laeufer'], bonus: 100 });
+      const stage = qs('#duelStage');
+      T.eq([qsa('canvas.duel-world', stage).length, qsa('canvas.duel-fx', stage).length, qsa('.cs-fig.duel-foe svg.part', stage).length], [1, 1, 8], 'Welt- und Effekt-Canvas, Gegner aus dem Rig');
+      T.ok(qs('.cs-fig.duel-foe .pistole', stage), 'Gegner hält eine Pistole'); T.ok(qs('.duel-gun svg', stage), 'eigene Waffe');
+      T.eq([qs('#duelCount').textContent, qs('#duelFoeName').textContent, DuelStage.set], ['1 / 2', 'Bahnhof-Junge', 'gasse']);
+      T.ok(DuelStage.raf > 0, 'Canvas-Schleife läuft');
+      /* Runde 1: vor dem Signal ist ein Tipp kein Schuss auf den Gegner … erst daneben, dann Treffer */
+      Shootout.ready(); T.eq([Shootout.phase, DuelStage.tenseFrom > 0], ['wait', true], 'Anspannung an');
+      await wait(120); T.eq([Shootout.phase, qs('.cs-fig.duel-foe').dataset.pose, qs('.duel-flash').textContent, DuelStage.tenseFrom], ['draw', 'draw', 'ZIEH!', 0], 'Signal: Arm hoch + ZIEH!, Anspannung aus');
+      shootAt(10, 10); T.eq([Shootout.phase, Shootout.taps.length, Shootout.taps[0].hit], ['draw', 1, false], 'daneben: Runde läuft weiter');
+      const [cx, cy] = foeCenter(); shootAt(cx, cy);
+      T.eq([Shootout.phase, Shootout.results[0].won, Shootout.results[0].misses, qs('.cs-fig.duel-foe').dataset.pose], ['result', true, 1, 'hit'], 'Treffer nach einem Fehlschuss');
+      await wait(300); T.eq(qs('.cs-fig.duel-foe').dataset.pose, 'down', 'Gegner fällt');
+      await wait(Shootout.NEXT_MS + 100); T.eq([Shootout.phase, qs('#duelCount').textContent, qs('#duelFoeName').textContent], ['idle', '2 / 2', 'Bahnhof-Läufer']);
+      /* Runde 2: Touch-Rand trifft knapp außerhalb der Box */
+      Shootout.ready(); await wait(120);
+      const b = DuelStage.foeBox(); shootAt(b.left - 28, b.top + b.height / 2, 'touch');
+      T.eq([Shootout.results[1].won, Shootout.results[1].misses, events], [true, 0, [['e1', true, [1, 0]]]], 'Touch-Rand 32 px trifft, Duell gewonnen');
+      await Shootout.leave();
+      /* Gegner schießt von sich aus, wenn kein Treffer kommt (foeTime 300 + Bonus 100 = 400 ms) */
+      events.length = 0; await UI.show('shootout');
+      Shootout.start({ kind: 'e2', foes: ['junge'], bonus: 100 });
+      Shootout.ready(); await wait(120); shootAt(5, 5); shootAt(5, 5);
+      T.eq(Shootout.phase, 'draw'); await wait(450);
+      T.eq([Shootout.phase, Shootout.results[0].won, Shootout.results[0].you, Shootout.results[0].misses, events], ['done', false, null, 2, [['e2', false, [2]]]], 'Gegnerschuss beendet die Runde');
+      T.ok(DuelStage.redUntil > DuelStage.t, 'roter Rand nach dem Gegnerschuss');
+      /* Enter auf „Weiter"/„Fertig" darf nicht verschluckt werden: onKey bricht ab, sobald das Duell nicht mehr läuft */
+      const kev = new KeyboardEvent('keydown', { code: 'Enter', cancelable: true });
+      document.dispatchEvent(kev);
+      T.eq([Shootout.phase, kev.defaultPrevented], ['done', false], 'Enter nach Rundenende: kein Absturz, Klickpfad frei (kein preventDefault)');
+      await Shootout.leave();
+      /* Fehlschuss vor dem Signal – egal wohin getippt */
+      events.length = 0; await UI.show('shootout');
+      Shootout.start({ kind: 'e3', foes: ['junge'], bonus: 0 });
+      Shootout.ready(); const [fx, fy] = foeCenter(); shootAt(fx, fy);
+      T.eq([Shootout.results[0].misfire, Shootout.results[0].won, events], [true, false, [['e3', false, [0]]]]);
+      await Shootout.leave();
+    } finally {
+      off(); GangRules.drawWait = keep.wait; GangRules.foeTime = keep.ft; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
+      clearTimeout(Shootout.timer); clearTimeout(Shootout.foeTimer); clearTimeout(Shootout.nextTimer); Shootout.running = false; Shootout.forced = false; Shootout.pending = null;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
+      T.eq(DuelStage.mounted, false, 'Bühne beim Verlassen abgebaut'); T.eq(DuelStage.raf, 0, 'Canvas-Schleife gestoppt');
+    }
+  });
+  T.test('Duell: reduced-motion lässt Zeitfaktor bei 1 und ohne Blitz; Duell-Keyframes nur transform/opacity', async () => {
+    const keep = { cur: UI.current, wait: GangRules.drawWait, s: State.s, mode: State.mode, save: State.save, mm: window.matchMedia };
+    State.save = () => {}; State.mode = 'free'; State.s = State.fresh();
+    window.matchMedia = (q) => ({ matches: q.includes('reduced-motion'), addEventListener() {}, removeEventListener() {} });
+    try {
+      GangRules.drawWait = () => 30;
+      await UI.show('shootout');
+      Shootout.start({ kind: 'r1', foes: ['junge'], bonus: 300 });
+      T.eq(DuelStage.reduced, true);
+      Shootout.ready(); await wait(120); T.eq(Shootout.phase, 'draw', 'reduced: Wartezeit wie sonst (gestubbt 30 ms)');
+      T.eq(DuelStage.flashUntil, 0, 'kein Blitz');
+      Shootout.tap(); T.eq(Shootout.results[0].won, true);
+      T.eq(DuelStage.timeScale, 1, 'keine Zeitlupe');
+      await Shootout.leave();
+      for (const name of ['duelRecoil', 'duelTwitch', 'csHit']) { const kf = keyframesOf(name); T.ok(kf, `@keyframes ${name}`); for (const p of animatedProps(kf)) T.ok(p === 'transform' || p === 'opacity', `${name}: ${p}`); }
+    } finally {
+      window.matchMedia = keep.mm; GangRules.drawWait = keep.wait; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
+      clearTimeout(Shootout.timer); clearTimeout(Shootout.foeTimer); clearTimeout(Shootout.nextTimer); Shootout.running = false; Shootout.forced = false; Shootout.pending = null;
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
+    }
+  });
   const pseudoAnim = (el, pseudo) => getComputedStyle(el, pseudo).animationName;
   T.test('Glücksrad: Rad in Clip-Wrapper (contain: paint), Geometrie unverändert, Zeiger/Lichter/Nabe außerhalb, Glow per ::after', async () => {
     const keep = { s: State.s, mode: State.mode, save: State.save, cur: UI.current };
@@ -13336,7 +14014,7 @@ T.test('xpLevel: Schwellen und Punkte', () => {
   T.eq(Rules.xpLevel(9999), { level: 6, next: null, points: 3 });
 });
 T.test('Kataloge: Skills mit Licht/Schatten, mods-Schlüssel bekannt', () => {
-  T.eq(Rules.SKILLS.length, 9); T.eq(Rules.INSIDER.length, 8);
+  T.eq(Rules.SKILLS.length, 9); T.eq(Rules.INSIDER.length, 9);
   for (const sk of Rules.SKILLS) { T.ok(sk.light && sk.shadow, sk.id); for (const k of Object.keys(sk.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${sk.id}.${k}`); }
   for (const ins of Rules.INSIDER) { T.ok(ins.text && typeof ins.capped === 'boolean', ins.id); for (const k of Object.keys(ins.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${ins.id}.${k}`); }
   T.eq(Rules.INSIDER_CAP, 250); T.eq(Rules.MAX_SKILLS, 3); T.eq(Rules.RESPEC_PRICE, 2000);
@@ -13359,12 +14037,59 @@ T.test('mods: Skills und Insider stapeln', () => {
   T.eq(k.maxBeers, 4); T.eq(k.brownieSpins, 6); T.eq(k.postTimeAdd, -1); T.eq(k.postPayAdd, 5); T.eq(k.postLetters, 20);
   T.eq(Rules.mods(base({ skills: ['unbekannt'] })), Rules.NEUTRAL_MODS, 'unbekannte IDs ignoriert');
 });
-T.test('mods: Kartenhai und Wirts Tell; neutral aus', () => {
+T.test('mods: Kartenhai, Wirts Tell und Sylvies Blick; neutral aus', () => {
   const n = Rules.mods(base(), { insider: [] });
-  T.eq([n.pokerPeekDraw, n.pokerTell, n.bjDealerStand], [false, false, 17]);
-  const m = Rules.mods(base({ skills: ['kartenhai'] }), { insider: ['wirtstell'] });
-  T.eq([m.pokerPeekDraw, m.pokerTell, m.bjDealerStand], [true, true, 18]);
+  T.eq([n.pokerPeekDraw, n.pokerTell, n.bjDealerStand, n.studPeek], [false, false, 17, false]);
+  const m = Rules.mods(base({ skills: ['kartenhai'] }), { insider: ['wirtstell', 'sylviesblick'] });
+  T.eq([m.pokerPeekDraw, m.pokerTell, m.bjDealerStand, m.studPeek], [true, true, 18, true]);
   T.ok(Rules.SKILLS.some((k) => k.id === 'kartenhai') && Rules.INSIDER.some((i) => i.id === 'wirtstell' && i.capped));
+  T.ok(Rules.INSIDER.some((i) => i.id === 'sylviesblick' && i.capped && i.icon === '🎩'), 'Sylvies Blick gedeckelt');
+  T.eq(Rules.MOD_STACK.studPeek, 'set');
+  T.eq(Rules.effectiveInsider(m.studPeek, 250), true); T.eq(Rules.effectiveInsider(m.studPeek, 500), false, 'über der Kappe aus');
+});
+if (typeof document !== 'undefined') T.test('Erfolg karibik: Flush oder besser gewinnt bei Stud, Straße nicht, Passen nicht', async () => {
+  const keep = State.meta.achievements.slice(), saveMeta = State.saveMeta;
+  State.saveMeta = () => {};
+  try {
+    State.meta.achievements = State.meta.achievements.filter((id) => id !== 'karibik');
+    T.ok(Achievements.DEFS.some((a) => a.id === 'karibik' && a.icon === '🌴'), 'im Katalog');
+    await Bus.emit('stud:result', { outcome: 'win', player: { rank: 4 }, dealer: { rank: 1 }, ante: 100, net: 900 });
+    T.ok(!Achievements.has('karibik'), 'Straße reicht nicht');
+    await Bus.emit('stud:result', { outcome: 'fold', player: { rank: 5 }, dealer: { rank: 1 }, ante: 100, net: -100 });
+    T.ok(!Achievements.has('karibik'), 'Passen zählt nicht');
+    await Bus.emit('stud:result', { outcome: 'win', player: { rank: 5 }, dealer: { rank: 1 }, ante: 100, net: 1100 });
+    T.ok(Achievements.has('karibik'), 'Flush gewinnt → Trophäe');
+  } finally { State.meta.achievements = keep; State.saveMeta = saveMeta; }
+});
+if (typeof document !== 'undefined') T.test('Stud: Geben bucht Ante, Mitgehen Bet, Showdown zahlt net + Einsatz; Passen verliert Ante', async () => {
+  const keep = { s: State.s, mode: State.mode, save: State.save, saveMeta: State.saveMeta, cur: UI.current };
+  State.save = () => {}; State.saveMeta = () => {};
+  const C = (val, suit) => ({ val, suit });
+  const deck = () => [C('K', '♠'), C('9', '♦'), C('K', '♥'), C('9', '♣'), C('7', '♣'), C('5', '♠'), C('7', '♠'), C('4', '♦'), C('2', '♥'), C('Q', '♥'), ...Rules.newDeck(Math.random)];
+  try {
+    State.mode = 'free'; State.s = State.fresh(); State.s.balance = 1000; State.s.car = 'audiA3';
+    await UI.show('stud');
+    const root = qs('#stage');
+    qs('.chip[data-chip="250"]', root).click(); qs('.chip[data-chip="100"]', root).click();
+    Stud.forceDeck = deck();
+    await Stud.deal();
+    T.eq(State.s.balance, 900, 'Ante 100 abgebucht');
+    T.eq(qsa('#studDealerCards .pcard.hidden-card', root).length, 4, 'vier Dealer-Karten verdeckt');
+    T.eq(qs('#studHandName', root).textContent, 'Zwei Paare');
+    await Stud.call();
+    T.eq(State.s.balance, 1500, '900 − 200 Bet + (500 net + 300 Einsatz)');
+    T.eq(qsa('#studDealerCards .pcard.hidden-card', root).length, 0, 'alles aufgedeckt');
+    T.ok(qs('#studStatus', root).textContent.includes('Bonus 2:1'), qs('#studStatus', root).textContent);
+    T.ok(Stud.round === null || Stud.round.done, 'Hand beendet'); T.ok(!Stud.inRound);
+    Stud.forceDeck = deck();
+    await Stud.deal();
+    await Stud.fold();
+    T.eq(State.s.balance, 1400, 'Passen: Ante weg');
+    T.ok(qs('#studStatus', root).textContent.includes('Gepasst'));
+  } finally {
+    State.s = keep.s; State.mode = keep.mode; State.save = keep.save; State.saveMeta = keep.saveMeta;
+    await UI.show(keep.cur ? keep.cur.id : 'hub');
+  }
 });
 T.test('canPickSkill / skillPointsFree', () => {
   T.eq(Rules.skillPointsFree(base({ xp: 0, skills: [] })), 0);
@@ -13381,8 +14106,8 @@ T.test('insiderDraw: 3 ungezogene, weniger wenn Pool kleiner', () => {
   const all = Rules.INSIDER.map((i) => i.id);
   const d = Rules.insiderDraw({ insider: [] }, seq(0, 0, 0));
   T.eq(d.length, 3); T.ok(new Set(d).size === 3, 'verschieden'); d.forEach((id) => T.ok(all.includes(id)));
-  const d2 = Rules.insiderDraw({ insider: all.slice(0, 6) }, seq(0, 0));
-  T.eq(d2.length, 2); d2.forEach((id) => T.ok(!all.slice(0, 6).includes(id), 'nie gewählte'));
+  const d2 = Rules.insiderDraw({ insider: all.slice(0, 7) }, seq(0, 0));
+  T.eq(d2.length, 2); d2.forEach((id) => T.ok(!all.slice(0, 7).includes(id), 'nie gewählte'));
   T.eq(Rules.insiderDraw({ insider: all }, seq(0)), []);
 });
 T.test('insiderCapText: gedeckelte Insider nennen die 250 €, freie „wirkt immer"', () => {
@@ -13534,7 +14259,7 @@ if (typeof Perks !== 'undefined') T.test('Perks.refreshExcluded: ohne force blei
   /* Dev-Pfad freies Spiel: wie bisher */
   document.body.classList.add('mode-free');
   if (params.has('shop') && typeof Stadt !== 'undefined') Stadt.shop = Stadt.SHOPS[params.get('shop')] ? params.get('shop') : null;
-  if (params.get('screen') === 'royal' && params.has('game') && ['megaslots', 'craps', 'wheel'].includes(params.get('game'))) { await UI.show(params.get('game')); }
+  if (params.get('screen') === 'royal' && params.has('game') && ['megaslots', 'craps', 'wheel', 'stud'].includes(params.get('game'))) { await UI.show(params.get('game')); }
   else await UI.show(params.get('screen') || 'hub');
   let gameOverAtBoot = false;
   if (Rules.isGameOver(State.s, Perks.mods())) { gameOverAtBoot = true; await Bus.emit('gameover', {}); }
