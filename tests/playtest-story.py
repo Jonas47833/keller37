@@ -2187,10 +2187,17 @@ async def scenario_sicbo(cdp):
     record("sicbo: Becher zeigt Wuerfel 1 vorab", isinstance(peek, int) and 1 <= peek <= 6 and die1 == faces[peek] and "liegt schon" in hint, "peek=%s die1=%s hint=%s" % (peek, die1, hint))
     others = [n for n in range(1, 7) if n != peek][:2]      # zwei Werte != peek fuer Wuerfel 2/3
     x = [n for n in range(1, 7) if n != peek and n not in others][0]
-    await cdp.eval("document.querySelector('.chip[data-chip=\"50\"]').click(); SicBo.place('one%d'); 0" % peek, await_promise=False)
+    # 50 auf die offene Zahl (zaehlt NICHT: Becher-Wuerfel ist bei „Zahl“ ausgenommen -> -50) und 50 auf die Summe,
+    # die nur mit dem Becher-Wuerfel zustande kommt (x != peek) -> beweist, dass der Becher-Wert im Wurf steckt
+    total = peek + others[0] + others[1]
+    quote = await cdp.eval("SicBoRules.PAY.sum[%d]" % total, await_promise=False)
+    await cdp.eval("document.querySelector('.chip[data-chip=\"50\"]').click(); SicBo.place('one%d'); SicBo.place('sum%d'); 0" % (peek, total), await_promise=False)
     b0, b1, status = await roll([x, others[0], others[1]])
     shown = await cdp.eval("document.querySelector('#sbDie1').textContent", await_promise=False)
-    record("sicbo: Becher-Wuerfel wird bei Risiko 50 uebernommen, Einzelzahl zahlt 1:1", shown == faces[peek] and b1 == b0 + 50, "peek=%s shown=%s b0=%s b1=%s status=%s" % (peek, shown, b0, b1, status))
+    lost_one = await cdp.eval("document.querySelector('.sb-cell[data-bet=\"one%d\"]').classList.contains('lost')" % peek, await_promise=False)
+    record("sicbo: Becher-Wuerfel wird bei Risiko 100 uebernommen (Summe trifft), zaehlt aber nicht bei Zahl",
+           shown == faces[peek] and lost_one is True and b1 == b0 - 50 + 50 * quote,
+           "peek=%s shown=%s total=%s quote=%s lost_one=%s b0=%s b1=%s status=%s" % (peek, shown, total, quote, lost_one, b0, b1, status))
     peek2 = await cdp.eval("SicBo.peekDie", await_promise=False)
     await cdp.eval("document.querySelector('.chip[data-chip=\"500\"]').click(); SicBo.place('big'); 0", await_promise=False)
     hint_cap = await cdp.eval("document.querySelector('#sbPeek').textContent", await_promise=False)

@@ -2218,7 +2218,7 @@ Object.assign(Rules, {
     { id: 'postmeister', name: 'Postmeister', icon: '📮', text: 'Postbote: 20 Briefe pro Schicht, +5 € pro Brief.', capped: false, mods: { postLetters: 20, postPayAdd: 5 } },
     { id: 'wirtstell', name: 'Wirts Tell', icon: '🧔', text: 'Poker: der Wirt kratzt sich am Bart, wenn er nichts auf der Hand hat.', capped: true, mods: { pokerTell: true } },
     { id: 'sylviesblick', name: 'Sylvies Blick', icon: '🎩', text: 'Caribbean Stud: Madame Sylvie lässt dich eine zweite Dealer-Karte sehen, bevor du mitgehst.', capped: true, mods: { studPeek: true } },
-    { id: 'becher', name: 'Gezinkter Becher', icon: '🥤', text: 'Sic Bo: ein Würfel liegt vor dem Wurf schon offen – du siehst einen der drei Werte, bevor du setzt.', capped: true, mods: { sicboPeek: true } },
+    { id: 'becher', name: 'Gezinkter Becher', icon: '🥤', text: 'Sic Bo: ein Würfel liegt vor dem Wurf schon offen – du siehst einen der drei Werte, bevor du setzt. Bei „Zahl“-Wetten zählt er nicht.', capped: true, mods: { sicboPeek: true } },
   ],
   xpLevel(xp) {
     let level = 1;
@@ -5573,14 +5573,14 @@ const SicBo = {
   checkRun() { if (this.run !== State.s) { this.reset(); this.render(); } },
   reset() { this.bets = {}; this.history = []; this.run = null; },
   /* Beschriftung eines Gewinnfelds für die Statuszeile */
-  fieldName(id, dice) {
+  fieldName(id, dice, peeked = false) {
     if (id === 'small') return 'Klein';
     if (id === 'big') return 'Groß';
     /* tripleAny vor startsWith('triple') prüfen – sonst würde es als Triple „Any“ verrechnet */
     if (id === 'tripleAny') return `Beliebiger Triple zahlt ${SicBoRules.PAY.tripleAny}:1`;
     if (id.startsWith('triple')) return `Triple ${id.slice(6)} zahlt ${SicBoRules.PAY.triple}:1`;
     if (id.startsWith('sum')) return `Summe ${id.slice(3)} zahlt ${SicBoRules.PAY.sum[+id.slice(3)]}:1`;
-    const n = +id.slice(3), k = dice.filter((d) => d === n).length;
+    const n = +id.slice(3), k = SicBoRules.odds(id, dice, peeked); // Trefferzahl = Quote; ein Becher-Würfel zählt nicht
     return `Zahl ${n} ×${k} zahlt ${k}:1`;
   },
   /* Die 29 Zellen aus SicBoRules.FIELDS bauen (Klein/Groß stehen schon im Template) */
@@ -5626,7 +5626,7 @@ const SicBo = {
     const hint = qs('#sbPeek', this.root);
     const peek = Perks.mods().sicboPeek;
     hint.classList.toggle('hidden', !peek);
-    if (peek) hint.textContent = Rules.effectiveInsider(true, risk) ? '🥤 Der erste Würfel liegt schon' : `🥤 Gezinkter Becher: wirkt bis ${UI.fmt(Rules.INSIDER_CAP)}`;
+    if (peek) hint.textContent = Rules.effectiveInsider(true, risk) ? '🥤 Der erste Würfel liegt schon (zählt nicht bei „Zahl“)' : `🥤 Gezinkter Becher: wirkt bis ${UI.fmt(Rules.INSIDER_CAP)}`;
     qs('#sbHistory', this.root).textContent = this.history.slice(-6).join(' · ');
     qs('#btnSbRoll', this.root).disabled = this.rolling || risk === 0;
   },
@@ -5648,11 +5648,14 @@ const SicBo = {
       const mods = Perks.mods();
       let dice = this.forceDice ? this.forceDice.slice() : SicBoRules.roll(Math.random);
       this.forceDice = null;
-      if (Rules.effectiveInsider(mods.sicboPeek, risk)) dice = SicBoRules.peekDice(this.peekDie, dice);
-      dice = SicBoRules.luckOverride(dice, bets, Rules.effectiveLuck(Rules.luck(State.s, mods), risk), Math.random);
+      let peeked = false;
+      if (Rules.effectiveInsider(mods.sicboPeek, risk)) { dice = SicBoRules.peekDice(this.peekDie, dice); peeked = true; }
+      const before = dice;
+      dice = SicBoRules.luckOverride(dice, bets, Rules.effectiveLuck(Rules.luck(State.s, mods), risk), Math.random, peeked);
+      if (dice !== before) peeked = false; // Glücks-Neuwurf würfelt auch Würfel 1 neu
       await wait(matchMedia('(prefers-reduced-motion: reduce)').matches ? 150 : 900);
       SFX.stop('reelSpin');
-      const r = SicBoRules.settle(bets, dice);
+      const r = SicBoRules.settle(bets, dice, peeked);
       this.history.push(dice.join('·'));
       this.bets = {};
       if (this.alive(gen)) {
@@ -5670,7 +5673,7 @@ const SicBo = {
         }
         const glyphs = dice.map((d) => this.FACES[d]).join(' ');
         const parts = r.triple ? ['Triple!'] : [];
-        for (const id of r.won) parts.push(this.fieldName(id, dice));
+        for (const id of r.won) parts.push(this.fieldName(id, dice, peeked));
         const cls = r.delta > 0 ? 'win' : r.delta < 0 ? 'loss' : '';
         const sign = r.delta > 0 ? '+' : r.delta < 0 ? '−' : '±';
         qs('#sbStatus', this.root).innerHTML = `${glyphs} = ${r.sum} · <span class="${cls}">${parts.length ? parts.join(' · ') : 'nichts getroffen'} (${sign}${UI.fmt(Math.abs(r.delta))})</span>`;
@@ -7618,8 +7621,9 @@ const SicBoRules = {
   FIELDS: ['small', ...Array.from({ length: 14 }, (_, i) => `sum${i + 4}`), 'big', ...[1, 2, 3, 4, 5, 6].map((n) => `triple${n}`), 'tripleAny', ...[1, 2, 3, 4, 5, 6].map((n) => `one${n}`)],
   roll(rng) { return [0, 1, 2].map(() => Math.floor(rng() * 6) + 1); },
   risk(bets) { return Object.values(bets).reduce((a, b) => a + b, 0); },
-  /* Quote eines Felds für diesen Wurf: > 0 gewinnt (Faktor), 0 verliert. Klein/Groß verlieren bei jedem Triple. */
-  odds(id, dice) {
+  /* Quote eines Felds für diesen Wurf: > 0 gewinnt (Faktor), 0 verliert. Klein/Groß verlieren bei jedem Triple.
+     peeked: Würfel 1 kam aus dem gezinkten Becher – er zählt dann bei Einzelzahl-Wetten nicht (sonst wäre die Wette risikofrei). */
+  odds(id, dice, peeked = false) {
     const P = SicBoRules.PAY;
     const sum = dice[0] + dice[1] + dice[2];
     const triple = dice[0] === dice[1] && dice[1] === dice[2];
@@ -7629,17 +7633,17 @@ const SicBoRules = {
     if (id === 'tripleAny') return triple ? P.tripleAny : 0;
     if (id.startsWith('triple')) return triple && dice[0] === +id.slice(6) ? P.triple : 0;
     if (id.startsWith('sum')) return sum === +id.slice(3) ? P.sum[sum] : 0;
-    if (id.startsWith('one')) return P.one[dice.filter((d) => d === +id.slice(3)).length];
+    if (id.startsWith('one')) return P.one[(peeked ? dice.slice(1) : dice).filter((d) => d === +id.slice(3)).length];
     return 0;
   },
   /* Nettobetrag über alle gesetzten Felder; won/lost in Tisch-Reihenfolge */
-  settle(bets, dice) {
+  settle(bets, dice, peeked = false) {
     const won = [], lost = [];
     let delta = 0;
     for (const id of SicBoRules.FIELDS) {
       const bet = bets[id] || 0;
       if (!bet) continue;
-      const q = SicBoRules.odds(id, dice);
+      const q = SicBoRules.odds(id, dice, peeked);
       if (q > 0) { won.push(id); delta += bet * q; } else { lost.push(id); delta -= bet; }
     }
     return { delta, won, lost, sum: dice[0] + dice[1] + dice[2], triple: dice[0] === dice[1] && dice[1] === dice[2] };
@@ -7647,8 +7651,8 @@ const SicBoRules = {
   /* Gezinkter Becher: der vorab gewürfelte Wert ersetzt Würfel 1 */
   peekDice(peekDie, dice) { return peekDie == null ? dice : [peekDie, dice[1], dice[2]]; },
   /* Glück: ein verlierender Wurf wird mit luck % einmal komplett neu gewürfelt. Pech: ein gewinnender Wurf mit |luck| %. Sonst unverändert. */
-  luckOverride(dice, bets, luck, rng) {
-    const delta = SicBoRules.settle(bets, dice).delta;
+  luckOverride(dice, bets, luck, rng, peeked = false) {
+    const delta = SicBoRules.settle(bets, dice, peeked).delta;
     if (luck > 0 && delta < 0 && rng() * 100 < luck) return SicBoRules.roll(rng);
     if (luck < 0 && delta > 0 && Rules.pech(luck, rng)) return SicBoRules.roll(rng);
     return dice;
@@ -11020,6 +11024,18 @@ T.test('SicBoRules.roll und peekDice', () => {
   T.eq(SicBoRules.roll(seq(0, 0.5, 0.99)), [1, 4, 6]);
   T.eq(SicBoRules.peekDice(4, [1, 2, 3]), [4, 2, 3]);
   const d = [1, 2, 3]; T.ok(SicBoRules.peekDice(null, d) === d, 'ohne Becher gleiche Referenz');
+});
+T.test('SicBoRules: mit gezinktem Becher zählt Würfel 1 bei Einzelzahl-Wetten nicht', () => {
+  T.eq(SicBoRules.odds('one4', [4, 1, 2], true), 0, 'nur der offene Würfel zeigt die 4 → verloren');
+  T.eq(SicBoRules.odds('one4', [4, 4, 2], true), 1, 'ein verdeckter Würfel zählt');
+  T.eq(SicBoRules.odds('one4', [4, 1, 2], false), 1, 'ohne Becher zählt Würfel 1');
+  T.eq(SicBoRules.odds('small', [4, 1, 2], true), 1, 'Klein/Summe/Triple unverändert');
+  T.eq(SicBoRules.settle({ one4: 50, small: 50 }, [4, 1, 2], true), { delta: 0, won: ['small'], lost: ['one4'], sum: 7, triple: false });
+  T.eq(SicBoRules.settle({ one4: 50 }, [4, 1, 2]).delta, 50, 'Standard ohne Becher');
+  let calls = 0; const rng = () => { calls++; return 0; };
+  T.eq(SicBoRules.luckOverride([4, 1, 2], { one4: 50 }, 50, rng, true), [1, 1, 1], 'Glück sieht die Becher-Wertung: one4 ist mit Becher ein Verlust → Neuwurf');
+  T.eq(calls, 4, 'eine Entscheidung + drei Würfel');
+  const d = [4, 1, 2]; T.ok(SicBoRules.luckOverride(d, { one4: 50 }, 50, rng, false) === d, 'ohne Becher ist one4 gewonnen → kein Neuwurf'); T.eq(calls, 4);
 });
 T.test('SicBoRules.luckOverride: Glück wirft Verlust neu, Pech wirft Gewinn neu, sonst unverändert', () => {
   const lose = [6, 6, 6], win = [1, 2, 3], bets = { small: 100 };

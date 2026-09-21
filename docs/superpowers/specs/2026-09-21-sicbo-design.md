@@ -66,14 +66,15 @@ Beispiele (Einsatz 100 je Feld): Wurf 2·3·4 (Summe 9): Klein +100, Summe 9 +60
 
 ```js
 { id: 'becher', name: 'Gezinkter Becher', icon: '🥤',
-  text: 'Sic Bo: ein Würfel liegt vor dem Wurf schon offen – du siehst einen der drei Werte, bevor du setzt.',
+  text: 'Sic Bo: ein Würfel liegt vor dem Wurf schon offen – du siehst einen der drei Werte, bevor du setzt. Bei „Zahl“-Wetten zählt er nicht.',
   capped: true, mods: { sicboPeek: true } }
 ```
 
 - `Rules.NEUTRAL_MODS.sicboPeek = false`, `MOD_STACK.sicboPeek = 'set'`; Katalog 10 Insider.
 - Modul-Zustand `SicBo.peekDie` (1–6 oder `null`): mit Insider wird beim Mount und nach jedem Wurf `peekDie = SicBoRules.roll(Math.random)[0]` gesetzt und als Würfel 1 offen angezeigt; ohne Insider `null`, alle Würfel zeigen „?".
 - Beim Wurf: `SicBoRules.peekDice(peekDie, dice)` → ersetzt `dice[0]` durch `peekDie`, wenn `peekDie != null`. Das Modul ruft das nur auf, wenn `Rules.effectiveInsider(mods.sicboPeek, risk)` wahr ist (Risiko ≤ 250 €); darüber bleibt der Wurf frisch.
-- Hinweiszeile `#sbPeek` (Klasse `insider-hint`), live bei jeder Einsatzänderung gerendert: Risiko ≤ 250 → „🥤 Der erste Würfel liegt schon"; Risiko > 250 → „🥤 Gezinkter Becher: wirkt bis 250 €"; ohne Insider verborgen.
+- **Einzelzahl-Ausnahme:** Ein Becher-Würfel zählt bei `one1`…`one6` nicht (`odds/settle/luckOverride` bekommen `peeked = true`; gewertet werden dann nur Würfel 2 und 3). Sonst wäre die Wette auf die offene Zahl risikofrei (+250 € je Wurf). Klein/Groß, Summe und Triple werten alle drei Würfel. Nach einem Glücks-Neuwurf gilt `peeked = false` (Würfel 1 ist dann frisch).
+- Hinweiszeile `#sbPeek` (Klasse `insider-hint`), live bei jeder Einsatzänderung gerendert: Risiko ≤ 250 → „🥤 Der erste Würfel liegt schon (zählt nicht bei „Zahl")"; Risiko > 250 → „🥤 Gezinkter Becher: wirkt bis 250 €"; ohne Insider verborgen.
 
 ### 3.3 Achievement
 
@@ -173,7 +174,7 @@ Freies Spiel, Auto, Royal betreten, `UI.show('sicbo')`, `State.meta.insider = []
 2. Chip 50 auf `small` + `sum9`, `forceDice = [2, 3, 4]`, Würfeln → Konto +350, Status enthält „Summe 9", `small` und `sum9` haben `.won`, `big` nicht gesetzt.
 3. Chip 50 auf `small`, `tripleAny`, `triple4`; `forceDice = [4, 4, 4]` → Konto +50·(−1 + 30 + 180) = +10.450, Erfolg `dreiGleiche` freigeschaltet, Status enthält „Triple".
 4. Chip 200 auf `big`, „Leeren" → alle Stacks verborgen, Würfeln → Konto unverändert, kein Wurf (`SicBo.rolling` false, Würfel unverändert).
-5. Insider `becher`: `UI.show('sicbo')` erneut; `SicBo.peekDie` ist 1–6 und `#sbDie1` zeigt die Augenzahl; `#sbPeek` „Der erste Würfel liegt schon"; Chip 50 auf `one<peekDie>`, `forceDice = [x, y, z]` mit `x ≠ peekDie` und `y, z ≠ peekDie` (z. B. die zwei kleinsten Zahlen ≠ peekDie) → Wurf zeigt `peekDie` als Würfel 1, `one<peekDie>` gewinnt genau 1:1 (+50); danach 500 auf `big` (Chip 500) → `#sbPeek` enthält „wirkt bis 250"; `forceDice = [6, 6, 5]` → Würfel 1 ist 6 (nicht `peekDie`, es sei denn `peekDie === 6` – dann `forceDice = [1, 6, 5]`), Groß gewinnt +500.
+5. Insider `becher`: `UI.show('sicbo')` erneut; `SicBo.peekDie` ist 1–6 und `#sbDie1` zeigt die Augenzahl; `#sbPeek` „Der erste Würfel liegt schon"; Chip 50 auf `one<peekDie>` und 50 auf `sum<peekDie + y + z>`, `forceDice = [x, y, z]` mit `x, y, z ≠ peekDie` → Wurf zeigt `peekDie` als Würfel 1, die Summe trifft (beweist den Becher-Wert), die Zahl-Wette verliert (−50, Becher-Würfel zählt nicht); danach 500 auf `big` (Chip 500) → `#sbPeek` enthält „wirkt bis 250"; `forceDice = [6, 6, 5]` → Würfel 1 ist 6 (nicht `peekDie`, es sei denn `peekDie === 6` – dann `forceDice = [1, 6, 5]`), Groß gewinnt +500.
 6. Insider zurücksetzen, Screen verlassen → keine Toasts, Konto unverändert.
 
 Screenshots: `royal-lobby.png` (5 Portale) erneuern, `royal-sicbo.png` neu, `mobile-royal.png` erneuern, `mobile-sicbo.png` neu (aus `tests/mobile-check.py`).
