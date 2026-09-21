@@ -1652,12 +1652,13 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     <div class="chalk paytable">
       <h4>Auszahlung × Linieneinsatz</h4>
       <table>
-        <tr><td>7️⃣</td><td>20 / 100 / 500</td></tr>
-        <tr><td>💎</td><td>10 / 40 / 100</td></tr>
-        <tr><td>BAR</td><td>5 / 20 / 50</td></tr>
-        <tr><td>🔔</td><td>3 / 12 / 30</td></tr>
-        <tr><td>🍒</td><td>2 / 5 / 10</td></tr>
-        <tr><td>⭐ ×3+</td><td>5 Freispiele, ×2</td></tr>
+        <tr><td>7️⃣</td><td>10 / 30 / 100</td></tr>
+        <tr><td>💎</td><td>8 / 20 / 50</td></tr>
+        <tr><td>BAR</td><td>6 / 12 / 25</td></tr>
+        <tr><td>🔔</td><td>5 / 10 / 20</td></tr>
+        <tr><td>🍒</td><td>5 / 8 / 12</td></tr>
+        <tr><td>🍒 🍒</td><td>2</td></tr>
+        <tr><td>⭐ ×3+</td><td>3 Freispiele</td></tr>
       </table>
       <p class="side-hint">5 Linien · Linieneinsatz = Einsatz ÷ 5</p>
     </div>
@@ -4558,7 +4559,7 @@ const MegaSlots = {
         this.drawLines(w.lines);
         qs('#megaLines', this.root).textContent = w.lines.map((l) => `Linie ${l.line + 1}: ${this.cellText(l.sym)} ×${l.count} → ${l.mult}×`).join(' · ') + (w.scatters >= 3 ? `${w.lines.length ? ' · ' : ''}⭐×${w.scatters}: +${w.freeSpins} Freispiele` : '');
         const st = qs('#megaStatus', this.root);
-        st.innerHTML = w.payout > 0 ? `<span class="win">Auszahlung ${UI.fmt(w.payout)}${free ? ' (Freispiel ×2)' : ''}</span>` : `<span class="loss">${free ? 'Freispiel · nichts' : `Niete · −${UI.fmt(bet)}`}</span>`;
+        st.innerHTML = w.payout > 0 ? `<span class="win">Auszahlung ${UI.fmt(w.payout)}${free ? ' (Freispiel)' : ''}</span>` : `<span class="loss">${free ? 'Freispiel · nichts' : `Niete · −${UI.fmt(bet)}`}</span>`;
         if (lastFree && !w.freeSpins) st.innerHTML += ` · <span class="win">Freispiele vorbei · +${UI.fmt(this.freeTotal)}</span>`;
         this.syncFree();
         if (tier === 'mega') { SFX.play('megaWin'); this.showBanner('mega', w.payout); await wait(reduced ? 300 : 2400); }
@@ -7251,11 +7252,14 @@ const RoyalRules = {
   /* ---- Mega Seven: 5 Walzen × 3 Reihen, 5 feste Linien ---- */
   MEGA: {
     SYMBOLS: ['🍒', '🔔', 'BAR', '💎', '7️⃣', '⭐'],
-    WEIGHTS: [30, 25, 18, 12, 7, 8],
+    WEIGHTS: [36, 18, 14, 6, 4, 3], // 🍒 🔔 BAR 💎 7️⃣ ⭐ – Balancing 2026-09-21 (Jeder Tisch): Trefferquote 40 % statt 16 %, Streuung 1,3 statt 3,9 (vorher 30/25/18/12/7/8)
     LINES: [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [2, 2, 2, 2, 2], [0, 1, 2, 1, 0], [2, 1, 0, 1, 2]], // Reihe je Walze
-    PAY: { '🍒': [0, 0, 0, 2, 5, 10], '🔔': [0, 0, 0, 3, 12, 30], BAR: [0, 0, 0, 5, 20, 50], '💎': [0, 0, 0, 10, 40, 100], '7️⃣': [0, 0, 0, 20, 100, 500] }, // Balancing 2026-09-21: Glocke 4er/5er 12/30 statt 10/25 → ~96 % ohne Glück (vorher 92 %), mit 3 Bier ~116 % wie Roulette Rot
+    /* Auszahlung × Linieneinsatz je Anzahl in Folge ab Walze 1 (Index 2–5). Ein 3er zahlt mindestens den Einsatz zurück, Kirschen zahlen ab 2.
+       Vorher 2/5/10 · 3/12/30 · 5/20/50 · 10/40/100 · 20/100/500 mit 70 % der Quote aus Freispielen (Balancing 2026-09-21, Jeder Tisch). */
+    PAY: { '🍒': [0, 0, 2, 5, 8, 12], '🔔': [0, 0, 0, 5, 10, 20], BAR: [0, 0, 0, 6, 12, 25], '💎': [0, 0, 0, 8, 20, 50], '7️⃣': [0, 0, 0, 10, 30, 100] },
     BETS: [100, 250, 500, 1000],
-    FREE_SPINS: 5, FREE_MULT: 2, FREE_MAX: 15, SCATTER: '⭐',
+    FREE_SPINS: 3, FREE_MULT: 1, FREE_MAX: 9, SCATTER: '⭐', // Freispiele sind Bonus, nicht mehr das Hauptgeschäft (vorher 5, ×2, Deckel 15)
+    LUCK_GAIN: 1.5, LUCK_REROLLS: 3, // Glück: bei Niete mit LUCK_GAIN × luck % bis zu LUCK_REROLLS-mal neu drehen, bis eine Linie zahlt
     BIG_MULT: 10, MEGA_MULT: 50, AUTO_ROUNDS: 10,
     /* Präsentation: Stoppzeiten der Walzen (ms ab Start), Zuschlag je Spannungs-Walze, Symbole pro Sekunde auf dem Streifen */
     STOPS: [900, 1200, 1500, 1800, 2100], STOPS_REDUCED: [80, 130, 180, 230, 280], TENSE_EXTRA: 1300, STRIP_SPEED: 9,
@@ -7276,7 +7280,7 @@ const RoyalRules = {
       if (sym === M.SCATTER || !M.PAY[sym]) return;
       let count = 1;
       for (let r = 1; r < 5; r++) { if (grid[r][rows[r]] === sym) count++; else break; }
-      if (count >= 3) out.push({ line, sym, count, mult: M.PAY[sym][count] });
+      if (M.PAY[sym][count] > 0) out.push({ line, sym, count, mult: M.PAY[sym][count] });
     });
     return out;
   },
@@ -7298,17 +7302,15 @@ const RoyalRules = {
   /* Glück: gewinnt keine Linie, wird die Walze/Richtung gewählt, deren Ein-Schritt-Verschiebung den kleinsten
      zahlenden Treffer ergibt – ein Schubs, kein Jackpot (der „beste" Schubs hob die Quote mit 3 Bier auf 125 %,
      der kleinste liegt bei ~112 % wie Roulette und Rad). Pech: ein gewinnendes Gitter wird mit |luck| % einmal neu gewürfelt. */
+  /* Glück: bei Niete mit LUCK_GAIN × luck % bis zu LUCK_REROLLS-mal neu drehen, bis eine Linie zahlt – das Spiegelbild von Pech (Gewinn wird neu gedreht).
+     Der frühere Walzen-Schub (megaShift) lief bei den meisten Nieten ins Leere; Bier brachte an Mega nur +6 Punkte. (Balancing 2026-09-21, Jeder Tisch) */
   megaLuckOverride(grid, luck, rng) {
     if (luck < 0) return RoyalRules.megaLineWins(grid).length && Rules.pech(luck, rng) ? RoyalRules.megaRoll(rng) : grid;
     if (RoyalRules.megaLineWins(grid).length) return grid;
-    if (!(rng() * 100 < luck)) return grid;
-    let best = null, bestPay = Infinity;
-    for (let reel = 0; reel < 5; reel++) for (const dir of [1, -1]) {
-      const g = RoyalRules.megaShift(grid, reel, dir);
-      const pay = RoyalRules.megaLineWins(g).reduce((a, w) => a + w.mult, 0);
-      if (pay > 0 && pay < bestPay) { best = g; bestPay = pay; }
-    }
-    return best || grid;
+    if (!(rng() * 100 < luck * RoyalRules.MEGA.LUCK_GAIN)) return grid;
+    let g = grid;
+    for (let i = 0; i < RoyalRules.MEGA.LUCK_REROLLS && !RoyalRules.megaLineWins(g).length; i++) g = RoyalRules.megaRoll(rng);
+    return g;
   },
   megaDelta(bet, payout, free) { return free ? payout : payout - bet; },
   /* Gewinnstufe für die Feier: 'none' | 'win' | 'big' (≥ BIG_MULT × Einsatz) | 'mega' (≥ MEGA_MULT × Einsatz) */
@@ -10799,7 +10801,7 @@ T.test('Glücks-Ökonomie: Bier 8 Spins, Brownie 4 Spins, Cap 1.000 – 3 Bier l
     sum += w.payout; if (w.freeSpins) free = Math.min(RoyalRules.MEGA.FREE_MAX, free + w.freeSpins);
   }
   const mega = 100 * sum / paid;
-  T.ok(mega > 111 && mega < 122, `Mega Seven bei +20 Glück: RTP ${mega.toFixed(1)} % (erwartet 111–122, wie Roulette Rot)`);
+  T.ok(mega > 114 && mega < 122, `Mega Seven bei +20 Glück: RTP ${mega.toFixed(1)} % (erwartet 114–122)`);
   /* 3 Bier = 150 € für BEER_SPINS Spins: Gewinnschwelle am Roulette = 150 / (BEER_SPINS × Vorteil) */
   const schwelle = 150 / (Rules.BEER_SPINS * (rot - 100) / 100);
   T.ok(schwelle > 90 && schwelle < 130, `Bier rechnet sich ab ${schwelle.toFixed(0)} € Einsatz`);
@@ -11227,9 +11229,10 @@ T.test('Bus.emit: werfender Handler stoppt andere Handler nicht, liefert Promise
 const G = (cols) => cols.map((c) => c.split(' ')); // 'a b c' je Walze, oben→unten
 T.test('megaSymbol: gewichtete Ziehung', () => {
   T.eq(RoyalRules.megaSymbol(seq(0)), '🍒');
-  T.eq(RoyalRules.megaSymbol(seq(0.299)), '🍒');
-  T.eq(RoyalRules.megaSymbol(seq(0.30)), '🔔');
-  T.eq(RoyalRules.megaSymbol(seq(0.92)), '⭐');
+  T.eq(RoyalRules.megaSymbol(seq(0.444)), '🍒', '36/81 = 0,444… (Balancing 2026-09-21, Jeder Tisch)');
+  T.eq(RoyalRules.megaSymbol(seq(0.445)), '🔔');
+  T.eq(RoyalRules.megaSymbol(seq(0.962)), '7️⃣', '7️⃣ bis 78/81 = 0,963');
+  T.eq(RoyalRules.megaSymbol(seq(0.964)), '⭐');
   T.eq(RoyalRules.megaSymbol(seq(0.999)), '⭐');
 });
 T.test('megaRoll: 5 Walzen × 3 Reihen', () => {
@@ -11239,9 +11242,9 @@ T.test('megaRoll: 5 Walzen × 3 Reihen', () => {
 });
 T.test('megaLineWins: Mitte, oben, unten, V, umgekehrtes V', () => {
   T.eq(RoyalRules.megaLineWins(G(['🔔 🍒 🔔', '🔔 🍒 🔔', '🔔 🍒 🔔', '🔔 🔔 🔔', '🔔 🔔 🔔'])).map((w) => [w.line, w.sym, w.count, w.mult]),
-    [[0, '🍒', 3, 2], [1, '🔔', 5, 30], [2, '🔔', 5, 30]]);
-  T.eq(RoyalRules.megaLineWins(G(['BAR 🍒 🍒', '🍒 BAR 🍒', '🍒 🍒 BAR', '🍒 BAR 🍒', 'BAR 🍒 🍒'])).map((w) => [w.line, w.sym, w.count, w.mult]), [[3, 'BAR', 5, 50]]);
-  T.eq(RoyalRules.megaLineWins(G(['🍒 🍒 💎', '🍒 💎 🍒', '💎 🍒 🍒', '🍒 💎 🍒', '🍒 🍒 💎'])).map((w) => [w.line, w.sym, w.count, w.mult]), [[4, '💎', 5, 100]]);
+    [[0, '🍒', 3, 5], [1, '🔔', 5, 20], [2, '🔔', 5, 20]]);
+  T.eq(RoyalRules.megaLineWins(G(['BAR 🍒 🍒', '🍒 BAR 🍒', '🍒 🍒 BAR', '🍒 BAR 🍒', 'BAR 🍒 🍒'])).map((w) => [w.line, w.sym, w.count, w.mult]), [[2, '🍒', 2, 2], [3, 'BAR', 5, 25]], 'unten 🍒 🍒 BAR → zwei Kirschen zahlen 2');
+  T.eq(RoyalRules.megaLineWins(G(['🍒 🍒 💎', '🍒 💎 🍒', '💎 🍒 🍒', '🍒 💎 🍒', '🍒 🍒 💎'])).map((w) => [w.line, w.sym, w.count, w.mult]), [[1, '🍒', 2, 2], [4, '💎', 5, 50]], 'oben 🍒 🍒 💎 → zwei Kirschen zahlen 2');
 });
 T.test('megaLineWins: nur von links, zwei gleiche zählen nicht, Scatter bildet keine Linie', () => {
   const g = G(['🍒 7️⃣ 🍒', '🍒 7️⃣ 🍒', '🍒 🍒 🍒', '🍒 7️⃣ 🍒', '🍒 7️⃣ 🍒']); // Mitte: 7️⃣ 7️⃣ 🍒 7️⃣ 7️⃣ → 2 von links → nichts; oben/unten 🍒×5; V und ΛV brechen nach 1
@@ -11252,12 +11255,12 @@ T.test('megaScatters / megaWin / megaDelta', () => {
   const g = G(['⭐ 🍒 🍒', '🍒 ⭐ 🍒', '🍒 🍒 ⭐', '🔔 🔔 🔔', '🔔 🔔 🔔']);
   T.eq(RoyalRules.megaScatters(g), 3);
   const w = RoyalRules.megaWin(g, 500, false);
-  T.eq(w.scatters, 3); T.eq(w.freeSpins, 5);
-  T.eq(w.payout, 0, 'keine Linie: Mitte 🍒 ⭐ 🍒 🔔 🔔 → 1 von links');
+  T.eq(w.scatters, 3); T.eq(w.freeSpins, 3);
+  T.eq(w.payout, 200, 'Mitte 🍒 ⭐ → 1 von links, nichts; unten 🍒 🍒 ⭐ → zwei Kirschen = 2 × Linieneinsatz 100');
   const g2 = G(['🍒 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒', '🔔 🔔 🔔', '🔔 🔔 🔔']);
   const w2 = RoyalRules.megaWin(g2, 500, false);
-  T.eq(w2.payout, 1000, 'fünf Linien 🍒×3 → 5 × 2 × Linieneinsatz 100');
-  T.eq(RoyalRules.megaWin(g2, 500, true).payout, 2000, 'Freispiel ×2');
+  T.eq(w2.payout, 2500, 'fünf Linien 🍒×3 → 5 × 5 × Linieneinsatz 100');
+  T.eq(RoyalRules.megaWin(g2, 500, true).payout, 2500, 'Freispiel ohne Verdopplung (FREE_MULT 1)');
   T.eq(RoyalRules.megaDelta(500, 600, false), 100);
   T.eq(RoyalRules.megaDelta(500, 0, false), -500);
   T.eq(RoyalRules.megaDelta(500, 1200, true), 1200, 'Freispiel kostet nichts');
@@ -11269,19 +11272,23 @@ T.test('megaShift: Spalte rotieren', () => {
   T.eq(RoyalRules.megaShift(g, 1, 1)[0], ['a', 'b', 'c'], 'andere Walzen unverändert');
   T.eq(g[1], ['d', 'e', 'f'], 'Original unverändert');
 });
-T.test('megaLuckOverride: kein Glück / Pech-Wurf / kleinster Ein-Schritt-Gewinn / bestehender Gewinn', () => {
-  // keine Linie trifft; Walze 1 um −1 ergäbe Mitte 7️⃣×5 (500) – Glück nimmt aber die kleinste zahlende Verschiebung (💎×3, 10)
-  const g = G(['🔔 7️⃣ 💎', '7️⃣ BAR 💎', '💎 7️⃣ 🔔', '🔔 7️⃣ BAR', 'BAR 7️⃣ 💎']);
-  T.eq(RoyalRules.megaLineWins(g), [], 'Ausgangsgitter gewinnt nichts');
-  T.eq(RoyalRules.megaLuckOverride(g, 0, seq(0.5)), g, 'ohne Glück unverändert');
-  T.eq(RoyalRules.megaLuckOverride(g, 50, seq(0.6)), g, 'rng ≥ luck/100 → unverändert');
-  const o = RoyalRules.megaLuckOverride(g, 100, seq(0));
-  T.ok(o !== g && RoyalRules.megaLineWins(o).length > 0, 'ein Schubs mit Treffer');
-  T.eq(RoyalRules.megaLineWins(o).reduce((a, w) => a + w.mult, 0), 10, 'kleinster Treffer (💎×3), nicht 7️⃣×5');
-  T.eq(g[1], ['7️⃣', 'BAR', '💎'], 'Original unverändert');
-  T.eq(RoyalRules.megaLuckOverride(G(['🍒 🍋 🍇', '🍋 🍇 🍒', '🍇 🍒 🍋', '🍒 🍋 🍇', '🍋 🍇 🍒']), 100, seq(0)).length, 5, 'ohne zahlende Verschiebung bleibt das Gitter');
+T.test('megaLuckOverride: Glück dreht bei Niete mit LUCK_GAIN × luck bis zu LUCK_REROLLS-mal neu, bis eine Linie zahlt (Balancing 2026-09-21, Jeder Tisch)', () => {
+  const M = RoyalRules.MEGA; T.eq([M.LUCK_GAIN, M.LUCK_REROLLS], [1.5, 3]);
+  const niete = G(['🔔 7️⃣ 💎', '7️⃣ BAR 💎', '💎 7️⃣ 🔔', '🔔 7️⃣ BAR', 'BAR 7️⃣ 💎']);
   const win = G(['🍒 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒', '🔔 🔔 🔔', '🔔 🔔 🔔']);
+  T.eq(RoyalRules.megaLineWins(niete), [], 'Ausgangsgitter gewinnt nichts');
+  T.eq(RoyalRules.megaLuckOverride(niete, 0, seq(0.5)), niete, 'ohne Glück unverändert');
   T.eq(RoyalRules.megaLuckOverride(win, 100, seq(0)), win, 'bestehender Gewinn bleibt');
+  T.eq(RoyalRules.megaLuckOverride(niete, 20, seq(0.31)), niete, 'luck 20 × 1,5 = 30 %: rng 0.31 → bleibt');
+  const keep = RoyalRules.megaRoll;
+  try {
+    let n = 0; RoyalRules.megaRoll = () => (++n < 3 ? niete : win);
+    T.eq(RoyalRules.megaLuckOverride(niete, 20, seq(0.29)), win, 'rng 0.29 < 0.30 → neu drehen; dritter Wurf trifft'); T.eq(n, 3);
+    n = 0; RoyalRules.megaRoll = () => { n++; return niete; };
+    T.eq(RoyalRules.megaLuckOverride(niete, 100, seq(0)), niete, 'drei Nieten → letzte Niete, kein vierter Wurf'); T.eq(n, 3);
+    n = 0; RoyalRules.megaRoll = () => { n++; return win; };
+    T.eq(RoyalRules.megaLuckOverride(niete, 100, seq(0)), win, 'erster neuer Wurf trifft → ein Wurf'); T.eq(n, 1);
+  } finally { RoyalRules.megaRoll = keep; }
 });
 T.test('megaLuckOverride: Pech würfelt ein gewinnendes Gitter neu, Niete bleibt', () => {
   const win = G(['🍒 🍒 🍒', '🍒 🍒 🍒', '🍒 🍒 🍒', '🔔 🔔 🔔', '🔔 🔔 🔔']);
@@ -11294,6 +11301,24 @@ T.test('megaLuckOverride: Pech würfelt ein gewinnendes Gitter neu, Niete bleibt
   T.eq(RoyalRules.megaLuckOverride(g, -100, seq(0, 0.5)), g, 'Niete bleibt');
   T.eq(RoyalRules.megaLuckOverride(win, 0, seq(0, 0.5)), win, 'luck 0 unverändert');
 });
+T.test('MEGA: flache Tafel, Kirschen ab 2, Freispiele 3×1 (Balancing 2026-09-21, Jeder Tisch)', () => {
+  const M = RoyalRules.MEGA;
+  T.eq(M.WEIGHTS, [36, 18, 14, 6, 4, 3]);
+  T.eq(M.PAY, { '🍒': [0, 0, 2, 5, 8, 12], '🔔': [0, 0, 0, 5, 10, 20], BAR: [0, 0, 0, 6, 12, 25], '💎': [0, 0, 0, 8, 20, 50], '7️⃣': [0, 0, 0, 10, 30, 100] });
+  T.eq([M.FREE_SPINS, M.FREE_MULT, M.FREE_MAX], [3, 1, 9]);
+  /* zwei Kirschen ab Walze 1 zahlen (Mittellinie = Reihe 1), zwei Glocken nicht, Kirschen ab Walze 2 nicht */
+  const row = (a, b, c, d, e) => G([`x ${a} x`, `x ${b} x`, `x ${c} x`, `x ${d} x`, `x ${e} x`]);
+  T.eq(RoyalRules.megaLineWins(row('🍒', '🍒', '🔔', 'BAR', '💎')).filter((w) => w.line === 0), [{ line: 0, sym: '🍒', count: 2, mult: 2 }], '🍒🍒 → 2');
+  T.eq(RoyalRules.megaLineWins(row('🔔', '🔔', '🍒', 'BAR', '💎')).filter((w) => w.line === 0), [], '🔔🔔 zahlt nichts');
+  T.eq(RoyalRules.megaLineWins(row('🔔', '🍒', '🍒', 'BAR', '💎')).filter((w) => w.line === 0), [], 'Kirschen erst ab Walze 2 zählen nicht');
+  T.eq(RoyalRules.megaLineWins(row('🍒', '🍒', '🍒', 'BAR', '💎')).filter((w) => w.line === 0), [{ line: 0, sym: '🍒', count: 3, mult: 5 }], '🍒🍒🍒 → 5');
+  /* Auszahlung: Linieneinsatz = Einsatz/5; 2 Kirschen auf einer Linie bei 500 € = 200 € */
+  T.eq(RoyalRules.megaWin(row('🍒', '🍒', '🔔', 'BAR', '💎'), 500, false).payout, 200);
+  T.eq(RoyalRules.megaWin(row('🍒', '🍒', '🔔', 'BAR', '💎'), 500, true).payout, 200, 'Freispiel ohne Verdopplung');
+  /* Freispiele: Deckel 9 beim Aufaddieren; ein alter Rest > 9 wird nur nicht weiter erhöht */
+  T.eq(Math.min(M.FREE_MAX, 8 + M.FREE_SPINS), 9);
+  T.eq(Math.min(M.FREE_MAX, 15 + M.FREE_SPINS), 9, 'Rest 15 aus altem Spielstand: kein Fehler, Deckel greift');
+});
 T.test('Mega Seven: RTP-Korridor (60.000 Spins, Seed 7)', () => {
   const rng = seeded(7); let paid = 0, ret = 0, free = 0;
   for (let i = 0; i < 60000; i++) {
@@ -11302,7 +11327,7 @@ T.test('Mega Seven: RTP-Korridor (60.000 Spins, Seed 7)', () => {
     ret += w.payout; if (w.freeSpins) free = Math.min(RoyalRules.MEGA.FREE_MAX, free + w.freeSpins);
   }
   const rtp = ret / paid;
-  T.ok(rtp > 0.88 && rtp < 0.98, `RTP ${rtp.toFixed(3)} außerhalb 0,88–0,98`);
+  T.ok(rtp > 0.98 && rtp < 1.06, `RTP ${rtp.toFixed(3)} außerhalb 0,98–1,06 (Balancing 2026-09-21, Jeder Tisch: ~102 % ohne Glück)`);
 });
 T.test('RoyalRules.megaLinePoints: Zellmittelpunkte einer Linie', () => {
   // Zelle 64, Lücke 6, Innenabstand 10: Spalte r → x = 10 + r*70 + 32, Reihe row → y = 10 + row*70 + 32
