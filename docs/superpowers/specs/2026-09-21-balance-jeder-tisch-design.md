@@ -112,16 +112,20 @@ Neu: `Rules.RR_MULT = 5`.
 
 ## 4. Erwartete Werte (Sim, diszipliniert, Grundglück 5)
 
+Gemessen nach der Umsetzung (`node tests/balance-sim.mjs`, Tabelle „Je Tisch"):
+
 | Tisch | nüchtern | 3 Bier | Treffer % | Streuung | Story 1 | Story 2 |
 |---|---|---|---|---|---|---|
-| Roulette Rot | 103 % | 122 % | 61 | 1,0 | 93 % | 89 % |
-| Craps (Pass) | 102 % | 120 % | 60 | 1,0 | 88 % | 81 % |
-| Mega Seven | 105 % | 122 % | 41 | 1,3 | 84 % | 77 % |
-| Baccarat (Bank) | 103 % | 117 % | 54 | 0,9 | 82 % | 75 % |
-| Glücksrad | 104 % | 121 % | 22 | 1,2 | 81 % | 74 % |
-| Slots | 105 % | 138 % | 58 | 2,9 | 80 % | 70 % |
+| Roulette Rot | 103 % | 122 % | 61 | 1,0 | 95 % | 90 % |
+| Craps (Pass) | 102 % | 120 % | 60 | 1,0 | 90 % | 85 % |
+| Mega Seven | 105 % | 122 % | 41 | 1,3 | 87 % | 80 % |
+| Glücksrad | 104 % | 121 % | 22 | 1,2 | 86 % | 79 % |
+| Baccarat (Bank) | 103 % | 117 % | 54 | 0,9 | 84 % | 78 % |
+| Slots | 105 % | 138 % | 58 | 2,9 | 83 % | 74 % |
 
-Alle über der Marke, keiner klar der beste; Rot bleibt der ruhigste Weg, Slots der wildeste (deshalb dort 138 % mit Bier). Der wilde Spieler bleibt bei ~5 %. Toleranz bei der Umsetzung: ±3 Punkte Quote, ±5 Punkte Story – die Sim ist mit Seed deterministisch, Abweichungen darüber sind ein Umsetzungsfehler, kein Rauschen.
+(Die Kalibrierung vor der Umsetzung lag 2–4 Punkte darunter, weil die Sim-Schwelle „Bier lohnt sich ab" dort noch ohne Grundglück gerechnet wurde.)
+
+Alle über der Marke, keiner klar der beste; Rot bleibt der ruhigste Weg, Slots der wildeste (deshalb dort 138 % mit Bier). Der wilde Spieler (halbe Bankroll pro Spin) bleibt bei 7 % (Slots) bzw. 16 % (Rad – die 4 statt 8 Bankrott-Felder verzeihen ihm mehr, er scheitert trotzdem zu 84 %). Toleranz bei künftigen Änderungen: ±3 Punkte Quote, ±5 Punkte Story – die Sim ist mit Seed deterministisch, Abweichungen darüber sind ein Umsetzungsfehler, kein Rauschen.
 
 ## 5. Was mit anhängt
 

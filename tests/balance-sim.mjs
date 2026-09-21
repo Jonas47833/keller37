@@ -116,6 +116,20 @@ function run(name, P, strat) {
   console.log(`  ${name.padEnd(44)} Ziel ${(won / N * 100).toFixed(1).padStart(5)} %   Ø Tag ${won ? (days / won).toFixed(0).padStart(2) : ' -'}   Abende < 50 €: ${(zero / N).toFixed(1).padStart(4)}   Median-Ende (Verlierer): ${finals.length ? Math.round(finals[Math.floor(finals.length / 2)]) : '-'} €`);
 }
 
+/* Je Tisch: Quote nüchtern / mit 3 Bier (beides mit Grundglück), Trefferquote, Streuung in Einsätzen, Story 1/2 diszipliniert (1.500 Läufe) */
+function tableByGame(s1, s2) {
+  console.log(`\nJe Tisch, diszipliniert (Grundglück ${Rules.BASE_LUCK}; Ziel Story 1 ≥ 75 %, Story 2 ≥ 65 % – Balancing 2026-09-21, Jeder Tisch):`);
+  console.log('  Tisch          nüchtern   3 Bier   Treffer   Streuung   Story 1   Story 2');
+  for (const g of Object.keys(games)) {
+    if (g === 'rouletteZahl') continue;
+    const N = 40000, rng = seeded(3); let sum = 0, sq = 0, hits = 0, sober = 0;
+    for (let i = 0; i < N; i++) { const d = games[g](100, Rules.BASE_LUCK + 20, rng); sum += d; sq += d * d; if (d > 0) hits++; sober += games[g](100, Rules.BASE_LUCK, rng); }
+    const mean = sum / N, sd = Math.sqrt(sq / N - mean * mean) / 100, edge = beerEdge(g);
+    const pct = (P) => { const r = seeded(21); let won = 0; for (let i = 0; i < 1500; i++) if (disciplined(r, { ...P, game: g, edge }).won) won++; return (won / 15).toFixed(1).padStart(5) + ' %'; };
+    console.log(`  ${g.padEnd(13)} ${(100 + sober / N).toFixed(1).padStart(7)} %  ${(100 + mean).toFixed(1).padStart(5)} %  ${(hits / N * 100).toFixed(1).padStart(6)} %   ${sd.toFixed(2).padStart(6)}   ${pct({ ...s1, gameFrom: 0 })}   ${pct(s2)}`);
+  }
+}
+
 rtpTable();
 if (!process.argv.includes('--rtp')) {
   const rot = beerEdge('rouletteRot'), slots = beerEdge('slots');
@@ -124,6 +138,7 @@ if (!process.argv.includes('--rtp')) {
   const s1 = { start: 50, days: 30, target: 50000, job: (d) => (d < 6 ? 100 : 220), spins: 40 };
   /* Story 2: ab Tag 4 bei 0 €, 26 Abende, Jobs ~180 €/Tag, Roulette offen. Ziel: 40.000 € + Deckel („Der Wirt"). */
   const s2 = { start: 0, days: 26, target: 40000, job: () => 180, spins: 40 };
+  tableByGame(s1, s2);
   console.log('\nStory 1 „Die Schuld" – 50.000 € für Vito in 30 Tagen (Roulette ab Tag 6):');
   run('diszipliniert, Roulette Rot, 40 Spins/Abend', { ...s1, game: 'rouletteRot', edge: rot, gameFrom: 5 }, disciplined);
   run('diszipliniert, Roulette Rot, 80 Spins/Abend', { ...s1, game: 'rouletteRot', edge: rot, gameFrom: 5, spins: 80 }, disciplined);
