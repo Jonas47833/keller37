@@ -748,7 +748,7 @@ body[data-zone="royal"] .panel { background: var(--panel); border: 1px solid var
 body.dev-open #toasts { z-index: 99; }
 /* -- Reduced Motion -- */
 @media (prefers-reduced-motion: reduce) {
-  .neon, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running::before, .plate.hit, .plate.broken, .taxi-road.running::before, .brake-flash.on, .ticket-pop, .mega-reel.landed .strip, .mega-grid .cell.scatter, .mega-lights, .die.rolling, .lv-badge.point { animation: none !important; }
+  .neon, .balance, .cs-money, .note, .toast, .runner .horse, .spark, .cs-next, .trophy.fresh, div#title, .belt.running::before, .plate.hit .dish, .plate.broken .dish, .taxi-road.running::before, .brake-flash.on, .ticket-pop, .mega-reel.landed .strip, .mega-grid .cell.scatter, .mega-lights, .die.rolling, .lv-badge.point { animation: none !important; }
   .strip.spinning { animation: none !important; filter: none; }
   .stage, .stage.leaving, .stage.entering { transition: none; animation: none; }
   #wheelCanvas { transition-duration: .3s; }
@@ -815,9 +815,12 @@ body.mode-story #newgame { display: none; }
 .belt::after { content: ""; position: absolute; inset: 0; border-radius: 6px; box-shadow: inset 0 8px 16px rgba(0,0,0,.6); pointer-events: none; }
 .belt.running::before { animation: beltMove .6s linear infinite; }
 .zone { position: absolute; top: 0; bottom: 0; z-index: 1; background: rgba(61,220,132,.25); border-left: 2px solid var(--neon-green); border-right: 2px solid var(--neon-green); box-shadow: inset 0 0 20px rgba(61,220,132,.3); }
-.plate { --x: 0px; position: absolute; top: 50%; left: 0; z-index: 2; transform: translate(calc(var(--x) - 50%), -50%); will-change: transform; font-size: 3rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,.7)); } /* Position per --x (Spueler.nextPlate); eigener Layer, sonst wird der Schattenfilter jedes Frame neu gerastert */
-.plate.hit { animation: plateHit .35s ease both; }
-.plate.broken { animation: plateBreak .5s ease both; }
+.plate { --x: 0px; position: absolute; top: 50%; left: 0; z-index: 2; transform: translateX(var(--x)); will-change: transform; font-size: 3rem; } /* Position per --x (Spueler.nextPlate); eigener Layer, sonst wird der Schattenfilter jedes Frame neu gerastert */
+/* Aufbau wie .cs-fig > .cs-fig-inner: der Wrapper hält nur die Position, das innere .dish die Treffer-/Bruch-Animation mit konstanten
+   Keyframes. Stand var(--x) in den Keyframes, zeichnete Firefox unter Windows den schwebenden Teller in der Bandmitte statt an der Trefferstelle. */
+.plate .dish { display: block; transform: translate(-50%, -50%); filter: drop-shadow(0 4px 6px rgba(0,0,0,.7)); }
+.plate.hit .dish { animation: plateHit .35s ease both; }
+.plate.broken .dish { animation: plateBreak .5s ease both; }
 @media (max-width: 760px) { .belt { height: 70px; } .plate { font-size: 2.3rem; } }
 /* -- Nachttaxi -- */
 .taxi-panel { background: linear-gradient(180deg, #0b1020, #05070f); border-color: rgba(76,201,240,.25); }
@@ -1151,8 +1154,8 @@ body.mode-story #newgame { display: none; }
 @keyframes stampIn { from { transform: translate(-50%, -50%) rotate(-12deg) scale(3); opacity: 0; } to { transform: translate(-50%, -50%) rotate(-12deg) scale(1); opacity: 1; } }
 @keyframes dogJump { 0% { transform: translateX(-50%) translateY(30px); opacity: 0; } 40% { transform: translateX(-50%) translateY(-20px); opacity: 1; } 100% { transform: translateX(-50%) translateY(0); opacity: 1; } }
 @keyframes beltMove { from { transform: translateX(0); } to { transform: translateX(60px); } }
-@keyframes plateHit { 0% { transform: translate(calc(var(--x) - 50%), -50%) scale(1); } 50% { transform: translate(calc(var(--x) - 50%), -80%) scale(1.2); } 100% { transform: translate(calc(var(--x) - 50%), -50%) scale(0); opacity: 0; } }
-@keyframes plateBreak { 0% { transform: translate(calc(var(--x) - 50%), -50%) rotate(0); } 100% { transform: translate(calc(var(--x) - 50%), 40%) rotate(60deg); opacity: 0; } }
+@keyframes plateHit { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -80%) scale(1.2); } 100% { transform: translate(-50%, -50%) scale(0); opacity: 0; } }
+@keyframes plateBreak { 0% { transform: translate(-50%, -50%) rotate(0); } 100% { transform: translate(-50%, 40%) rotate(60deg); opacity: 0; } }
 @keyframes roadMove { from { transform: translateY(0); } to { transform: translateY(44px); } }
 /* Kater-HUD (Story 2) */
 .kater-hud { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -1579,7 +1582,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     <div class="dish-counter"><span id="dishNum">Teller 0/10</span><span id="dishScore">Sauber 0 · Bruch 0</span></div>
     <div class="belt" id="belt">
       <div class="zone" id="dishZone"></div>
-      <div class="plate" id="dishPlate">🍽️</div>
+      <div class="plate" id="dishPlate"><span class="dish">🍽️</span></div>
     </div>
     <div class="status" id="dishStatus">Klick oder Leertaste, wenn der Teller in der Zone ist.</div>
     <div class="bet-bar">
@@ -13755,6 +13758,15 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     }
     const base = keyframesOf('hitBase'); T.ok(base, '@keyframes hitBase vorhanden');
     const vals = new Set([...base.cssRules].map((k) => k.style.boxShadow)); T.eq(vals.size, 1, 'hitBase ist konstant (kein Repaint)');
+  });
+  /* Firefox/Windows zeichnete den hochschwebenden Teller in der Bandmitte statt an der Trefferstelle: die Position stand als
+     var(--x) in calc() innerhalb der Keyframes, und der Compositor löst das dort nicht zuverlässig auf. Die Keyframes müssen
+     daher konstant bleiben; die Position sitzt auf dem Wrapper .plate (wie .cs-fig > .cs-fig-inner auf der Cutscene-Bühne). */
+  T.test('Keyframes plateHit/plateBreak sind konstant – keine var() oder calc() (Firefox/Windows: Teller sonst in der Bandmitte)', () => {
+    for (const name of ['plateHit', 'plateBreak']) {
+      const kf = keyframesOf(name); T.ok(kf, `@keyframes ${name} vorhanden`);
+      for (const k of kf.cssRules) T.ok(!/var\(|calc\(/.test(k.style.transform), `${name} ${k.keyText}: ${k.style.transform}`);
+    }
   });
   /* Fällt eine Assertion mitten in einer Szene, bliebe Cutscene.active sonst hängen (der nächste Test mit Cutscene.play würde
      ewig warten) – im finally notfalls hart zurücksetzen, wie play() es am Ende auch täte. */
