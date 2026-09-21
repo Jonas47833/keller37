@@ -71,6 +71,14 @@ async def main():
             await check_screen(cdp, sc)
             await cdp.screenshot("mobile-%s.png" % sc)
 
+        # Russisch Roulette: "Duell starten" muss ueber der Tab-Leiste stehen (Kammern-Zeile + Status + 3-zeilige Einsatz-Leiste kuerzen die Buehne)
+        await cdp.navigate(URL + "?fresh&mode=free&screen=russian", wait=1.4)
+        res = await cdp.eval(r"""
+          (function(){ const b = document.querySelector('#btnDuel').getBoundingClientRect(), s = document.querySelector('.side').getBoundingClientRect();
+            return { btnBottom: Math.round(b.bottom), sideTop: Math.round(s.top), vh: window.innerHeight }; })()
+        """, await_promise=False) or {}
+        record("russian: Duell-starten-Knopf ueber der Tab-Leiste", res["btnBottom"] <= res["sideTop"], res)
+
         # Roulette: Tisch hochkant (1-2-3 nebeneinander, 4 darunter), Drehen breit
         await cdp.navigate(URL + "?fresh&mode=free&screen=roulette", wait=1.4)
         r = await cdp.eval(r"""
