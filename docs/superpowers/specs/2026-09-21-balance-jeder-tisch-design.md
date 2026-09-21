@@ -99,6 +99,17 @@ Ein 3er zahlt damit mindestens den Einsatz zurück (heute 0,4×). **Kirschen zah
 
 Keine Regeländerung; profitiert nur vom Grundglück.
 
+### 3.8 Russisches Roulette – Igor zahlt 5:1 (Nachtrag, Jonas 2026-09-21)
+
+Heute: du ziehst zuerst, sechs Kammern, abwechselnd → 50/50; Igor liegt → +Einsatz, du → −Einsatz −100 € Spital. Bei 10 € Einsatz riskiert man 110 für 10.
+
+Neu: `Rules.RR_MULT = 5`.
+- `Rules.rrStake(bet) = bet × RR_MULT` – das liegt auf dem Tisch und wird bei Duellstart treuhänderisch abgezogen (`Game.beginSpin(Rules.rrStake(bet))`); der MAX-Chip setzt `floor(maxBet / RR_MULT)`.
+- `Rules.rrDelta('igor', bet) = +bet × RR_MULT`; `Rules.rrDelta('player', bet) = −(bet × RR_MULT + HOSPITAL_RR)`.
+- 10 €: +50 / −150 (67 %) · 100 €: +500 / −600 (91 %) · 1.000 €: +5.000 / −5.100 (99 %). Hohe Einsätze fast fair, kleine bestraft das Spital – Nervenkitzel mit Preis in beide Richtungen. Kein Glückseingriff (die Kugel bleibt Zufall).
+- `rr:result` meldet weiter `{ victim, bet }` mit dem Einsatz (nicht dem Fünffachen); `stake` (Umsatz Story 3) zählt den Tischeinsatz `rrStake(bet)`.
+- Texte: Tafel „Igor zahlt 5:1 · Streifschuss kostet 5× Einsatz + 100 € Spital", Tür-Tag „Duell · 5:1", Statuszeilen mit den echten Beträgen aus `rrDelta`. Vitos Prüfung (`forced`) bleibt ohne Geld.
+
 ## 4. Erwartete Werte (Sim, diszipliniert, Grundglück 5)
 
 | Tisch | nüchtern | 3 Bier | Treffer % | Streuung | Story 1 | Story 2 |
