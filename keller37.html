@@ -1643,7 +1643,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
   <div class="panel mega-panel">
     <div class="mega-machine">
       <div class="mega-lights" aria-hidden="true"></div><div class="mega-lights alt" aria-hidden="true"></div>
-      <div class="mega-free" id="megaFree">FREISPIELE ×2 · noch <span id="megaFreeLeft">0</span></div>
+      <div class="mega-free" id="megaFree">FREISPIELE · noch <span id="megaFreeLeft">0</span></div>
       <div class="slot-head">Mega Seven</div>
       <div class="mega-reels"><div class="mega-grid" id="megaGrid"></div><svg class="mega-lines-svg" id="megaLinesSvg" aria-hidden="true"></svg></div>
       <div class="mega-banner" id="megaBanner" aria-live="polite"><div class="mb-title"></div><div class="mb-amount"></div></div>
@@ -1916,10 +1916,10 @@ const Rules = {
   slotRoll(rng) { return [0, 1, 2].map(() => Rules.SYMBOLS[Math.floor(rng() * Rules.SYMBOLS.length)]); },
   CHEAP: ['🍒', '🍋', '🍇'],
   SLOT_LUCK_TRIPLE: 0.6, // Glück: ein erzwungenes Paar aus 🍒🍋🍇 wird so oft zum Drilling (fest, nicht mit dem Glück skaliert; Balancing 2026-09-21, Jeder Tisch: 0,6 statt 0,12 – Slots streuen stark, Bier muss dort mehr bringen)
-  /* Glück erzwingt ein Paar; bei den billigen Symbolen (6×) wird daraus mit SLOT_LUCK_TRIPLE ein Drilling –
+  /* Glück erzwingt ein Paar; bei den billigen Symbolen (5×) wird daraus mit SLOT_LUCK_TRIPLE ein Drilling –
      Glocke, Diamant und Sieben bleiben Glückssache, sonst wären Slots mit Bier eine Gelddruckmaschine.
-     Balancing 2026-09-21: 3 Bier heben Slots damit auf ~115 % wie Roulette Rot (vorher 106 %: Bier lohnte sich erst ab 600 € Einsatz).
-     Pech würfelt einen Gewinn einmal neu. */
+     Balancing 2026-09-21 (Jeder Tisch): 3 Bier heben Slots auf ~138 % – Slots streuen 3× so stark wie Rot und brauchen den größten
+     Bier-Vorteil, damit der disziplinierte Spieler die Story dort zu 83/74 % schafft. Pech würfelt einen Gewinn einmal neu. */
   slotLuckOverride(res, luck, rng) {
     if (luck < 0) return Rules.slotMultiplier(...res) > 0 && Rules.pech(luck, rng) ? Rules.slotRoll(rng) : res;
     const [a, b, c] = res;
@@ -4463,7 +4463,7 @@ const MegaSlots = {
     b.className = `mega-banner show ${kind}`;
     qs('.mb-title', b).textContent = kind === 'mega' ? 'MEGA WIN' : kind === 'big' ? 'BIG WIN' : `${amount} FREISPIELE`;
     const amt = qs('.mb-amount', b);
-    if (kind === 'free') { amt.textContent = `×${RoyalRules.MEGA.FREE_MULT} auf alles`; }
+    if (kind === 'free') { amt.textContent = RoyalRules.MEGA.FREE_MULT > 1 ? `×${RoyalRules.MEGA.FREE_MULT} auf alles` : 'Drehs gratis'; }
     else if (reduced) { amt.textContent = UI.fmt(amount); }
     else {
       const dur = kind === 'mega' ? 2200 : 1300, t0 = performance.now(); let lastTick = 0;
@@ -6199,7 +6199,7 @@ const Russian = {
       this.chambers(duel.idx, duel.spent, gen);
       await wait(this.TIMES.spin);
       if (duel.cylinder[duel.idx]) {
-        if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = duel.forced ? `<span class="loss">PÄNG · Streifschuss</span>` : `<span class="loss">PÄNG · Streifschuss · −${UI.fmt(-Rules.rrDelta('player', duel.bet))} & 100 € Spital</span>`;
+        if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = duel.forced ? `<span class="loss">PÄNG · Streifschuss</span>` : `<span class="loss">PÄNG · Streifschuss · −${UI.fmt(-Rules.rrDelta('player', duel.bet))} (davon ${UI.fmt(Rules.HOSPITAL_RR)} Spital)</span>`;
         await this.bang('player', gen);
         await this.end('player', duel);
         return;
@@ -7236,7 +7236,7 @@ const RoyalRules = {
     const rows = RoyalRules.MEGA.LINES[line] || [];
     return rows.slice(0, count).map((row, r) => [pad + r * (cell + gap) + cell / 2, pad + row * (cell + gap) + cell / 2]);
   },
-  /* Glücksrad-Farben (Art déco): Gold ×10, Champagner ×5, Smaragd ×2, Onyx-hell ×1, Bordeaux Hälfte, Onyx-dunkel Bankrott */
+  /* Glücksrad-Farben (Art déco): Champagner ×5, Gold ×3, Smaragd ×2, Onyx-hell ×1 (Einsatz zurück), Bordeaux Hälfte, Onyx-dunkel Bankrott */
   WHEEL_COLORS: { 5: '#f1dfa8', 3: '#c9a961', 2: '#1d6b4a', 1: '#2a262e', 0.5: '#5a1a24', 0: '#141216' },
   wheelTone(m) { return m === 0 ? 'bust' : m === 0.5 ? 'half' : `x${m}`; },
   /* ---- Eintritt ---- */
@@ -7295,17 +7295,8 @@ const RoyalRules = {
     const scatters = RoyalRules.megaScatters(grid);
     return { lines, scatters, payout, freeSpins: scatters >= 3 ? M.FREE_SPINS : 0 };
   },
-  megaShift(grid, reel, dir) {
-    const g = grid.map((c) => c.slice());
-    const c = g[reel];
-    g[reel] = dir > 0 ? [c[1], c[2], c[0]] : [c[2], c[0], c[1]];
-    return g;
-  },
-  /* Glück: gewinnt keine Linie, wird die Walze/Richtung gewählt, deren Ein-Schritt-Verschiebung den kleinsten
-     zahlenden Treffer ergibt – ein Schubs, kein Jackpot (der „beste" Schubs hob die Quote mit 3 Bier auf 125 %,
-     der kleinste liegt bei ~112 % wie Roulette und Rad). Pech: ein gewinnendes Gitter wird mit |luck| % einmal neu gewürfelt. */
   /* Glück: bei Niete mit LUCK_GAIN × luck % bis zu LUCK_REROLLS-mal neu drehen, bis eine Linie zahlt – das Spiegelbild von Pech (Gewinn wird neu gedreht).
-     Der frühere Walzen-Schub (megaShift) lief bei den meisten Nieten ins Leere; Bier brachte an Mega nur +6 Punkte. (Balancing 2026-09-21, Jeder Tisch) */
+     Der frühere Walzen-Schub (eine Walze um eins verschieben) lief bei den meisten Nieten ins Leere; Bier brachte an Mega nur +6 Punkte. (Balancing 2026-09-21, Jeder Tisch) */
   megaLuckOverride(grid, luck, rng) {
     if (luck < 0) return RoyalRules.megaLineWins(grid).length && Rules.pech(luck, rng) ? RoyalRules.megaRoll(rng) : grid;
     if (RoyalRules.megaLineWins(grid).length) return grid;
@@ -7380,8 +7371,8 @@ const RoyalRules = {
     }
     return { delta, pass, field, point: newPoint, sum };
   },
-  /* Glück: ein verlierender Pass-Wurf (7 in der Punktphase, 2/3/12 im Come-out) wird um ±1 auf einem Würfel verschoben.
-     Pech: ein gewinnender Wurf (Pass oder Field) wird mit |luck| % einmal neu gewürfelt. */
+  /* Glück: ein verlierender Pass-Wurf (7 in der Punktphase, 2/3/12 im Come-out) wird mit CRAPS_WIN_SHARE × luck % zum Gewinnwurf
+     (Punkt bzw. 7/11), sonst mit luck % um ±1 auf einem Würfel verschoben. Pech: ein gewinnender Wurf (Pass oder Field) wird mit |luck| % einmal neu gewürfelt. */
   CRAPS_WIN_SHARE: 0.3, // Anteil der Glückschance, mit dem ein Verlustwurf zum Gewinnwurf wird (Balancing 2026-09-21, Jeder Tisch: Craps 88/81 % Story statt 22/19)
   crapsLuckOverride(dice, point, hasPass, luck, rng, hasField = false) {
     if (luck < 0) {
@@ -7423,7 +7414,7 @@ const RoyalRules = {
   wheelIndexAt(deg) { const n = RoyalRules.WHEEL.SEGMENTS.length; return Math.floor((((-deg) % 360) + 360) % 360 / (360 / n)) % n; },
   /* Drehwinkel (Grad, im Uhrzeigersinn) aus getComputedStyle().transform – 'matrix(a, b, c, d, e, f)' */
   wheelMatrixAngle(str) { const m = /matrix\(([^,]+),([^,]+)/.exec(str || ''); return m ? Math.atan2(+m[2], +m[1]) * 180 / Math.PI : 0; },
-  /* Glück: Bankrott rückt auf das nächste Nicht-Bankrott-Segment; Pech: ein Gewinn rückt auf das nächste Bankrott-Segment */
+  /* Glück: ein Feld < 1 rückt auf das nächste Feld ≥ 1 (bis 2 weiter); Pech: ein Feld > 0 rückt auf das nächste Bankrott-Segment (bis 2 weiter) */
   wheelLuckOverride(index, luck, rng) {
     const S = RoyalRules.WHEEL.SEGMENTS;
     if (luck < 0) {
@@ -11275,13 +11266,6 @@ T.test('megaScatters / megaWin / megaDelta', () => {
   T.eq(RoyalRules.megaDelta(500, 0, false), -500);
   T.eq(RoyalRules.megaDelta(500, 1200, true), 1200, 'Freispiel kostet nichts');
 });
-T.test('megaShift: Spalte rotieren', () => {
-  const g = G(['a b c', 'd e f', 'g h i', 'j k l', 'm n o']);
-  T.eq(RoyalRules.megaShift(g, 1, 1)[1], ['e', 'f', 'd']);
-  T.eq(RoyalRules.megaShift(g, 1, -1)[1], ['f', 'd', 'e']);
-  T.eq(RoyalRules.megaShift(g, 1, 1)[0], ['a', 'b', 'c'], 'andere Walzen unverändert');
-  T.eq(g[1], ['d', 'e', 'f'], 'Original unverändert');
-});
 T.test('megaLuckOverride: Glück dreht bei Niete mit LUCK_GAIN × luck bis zu LUCK_REROLLS-mal neu, bis eine Linie zahlt (Balancing 2026-09-21, Jeder Tisch)', () => {
   const M = RoyalRules.MEGA; T.eq([M.LUCK_GAIN, M.LUCK_REROLLS], [1.5, 3]);
   const niete = G(['🔔 7️⃣ 💎', '7️⃣ BAR 💎', '💎 7️⃣ 🔔', '🔔 7️⃣ BAR', 'BAR 7️⃣ 💎']);
@@ -14431,6 +14415,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       /* Zug 2: Kugel beim Spieler → Blitz, roter Rand, rr:result, rr.headshot, Abrechnung −(5 × 10 + 100) */
       await Russian.pull();
       T.eq([Russian.inDuel, ev, scenes, State.s.balance, qs('#rrBetControls').classList.contains('hidden'), EgoStage.redUntil > EgoStage.t, qs('#rrStage .duel-gun').classList.contains('up')], [false, [['result', 'player', 10]], ['rr.headshot'], 850, false, true, false], 'Streifschuss abgerechnet, Hand gesenkt');
+      const rrTxt = qs('#rrStatus').textContent; T.ok(rrTxt.includes('−150 €') && rrTxt.includes('100 € Spital') && !rrTxt.includes('& 100'), `Statuszeile nennt den echten Verlust 150 € inkl. Spital, nicht doppelt: ${rrTxt}`);
       /* forced (Vitos Prüfung): kein Einsatz, Igor erwischt es → rr:forced igor, Igor fällt */
       ev.length = 0; Rules.rrCylinder = () => [false, true, false, false, false, false];
       await Russian.start({ forced: true }); T.eq([Russian.inDuel, State.s.balance, qs('#rrStatus').textContent.includes('Vitos Prüfung')], [true, 850, true]);
@@ -14543,6 +14528,10 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.ok(qs('#megaBanner', root) && !qs('#megaBanner', root).classList.contains('show'), 'Banner vorhanden, verborgen');
       T.eq(qsa('.mega-lights', root).length, 2, 'zwei Lichtlagen (Attract-Mode)');
       T.eq(qs('#btnMegaAuto', root).textContent, 'Auto ×10');
+      MegaSlots.showBanner('free', 3, { instant: true });
+      T.eq(qs('.mb-title', qs('#megaBanner', root)).textContent, '3 FREISPIELE');
+      T.ok(!/×\s*[12]/.test(qs('.mb-amount', qs('#megaBanner', root)).textContent), `Freispiel-Banner ohne Multiplikator (FREE_MULT 1): ${qs('.mb-amount', qs('#megaBanner', root)).textContent}`);
+      T.ok(!qs('#megaFree', root).textContent.includes('×2'), `Freispiel-Laufband ohne ×2: ${qs('#megaFree', root).textContent}`);
       MegaSlots.showBanner('big', 1500, { instant: true });
       const b = qs('#megaBanner', root);
       T.ok(b.classList.contains('show') && b.classList.contains('big'), 'Banner big sichtbar');

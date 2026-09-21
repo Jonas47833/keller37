@@ -5,8 +5,8 @@
 //   node tests/balance-sim.mjs --rtp      # nur die RTP-Tabelle
 //
 // Spieler-Modelle (Abend = ein Besuch im Keller, ~40 Spins):
-//   Leitplanken (Balancing 2026-09-21): nüchtern alle Tische ~97 %, mit 3 Bier ~115 %, 3 Bier lohnen sich ab ~110 € Einsatz;
-//   Story 1/2 diszipliniert auf Rot ~75 %/~70 %, wild bleibt pleite.
+//   Leitplanken (Balancing 2026-09-21, Jeder Tisch): Grundglück 5 → nüchtern alle Tische 102–105 %, mit 3 Bier 117–138 %,
+//   3 Bier lohnen sich ab ~100 € Einsatz; Story 1/2 diszipliniert an jedem Tisch ≥ 75 %/≥ 65 % (Tabelle „Je Tisch"), wild bleibt pleite.
 //   diszipliniert – erst per Job Bankroll aufbauen, Einsatz ≈ 10 % der Bankroll bis LUCK_CAP, 3 Bier nur wenn
 //                   sie sich bei diesem Einsatz rechnen, Stop-Loss bei −50 % des Abendstarts
 //   wild          – halbe Bankroll pro Spin, kein Bier, bis null oder Ziel
