@@ -7017,7 +7017,9 @@ const StoryRules = {
     return g ? g.text : null;
   },
   spuelerPay(hits, breaks) { return hits * 5 - breaks * 10; },
-  taxiPay(passengers, tickets, tip = 0) { return passengers * (15 + tip) - tickets * 50; },
+  /* Nachttaxi: 15 € je Fahrgast (+ Trinkgeld), aber höchstens 20 bezahlte Fahrgäste – der Job verspricht „bis 300 €“ */
+  TAXI_MAX_PASSENGERS: 20,
+  taxiPay(passengers, tickets, tip = 0) { return Math.min(passengers, StoryRules.TAXI_MAX_PASSENGERS) * (15 + tip) - tickets * 50; },
   tuerBonus(strength) { return Math.min(50, 10 * (strength || 0)); },
   price(s, key) {
     const p = s.story && s.story.prices && s.story.prices[key];
@@ -8607,7 +8609,7 @@ const Taxi = {
         e.y += this.speed * dt; e.el.style.transform = `translateY(${e.y}px)`;
         if (!e.done && e.y >= carY - 20 && e.y <= carY + 30) {
           e.done = true;
-          if (e.kind === 'rider') { if (e.lane === this.laneIdx) { this.passengers++; SFX.play('coin'); e.el.textContent = '💨'; this.floatText(this.variant === 'kurier' ? 'Übergabe ✓' : `+${15 + this.tip} €`, 'win'); } }
+          if (e.kind === 'rider') { if (e.lane === this.laneIdx) { this.passengers++; SFX.play('coin'); e.el.textContent = '💨'; this.floatText(this.variant === 'kurier' ? 'Übergabe ✓' : this.passengers > StoryRules.TAXI_MAX_PASSENGERS ? 'Schicht voll' : `+${15 + this.tip} €`, 'win'); } }
           else if (this.braking) { SFX.play('click'); } else { this.tickets++; SFX.play('stamp'); this.ticket(); }
           this.score();
         }
@@ -12611,6 +12613,11 @@ T.test('advanceDay: Überfall-Cooldown sinkt pro Tag', () => {
 T.test('taxiPay mit Trinkgeld, tuerBonus-Deckel', () => {
   T.eq(StoryRules.taxiPay(12, 1), 130);
   T.eq(StoryRules.taxiPay(12, 1, 5), 190);
+  T.eq(StoryRules.TAXI_MAX_PASSENGERS, 20);
+  T.eq(StoryRules.taxiPay(20, 0), 300, 'genau 20 Fahrgäste = Deckel 300 €');
+  T.eq(StoryRules.taxiPay(52, 0), 300, 'mehr Fahrgäste zahlen nicht mehr („bis 300 €“)');
+  T.eq(StoryRules.taxiPay(52, 0, 5), 400, 'Trinkgeld nur für die bezahlten 20');
+  T.eq(StoryRules.taxiPay(52, 2), 200, 'Strafzettel gehen vom gedeckelten Lohn ab');
   T.eq(StoryRules.tuerBonus(0), 0); T.eq(StoryRules.tuerBonus(3), 30); T.eq(StoryRules.tuerBonus(9), 50);
 });
 T.test('jobAvailable: Eintreiber braucht Stärke 4', () => {
