@@ -9981,8 +9981,11 @@ const STORY_STASH = {
     kreditZahlen(s) {
       const v = s.story.vars, amt = Math.min(GangRules.KREDIT_SCHRITT, v.kredit || 0, s.balance);
       if (amt <= 0) return {};
-      s.balance -= amt; v.kredit -= amt; v.ruf = Math.min(10, (v.ruf || 0) + 1);
-      return { toast: { icon: '🧾', title: `−${StoryRules.fmtMoney(amt)}`, text: `Kredit noch ${StoryRules.fmtMoney(v.kredit)}. Ruf +1 – Anabi merkt sich, wer zahlt.`, tone: 'info' } };
+      s.balance -= amt; v.kredit -= amt;
+      /* Ruf nur für eine volle Rate oder die Tilgung, einmal am Tag – sonst wäre die Stufen-Schranke per Kleinstbeträgen umgehbar (Review 2026-09-21) */
+      const rate = (amt === GangRules.KREDIT_SCHRITT || v.kredit === 0) && !s.story.flags.kreditRufHeute;
+      if (rate) { s.story.flags.kreditRufHeute = true; v.ruf = Math.min(10, (v.ruf || 0) + 1); }
+      return { toast: { icon: '🧾', title: `−${StoryRules.fmtMoney(amt)}`, text: `Kredit noch ${StoryRules.fmtMoney(v.kredit)}.${rate ? ' Ruf +1 – Anabi merkt sich, wer zahlt.' : ''}`, tone: 'info' } };
     },
     /* Reparatur nach Überfall: Ruf +1, einmal je Woche (Flag fällt bei der Lieferung) – aufgerufen vom Bus-Hook story:repair */
     reparaturRuf(s) {
@@ -10040,7 +10043,7 @@ const STORY_STASH = {
     { id: 'startTrocken', when: { all: [{ day: { gte: 1 } }, { prevEnding: { story: 'kater', id: 'nuechtern' } }] }, once: true, at: 'morning', effects: [{ flag: 'trocken' }, { disable: ['beer'] }] },
     { id: 'startBrownie', when: { all: [{ day: { gte: 1 } }, { prevEnding: { story: 'kater', id: 'brownie' } }] }, once: true, at: 'morning', effects: [{ enable: ['brownie'] }] },
     { id: 'tisch', when: { day: { gte: 2 } }, once: true, at: 'morning', scene: 'stash.tisch', effects: [{ unlock: { doors: ['hinterzimmer'] } }] },
-    { id: 'tagesstart', when: { day: { gte: 1 } }, daily: true, at: 'morning', effects: [{ unflag: 'ueberfallHeute' }, { unflag: 'igorHeute' }] },
+    { id: 'tagesstart', when: { day: { gte: 1 } }, daily: true, at: 'morning', effects: [{ unflag: 'ueberfallHeute' }, { unflag: 'igorHeute' }, { unflag: 'kreditRufHeute' }] },
     { id: 'nachtkasse', when: { day: { gte: 2 } }, daily: true, at: 'morning', effects: [{ call: 'nachtkasse' }] },
     { id: 'pfandleihe', when: { day: { gte: 8 } }, once: true, at: 'morning', effects: [{ enable: ['pfandleihe'] }] },
     { id: 'hausmeister', when: { all: [{ var: 'repariert_roulette', gte: 1 }, { var: 'repariert_slots', gte: 1 }, { var: 'repariert_horses', gte: 1 }, { var: 'repariert_russian', gte: 1 }, { var: 'repariert_blackjack', gte: 1 }] }, once: true, at: 'morning', effects: [{ achievement: 'hausmeister' }] },
@@ -10067,6 +10070,7 @@ const STORY_STASH = {
     { id: 'rufStufeMorgen', daily: true, at: 'morning', effects: [{ call: 'rufStufe' }] },
   ],
   actions: [
+    { id: 'wacheWeg', room: 'bar', label: '🚪 Wache heimschicken', when: { flag: 'wache' }, scene: 'stash.wacheWeg' },
     { id: 'igorBier', room: 'bar', label: '🍺 Bier mit Igor · 100 €', when: { all: [{ day: { gte: 8 } }, { notFlag: 'trocken' }, { notFlag: 'igor' }, { notFlag: 'igorHeute' }, { balance: { gte: 100 } }] }, scene: 'stash.igor' },
     { id: 'igorCola', room: 'bar', label: '🥤 Cola mit Igor · 100 €', when: { all: [{ day: { gte: 8 } }, { flag: 'trocken' }, { notFlag: 'igor' }, { notFlag: 'igorHeute' }, { balance: { gte: 100 } }] }, scene: 'stash.igor' },
     { id: 'brandt', room: 'bar', label: '👮 Mit Brandt reden', when: { all: [{ day: { gte: 15 } }, { notFlag: 'razzia' }] }, scene: 'stash.brandt' },
@@ -10216,6 +10220,13 @@ const STORY_STASH = {
         choices: [
           { label: 'Annehmen', value: 'ja', cls: 'blue', effects: [{ flag: 'wache' }] },
           { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ flag: 'wacheNein' }] },
+        ] },
+    ],
+    'stash.wacheWeg': [
+      { bg: 'strasse', who: 'junge', mood: 'calm', text: 'Die zwei stehen da wie jede Nacht. Einer nickt. „Chef?“',
+        choices: [
+          { label: 'Heimschicken', value: 'ja', cls: 'red', effects: [{ unflag: 'wache' }, { flag: 'wacheWeg' }] },
+          { label: 'Bleiben', value: 'nein', cls: 'ghost' },
         ] },
     ],
     'stash.anabiHoert': [
@@ -13289,6 +13300,29 @@ T.test('STORY_STASH: Anabi hört zu ab Ruf 8 (once) – Annehmen halbiert Kredit
   const t = stashState(); t.story.vars.kredit = 10000; STORY_STASH.fns.anabiNachlass(t); T.eq(t.story.vars.kredit, 5000);
   const z = stashState(); z.story.vars.kredit = 0; T.ok(STORY_STASH.fns.anabiNachlass(z).toast); T.eq(z.story.vars.kredit, 0, 'ohne Kredit bleibt 0');
   const n = stashState(); n.story.vars.ruf = 8; n.story.vars.kredit = 7000; stashChoose(n, 'stash.anabiHoert', 'nein'); T.eq(n.story.vars.ruf, 9); T.eq(n.story.vars.kredit, 7000);
+});
+T.test('STORY_STASH: Kredit-Ruf nur für volle Rate oder Tilgung, einmal am Tag (Review-Fix)', () => {
+  const t = stashState({ balance: 300 }); t.story.vars.kredit = 30000;
+  STORY_STASH.fns.kreditZahlen(t); T.eq(t.story.vars.kredit, 29700); T.eq(t.story.vars.ruf, 0, 'Teilzahlung: kein Ruf');
+  const k = stashState({ balance: 20000 }); k.story.vars.kredit = 30000;
+  STORY_STASH.fns.kreditZahlen(k); T.eq(k.story.vars.ruf, 1, 'volle Rate: +1'); T.eq(k.story.flags.kreditRufHeute, true);
+  STORY_STASH.fns.kreditZahlen(k); T.eq(k.story.vars.kredit, 20000); T.eq(k.story.vars.ruf, 1, 'zweite Rate am selben Tag: kein Ruf');
+  k.story.day = 2; stashHook(k, 'morning'); T.eq(!!k.story.flags.kreditRufHeute, false, 'tagesstart setzt zurück');
+  STORY_STASH.fns.kreditZahlen(k); T.eq(k.story.vars.ruf, 2, 'nächster Tag wieder +1');
+  const z = stashState({ balance: 9000 }); z.story.vars.kredit = 2000;
+  STORY_STASH.fns.kreditZahlen(z); T.eq(z.story.vars.kredit, 0); T.eq(z.story.vars.ruf, 1, 'Tilgung unter der Rate zählt');
+});
+T.test('STORY_STASH: Wache heimschicken – Bar-Aktion nur mit Wache; danach keine Kosten, kein neues Angebot (Review-Fix)', () => {
+  const s = stashState({ balance: 5000 }); s.story.day = 13; s.story.vars.ruf = 5;
+  const ids = () => StoryRules.actionsFor(STORY_STASH, s, 'bar').map((a) => a.id);
+  T.eq(ids().includes('wacheWeg'), false, 'ohne Wache keine Aktion');
+  s.story.flags.wache = true; T.ok(ids().includes('wacheWeg'));
+  stashChoose(s, 'stash.wacheWeg', 'nein'); T.eq(s.story.flags.wache, true, 'Bleiben: nichts');
+  stashChoose(s, 'stash.wacheWeg', 'ja'); T.eq(!!s.story.flags.wache, false); T.eq(s.story.flags.wacheWeg, true);
+  s.story.seen.push('wache');
+  const night = stashHook(s, 'night', seq(0.99, 0.99, 0.99))[0];
+  T.eq(night.includes('wacheNacht'), false, 'keine Kosten mehr'); T.eq(s.balance, 5000);
+  T.eq(ids().includes('wacheWeg'), false, 'Aktion weg');
 });
 T.test('STORY_STASH: Sylvie – Warnung ab 10.000 einmal pro Woche, Hausverbot ab 15.000 (Betreten und mitten im Spiel)', () => {
   const s = stashState(); s.story.vars.umsatzRoyal = 10000;
