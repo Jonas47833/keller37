@@ -1807,7 +1807,7 @@ async def scenario_royal_look(cdp):
     record("zone: Vorhang beim Betreten, Zone royal, Untertitel sichtbar", zone_before == "keller" and fade_on is True and zone_after == "royal" and sub == "block",
            "before=%s fade=%s after=%s sub=%s" % (zone_before, fade_on, zone_after, sub))
     portals = await cdp.eval("document.querySelectorAll('.portal').length", await_promise=False)
-    record("lobby: vier Portale", portals == 4, "portals=%s" % portals)
+    record("lobby: fünf Portale", portals == 5, "portals=%s" % portals)
     # Mega Seven: Freispiel-Banner + Gewinnlinie
     await cdp.eval("UI.show('megaslots')")
     mega = await cdp.eval("""(async function(){

@@ -1025,7 +1025,7 @@ body.mode-story #newgame { display: none; }
 .sb-cell .chip-stack.won { background: var(--gold-2); color: #141216; }
 @media (max-width: 760px) {
   .sicbo-grid { grid-template-columns: 1fr 1fr; }
-  .sb-sums { grid-column: 1 / -1; }
+  .sb-sums { grid-column: 1 / -1; grid-template-columns: repeat(4, 1fr); }
   .sb-side { min-height: 44px; }
   .sicbo-row { grid-template-columns: repeat(4, 1fr); }
   .sb-label { grid-column: 1 / -1; padding: 0; }
@@ -1629,6 +1629,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
       <button class="portal" data-screen="craps"><span class="portal-crown"></span><span class="plaque">Craps</span><span class="glyph">🎲</span><span class="engraved">Pass Line · Field</span></button>
       <button class="portal" data-screen="wheel"><span class="portal-crown"></span><span class="plaque">Glücksrad</span><span class="glyph">🎡</span><span class="engraved">bis 10×</span></button>
       <button class="portal" data-screen="stud"><span class="portal-crown"></span><span class="plaque">Caribbean Stud</span><span class="glyph">🃏</span><span class="engraved">Ante · Bonus bis 100:1</span></button>
+      <button class="portal" data-screen="sicbo"><span class="portal-crown"></span><span class="plaque">Sic Bo</span><span class="glyph">🎲</span><span class="engraved">3 Würfel · bis 180:1</span></button>
     </div>
     <div class="bet-bar"><button class="btn ghost sm" id="royalLeave">← Zurück in die Stadt</button></div>
   </div>
@@ -4288,7 +4289,7 @@ Bus.on('gear:shoes', () => Stadt.checkFullSet());
 <script id="casino-royal">
 /* ================= CASINO ROYAL – Lobby, Eintritt, Madame Sylvie ================= */
 const Royal = {
-  GAMES: ['megaslots', 'craps', 'wheel', 'stud'],
+  GAMES: ['megaslots', 'craps', 'wheel', 'stud', 'sicbo'],
   SYLVIE: {
     first: 'Madame Sylvie sieht kurz von ihren Zahlen auf. Sie sieht alles. Sie sagt nichts.',
     guest: 'Madame Sylvie nickt. „Gast des Hauses. Der Eintritt entfällt. Das Haus behält sich alles andere vor.“',
@@ -4364,7 +4365,7 @@ UI.register('royal', {
 });
 Cutscene.define('royal.first', [
   { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Willkommen. Sie sind neu. Man sieht es an den Schuhen, nicht am Auto.' },
-  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Vier Tische. Höhere Einsätze, bessere Beleuchtung, dieselbe Mathematik. Viel Vergnügen.' },
+  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Fünf Tische. Höhere Einsätze, bessere Beleuchtung, dieselbe Mathematik. Viel Vergnügen.' },
 ]);
 Cutscene.define('royal.leave', [
   { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Sie gehen? Der Eintritt gilt nicht für den Rückweg – die nächsten {{fee}} nehmen wir wieder an der Tür.',
@@ -7120,7 +7121,7 @@ const RoyalRules = {
   ENTRY_FEE: 100,
   GUEST_WIN: 5000,
   /* Screens, die in der Zone „royal“ liegen (Body-Attribut data-zone, Gold-Vorhang beim Wechsel) */
-  SCREENS: ['royal', 'megaslots', 'craps', 'wheel', 'stud'],
+  SCREENS: ['royal', 'megaslots', 'craps', 'wheel', 'stud', 'sicbo'],
   zoneFor(id) { return RoyalRules.SCREENS.includes(id) ? 'royal' : 'keller'; },
   /* Mittelpunkte der ersten `count` Zellen einer Gewinnlinie (für die goldene Linie über dem Raster) */
   megaLinePoints(line, count, cell, gap, pad) {
@@ -7720,7 +7721,7 @@ const DevRules = {
     return [...out].sort();
   },
   KELLER_SCREENS: ['hub', 'roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker', 'hinterzimmer', 'postman', 'finance', 'invest', 'life', 'skills'],
-  ROYAL_SCREENS: ['royal', 'megaslots', 'craps', 'wheel', 'stud'],
+  ROYAL_SCREENS: ['royal', 'megaslots', 'craps', 'wheel', 'stud', 'sicbo'],
   STORY_SCREENS: ['jobs', 'vito'],
   groupScreens(ids) {
     const g = { keller: [], royal: [], stadt: [], story: [], sonst: [] };
@@ -7875,7 +7876,7 @@ const Stories = {
 
 const Story = {
   DOORS: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker', 'postman', 'hinterzimmer'],
-  ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'], royal: ['royal'], megaslots: ['royal'], craps: ['royal'], wheel: ['royal'], stud: ['royal'] },
+  ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'], royal: ['royal'], megaslots: ['royal'], craps: ['royal'], wheel: ['royal'], stud: ['royal'], sicbo: ['royal'] },
   story: null,
   allowOnce: null,
   forcedNext: null,
@@ -9655,7 +9656,7 @@ const STORY_STASH = {
   varMax: { zorn: 3 },
   prices: { brownie: 1000 },
   disabled: ['tinder', 'house', 'dealer', 'brownie'],
-  turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel', 'stud'], umsatzHinterzimmer: ['baccarat'] },
+  turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel', 'stud', 'sicbo'], umsatzHinterzimmer: ['baccarat'] },
   jobOverrides: {
     eintreiber: { base: 1000, requires: { var: 'eintreiberWoche', lt: 2 }, requireText: 'Anabi hat nicht jeden Tag Schuldner', pay: '1.000 €', desc: 'Anabi hat eine Liste. Wer sie abarbeitet, macht ihn ruhiger.' },
   },
@@ -11295,19 +11296,25 @@ T.test('RoyalRules.canEnter / entryFee', () => {
   T.eq(RoyalRules.entryFee(base({ car: 'audiA3', story: { day: 5, royalPaidDay: 4 } })), 100);
 });
 T.test('RoyalRules.zoneFor: Royal-Screens sind Zone royal, alles andere keller', () => {
-  T.eq(RoyalRules.SCREENS, ['royal', 'megaslots', 'craps', 'wheel', 'stud']);
+  T.eq(RoyalRules.SCREENS, ['royal', 'megaslots', 'craps', 'wheel', 'stud', 'sicbo']);
   for (const id of RoyalRules.SCREENS) T.eq(RoyalRules.zoneFor(id), 'royal');
   for (const id of ['hub', 'roulette', 'stadt', 'jobs', 'skills', undefined, null]) T.eq(RoyalRules.zoneFor(id), 'keller');
 });
-T.test('stud hängt in allen Royal-Listen', () => {
-  T.ok(DevRules.ROYAL_SCREENS.includes('stud'), 'Dev-Panel');
-  T.ok(STORY_STASH.turnoverGroups.umsatzRoyal.includes('stud'), 'Story 3 Royal-Umsatz');
+T.test('stud und sicbo hängen in allen Royal-Listen', () => {
+  for (const id of ['stud', 'sicbo']) {
+    T.ok(DevRules.ROYAL_SCREENS.includes(id), `Dev-Panel ${id}`);
+    T.ok(STORY_STASH.turnoverGroups.umsatzRoyal.includes(id), `Story 3 Royal-Umsatz ${id}`);
+  }
 });
-if (typeof document !== 'undefined') T.test('stud: Royal.GAMES, ROOM_OF und Lobby-Portal', () => {
-  T.ok(Royal.GAMES.includes('stud'), 'Royal.GAMES');
-  T.eq(Story.ROOM_OF.stud, ['royal'], 'ROOM_OF');
+if (typeof document !== 'undefined') T.test('stud und sicbo: Royal.GAMES, ROOM_OF und Lobby-Portale', () => {
   const tpl = qs('#tpl-royal').content;
-  T.ok(!!tpl.querySelector('.portal[data-screen="stud"] .plaque') && tpl.querySelector('.portal[data-screen="stud"] .plaque').textContent === 'Caribbean Stud', 'Portal in der Lobby');
+  for (const [id, plaque] of [['stud', 'Caribbean Stud'], ['sicbo', 'Sic Bo']]) {
+    T.ok(Royal.GAMES.includes(id), `Royal.GAMES ${id}`);
+    T.eq(Story.ROOM_OF[id], ['royal'], `ROOM_OF ${id}`);
+    const p = tpl.querySelector(`.portal[data-screen="${id}"] .plaque`);
+    T.ok(!!p && p.textContent === plaque, `Portal ${id}`);
+  }
+  T.eq(tpl.querySelectorAll('.portal').length, 5, 'fünf Portale');
 });
 T.test('StoryRules.gate: bedingte Sperre mit Text', () => {
   const st = Object.assign({}, STORY_PROBE, { gates: { royal: [{ when: { flag: 'zitter' }, text: 'Sie zittern.' }, { when: { var: 'mut', lte: 0 }, text: 'Zu wenig Mut.' }] } });
@@ -11751,7 +11758,7 @@ T.test('StoryRules.recordSpin: Serie, Siege, größter Gewinn', () => {
   T.eq([st.streak, st.bestStreak, st.biggestWin], [1, 2, 700]);
 });
 T.test('StoryRules.recordStake: Umsatz gesamt, Gruppen je Spiel, bet ≤ 0 zählt nicht', () => {
-  const story = { turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel', 'stud'], umsatzHinterzimmer: ['baccarat'] } };
+  const story = { turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel', 'stud', 'sicbo'], umsatzHinterzimmer: ['baccarat'] } };
   const st = { vars: {} };
   StoryRules.recordStake(st, 500, 'roulette', story);
   T.eq(st.vars, { umsatz: 500, umsatzTotal: 500 });
@@ -13333,7 +13340,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     State.save = () => {}; State.saveMeta = () => {};
     try {
       State.mode = 'free'; State.s = State.fresh(); State.s.balance = 50000;
-      for (const [screen, id, start, chip] of [['megaslots', 'megaBet', '100', '500'], ['craps', 'crapsBet', '50', '200'], ['wheel', 'wheelBet', '100', '1000'], ['stud', 'studBet', '100', '500'], ['hinterzimmer', 'bacBet', '500', '5000']]) {
+      for (const [screen, id, start, chip] of [['megaslots', 'megaBet', '100', '500'], ['craps', 'crapsBet', '50', '200'], ['wheel', 'wheelBet', '100', '1000'], ['stud', 'studBet', '100', '500'], ['sicbo', 'sicBet', '50', '200'], ['hinterzimmer', 'bacBet', '500', '5000']]) {
         await UI.show(screen);
         const root = qs('#stage');
         const input = qs('#' + id, root);
@@ -14593,7 +14600,7 @@ if (typeof Perks !== 'undefined') T.test('Perks.refreshExcluded: ohne force blei
   /* Dev-Pfad freies Spiel: wie bisher */
   document.body.classList.add('mode-free');
   if (params.has('shop') && typeof Stadt !== 'undefined') Stadt.shop = Stadt.SHOPS[params.get('shop')] ? params.get('shop') : null;
-  if (params.get('screen') === 'royal' && params.has('game') && ['megaslots', 'craps', 'wheel', 'stud'].includes(params.get('game'))) { await UI.show(params.get('game')); }
+  if (params.get('screen') === 'royal' && params.has('game') && ['megaslots', 'craps', 'wheel', 'stud', 'sicbo'].includes(params.get('game'))) { await UI.show(params.get('game')); }
   else await UI.show(params.get('screen') || 'hub');
   let gameOverAtBoot = false;
   if (Rules.isGameOver(State.s, Perks.mods())) { gameOverAtBoot = true; await Bus.emit('gameover', {}); }
