@@ -229,7 +229,14 @@ body.cs-open .toast { max-width: 300px; }
 .cs-fig[data-pose="walk"] .legR, .cs-fig[data-pose="walk"] .armL { animation: csStepB .4s ease-in-out infinite alternate; }
 .cs-fig[data-pose="down"] .cs-body { animation: csFall var(--fall, .5s) ease-in forwards; } /* Keyframe statt Transition: startet auch, wenn vorher csBreathe/csNod lief; --fall: 0s = liegend gefunden */
 .cs-fig[data-pose="flinch"] .cs-body { animation: csFlinch .4s ease both; }
+.cs-fig[data-pose="windup"] .armR { transform: rotate(120deg); transition-duration: .25s; }   /* holt aus: Arm weit nach hinten oben */
+.cs-fig[data-pose="windup"] .cs-body { animation: csWindup .9s ease-in-out both; }
+.cs-fig[data-pose="temple"] .armR { transform: rotate(-130deg); transition-duration: .4s; }   /* Revolver an der Schläfe */
+.cs-fig[data-pose="relief"] .armR { transform: rotate(-20deg); }
+.cs-fig[data-pose="relief"] .cs-body { animation: csRelief .6s ease both; }                    /* Ausatmen: sackt kurz zusammen, nickt */
 @keyframes csFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes csWindup { 0% { transform: rotate(0); } 60% { transform: rotate(-6deg) translateX(-3%); } 100% { transform: rotate(-8deg) translateX(-4%); } }
+@keyframes csRelief { 0% { transform: translateY(0); } 40% { transform: translateY(4%) rotate(2deg); } 70% { transform: translateY(1%) rotate(-1deg); } 100% { transform: translateY(0); } }
 @keyframes csBlink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
 @keyframes csGlow { 50% { opacity: .4; } }
 @keyframes csSway { 0%, 100% { transform: scaleX(var(--face)) rotate(-2deg); } 50% { transform: scaleX(var(--face)) rotate(2deg); } }
@@ -858,10 +865,17 @@ body.mode-story #newgame { display: none; }
 @keyframes duelTwitch { 0%, 88%, 100% { transform: rotate(0); } 92% { transform: rotate(-14deg); } 96% { transform: rotate(-4deg); } }
 @keyframes duelRecoil { 0% { transform: translate(0, 0) rotate(0); } 30% { transform: translate(6px, 18px) rotate(-6deg); } 100% { transform: translate(0, 0) rotate(0); } }
 @keyframes csHit { 0% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-8px) rotate(4deg); } 100% { transform: translateY(0) rotate(-2deg); } }
+/* Ego-Bühne: Mündungssicht (Revolver dreht auf die Kamera), Laufwackeln (Flucht), Kragengriff */
+.cs-fig.unarmed .pistole { opacity: 0; transition: opacity .2s; }   /* Überfall: Räuber ohne Waffe; Roulette: Igor hält den Revolver nur in seinem Zug */
+.duel-gun.up.muzzle { transform: translateY(0) scale(1.35); transform-origin: 60% 100%; transition: transform .6s cubic-bezier(.3,1.2,.5,1); }
+.duel-stage.run .duel-world { animation: egoBob .35s ease-in-out infinite alternate; }   /* nur die Welt wackelt – der Figur-Transform trägt --s */
+.duel-stage.jerk .duel-world { animation: egoJerk .45s ease-out both; }
+@keyframes egoBob { from { transform: translateY(0); } to { transform: translateY(-6px) rotate(.4deg); } }
+@keyframes egoJerk { 0% { transform: scale(1); } 30% { transform: scale(1.12) translateY(3%); } 100% { transform: scale(1.06) translateY(1%); } }
 /* Handy: Bühne so hoch, dass Status + „Bereit“ noch über der Tab-Leiste stehen (410 px = Kopfzeile (2 Zeilen) + Panel-Rand/Abstände + 3-zeiliger Status + Knopf + Tab-Leiste) */
 @media (max-width: 760px) { .duel-stage { height: calc(100vh - 410px); min-height: 300px; } .duel-stage .cs-fig.duel-foe { height: 44%; bottom: 36%; } .duel-gun { width: 46%; } }
 @media (orientation: landscape) and (max-height: 500px) { .duel-stage { height: 80vh; min-height: 280px; } .duel-stage .cs-fig.duel-foe { height: 55%; bottom: 30%; } }
-@media (prefers-reduced-motion: reduce) { .duel-stage .cs-fig.duel-foe, .duel-gun { transition: none; } .duel-gun.recoil, .duel-flash.on, .duel-foe[data-pose="idle"] .armR { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .duel-stage .cs-fig.duel-foe, .duel-gun { transition: none; } .duel-gun.recoil, .duel-flash.on, .duel-foe[data-pose="idle"] .armR, .duel-stage.run .duel-world, .duel-stage.jerk .duel-world, .cs-fig[data-pose="windup"] .cs-body, .cs-fig[data-pose="relief"] .cs-body { animation: none; } }
 
 /* -- Große Bildschirme: Spielfläche mitwachsen lassen (zoom skaliert Layout + Canvas sauber) -- */
 @media (min-width: 1440px) and (min-height: 820px) { .body, .title-inner { zoom: 1.15; } }
@@ -8449,45 +8463,90 @@ UI.register('job-taxi', {
 </script>
 
 <script id="game-shootout">
-/* ================= DUEL STAGE – Ego-Sicht: Welt-Canvas, Gegnerfigur aus dem Cutscene-Rig, Effekt-Canvas, eigene Waffe =================
-   Rein darstellend: trifft keine Spielentscheidung. Shootout ruft enter/signal/shot/foeShoots/foeDown/flash. */
-const DuelStage = {
+/* ================= EGO STAGE – Ego-Sicht: Welt-Canvas, Gegnerfigur aus dem Cutscene-Rig, Effekt-Canvas, eigene Hand =================
+   Rein darstellend: trifft keine Spielentscheidung. Nutzer: Shootout (Duell), MugAction (Überfall), Russian (Roulette).
+   Hand-Varianten (gun/fist/revolver/revolverMuzzle/none), Timing-Ring, laufende Kulisse, Trommel-Nahaufnahme. */
+const EgoStage = {
   root: null, world: null, fx: null, back: null, fig: null, gun: null, tag: null, flashEl: null,
   W: 0, H: 0, dpr: 1, raf: 0, last: 0, t: 0, timeScale: 1, slowUntil: 0, flashUntil: 0, redUntil: 0, shakeUntil: 0, tenseFrom: 0, lamp: 1,
-  parts: [], stains: [], set: 'gasse', reduced: false, ro: null, mounted: false,
+  parts: [], stains: [], set: 'gasse', reduced: false, ro: null, mounted: false, riseRaf: 0, flashTimer: null, downTimer: null,
+  handKind: 'gun', weapon: 0, ringOn: false, ringStart: 0, ringMs: 0, ringGold: 0, moving: false, runT: 0, cyl: null,
   /* Kulissen: Farben + welche Silhouetten/Ambient-Elemente gezeichnet werden */
   SETS: {
     gasse: { sky: ['#05070d', '#1a1e2a'], wall: '#23232b', ground: '#1c1a16', rain: true, lamp: true, bins: true },
     bahnhof: { sky: ['#05070d', '#1a2233'], wall: '#1b2130', ground: '#2a2820', rain: false, lamp: true, rails: true },
     keller: { sky: ['#1a1914', '#050503'], wall: '#1e1c16', ground: '#171410', rain: false, lamp: true, table: true },
+    hinterzimmer: { sky: ['#2a1a08', '#0a0603'], wall: '#1e1207', ground: '#150e06', rain: false, lamp: false, candle: true, fgTable: true },
   },
   SET_BY_KIND: { tutorial: 'bahnhof', hinterhalt: 'gasse', finale: 'keller', dev: 'gasse' },
   MAX_PARTS: 160,
   /* Waffe des Spielers: Stufe 0 = geliehene Pistole (Story: Anabis Makarov), 3 = „Die Goldene" */
   WEAPON_COLORS: [['#2a2a2e', '#4a4a50'], ['#2a2a2e', '#4a4a50'], ['#1e2226', '#3a4048'], ['#8a6a1a', '#d4af37']],
-  mount(root, { set = 'gasse', weapon = 0, reduced = false } = {}) {
+  mount(root, { set = 'gasse', weapon = 0, reduced = false, hand = 'gun' } = {}) {
     this.unmount();
-    this.root = root; this.set = this.SETS[set] ? set : 'gasse'; this.reduced = reduced;
+    this.root = root; this.set = this.SETS[set] ? set : 'gasse'; this.reduced = reduced; this.weapon = weapon; this.handKind = hand;
     this.dpr = Math.min(2, window.devicePixelRatio || 1);
     this.world = h('canvas', { class: 'duel-world' }); this.fx = h('canvas', { class: 'duel-fx' });
     this.fig = h('div', { class: 'cs-fig duel-foe' });
-    this.gun = h('div', { class: 'duel-gun', html: this.gunSvg(weapon) });
+    this.gun = h('div', { class: 'duel-gun', html: this.handSvg(hand, weapon) });
     this.tag = h('div', { class: 'duel-tag' }, h('span', { id: 'duelFoeName' }), h('span', { id: 'duelCount' }));
     this.flashEl = h('div', { class: 'duel-flash' });
     root.append(this.world, this.fig, this.fx, this.gun, this.tag, this.flashEl);
     this.parts = []; this.stains = []; this.timeScale = 1; this.slowUntil = this.flashUntil = this.redUntil = this.shakeUntil = this.tenseFrom = 0; this.t = 0; this.last = 0;
+    this.ringOn = false; this.moving = false; this.runT = 0; this.cyl = null;
     this.mounted = true;
     this.resize();
     if (typeof ResizeObserver !== 'undefined') { this.ro = new ResizeObserver(() => this.resize()); this.ro.observe(root); }
     this.raf = requestAnimationFrame((now) => this.loop(now));
-    requestAnimationFrame(() => { if (this.mounted) this.gun.classList.add('up'); });
+    if (hand !== 'none') this.riseRaf = requestAnimationFrame(() => { this.riseRaf = 0; if (this.mounted) this.gun.classList.add('up'); }); // Hand hebt sich im nächsten Frame (Transition ab translateY(100%))
   },
+  /* Hand unten rechts wechseln: gun (Duell), fist (Überfall), revolver / revolverMuzzle (Roulette), none */
+  hand(kind) {
+    if (!this.mounted) return;
+    this.handKind = kind;
+    this.gun.innerHTML = this.handSvg(kind, this.weapon);
+    this.gun.classList.toggle('muzzle', kind === 'revolverMuzzle');
+    if (kind === 'none') this.gun.classList.remove('up');
+  },
+  handRise() { if (this.mounted) this.gun.classList.add('up'); },
+  handDrop() { if (this.mounted) this.gun.classList.remove('up'); },
+  /* Timing-Ring um die Figur: schrumpft über ms, die letzten goldMs sind gold; ringTime() = Bühnen-ms seit Start (null wenn kein Ring läuft) */
+  ring(ms, goldMs) { if (!this.mounted) return; this.ringOn = true; this.ringStart = this.t; this.ringMs = ms; this.ringGold = goldMs; },
+  ringTime() { return this.ringOn ? this.t - this.ringStart : null; },
+  ringStop() { this.ringOn = false; },
+  /* laufende Kulisse (Flucht): Bodenlinien und Wandkanten ziehen zum Betrachter, Laufwackeln per CSS-Klasse */
+  motion(on) { if (!this.mounted) return; this.moving = !!on; this.root.classList.toggle('run', this.moving && !this.reduced); },
+  /* Figurengröße per Transition (Aufholen / Zurückfallen) */
+  foeScale(s, ms) { if (!this.mounted) return; this.fig.style.transitionDuration = this.reduced ? '0s' : `${ms}ms`; this.fig.style.setProperty('--s', String(s)); },
+  foePose(pose) { if (this.mounted) this.fig.dataset.pose = pose; },
+  /* Trommel-Nahaufnahme unten links: idx = aktuelle Kammer (dreht um 60° je Kammer), spent = leere Kammern; null blendet aus */
+  cylinder(state) { this.cyl = state ? { idx: state.idx, spent: state.spent || [], angle: this.cyl ? this.cyl.angle : 0 } : null; },
+  /* Faustkampf: Treffer = Einschlag beim Gegner; daneben = seine Faust auf die Kamera (wachsender Kreis), Ruck, roter Rand */
+  punch(hit) {
+    if (!this.mounted) return;
+    if (this.handKind === 'fist') { this.gun.classList.remove('recoil'); void this.gun.offsetWidth; this.gun.classList.add('recoil'); }
+    const b = this.foeBox();
+    if (hit) { const p = { x: b.left + b.width * 0.5, y: b.top + b.height * 0.3 }; this.burst(p.x, p.y, 'spark', 8); this.burst(p.x, p.y, 'blood', 16); }
+    else { const p = { x: b.left + b.width * 0.5, y: b.top + b.height * 0.4 }; this.spawn({ x: p.x, y: p.y, x2: this.W * 0.55, y2: this.H * 0.55, vx: 0, vy: 0, g: 0, ttl: 260, size: 18, color: '#e8b48a', kind: 'fist' }); this.redUntil = this.t + 1200; if (!this.reduced) this.shakeUntil = this.t + 350; }
+  },
+  /* Griff am Kragen (Flucht erwischt): Bild reißt nach hinten, roter Rand */
+  grab() {
+    if (!this.mounted) return;
+    this.redUntil = this.t + 1200;
+    if (!this.reduced) { this.shakeUntil = this.t + 400; this.root.classList.remove('jerk'); void this.root.offsetWidth; this.root.classList.add('jerk'); }
+  },
+  muzzleAt(x, y) { if (this.mounted) this.burst(x, y, 'muzzle', 12); },
+  /* eigener Kopfschuss (Roulette): Blitz, Ruck, roter Rand, Tropfen */
+  selfShot() { if (!this.mounted) return; if (!this.reduced) this.flashUntil = this.t + 110; this.foeShoots(); },
+  /* Requisite (Revolver) gleitet über den Tisch von a nach b */
+  slideProp(a, b, ms) { if (this.mounted) this.spawn({ x: a.x, y: a.y, x2: b.x, y2: b.y, vx: 0, vy: 0, g: 0, ttl: ms, size: 14, color: '#2a2a2e', kind: 'prop' }); },
   unmount() {
     if (!this.mounted) return;
-    cancelAnimationFrame(this.raf); this.raf = 0;
+    cancelAnimationFrame(this.raf); this.raf = 0; cancelAnimationFrame(this.riseRaf); this.riseRaf = 0;
     clearTimeout(this.flashTimer); clearTimeout(this.downTimer);
     if (this.ro) { this.ro.disconnect(); this.ro = null; }
     for (const el of [this.world, this.fx, this.fig, this.gun, this.tag, this.flashEl]) if (el) el.remove();
+    this.root.classList.remove('run', 'jerk');
     this.root = this.world = this.fx = this.back = this.fig = this.gun = this.tag = this.flashEl = null;
     this.parts = []; this.stains = []; this.mounted = false;
   },
@@ -8522,20 +8581,24 @@ const DuelStage = {
     if (S.bins) { ctx.fillStyle = '#2f2f36'; ctx.fillRect(W * 0.05, hz - 40, 34, 44); ctx.fillRect(W * 0.1, hz - 32, 30, 36); }
     if (S.rails) { ctx.strokeStyle = 'rgba(200,200,220,.18)'; ctx.lineWidth = 3; for (const dx of [-0.12, 0.12]) { ctx.beginPath(); ctx.moveTo(W * (0.5 + dx * 0.4), hz); ctx.lineTo(W * (0.5 + dx * 4), H); ctx.stroke(); } }
     if (S.table) { ctx.fillStyle = '#3a2410'; ctx.fillRect(W * 0.3, hz - 6, W * 0.4, 8); ctx.fillRect(W * 0.32, hz, 6, H * 0.12); ctx.fillRect(W * 0.66, hz, 6, H * 0.12); }
+    if (S.candle) { ctx.fillStyle = '#e8e0c0'; ctx.fillRect(W * 0.78, hz * 0.62, 8, 26); ctx.fillStyle = '#ffb347'; ctx.beginPath(); ctx.ellipse(W * 0.78 + 4, hz * 0.6, 5, 10, 0, 0, Math.PI * 2); ctx.fill(); const g = ctx.createRadialGradient(W * 0.78, hz * 0.6, 0, W * 0.78, hz * 0.6, H * 0.35); g.addColorStop(0, 'rgba(255,180,80,.25)'); g.addColorStop(1, 'rgba(255,180,80,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
     if (S.lamp) { ctx.fillStyle = '#555'; ctx.fillRect(W * 0.5 - 2, 0, 4, hz * 0.22); ctx.fillStyle = '#8a8a70'; ctx.fillRect(W * 0.5 - 26, hz * 0.22, 52, 10); }
     const vig = ctx.createRadialGradient(W / 2, H * 0.5, H * 0.3, W / 2, H * 0.5, H); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,.75)');
     ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
   },
   /* Gegner tritt aus dem Dunkel auf: Figur klein setzen, dann per Transition auf volle Größe */
-  enter(foeId, idx, n, foeName) {
+  enter(foeId, idx, n, foeName, { gun = true, mood = 'angry' } = {}) {
     if (!this.mounted) return;
-    this.fig.innerHTML = CsCast.figureHtml(foeId, { mood: 'angry', gun: true });
+    this.fig.innerHTML = CsCast.figureHtml(foeId, { mood, gun: true });
+    this.fig.classList.toggle('unarmed', !gun);
     this.fig.dataset.pose = 'idle'; this.fig.style.setProperty('--fall', '');
     this.fig.style.transition = 'none'; this.fig.style.setProperty('--s', '0.4');
     void this.fig.offsetWidth; // Startgröße ohne Transition festschreiben
     this.fig.style.transition = ''; this.fig.style.setProperty('--s', '1');
-    qs('#duelFoeName', this.tag).textContent = foeName; qs('#duelCount', this.tag).textContent = `${idx + 1} / ${n}`;
+    qs('#duelFoeName', this.tag).textContent = foeName; qs('#duelCount', this.tag).textContent = n > 1 ? `${idx + 1} / ${n}` : '';
   },
+  /* Pistole in der Hand des Gegners ein-/ausblenden (Roulette: Igor hält den Revolver nur in seinem Zug) */
+  foeGun(on) { if (this.mounted) this.fig.classList.toggle('unarmed', !on); },
   /* Anspannung: der Rand dunkelt über ~4 s langsam ab, bis das Signal kommt */
   tension(on) { if (this.mounted) this.tenseFrom = on ? this.t || 1 : 0; },
   /* Signal: Arm hoch, Blitz */
@@ -8601,6 +8664,9 @@ const DuelStage = {
     const raw = this.last ? Math.min(50, now - this.last) : 16; this.last = now;
     const dt = raw * this.timeScale; this.t += dt;
     if (this.slowUntil && this.t >= this.slowUntil) { this.slowUntil = 0; this.timeScale = 1; }
+    if (this.ringOn && this.t - this.ringStart > this.ringMs) this.ringOn = false;
+    if (this.moving) this.runT += dt;
+    if (this.cyl) { const target = -60 * this.cyl.idx; const d = target - this.cyl.angle; this.cyl.angle += this.reduced ? d : d * Math.min(1, dt / 120); }
     for (const p of this.parts) { p.age += dt; const s = dt / 1000; p.vy += (p.g || 0) * s; p.x += p.vx * s; p.y += p.vy * s; }
     this.parts = this.parts.filter((p) => p.age < p.ttl);
     if (!this.reduced) { this.lamp = 0.85 + Math.random() * 0.15; if (Math.random() < 0.04) this.lamp = 0.4; if (this.parts.length < 60 && Math.random() < 0.3) this.spawn({ x: Math.random() * this.W, y: this.H * 0.2 + Math.random() * this.H * 0.5, vx: 8 + Math.random() * 10, vy: -4 + Math.random() * 8, g: 0, ttl: 4000, size: 1.5, color: 'rgba(220,210,180,.35)', kind: 'dust' }); }
@@ -8615,16 +8681,22 @@ const DuelStage = {
     wc.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     if (S.lamp) { const g = wc.createRadialGradient(W / 2, H * 0.14, 0, W / 2, H * 0.14, H * 0.5); g.addColorStop(0, `rgba(255,240,200,${0.22 * this.lamp})`); g.addColorStop(1, 'rgba(255,240,200,0)'); wc.fillStyle = g; wc.fillRect(0, 0, W, H); }
     if (S.rain && !this.reduced) { wc.strokeStyle = 'rgba(160,180,200,.25)'; wc.lineWidth = 1; const off = (this.t * 0.6) % 40; for (let i = 0; i < 24; i++) { const x = (i * 97) % W, y = ((i * 53) + off * 4) % H; wc.beginPath(); wc.moveTo(x, y); wc.lineTo(x - 4, y + 18); wc.stroke(); } }
+    if (this.moving) { const hz = H * 0.58, ph = (this.runT / 700) % 1; wc.strokeStyle = 'rgba(255,255,255,.14)'; wc.lineWidth = 2; for (let k = 0; k < 6; k++) { const f = ((k + ph) / 6); const y = hz + (H - hz) * f * f; wc.beginPath(); wc.moveTo(0, y); wc.lineTo(W, y); wc.stroke(); } for (const side of [-1, 1]) for (let k = 0; k < 4; k++) { const f = (k + ph) / 4; const x = W / 2 + side * (W * 0.08 + W * 0.45 * f); wc.beginPath(); wc.moveTo(x, hz * (1 - f * 0.6)); wc.lineTo(x, hz); wc.stroke(); } }
+    if (this.moving && this.ringOn) { const k = Math.min(1, (this.t - this.ringStart) / this.ringMs), x = W * (0.72 + 0.2 * k), y = H * 0.6, s = 30 + 70 * k; wc.fillStyle = '#2f2f36'; wc.fillRect(x, y - s, s * 0.7, s); wc.fillRect(x - 4, y - s - 6, s * 0.7 + 8, 8); } // Abzweigung: die Mülltonne rechts kommt näher
     for (const st of this.stains) { wc.fillStyle = 'rgba(90,8,14,.85)'; wc.beginPath(); wc.ellipse(st.x, st.y, st.r, st.r * 0.28, 0, 0, Math.PI * 2); wc.fill(); }
     for (const p of this.parts) if (p.kind === 'dust') { wc.fillStyle = p.color; wc.globalAlpha = 1 - p.age / p.ttl; wc.fillRect(p.x, p.y, p.size, p.size); }
     wc.globalAlpha = 1;
     fc.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); fc.clearRect(0, 0, W, H);
     const shake = this.shakeUntil > this.t ? (Math.random() - 0.5) * 12 : 0;
     if (shake) fc.translate(shake, (Math.random() - 0.5) * 12);
+    if (S.fgTable) { fc.fillStyle = '#4a2e12'; fc.beginPath(); fc.moveTo(-W * 0.1, H * 0.66); fc.lineTo(W * 1.1, H * 0.66); fc.lineTo(W * 1.3, H); fc.lineTo(-W * 0.3, H); fc.closePath(); fc.fill(); fc.fillStyle = '#5a3a1a'; fc.fillRect(-W * 0.1, H * 0.66, W * 1.2, 6); fc.fillStyle = '#3a3a40'; fc.beginPath(); fc.ellipse(W * 0.5, H * 0.75, 22, 7, 0, 0, Math.PI * 2); fc.fill(); fc.fillStyle = '#e8e0c0'; fc.fillRect(W * 0.5 - 2, H * 0.75 - 9, 18, 3); fc.fillStyle = '#ff7a30'; fc.fillRect(W * 0.5 + 16, H * 0.75 - 9, 3, 3); } // Tisch vor der Figur (Igor „sitzt“ dahinter), Aschenbecher mit Kippe
+    if (this.ringOn) { const b = this.foeBox(), el = this.t - this.ringStart, k = Math.min(1, el / this.ringMs), gold = el >= this.ringMs - this.ringGold; const cx = b.left + b.width / 2, cy = b.top + b.height * 0.45, r0 = b.width * 0.9 + 40, r1 = b.width * 0.55; fc.strokeStyle = gold ? '#ffd166' : 'rgba(255,255,255,.75)'; fc.lineWidth = gold ? 6 : 3; if (this.reduced) { const bw = b.width * 1.6, bx = cx - bw / 2, by = b.top + b.height + 18; fc.fillStyle = 'rgba(255,255,255,.25)'; fc.fillRect(bx, by, bw, 8); fc.fillStyle = 'rgba(255,209,102,.7)'; fc.fillRect(bx + bw * (1 - this.ringGold / this.ringMs), by, bw * this.ringGold / this.ringMs, 8); fc.fillStyle = '#fff'; fc.fillRect(bx + bw * k - 2, by - 4, 4, 16); } else { fc.beginPath(); fc.arc(cx, cy, r0 + (r1 - r0) * k, 0, Math.PI * 2); fc.stroke(); } }
+    if (this.cyl) { const r = W * (W < 760 ? 0.15 : 0.11), cx = r + 16, cy = H - r - 16; fc.save(); fc.translate(cx, cy); fc.rotate(this.cyl.angle * Math.PI / 180); fc.fillStyle = '#2a2f36'; fc.strokeStyle = '#8a94a0'; fc.lineWidth = 3; fc.beginPath(); fc.arc(0, 0, r, 0, Math.PI * 2); fc.fill(); fc.stroke(); for (let i = 0; i < 6; i++) { const a = (-90 + i * 60) * Math.PI / 180; fc.fillStyle = this.cyl.spent.includes(i) ? '#3a3f46' : '#0b0d10'; fc.beginPath(); fc.arc(r * 0.6 * Math.cos(a), r * 0.6 * Math.sin(a), r * 0.2, 0, Math.PI * 2); fc.fill(); fc.stroke(); } fc.fillStyle = '#8a94a0'; fc.beginPath(); fc.arc(0, 0, r * 0.14, 0, Math.PI * 2); fc.fill(); fc.restore(); fc.fillStyle = '#ffd166'; fc.beginPath(); fc.moveTo(cx - 7, cy - r - 12); fc.lineTo(cx + 7, cy - r - 12); fc.lineTo(cx, cy - r - 2); fc.closePath(); fc.fill(); }
     for (const p of this.parts) {
       if (p.kind === 'dust') continue;
       const k = 1 - p.age / p.ttl;
       if (p.kind === 'trace') { fc.strokeStyle = p.color; fc.globalAlpha = k; fc.lineWidth = p.size; fc.beginPath(); fc.moveTo(p.x, p.y); fc.lineTo(p.x2, p.y2); fc.stroke(); continue; }
+      if (p.kind === 'fist' || p.kind === 'prop') { const f = p.age / p.ttl, x = p.x + (p.x2 - p.x) * f, y = p.y + (p.y2 - p.y) * f; fc.globalAlpha = p.kind === 'fist' ? 1 : 0.95; fc.fillStyle = p.color; if (p.kind === 'fist') { fc.beginPath(); fc.arc(x, y, p.size * (1 + f * 9), 0, Math.PI * 2); fc.fill(); } else { fc.fillRect(x - p.size, y - p.size * 0.35, p.size * 2, p.size * 0.7); fc.fillRect(x + p.size * 0.4, y, p.size * 0.6, p.size); } continue; } // Faust wächst auf die Kamera zu; Requisite gleitet
       fc.globalAlpha = p.kind === 'muzzle' ? k : Math.min(1, k * 1.5);
       fc.fillStyle = p.color;
       if (p.kind === 'drop') { fc.beginPath(); fc.ellipse(p.x, p.y, p.size * 0.55, p.size * (1.2 + p.age / p.ttl * 2), 0, 0, Math.PI * 2); fc.fill(); continue; } // Tropfen laufen als Streifen nach unten
@@ -8637,7 +8709,15 @@ const DuelStage = {
     if (this.timeScale < 1) { const g = fc.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.9); g.addColorStop(0, 'rgba(40,60,120,0)'); g.addColorStop(1, 'rgba(40,60,120,.45)'); fc.fillStyle = g; fc.fillRect(0, 0, W, H); }
     fc.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   },
-  /* Hand mit Waffe von hinten, unten rechts – Farben nach Waffenstufe */
+  /* Hand-Varianten unten rechts: gun = Pistole (Duell), fist = Faust, revolver = Revolver von hinten, revolverMuzzle = Mündung auf die Kamera */
+  handSvg(kind, tier) {
+    if (kind === 'none') return '';
+    if (kind === 'fist') return `<svg viewBox="0 0 200 160" preserveAspectRatio="xMaxYMax meet"><path d="M60 70 Q58 40 90 36 L138 36 Q160 40 156 70 L152 120 Q150 160 110 160 L64 160 Q52 150 54 120 Z" fill="#e8b48a"/><path d="M66 74 h84 M66 92 h84 M66 110 h84" stroke="#d9a67c" stroke-width="4"/><path d="M52 96 Q36 100 44 130 Q54 148 68 136 Z" fill="#d9a67c"/></svg>`;
+    if (kind === 'revolver') return `<svg viewBox="0 0 200 160" preserveAspectRatio="xMaxYMax meet"><path d="M60 92 L126 14 L142 26 L84 100 Z" fill="#2a2a2e"/><circle cx="96" cy="86" r="22" fill="#3a3f46" stroke="#8a94a0" stroke-width="3"/><circle cx="96" cy="86" r="6" fill="#8a94a0"/><path d="M78 104 L100 112 L110 160 L76 160 Z" fill="#2a2a2e"/><path d="M54 110 Q44 150 62 160 L118 160 Q124 132 106 114 Q88 102 68 106 Z" fill="#e8b48a"/><path d="M64 106 Q50 98 54 118 Q62 126 80 120 Z" fill="#d9a67c"/></svg>`;
+    if (kind === 'revolverMuzzle') return `<svg viewBox="0 0 200 160" preserveAspectRatio="xMaxYMax meet"><circle cx="112" cy="70" r="58" fill="#3a3f46" stroke="#8a94a0" stroke-width="4"/><circle cx="112" cy="70" r="30" fill="#0b0d10" stroke="#555" stroke-width="3"/><circle cx="112" cy="70" r="12" fill="#000"/><path d="M96 128 L128 128 L136 160 L88 160 Z" fill="#2a2a2e"/><path d="M60 136 Q52 152 66 160 L150 160 Q156 140 132 132 Q112 126 84 130 Z" fill="#e8b48a"/><rect x="150" y="30" width="10" height="26" rx="3" fill="#8a94a0"/></svg>`;
+    return this.gunSvg(tier);
+  },
+  /* Hand mit Pistole von hinten, unten rechts – Farben nach Waffenstufe */
   gunSvg(tier) {
     const [dark, light] = this.WEAPON_COLORS[Math.max(0, Math.min(3, tier | 0))];
     /* Schlitten und Lauf zeigen zum Fluchtpunkt (oben links), Griff in der Faust, Daumen außen */
@@ -8651,6 +8731,7 @@ const DuelStage = {
     </svg>`;
   },
 };
+const DuelStage = EgoStage; // Alias: Duell, Tests und Playtest sprechen die Bühne weiter als DuelStage an
 /* ================= SCHIESSEREI „ZIEH!“ – Reaktionsduell, ein Gegner nach dem anderen ================= */
 const Shootout = {
   root: null, gen: 0, running: false, forced: false, pending: null, cfg: null, foes: [], foeIds: [], idx: 0, phase: 'idle', signalAt: 0, foeTime: 0, taps: [],
@@ -13722,6 +13803,57 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       clearTimeout(Shootout.timer); clearTimeout(Shootout.foeTimer); clearTimeout(Shootout.nextTimer); Shootout.running = false; Shootout.forced = false; Shootout.pending = null;
       await UI.show(keep.cur ? keep.cur.id : 'hub');
     }
+  });
+  T.test('EgoStage: Hand-Varianten, Ring, laufende Kulisse, Trommel, Faust/Griff/Requisite, Kulisse hinterzimmer, Alias, reduced', async () => {
+    const host = h('div', { class: 'duel-stage', style: 'width:600px;height:400px;position:relative' }); document.body.append(host);
+    try {
+      T.ok(DuelStage === EgoStage, 'DuelStage bleibt Alias von EgoStage');
+      EgoStage.mount(host, { set: 'hinterzimmer', weapon: 0, reduced: false, hand: 'none' });
+      T.eq([EgoStage.set, EgoStage.handKind, qs('.duel-gun', host).innerHTML, qs('.duel-gun', host).classList.contains('up')], ['hinterzimmer', 'none', '', false], 'hinterzimmer, keine Hand');
+      await wait(40); T.ok(!qs('.duel-gun', host).classList.contains('up'), 'hand none: hebt sich auch nach dem ersten Frame nicht');
+      EgoStage.enter('igor', 0, 1, 'Igor', { gun: false, mood: 'calm' }); T.eq([qsa('.duel-foe svg.part', host).length, qs('#duelFoeName', host).textContent, qs('#duelCount', host).textContent, qs('.duel-foe', host).classList.contains('unarmed'), !!qs('.duel-foe .mood-calm', host)], [8, 'Igor', '', true, true], 'ein Gegner: kein Zähler; unbewaffnet, ruhig');
+      EgoStage.foeGun(true); T.ok(!qs('.duel-foe', host).classList.contains('unarmed'), 'foeGun(true)'); EgoStage.foeGun(false);
+      EgoStage.hand('fist'); T.ok(qs('.duel-gun svg', host) && !qs('.duel-gun', host).classList.contains('muzzle'), 'Faust');
+      EgoStage.handRise(); T.ok(qs('.duel-gun', host).classList.contains('up'), 'hebt sich');
+      EgoStage.hand('revolver'); T.ok(qs('.duel-gun svg circle', host), 'Revolver von hinten (Trommel sichtbar)');
+      EgoStage.hand('revolverMuzzle'); T.ok(qs('.duel-gun', host).classList.contains('muzzle'), 'Mündungssicht');
+      EgoStage.hand('revolver'); T.ok(!qs('.duel-gun', host).classList.contains('muzzle'), 'zurück: muzzle weg');
+      EgoStage.handDrop(); T.ok(!qs('.duel-gun', host).classList.contains('up'), 'senkt sich');
+      EgoStage.hand('gun'); T.ok(qs('.duel-gun svg path[fill="#2a2a2e"]', host), 'Pistole Stufe 0');
+      /* Ring: läuft auf der Bühnen-Uhr, ringTime() misst seit dem Start, ringStop() beendet */
+      T.eq(EgoStage.ringTime(), null, 'kein Ring: null');
+      /* Headless (virtual time) liefert kaum rAF-Frames – die Bühnen-Uhr wird hier von Hand getaktet: loop(now) addiert min(50, now − last) ms */
+      const tick = (n) => { for (let i = 0; i < n; i++) { EgoStage.last = EgoStage.last || 1000; EgoStage.loop(EgoStage.last + 50); } };
+      EgoStage.ring(900, 250); T.eq([EgoStage.ringOn, EgoStage.ringMs, EgoStage.ringGold], [true, 900, 250]); T.eq(EgoStage.ringTime(), 0, 'ringTime ab 0');
+      tick(3); T.eq(EgoStage.ringTime(), 150, 'Bühnen-Uhr: 3 × 50 ms');
+      EgoStage.ringStop(); T.eq([EgoStage.ringOn, EgoStage.ringTime()], [false, null]);
+      EgoStage.ring(30, 10); tick(2); T.eq(EgoStage.ringOn, false, 'Ring läuft nach ms von selbst aus');
+      EgoStage.setTimeScale(0.5); EgoStage.ring(900, 250); tick(3); T.eq(EgoStage.ringTime(), 75, 'Zeitlupe bremst auch den Ring'); EgoStage.setTimeScale(1); EgoStage.ringStop();
+      /* laufende Kulisse + Figurengröße */
+      EgoStage.motion(true); T.ok(EgoStage.moving && host.classList.contains('run'), 'run-Klasse');
+      EgoStage.foeScale(0.5, 0); T.eq(qs('.duel-foe', host).style.getPropertyValue('--s'), '0.5');
+      EgoStage.motion(false); T.ok(!EgoStage.moving && !host.classList.contains('run'));
+      /* Trommel-Nahaufnahme */
+      EgoStage.cylinder({ idx: 2, spent: [0, 1] }); T.eq([EgoStage.cyl.idx, EgoStage.cyl.spent], [2, [0, 1]]);
+      tick(30); T.ok(Math.abs(EgoStage.cyl.angle + 120) < 1, `Trommel dreht weich auf −120° (angle=${EgoStage.cyl.angle})`);
+      EgoStage.cylinder(null); T.eq(EgoStage.cyl, null, 'ausgeblendet');
+      /* Faustkampf, Kragengriff, Requisite, eigener Kopfschuss, Mündungsfeuer */
+      EgoStage.hand('fist'); EgoStage.parts = [];
+      EgoStage.punch(true); T.ok(EgoStage.parts.some((p) => p.kind === 'blood') && qs('.duel-gun', host).classList.contains('recoil'), 'Treffer: Blut + Faust ruckt');
+      EgoStage.parts = []; EgoStage.punch(false); T.ok(EgoStage.parts.some((p) => p.kind === 'fist') && EgoStage.redUntil > EgoStage.t && EgoStage.shakeUntil > EgoStage.t, 'daneben: seine Faust auf die Kamera, roter Rand, Ruck');
+      EgoStage.redUntil = 0; EgoStage.grab(); T.ok(host.classList.contains('jerk') && EgoStage.redUntil > EgoStage.t, 'Kragengriff: jerk + roter Rand');
+      EgoStage.parts = []; EgoStage.slideProp({ x: 0, y: 0 }, { x: 100, y: 100 }, 300); T.ok(EgoStage.parts.some((p) => p.kind === 'prop'), 'Requisite gleitet');
+      EgoStage.parts = []; EgoStage.selfShot(); T.ok(EgoStage.flashUntil > EgoStage.t && EgoStage.parts.some((p) => p.kind === 'drop'), 'Kopfschuss: Blitz + Tropfen');
+      EgoStage.parts = []; EgoStage.muzzleAt(10, 10); T.ok(EgoStage.parts.some((p) => p.kind === 'muzzle'), 'Mündungsfeuer an Position');
+      EgoStage.unmount(); T.eq([EgoStage.mounted, host.children.length, host.classList.contains('run')], [false, 0, false]);
+      /* reduced motion: keine run-Klasse, kein jerk, kein Blitz, Trommel springt, Figurengröße ohne Transition */
+      EgoStage.mount(host, { set: 'gasse', weapon: 0, reduced: true, hand: 'fist' }); EgoStage.enter('raeuber', 0, 1, 'X');
+      EgoStage.motion(true); T.ok(EgoStage.moving && !host.classList.contains('run'), 'reduced: Kulisse steht');
+      EgoStage.grab(); T.ok(!host.classList.contains('jerk') && EgoStage.shakeUntil === 0, 'reduced: kein Ruck');
+      EgoStage.selfShot(); T.eq(EgoStage.flashUntil, 0, 'reduced: kein Blitz');
+      EgoStage.foeScale(0.5, 900); T.eq(qs('.duel-foe', host).style.transitionDuration, '0s', 'reduced: springt');
+      EgoStage.cylinder({ idx: 3, spent: [] }); EgoStage.loop(5000); T.eq(EgoStage.cyl.angle, -180, 'reduced: Trommel springt');
+    } finally { EgoStage.unmount(); host.remove(); }
   });
   const pseudoAnim = (el, pseudo) => getComputedStyle(el, pseudo).animationName;
   T.test('Glücksrad: Rad in Clip-Wrapper (contain: paint), Geometrie unverändert, Zeiger/Lichter/Nabe außerhalb, Glow per ::after', async () => {
