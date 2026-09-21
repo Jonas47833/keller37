@@ -1264,8 +1264,8 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
         <table>
           <tr><td>7️⃣ 7️⃣ 7️⃣</td><td>40×</td></tr>
           <tr><td>💎 💎 💎</td><td>25×</td></tr>
-          <tr><td>🔔 🔔 🔔</td><td>15×</td></tr>
-          <tr><td>Drilling</td><td>5×</td></tr>
+          <tr><td>🔔 🔔 🔔</td><td>20×</td></tr>
+          <tr><td>Drilling</td><td>6×</td></tr>
           <tr><td>Paar</td><td id="payPair">1,2×</td></tr>
         </table>
       </div>
@@ -1569,7 +1569,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
         <tr><td>7️⃣</td><td>20 / 100 / 500</td></tr>
         <tr><td>💎</td><td>10 / 40 / 100</td></tr>
         <tr><td>BAR</td><td>5 / 20 / 50</td></tr>
-        <tr><td>🔔</td><td>3 / 10 / 25</td></tr>
+        <tr><td>🔔</td><td>3 / 12 / 30</td></tr>
         <tr><td>🍒</td><td>2 / 5 / 10</td></tr>
         <tr><td>⭐ ×3+</td><td>5 Freispiele, ×2</td></tr>
       </table>
@@ -1656,7 +1656,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
       <h4>24 Felder</h4>
       <table>
         <tr><td>×10</td><td>1 Feld</td></tr><tr><td>×5</td><td>1 Feld</td></tr><tr><td>×2</td><td>1 Feld</td></tr>
-        <tr><td>Hälfte</td><td>11 Felder</td></tr><tr><td>Bankrott</td><td>10 Felder</td></tr>
+        <tr><td>Hälfte</td><td>13 Felder</td></tr><tr><td>Bankrott</td><td>8 Felder</td></tr>
       </table>
     </div>
     <div class="status" id="wheelStatus">Einsatz wählen und drehen</div>
@@ -1698,7 +1698,8 @@ const Rules = {
   POST_PENALTY: 25,
   BEER_LUCK: [0, 10, 15, 20, 25],
   BROWNIE_LUCK: 40,
-  BEER_SPINS: 4,       // 3 Bier = 150 € für 4 Spins: lohnt sich ab ~220 € Einsatz am Roulette (Balancing 2026-09-20, tests/balance-sim.mjs)
+  BEER_SPINS: 8,       // 3 Bier = 150 € für 8 Spins: lohnt sich ab ~110 € Einsatz an jedem Tisch (Balancing 2026-09-21, tests/balance-sim.mjs; vorher 4 Spins = ab 220 €, und nur am Roulette)
+  BEER_WORTH_FROM: 110, // Einsatz, ab dem sich 3 Bier rechnen (Bar-Hinweis; der Selftest prüft ihn gegen 150 / (BEER_SPINS × Vorteil))
   BROWNIE_SPINS: 4,
   MARRIAGE_SPINS: 2,
   MAFIA_SPINS: 5,
@@ -1714,8 +1715,9 @@ const Rules = {
     return l;
   },
   /* Glück ist ein echter, aber teurer Vorteil: voll bis LUCK_CAP, darüber im Verhältnis kleiner (Pech genauso).
-     Mit 3 Bier liegt Roulette Rot/Schwarz bei ~117 %, das Rad bei ~111 %, die Slots bei ~105 % – wer die Bankroll
-     hält und den Einsatz am Cap ausrichtet, kommt voran; wer alles setzt, fällt trotzdem. */
+     Balancing 2026-09-21: nüchtern liegen alle Tische bei ~97 % (Roulette Rot 97, Slots 98, Rad 98, Mega 97, Craps/Baccarat 99),
+     mit 3 Bier bei ~115 % (Rot 117, Slots 115, Rad 115, Mega 117, Craps 109, Baccarat 108) – der Spieler darf das Spiel
+     wählen, das ihm gefällt. Wer die Bankroll hält und ab BEER_WORTH_FROM setzt, kommt voran; wer alles setzt, fällt trotzdem. */
   effectiveLuck(luck, bet) {
     if (!luck) return 0;
     if (!bet || bet <= Rules.LUCK_CAP) return luck;
@@ -1823,17 +1825,21 @@ const Rules = {
   SYMBOLS: ['🍒', '🍋', '🍇', '🔔', '💎', '7️⃣'],
   slotRoll(rng) { return [0, 1, 2].map(() => Rules.SYMBOLS[Math.floor(rng() * Rules.SYMBOLS.length)]); },
   CHEAP: ['🍒', '🍋', '🍇'],
-  /* Glück erzwingt ein Paar; wird daraus zufällig ein Drilling, dann nur bei den billigen Symbolen (5×) –
+  SLOT_LUCK_TRIPLE: 0.12, // Glück: ein erzwungenes Paar aus 🍒🍋🍇 wird so oft zum Drilling (fest, nicht mit dem Glück skaliert)
+  /* Glück erzwingt ein Paar; bei den billigen Symbolen (6×) wird daraus mit SLOT_LUCK_TRIPLE ein Drilling –
      Glocke, Diamant und Sieben bleiben Glückssache, sonst wären Slots mit Bier eine Gelddruckmaschine.
+     Balancing 2026-09-21: 3 Bier heben Slots damit auf ~115 % wie Roulette Rot (vorher 106 %: Bier lohnte sich erst ab 600 € Einsatz).
      Pech würfelt einen Gewinn einmal neu. */
   slotLuckOverride(res, luck, rng) {
     if (luck < 0) return Rules.slotMultiplier(...res) > 0 && Rules.pech(luck, rng) ? Rules.slotRoll(rng) : res;
     const [a, b, c] = res;
-    if (rng() * 100 < luck) return [a, a, c === a && !Rules.CHEAP.includes(a) ? Rules.SYMBOLS[(Rules.SYMBOLS.indexOf(a) + 1) % Rules.SYMBOLS.length] : c];
-    return [a, b, c];
+    if (!(rng() * 100 < luck)) return [a, b, c];
+    if (Rules.CHEAP.includes(a)) return [a, a, c === a || rng() < Rules.SLOT_LUCK_TRIPLE ? a : c];
+    return [a, a, c === a ? Rules.SYMBOLS[(Rules.SYMBOLS.indexOf(a) + 1) % Rules.SYMBOLS.length] : c];
   },
+  /* Drillinge 6/20/25/40 + Paar 1,2× → 97,7 % ohne Glück (vorher 5/15/25/40 = 94,4 %; Balancing 2026-09-21: alle Tische ~97 % wie Roulette Rot) */
   slotMultiplier(a, b, c, mods = Rules.NEUTRAL_MODS) {
-    if (a === b && b === c) return a === '7️⃣' ? 40 : a === '💎' ? 25 : a === '🔔' ? 15 : 5;
+    if (a === b && b === c) return a === '7️⃣' ? 40 : a === '💎' ? 25 : a === '🔔' ? 20 : 6;
     if (a === b || b === c || a === c) return mods.slotPairMult;
     return 0;
   },
@@ -2605,7 +2611,7 @@ const UI = {
       btn(`🍺 Bier${s.beers > 0 ? ` (${s.beers}/${mods.maxBeers})` : ''}`, this.fmt(StoryRules.price(s, 'beer')), 'beer', !Rules.canBeer(s, StoryRules.price(s, 'beer'), mods).ok || StoryRules.purchaseAllowed(s, 'beer') === false),
       btn('🍪 Brownie', this.fmt(s.brownieCost), 'brownie', !Rules.canBrownie(s).ok || StoryRules.purchaseAllowed(s, 'brownie') === false),
       ...acts('bar'),
-      h('p', { class: 'side-hint' }, `Bier hält ${Rules.BEER_SPINS} Spins, Brownie ${mods.brownieSpins} Spin${mods.brownieSpins === 1 ? '' : 's'}. Glück wirkt voll bis ${this.fmt(Rules.LUCK_CAP)} Einsatz, nie auf Zahlen.`)));
+      h('p', { class: 'side-hint' }, `Bier hält ${Rules.BEER_SPINS} Spins, Brownie ${mods.brownieSpins} Spin${mods.brownieSpins === 1 ? '' : 's'}. Drei Bier lohnen sich ab ~${this.fmt(Rules.BEER_WORTH_FROM)} Einsatz; Glück wirkt voll bis ${this.fmt(Rules.LUCK_CAP)}, nie auf Zahlen.`)));
     const hz = [];
     if (room('doc') || !inStory) hz.push(btn(s.kidneySold ? '🫁 Niere verkauft' : '🫁 Niere verkaufen', s.kidneySold ? '' : '+2.000 €', 'kidney', s.kidneySold));
     if (room('bank') || room('mafia')) hz.push(btn('🏦 Kredite', s.bankDebt + s.mafiaDebt > 0 ? `−${this.fmt(s.bankDebt + s.mafiaDebt)}` : '', 'finance'));
@@ -6768,7 +6774,7 @@ const RoyalRules = {
     SYMBOLS: ['🍒', '🔔', 'BAR', '💎', '7️⃣', '⭐'],
     WEIGHTS: [30, 25, 18, 12, 7, 8],
     LINES: [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [2, 2, 2, 2, 2], [0, 1, 2, 1, 0], [2, 1, 0, 1, 2]], // Reihe je Walze
-    PAY: { '🍒': [0, 0, 0, 2, 5, 10], '🔔': [0, 0, 0, 3, 10, 25], BAR: [0, 0, 0, 5, 20, 50], '💎': [0, 0, 0, 10, 40, 100], '7️⃣': [0, 0, 0, 20, 100, 500] },
+    PAY: { '🍒': [0, 0, 0, 2, 5, 10], '🔔': [0, 0, 0, 3, 12, 30], BAR: [0, 0, 0, 5, 20, 50], '💎': [0, 0, 0, 10, 40, 100], '7️⃣': [0, 0, 0, 20, 100, 500] }, // Balancing 2026-09-21: Glocke 4er/5er 12/30 statt 10/25 → ~96 % ohne Glück (vorher 92 %), mit 3 Bier ~116 % wie Roulette Rot
     BETS: [100, 250, 500, 1000],
     FREE_SPINS: 5, FREE_MULT: 2, FREE_MAX: 15, SCATTER: '⭐',
     BIG_MULT: 10, MEGA_MULT: 50, AUTO_ROUNDS: 10,
@@ -6909,11 +6915,11 @@ const RoyalRules = {
     return dice;
   },
   /* ---- Glücksrad: 24 Segmente, Multiplikator auf den Einsatz (0 = Bankrott, 0,5 = Hälfte zurück) ----
-     Summe 22,5 → 93,75 % ohne Glück. Balancing 2026-09-20: 10 statt 13 Bankrott, dafür 11 Hälfte und kein Einsatz-zurück –
-     gleiche Quote, weniger Totalverluste. ×2/×5/×10 liegen direkt hinter einem Bankrott, weil Glück Bankrott auf das nächste
-     Feld schiebt; so bleibt Bier am Rad bei ~112 % (tests/balance-sim.mjs). */
+     Summe 23,5 → 97,9 % ohne Glück. Balancing 2026-09-21: 8 Bankrott, 13 Hälfte, ×2/×5/×10 – alle Tische ~97 % wie Roulette Rot
+     (vorher 13 Bankrott, 93,75 %). ×2/×5/×10 liegen direkt hinter einem Bankrott, weil Glück Bankrott auf das nächste Feld
+     schiebt; so liegt das Rad mit 3 Bier bei ~114 % (tests/balance-sim.mjs). */
   WHEEL: {
-    SEGMENTS: [0, 0.5, 0, 10, 0.5, 0, 5, 0.5, 0, 0.5, 0, 2, 0.5, 0, 0.5, 0, 0.5, 0.5, 0, 0.5, 0, 0.5, 0.5, 0],
+    SEGMENTS: [0, 10, 0.5, 0, 0.5, 0.5, 0, 5, 0.5, 0, 0.5, 0.5, 0, 2, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5],
     BETS: [100, 500, 1000, 5000],
   },
   wheelSpin(rng) { return Math.floor(rng() * RoyalRules.WHEEL.SEGMENTS.length); },
@@ -9854,14 +9860,19 @@ T.test('slotLuckOverride: erzwungenes Paar wird nur bei 🍒🍋🍇 zum Drillin
     T.ok(r[0] === sym && r[1] === sym && r[2] !== sym, `${sym}: Paar ja, Drilling nein – ${r.join('')}`);
   }
   T.eq(Rules.slotLuckOverride(['7️⃣', '🍋', '🍒'], 100, seq(0)), ['7️⃣', '7️⃣', '🍒'], 'drittes Symbol bleibt, wenn es kein Drilling wäre');
+  /* Balancing 2026-09-21: billiges Paar wird mit SLOT_LUCK_TRIPLE (fest, unabhängig vom Glück) zum Drilling */
+  T.eq(Rules.SLOT_LUCK_TRIPLE, 0.12);
+  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.11)), ['🍒', '🍒', '🍒'], 'rng 0.11 < 0.12 → Kirsch-Drilling');
+  T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.12)), ['🍒', '🍒', '🍇'], 'rng 0.12 ≥ 0.12 → nur Paar');
+  T.eq(Rules.slotLuckOverride(['7️⃣', '🍋', '🍇'], 40, seq(0.1, 0.0)), ['7️⃣', '7️⃣', '🍇'], 'teures Symbol: nie per Zufall Drilling');
 });
-T.test('Glücks-Ökonomie: Bier 4 Spins, Brownie 4 Spins, Cap 1.000 – Bier lohnt sich ab ~220 € am Roulette, Slots bleiben ein Spaßgerät', () => {
-  T.eq(Rules.BEER_SPINS, 4); T.eq(Rules.BROWNIE_SPINS, 4); T.eq(Rules.LUCK_CAP, 1000);
+T.test('Glücks-Ökonomie: Bier 8 Spins, Brownie 4 Spins, Cap 1.000 – 3 Bier lohnen sich ab ~110 € an jedem Tisch (Balancing 2026-09-21)', () => {
+  T.eq(Rules.BEER_SPINS, 8); T.eq(Rules.BROWNIE_SPINS, 4); T.eq(Rules.LUCK_CAP, 1000);
   const N = 100000, mods = Rules.NEUTRAL_MODS;
   let rng = seeded(5), sum = 0;
   for (let i = 0; i < N; i++) { const res = Rules.slotLuckOverride(Rules.slotRoll(rng), 20, rng); sum += Rules.slotDelta(100, Rules.slotMultiplier(...res, mods)); }
   const slots = 100 + sum / N;
-  T.ok(slots > 101 && slots < 110, `Slots bei +20 Glück: RTP ${slots.toFixed(1)} % (erwartet 101–110)`);
+  T.ok(slots > 111 && slots < 120, `Slots bei +20 Glück: RTP ${slots.toFixed(1)} % (erwartet 111–120, wie Roulette Rot)`);
   rng = seeded(5); sum = 0;
   for (let i = 0; i < N; i++) { const rolled = Rules.rouletteLuckOverride('red', null, Rules.rouletteRoll(rng), 20, rng); sum += Rules.roulettePayout('red', null, rolled, 100, mods); }
   const rot = 100 + sum / N;
@@ -9873,10 +9884,13 @@ T.test('Glücks-Ökonomie: Bier 4 Spins, Brownie 4 Spins, Cap 1.000 – Bier loh
     sum += w.payout; if (w.freeSpins) free = Math.min(RoyalRules.MEGA.FREE_MAX, free + w.freeSpins);
   }
   const mega = 100 * sum / paid;
-  T.ok(mega > 106 && mega < 118, `Mega Seven bei +20 Glück: RTP ${mega.toFixed(1)} % (erwartet 106–118)`);
+  T.ok(mega > 111 && mega < 122, `Mega Seven bei +20 Glück: RTP ${mega.toFixed(1)} % (erwartet 111–122, wie Roulette Rot)`);
   /* 3 Bier = 150 € für BEER_SPINS Spins: Gewinnschwelle am Roulette = 150 / (BEER_SPINS × Vorteil) */
   const schwelle = 150 / (Rules.BEER_SPINS * (rot - 100) / 100);
-  T.ok(schwelle > 180 && schwelle < 260, `Bier rechnet sich ab ${schwelle.toFixed(0)} € Einsatz`);
+  T.ok(schwelle > 90 && schwelle < 130, `Bier rechnet sich ab ${schwelle.toFixed(0)} € Einsatz`);
+  T.ok(Math.abs(Rules.BEER_WORTH_FROM - schwelle) < 20, `Bar-Hinweis BEER_WORTH_FROM ${Rules.BEER_WORTH_FROM} passt zur Schwelle ${schwelle.toFixed(0)}`);
+  /* nüchtern ~97 %: Slots exakt 211/216, Rad 23,5/24 */
+  T.ok(Math.abs(RoyalRules.WHEEL.SEGMENTS.reduce((a, b) => a + b, 0) / 24 - 23.5 / 24) < 1e-9, 'Rad 97,9 % ohne Glück');
 });
 T.test('slotLuckOverride: kein Glück', () => {
   T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.5)), ['🍒', '🍋', '🍇']);
@@ -9893,8 +9907,8 @@ T.test('slotLuckOverride: Pech würfelt einen Gewinn neu, Niete bleibt', () => {
 T.test('slotMultiplier', () => {
   T.eq(Rules.slotMultiplier('7️⃣', '7️⃣', '7️⃣'), 40);
   T.eq(Rules.slotMultiplier('💎', '💎', '💎'), 25);
-  T.eq(Rules.slotMultiplier('🔔', '🔔', '🔔'), 15);
-  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍒'), 5);
+  T.eq(Rules.slotMultiplier('🔔', '🔔', '🔔'), 20);
+  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍒'), 6);
   T.eq(Rules.slotMultiplier('🍒', '🍒', '🍋'), 1.2);
   T.eq(Rules.slotMultiplier('🍒', '🍋', '🍒'), 1.2);
   T.eq(Rules.slotMultiplier('🍋', '🍒', '🍒'), 1.2);
@@ -10209,7 +10223,7 @@ T.test('megaRoll: 5 Walzen × 3 Reihen', () => {
 });
 T.test('megaLineWins: Mitte, oben, unten, V, umgekehrtes V', () => {
   T.eq(RoyalRules.megaLineWins(G(['🔔 🍒 🔔', '🔔 🍒 🔔', '🔔 🍒 🔔', '🔔 🔔 🔔', '🔔 🔔 🔔'])).map((w) => [w.line, w.sym, w.count, w.mult]),
-    [[0, '🍒', 3, 2], [1, '🔔', 5, 25], [2, '🔔', 5, 25]]);
+    [[0, '🍒', 3, 2], [1, '🔔', 5, 30], [2, '🔔', 5, 30]]);
   T.eq(RoyalRules.megaLineWins(G(['BAR 🍒 🍒', '🍒 BAR 🍒', '🍒 🍒 BAR', '🍒 BAR 🍒', 'BAR 🍒 🍒'])).map((w) => [w.line, w.sym, w.count, w.mult]), [[3, 'BAR', 5, 50]]);
   T.eq(RoyalRules.megaLineWins(G(['🍒 🍒 💎', '🍒 💎 🍒', '💎 🍒 🍒', '🍒 💎 🍒', '🍒 🍒 💎'])).map((w) => [w.line, w.sym, w.count, w.mult]), [[4, '💎', 5, 100]]);
 });
@@ -10348,12 +10362,12 @@ T.test('RoyalRules.wheelTone: Segmentklasse je Multiplikator', () => {
   T.eq([10, 5, 2, 1, 0.5, 0].map(RoyalRules.wheelTone), ['x10', 'x5', 'x2', 'x1', 'half', 'bust']);
   T.eq(Object.keys(RoyalRules.WHEEL_COLORS).sort(), ['0', '0.5', '1', '10', '2', '5']);
 });
-T.test('WHEEL: 24 Segmente, Verteilung, Erwartungswert 93,75 %', () => {
+T.test('WHEEL: 24 Segmente, Verteilung, Erwartungswert 97,9 %', () => {
   const S = RoyalRules.WHEEL.SEGMENTS;
   T.eq(S.length, 24);
   const count = (v) => S.filter((x) => x === v).length;
-  T.eq([count(0), count(0.5), count(1), count(2), count(5), count(10)], [10, 11, 0, 1, 1, 1], 'Balancing 2026-09-20: 10 statt 13 Bankrott, dafür Hälfte statt Einsatz zurück');
-  T.eq(S.reduce((a, b) => a + b, 0) / 24, 0.9375);
+  T.eq([count(0), count(0.5), count(1), count(2), count(5), count(10)], [8, 13, 0, 1, 1, 1], 'Balancing 2026-09-21: 8 Bankrott, 13 Hälfte – ~97 % wie alle Tische');
+  T.eq(S.reduce((a, b) => a + b, 0) / 24, 23.5 / 24);
   S.forEach((v, i) => { if (v === 0) T.ok(S[(i + 1) % 24] !== 0 || S[(i + 2) % 24] !== 0, `Bankrott ${i} hat binnen 2 Schritten ein Nicht-Bankrott-Segment`); });
   S.forEach((v, i) => { if (v !== 0) T.ok(S[(i + 1) % 24] === 0 || S[(i + 2) % 24] === 0, `Segment ${i} hat binnen 2 Schritten ein Bankrott-Segment (Pech)`); });
   /* Glück schiebt Bankrott aufs nächste Feld – die drei Gewinnfelder liegen direkt hinter einem Bankrott, sonst wirkt Bier am Rad kaum */
@@ -10446,8 +10460,8 @@ T.test('wheelLuckOverride: Bankrott rückt auf das nächste Nicht-Bankrott-Segme
 T.test('wheelLuckOverride: Pech rückt einen Gewinn auf das nächste Bankrott-Segment', () => {
   const S = RoyalRules.WHEEL.SEGMENTS;
   const i10 = S.indexOf(10), i0 = S.indexOf(0);
-  T.eq(i10, 3); T.eq(S[4], 0.5); T.eq(S[5], 0);
-  T.eq(RoyalRules.wheelLuckOverride(i10, -100, seq(0)), 5, '×10 (Index 3) → Index 5 ist das nächste Bankrott');
+  T.eq(i10, 1); T.eq(S[2], 0.5); T.eq(S[3], 0);
+  T.eq(RoyalRules.wheelLuckOverride(i10, -100, seq(0)), 3, '×10 (Index 1) → Index 3 ist das nächste Bankrott');
   T.eq(RoyalRules.wheelLuckOverride(i10, -15, seq(0.15)), i10, 'rng 15 ≥ |luck| 15 → bleibt');
   T.eq(RoyalRules.wheelLuckOverride(i0, -100, seq(0)), i0, 'Bankrott bleibt');
   T.eq(RoyalRules.wheelLuckOverride(i10, 0, seq(0)), i10, 'luck 0 unverändert');
@@ -13434,11 +13448,11 @@ T.test('Roulette mit mods: 36:1, Ausschlussliste', () => {
 T.test('Slots/Pferde mit mods', () => {
   T.eq(Rules.slotMultiplier('🍒', '🍒', '🍋', M({ slotPairMult: 1.5 })), 1.5);
   T.eq(Rules.slotMultiplier('🍒', '🍒', '🍋', M({ slotPairMult: 0 })), 0);
-  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍒', M({ slotPairMult: 0 })), 5, 'Drilling unberührt');
+  T.eq(Rules.slotMultiplier('🍒', '🍒', '🍒', M({ slotPairMult: 0 })), 6, 'Drilling unberührt');
   T.eq(Rules.horseDelta(true, 100), 300); T.eq(Rules.horseDelta(true, 100, M({ horsePayout: 3.3 })), 330); T.eq(Rules.horseDelta(false, 100, M({ horsePayout: 3.3 })), -100);
   near(Rules.horseStep(false, 0, seq(0), Rules.HORSE_LAME_STEP), 1.5 * Rules.HORSE_LAME_STEP, 'Handicap');
 });
-T.test('Slots: Erwartungswert bleibt unter 1 (Zockerhände 1,3×, neutral)', () => {
+T.test('Slots: Erwartungswert neutral ~97,7 %, Zockerhände 1,3× knapp über 1 (Balancing 2026-09-21)', () => {
   const evFor = (mods) => {
     let sum = 0, n = 0;
     for (const a of Rules.SYMBOLS) for (const b of Rules.SYMBOLS) for (const c of Rules.SYMBOLS) { sum += Rules.slotMultiplier(a, b, c, mods); n++; }
@@ -13446,9 +13460,9 @@ T.test('Slots: Erwartungswert bleibt unter 1 (Zockerhände 1,3×, neutral)', () 
   };
   const zocker = evFor(M({ slotPairMult: 1.3 }));
   T.eq(zocker.n, 216, 'alle Walzen-Kombinationen');
-  T.ok(zocker.avg < 1, `Zockerhände 1,3× bleibt -EV (avg=${zocker.avg})`);
+  T.ok(zocker.avg > 1 && zocker.avg < 1.03, `Zockerhände 1,3× ist nüchtern leicht +EV, ~102 % (avg=${zocker.avg}) – der Perk kostet dafür 2 % Bank-Zinsen`);
   const neutral = evFor(Rules.NEUTRAL_MODS);
-  T.ok(neutral.avg < 1, `neutral bleibt -EV (avg=${neutral.avg})`);
+  T.ok(Math.abs(neutral.avg - 211 / 216) < 1e-9, `neutral 211/216 = 97,7 % (avg=${neutral.avg})`);
 });
 T.test('Blackjack mit mods: Natural 3:2, Push +10 %, heißes Deck 1,2:1', () => {
   T.eq(Rules.bjDelta('win', 100), 100);
