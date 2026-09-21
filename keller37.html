@@ -875,7 +875,7 @@ body.mode-story #newgame { display: none; }
 /* Handy: Bühne so hoch, dass Status + „Bereit“ noch über der Tab-Leiste stehen (410 px = Kopfzeile (2 Zeilen) + Panel-Rand/Abstände + 3-zeiliger Status + Knopf + Tab-Leiste) */
 @media (max-width: 760px) { .duel-stage { height: calc(100vh - 410px); min-height: 300px; } .duel-stage .cs-fig.duel-foe { height: 44%; bottom: 36%; } .duel-gun { width: 46%; } }
 @media (orientation: landscape) and (max-height: 500px) { .duel-stage { height: 80vh; min-height: 280px; } .duel-stage .cs-fig.duel-foe { height: 55%; bottom: 30%; } }
-@media (prefers-reduced-motion: reduce) { .duel-stage .cs-fig.duel-foe, .duel-gun { transition: none; } .duel-gun.recoil, .duel-flash.on, .duel-foe[data-pose="idle"] .armR, .duel-stage.run .duel-world, .duel-stage.jerk .duel-world, .cs-fig[data-pose="windup"] .cs-body, .cs-fig[data-pose="relief"] .cs-body { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .duel-stage .cs-fig.duel-foe, .duel-gun, .duel-gun.up.muzzle { transition: none; } .duel-gun.recoil, .duel-flash.on, .duel-foe[data-pose="idle"] .armR, .duel-stage.run .duel-world, .duel-stage.jerk .duel-world, .cs-fig[data-pose="windup"] .cs-body, .cs-fig[data-pose="relief"] .cs-body { animation: none; } }
 
 /* -- Große Bildschirme: Spielfläche mitwachsen lassen (zoom skaliert Layout + Canvas sauber) -- */
 @media (min-width: 1440px) and (min-height: 820px) { .body, .title-inner { zoom: 1.15; } }
@@ -13853,6 +13853,18 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       EgoStage.selfShot(); T.eq(EgoStage.flashUntil, 0, 'reduced: kein Blitz');
       EgoStage.foeScale(0.5, 900); T.eq(qs('.duel-foe', host).style.transitionDuration, '0s', 'reduced: springt');
       EgoStage.cylinder({ idx: 3, spent: [] }); EgoStage.loop(5000); T.eq(EgoStage.cyl.angle, -180, 'reduced: Trommel springt');
+      /* Mündungssicht (duel-gun.up.muzzle) hat eine eigene, spezifischere Transition – reduced-motion muss sie extra abschalten (CSSOM, echtes matchMedia lässt sich im Harness nicht stubben) */
+      let muzzleNone = false;
+      for (const sheet of document.styleSheets) {
+        let rules; try { rules = sheet.cssRules; } catch (e) { continue; }
+        for (const r of rules) {
+          if (r.type !== CSSRule.MEDIA_RULE || !/prefers-reduced-motion:\s*reduce/.test(r.conditionText || r.media.mediaText)) continue;
+          for (const inner of r.cssRules) {
+            if ((inner.selectorText || '').split(',').some((sel) => sel.trim() === '.duel-gun.up.muzzle') && inner.style.transitionProperty === 'none') muzzleNone = true;
+          }
+        }
+      }
+      T.ok(muzzleNone, 'reduced-motion: Mündungssicht-Transition (duel-gun.up.muzzle) abgeschaltet');
     } finally { EgoStage.unmount(); host.remove(); }
   });
   const pseudoAnim = (el, pseudo) => getComputedStyle(el, pseudo).animationName;
