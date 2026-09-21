@@ -7772,7 +7772,8 @@ const GangRules = {
   REPAIR: { roulette: 6000, blackjack: 5000, slots: 4000, horses: 3000, russian: 2000 },
   repairPrice(door, igor) { const p = GangRules.REPAIR[door]; return igor ? Math.round(p / 2 / 100) * 100 : p; },
   RAID: { base: 0.25, igor: 0.15 },
-  raidChance(flags) { return flags.bahnhof ? 0 : flags.igor ? GangRules.RAID.igor : GangRules.RAID.base; },
+  WACHE_PREIS: 200, // Bahnhof-Jungs vor der Tür (Ruf-Angebot „Die Wache“): je Nacht, Türen bleiben ganz
+  raidChance(flags) { return flags.bahnhof || flags.wache ? 0 : flags.igor ? GangRules.RAID.igor : GangRules.RAID.base; },
   /* rng 1: Chance; rng 2: Wahl unter den intakten Türen (KELLER_DOORS-Reihenfolge) */
   raid(broken = {}, flags = {}, rng = Math.random) {
     const chance = GangRules.raidChance(flags);
@@ -9899,7 +9900,7 @@ const STORY_STASH = {
     if (!v.woche) return 'Der Keller gehört dir. Auf dem Papier.';
     if (v.woche > 0 && s.story.day > v.woche * 7) return `Woche ${v.woche} abgerechnet. ${s.story.day >= 29 ? 'Woche 5 kommt – Zeit für einen Ausweg.' : 'Heute Nacht: neue Lieferung.'}`;
     const heute = [7, 14, 21, 28].includes(s.story.day);
-    return `Woche ${v.woche}: Umsatz ${fmt(v.umsatz)} / ${fmt(v.ziel)} · ${heute ? 'HEUTE ABEND' : `Tag ${v.woche * 7}`}: ${fmt(v.rueckgabe)} fällig`;
+    return `Woche ${v.woche}: Umsatz ${fmt(v.umsatz)} / ${fmt(v.ziel)} · ${heute ? 'HEUTE ABEND' : `Tag ${v.woche * 7}`}: ${fmt(v.rueckgabe)} fällig${f.wache ? ` · Wache ${GangRules.WACHE_PREIS} €/Nacht` : ''}`;
   },
   intro: 'stash.intro',
   /* ---- Story-Funktionen (Effekt call) – rechnen, setzen Vars/Flags, geben Szene/Toast/Force zurück ---- */
@@ -9990,6 +9991,13 @@ const STORY_STASH = {
       st.flags.rufReparaturWoche = true; st.vars.ruf = Math.min(10, (st.vars.ruf || 0) + 1);
       return { toast: { icon: '🔥', title: 'Ruf +1', text: 'Er lässt sich nicht kleinkriegen, sagen sie am Bahnhof.', tone: 'win' } };
     },
+    /* Die Wache: 200 € je Nacht; reicht die Kasse nicht, gehen die Jungs (Flag fällt, kommt nicht wieder) */
+    wacheNacht(s) {
+      const f = s.story.flags;
+      if (s.balance >= GangRules.WACHE_PREIS) { s.balance -= GangRules.WACHE_PREIS; return {}; }
+      delete f.wache; f.wacheWeg = true;
+      return { toast: { icon: '🚪', title: 'Die Wache geht', text: 'Kein Geld, keine Jungs. Die Tür ist wieder deine Sache.', tone: 'loss' } };
+    },
     /* Dev-Start mitten in der Story (?day=N): ohne diese Nachbesserung stünde Woche/Ziel/Rückgabe auf 0,
        bis die nächste reguläre Lieferung/Abrechnung sie setzt. Kein Kontostand-Effekt, keine Lieferung heute Nacht. */
     devWoche(s) {
@@ -10012,9 +10020,12 @@ const STORY_STASH = {
     { id: 'abrechnung', when: { any: [{ day: { eq: 7 } }, { day: { eq: 14 } }, { day: { eq: 21 } }, { day: { eq: 28 } }] }, daily: true, at: 'night', effects: [{ call: 'abrechnung' }] },
     { id: 'lieferung', when: { any: [{ day: { eq: 1 } }, { day: { eq: 8 } }, { day: { eq: 15 } }, { day: { eq: 22 } }] }, daily: true, at: 'night', effects: [{ call: 'lieferung' }] },
     { id: 'tutorial', when: { day: { eq: 10 } }, once: true, at: 'night', scene: 'stash.tutorial', effects: [{ call: 'tutorial' }] },
+    /* Die Wache (Ruf-Angebot): Kosten vor dem Überfall abrechnen – eine gegangene Wache schützt in derselben Nacht nicht mehr */
+    { id: 'wacheNacht', when: { flag: 'wache' }, daily: true, at: 'night', effects: [{ call: 'wacheNacht' }] },
     { id: 'ueberfall', when: { day: { gte: 8 } }, daily: true, at: 'night', effects: [{ call: 'ueberfall' }] },
     { id: 'hinterhalt', when: { day: { gte: 8 } }, daily: true, at: 'night', effects: [{ call: 'hinterhalt' }] },
     { id: 'angebot', when: { all: [{ day: { gte: 15 } }, { var: 'ruf', gte: 2 }, { notFlag: 'bahnhof' }, { notFlag: 'bahnhofNein' }] }, once: true, at: 'night', scene: 'stash.angebot' },
+    { id: 'wache', when: { all: [{ var: 'ruf', gte: 5 }, { notFlag: 'bahnhof' }, { notFlag: 'wache' }, { notFlag: 'wacheNein' }] }, once: true, at: 'night', scene: 'stash.wache' },
     /* ---- Morgen ---- */
     { id: 'einrichten', when: { day: { gte: 1 } }, once: true, at: 'morning', effects: [{ set: { car: 'mercC' } }, { enable: ['hinterzimmer'] }, { call: 'devWoche' }] },
     { id: 'startKredit30', when: { all: [{ day: { gte: 1 } }, { any: [{ prevEnding: { story: 'kater', id: 'nuechtern' } }, { prevEnding: { story: 'kater', id: 'taxi' } }] }] }, once: true, at: 'morning', effects: [{ var: 'kredit', set: 30000 }] },
@@ -10191,9 +10202,19 @@ const STORY_STASH = {
     'stash.tutorial.lost': [
       { bg: 'bahnhof', who: 'anabi', mood: 'calm', text: 'Er ist weg, die Tasche auch, du hast ein Loch in der Jacke. Meine Pistole – danke. Nächstes Mal zieh nicht, bevor er zieht. Oder zieh schneller danach. Eins von beidem.' },
     ],
-    'stash.angebot': [
+    'stash.wache': [
+      { bg: 'strasse', who: 'du', mood: 'calm', cast: ['du'], text: 'Vor dem Keller stehen zwei. Kapuzen, Bahnhof. Sie stehen nicht so, wie man steht, wenn man etwas kaputt machen will.' },
+      { bg: 'strasse', who: 'junge', mood: 'calm', text: 'Kessler sagt, du bist keiner, den man beklaut. Dann sind wir eben keine, die klauen. Zweihundert die Nacht, und keiner fasst deine Tür an. Keiner.' },
+      { bg: 'strasse', who: 'junge', mood: 'calm', cam: 'close', text: 'Wenn das Geld nicht da ist, sind wir es auch nicht. So läuft das. Deal?',
+        choices: [
+          { label: 'Annehmen', value: 'ja', cls: 'blue', effects: [{ flag: 'wache' }] },
+          { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ flag: 'wacheNein' }] },
+        ] },
+    ],
+    'stash.angebot': (ctx) => [
       { bg: 'bahnhof', who: 'du', mood: 'calm', cast: ['du'], text: 'Kessler wartet an der Unterführung. Allein. Das ist entweder Respekt oder eine Falle. Bei Kessler ist es meistens beides.' },
       { bg: 'bahnhof', who: 'kessler', mood: 'calm', text: 'Du hast meine Jungs hingelegt. Zweimal. Ich könnte sauer sein. Ich bin lieber praktisch: Wasch für uns, dann lassen wir dich in Ruhe.' },
+      ...(ctx.raw.flags.wache ? [{ bg: 'bahnhof', who: 'kessler', mood: 'calm', text: 'Deine zwei vor der Tür kannst du behalten. Oder heimschicken. Mir egal – sie kriegen ihr Geld so oder so von dir.' }] : []),
       { bg: 'bahnhof', who: 'kessler', mood: 'calm', cam: 'close', text: 'Keine Überfälle mehr, keine Hinterhalte. Dafür wächst dein Umsatzziel – zwei Herren wollen waschen. Und Anabi erfährt es. Irgendwann. Dann brauchst du uns wirklich.',
         choices: [{ label: 'Annehmen', value: 'ja', cls: 'red', effects: [{ flag: 'bahnhof' }] }, { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ flag: 'bahnhofNein' }] }] },
     ],
@@ -13201,6 +13222,45 @@ T.test('STORY_STASH: Ruf-Quellen – Abrechnung ok, Eintreiber-Schicht, Kredit-R
   STORY_STASH.fns.abrechnung(m); STORY_STASH.fns.reparaturRuf(m); m.story.vars.kredit = 5000; STORY_STASH.fns.kreditZahlen(m);
   m.story.jobToday = 'eintreiber'; m.story.day = 5; stashHook(m, 'job:after');
   T.eq(m.story.vars.ruf, 10);
+});
+T.test('GangRules.raidChance: Wache stoppt Überfälle wie der Bahnhof-Deal; Hinterhalt-Chance bleibt', () => {
+  T.eq(GangRules.WACHE_PREIS, 200);
+  T.eq(GangRules.raidChance({ wache: true }), 0);
+  T.eq(GangRules.raidChance({ bahnhof: true }), 0);
+  T.eq(GangRules.raidChance({}), GangRules.RAID.base);
+  T.eq(GangRules.ambushChance({ wache: true }, null), GangRules.AMBUSH.base, 'Wache steht vor dem Keller, nicht in der Gasse');
+  T.eq(GangRules.raid({}, { wache: true }, seq(0.0, 0.0)), null, 'raid liefert mit Wache keine Tür');
+});
+T.test('STORY_STASH: Die Wache ab Ruf 5 ohne Bahnhof-Deal (once); 200 €/Nacht; geht bei leerer Kasse; goal zeigt Wache', () => {
+  const nightIds = (s, rng = seq(0.99, 0.99, 0.99)) => stashHook(s, 'night', rng)[0];
+  /* Tage ohne eigene Nacht-Events wählen: 10 = Tutorial, 14 = Abrechnung, 15 = Lieferung + Kessler-Angebot */
+  const s = stashState({ balance: 5000 }); s.story.day = 9; s.story.vars.woche = 2; s.story.vars.ruf = 4;
+  T.eq(nightIds(s).includes('wache'), false, 'Ruf 4: nichts');
+  s.story.day = 11; s.story.vars.ruf = 5; s.story.flags.bahnhof = true;
+  T.eq(nightIds(s).includes('wache'), false, 'mit Bahnhof-Deal kein Angebot');
+  delete s.story.flags.bahnhof; s.story.day = 12;
+  T.ok(nightIds(s).includes('wache'), 'Ruf 5, Tag 12: Angebot');   // stashHook markiert once-Events als gesehen
+  stashChoose(s, 'stash.wache', 'ja'); T.eq(s.story.flags.wache, true);
+  /* Nacht mit Wache: 200 € weg, kein Überfall (raid fragt den rng mit Wache gar nicht); rng 0.99 → kein Hinterhalt */
+  s.story.day = 13; const bal = s.balance;
+  const [ids] = stashHook(s, 'night', seq(0.99, 0.99, 0.99));
+  T.ok(ids.indexOf('wacheNacht') < ids.indexOf('ueberfall'), 'wacheNacht läuft vor ueberfall');
+  T.eq(s.balance, bal - 200); T.eq(Object.keys(s.story.broken || {}).length, 0, 'keine Tür kaputt');
+  T.ok(STORY_STASH.goal(s).includes('Wache 200'), 'goal nennt die Wache');
+  /* leere Kasse: Wache geht, Flag fällt, Toast; Überfall in derselben Nacht: rng 0.0 (Überfall ja), 0.0 (erste Tür); Hinterhalt entfällt wegen ueberfallHeute */
+  s.balance = 150; s.story.day = 16;
+  const [ids2, outs2] = stashHook(s, 'night', seq(0.0, 0.0, 0.99));
+  T.eq(!!s.story.flags.wache, false); T.eq(s.story.flags.wacheWeg, true); T.eq(s.balance, 150, 'nichts abgezogen');
+  T.ok(outs2.some((o) => o.toast && o.toast.title === 'Die Wache geht'));
+  T.ok(Object.keys(s.story.broken || {}).length > 0, 'ohne Wache: Überfall trifft eine Tür');
+  T.eq(STORY_STASH.goal(s).includes('Wache'), false);
+  s.story.day = 17; s.story.vars.ruf = 6; T.eq(nightIds(s).includes('wache'), false, 'once: kein zweites Angebot');
+  /* Ablehnen */
+  const n = stashState(); n.story.day = 12; n.story.vars.ruf = 5; stashChoose(n, 'stash.wache', 'nein'); T.eq(n.story.flags.wacheNein, true);
+  n.story.seen.push('wache'); n.story.day = 13; T.eq(nightIds(n).includes('wacheNacht'), false, 'ohne Flag keine Kosten');
+  /* Wache + später Bahnhof-Deal: kostet weiter */
+  const w = stashState({ balance: 5000 }); w.story.day = 16; w.story.flags.wache = true; w.story.flags.bahnhof = true;
+  stashHook(w, 'night', seq(0.99, 0.99, 0.99)); T.eq(w.balance, 4800);
 });
 T.test('STORY_STASH: Sylvie – Warnung ab 10.000 einmal pro Woche, Hausverbot ab 15.000 (Betreten und mitten im Spiel)', () => {
   const s = stashState(); s.story.vars.umsatzRoyal = 10000;
