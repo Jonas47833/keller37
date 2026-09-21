@@ -125,7 +125,9 @@ Gemessen nach der Umsetzung (`node tests/balance-sim.mjs`, Tabelle „Je Tisch")
 
 (Die Kalibrierung vor der Umsetzung lag 2–4 Punkte darunter, weil die Sim-Schwelle „Bier lohnt sich ab" dort noch ohne Grundglück gerechnet wurde.)
 
-Alle über der Marke, keiner klar der beste; Rot bleibt der ruhigste Weg, Slots der wildeste (deshalb dort 138 % mit Bier). Der wilde Spieler (halbe Bankroll pro Spin) bleibt bei 7 % (Slots) bzw. 16 % (Rad – die 4 statt 8 Bankrott-Felder verzeihen ihm mehr, er scheitert trotzdem zu 84 %). Toleranz bei künftigen Änderungen: ±3 Punkte Quote, ±5 Punkte Story – die Sim ist mit Seed deterministisch, Abweichungen darüber sind ein Umsetzungsfehler, kein Rauschen.
+Alle über der Marke, keiner klar der beste; Rot bleibt der ruhigste Weg, Slots der wildeste (deshalb dort 138 % mit Bier).
+
+**Nachtrag Bier +18 (Jonas, 2026-09-21, nach dem ersten Spielen: „fast ein bisschen zu leicht"):** `Rules.BEER_LUCK = [0, 9, 14, 18, 23]` (vorher 10/15/20/25), `BEER_WORTH_FROM = 110`. Grundglück und alle Tischregeln unverändert. Sim danach (diszipliniert, Story 1/2): Slots 75/66 · Rot 91/85 · Rad 79/71 · Mega 82/73 · Craps 83/75 · Baccarat 78/69 %; nüchtern 102–106 %, mit 3 Bier 116–133 %. Geprüfte Alternativen: Grundglück 3 (73–89 / 65–82) und 0 (54–71 / 46–65), Bier +15 (59–78 / 51–72), Bier +12 (39–57 / 33–50). Der wilde Spieler (halbe Bankroll pro Spin) bleibt bei 7 % (Slots) bzw. 16 % (Rad – die 4 statt 8 Bankrott-Felder verzeihen ihm mehr, er scheitert trotzdem zu 84 %). Toleranz bei künftigen Änderungen: ±3 Punkte Quote, ±5 Punkte Story – die Sim ist mit Seed deterministisch, Abweichungen darüber sind ein Umsetzungsfehler, kein Rauschen.
 
 ## 5. Was mit anhängt
 

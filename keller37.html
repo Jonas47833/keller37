@@ -1784,10 +1784,10 @@ const Rules = {
   BANK_LIMIT: 3000,
   BANK_RATE: 0.08,
   POST_PENALTY: 25,
-  BEER_LUCK: [0, 10, 15, 20, 25],
+  BEER_LUCK: [0, 9, 14, 18, 23], // Balancing 2026-09-21 (Bier +18): 3 Bier = +18 statt +20 – Jonas fand die Story mit +20 „fast ein bisschen zu leicht"; Story je Tisch 75–91 / 66–85 % statt 83–95 / 74–90 (tests/balance-sim.mjs)
   BROWNIE_LUCK: 40,
-  BEER_SPINS: 8,       // 3 Bier = 150 € für 8 Spins: lohnt sich ab ~100 € Einsatz an jedem Tisch (Balancing 2026-09-21, tests/balance-sim.mjs; vorher 4 Spins = ab 220 €, und nur am Roulette)
-  BEER_WORTH_FROM: 100, // Einsatz, ab dem sich 3 Bier rechnen (Bar-Hinweis; der Selftest prüft ihn gegen 150 / (BEER_SPINS × Bier-Vorteil)); Balancing 2026-09-21 (Jeder Tisch): Vorteil ~19 Punkte am Roulette → ~100 €
+  BEER_SPINS: 8,       // 3 Bier = 150 € für 8 Spins: lohnt sich ab ~110 € Einsatz an jedem Tisch (Balancing 2026-09-21, tests/balance-sim.mjs; vorher 4 Spins = ab 220 €, und nur am Roulette)
+  BEER_WORTH_FROM: 110, // Einsatz, ab dem sich 3 Bier rechnen (Bar-Hinweis; der Selftest prüft ihn gegen 150 / (BEER_SPINS × Bier-Vorteil)); Balancing 2026-09-21 (Bier +18): Vorteil ~17 Punkte am Roulette → ~110 €
   BROWNIE_SPINS: 4,
   MARRIAGE_SPINS: 2,
   MAFIA_SPINS: 5,
@@ -10732,21 +10732,21 @@ const base = (o = {}) => Object.assign({
 }, o);
 
 T.test('luck: nichts aktiv = Grundglück 5 (Balancing 2026-09-21, Jeder Tisch)', () => { T.eq(Rules.BASE_LUCK, 5); T.eq(Rules.luck(base()), 5); });
-T.test('luck: Bier addiert auf das Grundglück', () => {
-  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2 })), 15);
-  T.eq(Rules.luck(base({ beers: 2, beerTimer: 1 })), 20);
-  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2 })), 25);
+T.test('luck: Bier addiert auf das Grundglück (9/14/18)', () => {
+  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2 })), 14);
+  T.eq(Rules.luck(base({ beers: 2, beerTimer: 1 })), 19);
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2 })), 23);
 });
 T.test('luck: Bier ohne Timer zählt nicht', () => T.eq(Rules.luck(base({ beers: 2, beerTimer: 0 })), 5));
 T.test('luck: Brownie', () => {
   T.eq(Rules.luck(base({ brownieTimer: 1 })), 45);
-  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, brownieTimer: 1 })), 65);
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, brownieTimer: 1 })), 63);
 });
-T.test('luck: Story-Modifikator – Zitter-Tag −15 ist netto Pech (−10), mit 3 Bier +10', () => {
+T.test('luck: Story-Modifikator – Zitter-Tag −15 ist netto Pech (−10), mit 3 Bier +8', () => {
   T.eq(Rules.luck(base({ story: { luckMod: -15 } })), -10);
   T.ok(Rules.luck(base({ story: { luckMod: -15 } })) < 0, 'Pech-Zweige greifen weiter');
-  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, story: { luckMod: -15 } })), 10);
-  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2, story: { luckMod: -15 } })), 0);
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, story: { luckMod: -15 } })), 8);
+  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2, story: { luckMod: -15 } })), -1, 'ein Bier reicht am Zitter-Tag nicht');
   T.eq(Rules.luck(base({ story: { luckMod: 10 } })), 15);
   T.eq(Rules.luck(base({ story: {} })), 5);
 });
@@ -10888,7 +10888,7 @@ T.test('slotLuckOverride: erzwungenes Paar wird nur bei 🍒🍋🍇 zum Drillin
   T.eq(Rules.slotLuckOverride(['🍒', '🍋', '🍇'], 40, seq(0.1, 0.6)), ['🍒', '🍒', '🍇'], 'rng 0.6 ≥ 0.6 → nur Paar');
   T.eq(Rules.slotLuckOverride(['7️⃣', '🍋', '🍇'], 40, seq(0.1, 0.0)), ['7️⃣', '7️⃣', '🍇'], 'teures Symbol: nie per Zufall Drilling');
 });
-T.test('Glücks-Ökonomie: Bier 8 Spins, Brownie 4 Spins, Cap 1.000 – 3 Bier lohnen sich ab ~100 € an jedem Tisch (Balancing 2026-09-21, Jeder Tisch)', () => {
+T.test('Glücks-Ökonomie: Bier 8 Spins, Brownie 4 Spins, Cap 1.000 – 3 Bier (+18) lohnen sich ab ~110 € an jedem Tisch (Balancing 2026-09-21)', () => {
   T.eq(Rules.BEER_SPINS, 8); T.eq(Rules.BROWNIE_SPINS, 4); T.eq(Rules.LUCK_CAP, 1000);
   const N = 100000, mods = Rules.NEUTRAL_MODS;
   let rng = seeded(5), sum = 0;
@@ -10908,7 +10908,7 @@ T.test('Glücks-Ökonomie: Bier 8 Spins, Brownie 4 Spins, Cap 1.000 – 3 Bier l
   const mega = 100 * sum / paid;
   T.ok(mega > 114 && mega < 122, `Mega Seven bei +20 Glück: RTP ${mega.toFixed(1)} % (erwartet 114–122)`);
   const rotAt = (luck) => { const r = seeded(5); let s = 0; for (let i = 0; i < N; i++) { const rolled = Rules.rouletteLuckOverride('red', null, Rules.rouletteRoll(r), luck, r); s += Rules.roulettePayout('red', null, rolled, 100, mods); } return 100 + s / N; };
-  const rot3 = rotAt(Rules.BASE_LUCK + 20), rot0 = rotAt(Rules.BASE_LUCK);
+  const rot3 = rotAt(Rules.BASE_LUCK + Rules.BEER_LUCK[3]), rot0 = rotAt(Rules.BASE_LUCK);
   T.ok(rot0 > 100 && rot0 < 106, `Rot nüchtern mit Grundglück ${rot0.toFixed(1)} % (erwartet 100–106)`);
   /* 3 Bier = 150 € für BEER_SPINS Spins: Gewinnschwelle am Roulette = 150 / (BEER_SPINS × Bier-Vorteil), Vorteil = Quote mit 3 Bier − Quote nüchtern */
   const schwelle = 150 / (Rules.BEER_SPINS * (rot3 - rot0) / 100);
@@ -12973,7 +12973,7 @@ T.test('State.fresh: Gear-Felder', () => {
 /* ---- Ausrüstung wirkt ---- */
 T.test('luck: Auto-Glück addiert sich (auf das Grundglück 5)', () => {
   T.eq(Rules.luck(base({ car: 'audiRS4' })), 7);
-  T.eq(Rules.luck(base({ car: 'mercG', beers: 3, beerTimer: 1, brownieTimer: 1 })), 69);
+  T.eq(Rules.luck(base({ car: 'mercG', beers: 3, beerTimer: 1, brownieTimer: 1 })), 67);
 });
 T.test('bankInterest: Mercedes-Zinssatz', () => {
   T.eq(Rules.bankInterest(1000), 80);
@@ -13737,7 +13737,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       k.story.luckMod = 0; UI.renderWallet();
       T.eq(qs('#luck .luck-val').textContent, '+5%');
       k.beers = 3; k.beerTimer = 2; UI.renderWallet();
-      T.eq(qs('#luck .luck-val').textContent, '+25%'); T.eq(qsa('#luck .seg.on').length, 3);
+      T.eq(qs('#luck .luck-val').textContent, '+23%'); T.eq(qsa('#luck .seg.on').length, 3);
     } finally { State.s = keep; UI.renderWallet(); }
   });
   T.test('STORY_KATER.goal: Tagesziel rechnet Deckel dazu und den Bücher-Rabatt ab', () => {
@@ -15212,9 +15212,9 @@ T.test('State.fresh/freshMeta: Perk-Felder', () => {
 /* ---- Regel-Hooks mit mods ---- */
 const M = (o) => Object.assign({}, Rules.NEUTRAL_MODS, o);
 T.test('luck mit mods: Bier/Brownie-Multiplikatoren, 4. Bier', () => {
-  T.eq(Rules.BEER_LUCK, [0, 10, 15, 20, 25]);
+  T.eq(Rules.BEER_LUCK, [0, 9, 14, 18, 23], 'Balancing 2026-09-21 (Bier +18): 3 Bier = +18 statt +20');
   T.eq(Rules.luck(base({ beers: 3, beerTimer: 1 }), M({ beerLuckMult: 0 })), 5, 'Bier wirkungslos → nur Grundglück');
-  T.eq(Rules.luck(base({ beers: 4, beerTimer: 1 })), 30);
+  T.eq(Rules.luck(base({ beers: 4, beerTimer: 1 })), 28);
   T.eq(Rules.luck(base({ brownieTimer: 1 }), M({ brownieLuckMult: 0.5 })), 25);
   T.eq(Rules.canBeer(base({ beers: 3, balance: 100 })).reason, 'max');
   T.eq(Rules.canBeer(base({ beers: 3, balance: 100 }), Rules.PRICES.beer, M({ maxBeers: 4 })), { ok: true });

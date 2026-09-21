@@ -6,7 +6,7 @@
 //
 // Spieler-Modelle (Abend = ein Besuch im Keller, ~40 Spins):
 //   Leitplanken (Balancing 2026-09-21, Jeder Tisch): Grundglück 5 → nüchtern alle Tische 102–105 %, mit 3 Bier 117–138 %,
-//   3 Bier lohnen sich ab ~100 € Einsatz; Story 1/2 diszipliniert an jedem Tisch ≥ 75 %/≥ 65 % (Tabelle „Je Tisch"), wild bleibt pleite.
+//   3 Bier (+18) lohnen sich ab ~110 € Einsatz; Story 1/2 diszipliniert an jedem Tisch ≥ 75 %/≥ 65 % (Tabelle „Je Tisch"), wild bleibt pleite.
 //   diszipliniert – erst per Job Bankroll aufbauen, Einsatz ≈ 10 % der Bankroll bis LUCK_CAP, 3 Bier nur wenn
 //                   sie sich bei diesem Einsatz rechnen, Stop-Loss bei −50 % des Abendstarts
 //   wild          – halbe Bankroll pro Spin, kein Bier, bis null oder Ziel
@@ -76,7 +76,7 @@ function rtpTable() {
 /* Vorteil von 3 Bier = Quote bei BASE_LUCK+20 minus Quote bei BASE_LUCK (in Einsätzen) */
 function beerEdge(game) {
   const N = 100000; let with3 = 0, sober = 0;
-  let rng = seeded(3); for (let i = 0; i < N; i++) with3 += games[game](100, Rules.BASE_LUCK + 20, rng);
+  let rng = seeded(3); for (let i = 0; i < N; i++) with3 += games[game](100, Rules.BASE_LUCK + Rules.BEER_LUCK[3], rng);
   rng = seeded(3); for (let i = 0; i < N; i++) sober += games[game](100, Rules.BASE_LUCK, rng);
   return (with3 - sober) / N / 100;
 }
@@ -92,7 +92,7 @@ function disciplined(rng, P) {
     while (spins++ < P.spins && bal < P.target && bal > start * 0.5) {
       const bet = Math.max(minBet, Math.min(cap, Math.round(bal / 10 / 10) * 10));
       if (timer === 0) { bal -= 150; timer = beerSpins; }
-      bal += games[P.game](bet, Rules.effectiveLuck(Rules.BASE_LUCK + 20, bet), rng); timer--;
+      bal += games[P.game](bet, Rules.effectiveLuck(Rules.BASE_LUCK + Rules.BEER_LUCK[3], bet), rng); timer--;
     }
     if (bal < 50) zero++;
     if (bal >= P.target) return { won: true, zero, day: d + 1 };
@@ -123,7 +123,7 @@ function tableByGame(s1, s2) {
   for (const g of Object.keys(games)) {
     if (g === 'rouletteZahl') continue;
     const N = 40000, rng = seeded(3); let sum = 0, sq = 0, hits = 0, sober = 0;
-    for (let i = 0; i < N; i++) { const d = games[g](100, Rules.BASE_LUCK + 20, rng); sum += d; sq += d * d; if (d > 0) hits++; sober += games[g](100, Rules.BASE_LUCK, rng); }
+    for (let i = 0; i < N; i++) { const d = games[g](100, Rules.BASE_LUCK + Rules.BEER_LUCK[3], rng); sum += d; sq += d * d; if (d > 0) hits++; sober += games[g](100, Rules.BASE_LUCK, rng); }
     const mean = sum / N, sd = Math.sqrt(sq / N - mean * mean) / 100, edge = beerEdge(g);
     const pct = (P) => { const r = seeded(21); let won = 0; for (let i = 0; i < 1500; i++) if (disciplined(r, { ...P, game: g, edge }).won) won++; return (won / 15).toFixed(1).padStart(5) + ' %'; };
     console.log(`  ${g.padEnd(13)} ${(100 + sober / N).toFixed(1).padStart(7)} %  ${(100 + mean).toFixed(1).padStart(5)} %  ${(hits / N * 100).toFixed(1).padStart(6)} %   ${sd.toFixed(2).padStart(6)}   ${pct({ ...s1, gameFrom: 0 })}   ${pct(s2)}`);
