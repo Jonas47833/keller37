@@ -78,8 +78,10 @@ die Trophäenwand öffnen, ohne einen Modus zu betreten.
 
 ## Skills & Insider
 
-Erfahrung durch Spielen: pro Dreh +1 XP, pro Gewinn zusätzlich +2 XP, pro erledigtem Job +5 XP,
-pro überstandenem Story-Tag +5 XP, pro neuer Trophäe +10 XP. Ein Level-Badge neben dem Glück
+Erfahrung durch Spielen: pro Dreh +1 XP, pro Gewinn zusätzlich +1 XP, pro erledigtem Job +10 XP,
+pro überstandenem Story-Tag +10 XP, pro neuer Trophäe +25 XP. Die Level liegen bei 150 / 400 / 800 /
+1.300 / 2.000 XP – ein normaler Abend bringt ~80, der erste Skill kommt also am zweiten Abend, der
+dritte gegen Ende einer 30-Tage-Story (Balancing 2026-09-21; vorher war Max-Level am 4. Tag erreicht). Ein Level-Badge neben dem Glück
 in der Kopfzeile zeigt den Fortschritt zum nächsten Level und pulsiert, sobald ein Skill-Punkt
 frei ist; ein Klick öffnet den Screen „🧠 Kopf" (Seitenleiste, Sektion „Kopf", nie gesperrt).
 

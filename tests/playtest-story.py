@@ -1712,17 +1712,17 @@ async def scenario_perks(cdp):
 async def _scenario_perks_body(cdp):
     n = await cdp.eval("document.querySelectorAll('#skillCards .btn').length", await_promise=False)
     record("perks: ohne Punkt kein Waehlen-Button", n == 0, "buttons=%s" % n)
-    await cdp.eval("Perks.addXp(25, 'test'); 0", await_promise=False)
+    await cdp.eval("Perks.addXp(Rules.XP_LEVELS[1], 'test'); 0", await_promise=False)
     await asyncio.sleep(0.4)
     pulsing = await cdp.eval("document.querySelector('#lvBadge').classList.contains('point')", await_promise=False)
     n = await cdp.eval("document.querySelectorAll('#skillCards .btn').length", await_promise=False)
     record("perks: Level 2 -> Badge pulsiert, 9 Skills waehlbar", pulsing is True and n == 9, "pulsing=%s buttons=%s" % (pulsing, n))
     await cdp.screenshot("skills.png")
-    # Zusaetzliche XP auf Level 4 (110 XP gesamt = 2 Skill-Punkte), damit nach dem Pick von
+    # Zusaetzliche XP auf Level 4 (XP_LEVELS[3] gesamt = 2 Skill-Punkte), damit nach dem Pick von
     # Zockerhaende noch ein Punkt frei ist -- sonst meldet canPickSkill fuer Brieftraegerherz
     # "points" statt "conflict" (Punkt-Pruefung kommt vor der Konflikt-Pruefung), und der naechste
     # Check koennte den Konflikt-Grund nie sehen.
-    await cdp.eval("Perks.addXp(85, 'test'); 0", await_promise=False)
+    await cdp.eval("Perks.addXp(Rules.XP_LEVELS[3] - Rules.XP_LEVELS[1], 'test'); 0", await_promise=False)
     await asyncio.sleep(0.4)
     await cdp.eval("Perks.pick('zockerhaende'); 0", await_promise=False)
     await asyncio.sleep(0.3)

@@ -2111,8 +2111,10 @@ Object.assign(Rules, {
 <script id="perk-rules">
 /* ================= PERKS – XP, Skills (Licht/Schatten), Insider-Upgrades (rein, kein DOM, kein State) ================= */
 Object.assign(Rules, {
-  XP_LEVELS: [0, 25, 60, 110, 180, 270],
-  XP_GAIN: { spin: 1, win: 2, job: 5, day: 5, achievement: 10 },
+  /* Balancing 2026-09-21: ein Abend (40 Spins, Job, neuer Tag) ≈ 80 XP → Lv 2 am 2. Abend, Lv 4 um Tag 10, Lv 6 um Tag 25.
+     Vorher [0, 25, 60, 110, 180, 270] mit win 2 / job 5 / day 5: Max-Level am 4. Tag einer 30-Tage-Story. */
+  XP_LEVELS: [0, 150, 400, 800, 1300, 2000],
+  XP_GAIN: { spin: 1, win: 1, job: 10, day: 10, achievement: 25 },
   MAX_SKILLS: 3,
   RESPEC_PRICE: 2000,
   INSIDER_CAP: 250,
@@ -14004,21 +14006,26 @@ T.test('effectiveLuck: voll bis 1.000 €, darüber proportional weniger', () =>
 });
 
 /* ---- Perks: XP, Skills, Insider ---- */
-T.test('xpLevel: Schwellen und Punkte', () => {
-  T.eq(Rules.XP_LEVELS, [0, 25, 60, 110, 180, 270]);
-  T.eq(Rules.xpLevel(0), { level: 1, next: 25, points: 0 });
-  T.eq(Rules.xpLevel(24), { level: 1, next: 25, points: 0 });
-  T.eq(Rules.xpLevel(25), { level: 2, next: 60, points: 1 });
-  T.eq(Rules.xpLevel(110), { level: 4, next: 180, points: 2 });
-  T.eq(Rules.xpLevel(270), { level: 6, next: null, points: 3 });
+T.test('xpLevel: Schwellen und Punkte (Balancing 2026-09-21: Lv 2 nach ~2 Abenden, Lv 6 gegen Story-Ende)', () => {
+  T.eq(Rules.XP_LEVELS, [0, 150, 400, 800, 1300, 2000]);
+  T.eq(Rules.xpLevel(0), { level: 1, next: 150, points: 0 });
+  T.eq(Rules.xpLevel(149), { level: 1, next: 150, points: 0 });
+  T.eq(Rules.xpLevel(150), { level: 2, next: 400, points: 1 });
+  T.eq(Rules.xpLevel(800), { level: 4, next: 1300, points: 2 });
+  T.eq(Rules.xpLevel(2000), { level: 6, next: null, points: 3 });
   T.eq(Rules.xpLevel(9999), { level: 6, next: null, points: 3 });
+  /* ein normaler Abend (40 Spins, ~45 % Gewinne, Job, neuer Tag) bringt ~80 XP: Lv 2 am 2. Abend, Lv 6 erst um Tag 25 */
+  const abend = 40 * Rules.XP_GAIN.spin + 18 * Rules.XP_GAIN.win + Rules.XP_GAIN.job + Rules.XP_GAIN.day;
+  T.ok(abend >= 70 && abend <= 90, `Abend ≈ ${abend} XP`);
+  T.ok(Rules.XP_LEVELS[1] / abend > 1.5 && Rules.XP_LEVELS[1] / abend < 3, 'erster Skill nach 2–3 Abenden');
+  T.ok(Rules.XP_LEVELS[5] / abend > 20 && Rules.XP_LEVELS[5] / abend < 30, 'Max-Level um Tag 20–30');
 });
 T.test('Kataloge: Skills mit Licht/Schatten, mods-Schlüssel bekannt', () => {
   T.eq(Rules.SKILLS.length, 9); T.eq(Rules.INSIDER.length, 9);
   for (const sk of Rules.SKILLS) { T.ok(sk.light && sk.shadow, sk.id); for (const k of Object.keys(sk.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${sk.id}.${k}`); }
   for (const ins of Rules.INSIDER) { T.ok(ins.text && typeof ins.capped === 'boolean', ins.id); for (const k of Object.keys(ins.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${ins.id}.${k}`); }
   T.eq(Rules.INSIDER_CAP, 250); T.eq(Rules.MAX_SKILLS, 3); T.eq(Rules.RESPEC_PRICE, 2000);
-  T.eq(Rules.XP_GAIN, { spin: 1, win: 2, job: 5, day: 5, achievement: 10 });
+  T.eq(Rules.XP_GAIN, { spin: 1, win: 1, job: 10, day: 10, achievement: 25 });
 });
 T.test('mods: neutral ohne Skills/Insider', () => {
   T.eq(Rules.mods(base(), { insider: [] }), Rules.NEUTRAL_MODS);
@@ -14093,13 +14100,13 @@ if (typeof document !== 'undefined') T.test('Stud: Geben bucht Ante, Mitgehen Be
 });
 T.test('canPickSkill / skillPointsFree', () => {
   T.eq(Rules.skillPointsFree(base({ xp: 0, skills: [] })), 0);
-  T.eq(Rules.skillPointsFree(base({ xp: 60, skills: [] })), 1);
-  T.eq(Rules.skillPointsFree(base({ xp: 110, skills: ['pokerface'] })), 1);
+  T.eq(Rules.skillPointsFree(base({ xp: 400, skills: [] })), 1);
+  T.eq(Rules.skillPointsFree(base({ xp: 800, skills: ['pokerface'] })), 1);
   T.eq(Rules.canPickSkill(base({ xp: 0, skills: [] }), 'pokerface').reason, 'points');
-  T.eq(Rules.canPickSkill(base({ xp: 25, skills: [] }), 'pokerface'), { ok: true });
-  T.eq(Rules.canPickSkill(base({ xp: 25, skills: [] }), 'gibtsnicht').reason, 'unknown');
-  T.eq(Rules.canPickSkill(base({ xp: 110, skills: ['pokerface'] }), 'pokerface').reason, 'active');
-  T.eq(Rules.canPickSkill(base({ xp: 110, skills: ['zockerhaende'] }), 'brieftraeger').reason, 'conflict');
+  T.eq(Rules.canPickSkill(base({ xp: 150, skills: [] }), 'pokerface'), { ok: true });
+  T.eq(Rules.canPickSkill(base({ xp: 150, skills: [] }), 'gibtsnicht').reason, 'unknown');
+  T.eq(Rules.canPickSkill(base({ xp: 800, skills: ['pokerface'] }), 'pokerface').reason, 'active');
+  T.eq(Rules.canPickSkill(base({ xp: 800, skills: ['zockerhaende'] }), 'brieftraeger').reason, 'conflict');
   T.eq(Rules.canPickSkill(base({ xp: 999, skills: ['pokerface', 'kalterkopf', 'verhandler'] }), 'eisenmagen').reason, 'full');
 });
 T.test('insiderDraw: 3 ungezogene, weniger wenn Pool kleiner', () => {
