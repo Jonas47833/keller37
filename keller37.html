@@ -169,6 +169,11 @@ body.cs-open .toast { max-width: 300px; }
 /* ==== 5. CUTSCENE – Bühne ==== */
 #cutscene { position: fixed; inset: 0; z-index: 80; background: #000; overflow: hidden; animation: fadeIn .3s ease both; }
 #cutscene[hidden] { display: none; }
+/* Ego-Overlay (Überfall): Vollbild-Bühne über allem, wie #cutscene */
+#ego { position: fixed; inset: 0; z-index: 80; background: #000; animation: fadeIn .3s ease both; }
+#ego[hidden] { display: none; }
+#ego .duel-stage.ego-full { height: 100%; min-height: 0; border-radius: 0; }
+body.ego-open #toasts { bottom: auto; top: 64px; right: 20px; left: auto; }
 #cutscene.shake { animation: fadeIn .3s ease both, shake .35s ease both; } /* fx/cam "shake": ID-Regel oben schlägt .shake – fadeIn bleibt an Stelle 0, damit sie nicht neu anläuft */
 /* Welt = alles, was die Kamera zoomt: Himmel, Kulisse, Boden, Figuren, Vordergrund */
 .cs-world { position: absolute; inset: 0; contain: paint; transform-origin: 50% 50%; transition: transform .6s ease; }
@@ -1169,6 +1174,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
 </div>
 <div id="toasts" aria-live="polite"></div>
 <div id="cutscene" hidden></div>
+<div id="ego" hidden></div>
 <div id="title" hidden></div>
 <div id="nightfade" aria-hidden="true"></div>
 <div id="zonefade" aria-hidden="true"></div>
@@ -6456,8 +6462,10 @@ const Mugging = {
     const ctx = { loot: UI.fmt(loot), type: T, fight: Math.round(Rules.fightChance(s.strength, mods) * 100), flee: Math.round(Rules.fleeChance(gear) * 100) };
     const choice = await Cutscene.play('mug.intro', ctx);
     let outcome, delta = 0, wallet = 0;
+    let bonus = 0;
     if (choice === 'fight') {
-      const won = Math.random() < Rules.fightChance(s.strength, mods);
+      const r = await MugAction.brawl(T, Rules.fightChance(s.strength, mods));
+      const won = r.won; bonus = r.bonus;
       if (won) {
         outcome = 'fightWon';
         if (s.strength >= Rules.MUG.STR_WALLET) wallet = Rules.mugWallet(Math.random, mods);
@@ -6466,7 +6474,9 @@ const Mugging = {
       } else { outcome = 'fightLost'; delta = -loot; }
       s.strength++;
     } else if (choice === 'flee') {
-      if (Math.random() < Rules.fleeChance(gear)) outcome = 'fled';
+      const r = await MugAction.chase(T, Rules.fleeChance(gear));
+      bonus = r.bonus;
+      if (r.won) outcome = 'fled';
       else { outcome = 'caught'; delta = -Math.min(s.balance, loot + Rules.fleeFailExtra(s.balance)); }
     } else { outcome = 'paid'; delta = -loot; }
     s.stats.muggings++;
@@ -6476,7 +6486,88 @@ const Mugging = {
     await Cutscene.play('mug.' + outcome, Object.assign({}, ctx, { extra: UI.fmt(Math.max(0, -delta - loot)), wallet: UI.fmt(wallet), strength: s.strength }));
     if (outcome === 'fightWon' || outcome === 'fightLost') UI.toast({ icon: '💪', title: `Stärke ${s.strength}`, text: outcome === 'fightWon' ? 'Gewonnen. Du wirst härter.' : 'Verloren. Du wirst trotzdem härter.', tone: outcome === 'fightWon' ? 'win' : 'loss' });
     UI.renderWallet(); UI.renderSide();
-    await Bus.emit('mug:done', { outcome, loot, strength: s.strength });
+    await Bus.emit('mug:done', { outcome, loot, strength: s.strength, bonus });
+  },
+};
+/* ================= ÜBERFALL-ACTION – Kampf und Flucht als Ego-Einschub zwischen Wahl-Panel und Ausgangs-Text =================
+   Ausgang wird gewürfelt wie bisher; ein Tipp im goldenen Fenster des Timing-Rings gibt GangRules.TIMING.bonus dazu. */
+const MugAction = {
+  TIMES: { intro: 800, run: 1200, outcome: 1300, tail: 500 },   // Tests kürzen diese Werte; das Ring-Fenster steht in GangRules.TIMING
+  running: false, tapT: null, stage: null,
+  reduced() { return matchMedia('(prefers-reduced-motion: reduce)').matches; },
+  open(set, hand) {
+    const ov = qs('#ego');
+    ov.innerHTML = ''; ov.hidden = false;
+    this.stage = h('div', { class: 'duel-stage ego-full', id: 'egoStage' });
+    ov.append(this.stage);
+    document.body.classList.add('ego-open');
+    EgoStage.mount(this.stage, { set, weapon: 0, reduced: this.reduced(), hand });
+    this.running = true; this.tapT = null;
+    this.onPointer = (e) => { e.preventDefault(); this.tap(); };
+    this.onKey = (e) => { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) this.tap(); } };
+    ov.addEventListener('pointerdown', this.onPointer);
+    document.addEventListener('keydown', this.onKey, true); // capture: die Spiel-Screens darunter bekommen die Taste nicht
+  },
+  close() {
+    const ov = qs('#ego');
+    ov.removeEventListener('pointerdown', this.onPointer); document.removeEventListener('keydown', this.onKey, true);
+    EgoStage.unmount();
+    ov.hidden = true; ov.innerHTML = ''; this.stage = null;
+    document.body.classList.remove('ego-open');
+    this.running = false;
+    if (typeof Russian !== 'undefined' && Russian.root && !Russian.inDuel && Russian.mountStage) Russian.mountStage(); // die Bühne ist ein Singleton: dem Roulette-Screen seine zurückgeben
+  },
+  /* Nur der erste Tipp zählt, und nur während der Ring läuft */
+  tap() {
+    if (!this.running || this.tapT !== null) return;
+    const t = EgoStage.ringTime();
+    if (t == null) return;
+    this.tapT = t;
+    const bonus = GangRules.timingBonus(t);
+    if (bonus) { EgoStage.flash(this.flashText, 600); SFX.play('chip'); if (navigator.vibrate) navigator.vibrate(20); }
+    else SFX.play('click');
+  },
+  async ringPhase(text) {
+    this.flashText = text; this.tapT = null;
+    EgoStage.ring(GangRules.TIMING.window, GangRules.TIMING.gold);
+    await wait(GangRules.TIMING.window + 60);
+    EgoStage.ringStop();
+    return GangRules.timingBonus(this.tapT);
+  },
+  /* Faustkampf: Räuber holt aus, Ring, Tipp, Würfeln, Ausgang → { won, bonus } */
+  async brawl(type, baseChance) {
+    this.open('gasse', 'fist');
+    try {
+      EgoStage.enter('raeuber', 0, 1, type.name, { gun: false });
+      await wait(this.TIMES.intro);
+      EgoStage.foePose('windup'); SFX.play('whoosh');
+      const bonus = await this.ringPhase('TREFFER!');
+      const won = Math.random() < GangRules.chanceWithBonus(baseChance, bonus);
+      if (won) { EgoStage.punch(true); SFX.play('punch'); EgoStage.foeDown(); if (navigator.vibrate) navigator.vibrate(30); }
+      else { EgoStage.foePose('idle'); EgoStage.punch(false); SFX.play('punch'); if (navigator.vibrate) navigator.vibrate([40, 40, 80]); EgoStage.flash('Du liegst', 900); }
+      await wait(this.TIMES.outcome);
+      return { won, bonus };
+    } finally { this.close(); }
+  },
+  /* Flucht: laufende Kulisse, Räuber holt auf, Abzweigung + Ring, Tipp, Würfeln, Ausgang → { won, bonus } */
+  async chase(type, baseChance) {
+    this.open('gasse', 'none');
+    try {
+      EgoStage.enter('raeuber', 0, 1, type.name, { gun: false });
+      EgoStage.foeScale(0.5, 0); EgoStage.foePose('walk');
+      await wait(this.TIMES.intro);
+      EgoStage.motion(true); SFX.play('whoosh');
+      EgoStage.foeScale(0.8, this.TIMES.run);
+      await wait(this.TIMES.run);
+      const bonus = await this.ringPhase('HAKEN!');
+      const won = Math.random() < GangRules.chanceWithBonus(baseChance, bonus);
+      if (won) { EgoStage.foeScale(0.3, this.TIMES.outcome); EgoStage.flash('Weg!', 700); }
+      else { EgoStage.foeScale(1.3, Math.round(this.TIMES.outcome * 0.55)); await wait(Math.round(this.TIMES.outcome * 0.55)); EgoStage.foePose('point'); EgoStage.grab(); SFX.play('punch'); if (navigator.vibrate) navigator.vibrate([40, 40, 80]); EgoStage.flash('Erwischt', 900); }
+      await wait(this.TIMES.outcome);
+      EgoStage.motion(false);
+      await wait(this.TIMES.tail);
+      return { won, bonus };
+    } finally { this.close(); }
   },
 };
 Cutscene.define('mug.intro', (ctx) => [
@@ -13866,6 +13957,47 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       }
       T.ok(muzzleNone, 'reduced-motion: Mündungssicht-Transition (duel-gun.up.muzzle) abgeschaltet');
     } finally { EgoStage.unmount(); host.remove(); }
+  });
+  T.test('Überfall auf der Ego-Bühne: Kampf mit Timing-Treffer (Bonus 0,10), Kampf verloren ohne Tipp, Flucht erwischt (Bonus 0), Zahlen ohne Overlay', async () => {
+    const keep = { play: Cutscene.play, rnd: Math.random, s: State.s, save: State.save, mode: State.mode, times: MugAction.TIMES, timing: GangRules.TIMING, open: MugAction.open };
+    State.save = () => {}; State.mode = 'free'; State.s = State.fresh(); State.s.balance = 1000; State.s.strength = 2;
+    MugAction.TIMES = { intro: 20, run: 40, outcome: 30, tail: 10 }; GangRules.TIMING = { window: 300, gold: 250, bonus: 0.10, cap: 0.95 };
+    let choice = 'fight', opens = 0, overlayDuringOutcome = null; const scenes = [];
+    Cutscene.play = async (id) => { scenes.push(id); if (id === 'mug.intro') return choice; overlayDuringOutcome = !qs('#ego').hidden; return null; };
+    MugAction.open = function (...a) { opens++; return keep.open.apply(this, a); };
+    const done = []; const off = Bus.on('mug:done', (e) => done.push(e));
+    const untilRing = async () => { for (let i = 0; i < 100; i++) { if (EgoStage.mounted && EgoStage.ringOn) return true; await wait(5); } return false; };
+    const tick = (n) => { for (let i = 0; i < n; i++) { EgoStage.last = EgoStage.last || 1000; EgoStage.loop(EgoStage.last + 50); } };
+    const key = (code) => document.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true, cancelable: true }));
+    try {
+      /* Kampf, Tipp per Leertaste im goldenen Fenster (Bühnen-Uhr von Hand auf 100 ms getaktet, Fenster 50–300), Würfel 0 → gewonnen */
+      Math.random = () => 0;
+      let p = Mugging.run('junkie');
+      T.ok(await untilRing(), 'Ring läuft');
+      T.eq([qs('#ego').hidden, document.body.classList.contains('ego-open'), EgoStage.set, EgoStage.handKind, qs('#ego .duel-foe').dataset.pose, qs('#duelFoeName').textContent], [false, true, 'gasse', 'fist', 'windup', 'Der Junkie'], 'Overlay offen: Gasse, Faust, Räuber holt aus');
+      tick(2); key('Space'); T.eq(MugAction.tapT, EgoStage.ringTime(), 'Leertaste = Tipp (capture, vor den Screens)'); T.eq(qs('#ego .duel-flash').textContent, 'TREFFER!');
+      key('Space'); tick(1); T.ok(MugAction.tapT < EgoStage.ringTime(), 'nur der erste Tipp zählt');
+      await p;
+      T.eq([done.length, done[0].outcome, done[0].bonus, done[0].strength, State.s.strength, State.s.stats.fightsWon, qs('#ego').hidden, document.body.classList.contains('ego-open'), overlayDuringOutcome, EgoStage.mounted], [1, 'fightWon', 0.10, 3, 3, 1, true, false, false, false], 'gewonnen mit Bonus, Overlay vor dem Text-Panel geschlossen, Bühne abgebaut');
+      T.eq(scenes, ['mug.intro', 'mug.fightWon']);
+      /* Kampf ohne Tipp, Würfel 0,99 → verloren: Faust auf die Kamera, „Du liegst", Bonus 0, Stärke trotzdem +1 */
+      Math.random = () => 0.99; scenes.length = 0;
+      p = Mugging.run('cousin'); T.ok(await untilRing()); await p;
+      T.eq([done[1].outcome, done[1].bonus, State.s.strength, State.s.balance < 1000, scenes], ['fightLost', 0, 4, true, ['mug.intro', 'mug.fightLost']], 'verloren ohne Bonus');
+      /* Flucht ohne Tipp, Würfel 0,99 → erwischt: laufende Kulisse, Räuber holt auf */
+      choice = 'flee'; scenes.length = 0; const bal = State.s.balance;
+      p = Mugging.run('jugend');
+      let running = false; for (let i = 0; i < 100 && !running; i++) { await wait(5); running = EgoStage.mounted && EgoStage.moving && qs('#egoStage').classList.contains('run'); }
+      T.ok(running, 'Flucht: Kulisse läuft'); T.eq([EgoStage.handKind, qs('#ego .duel-foe').dataset.pose], ['none', 'walk'], 'keine Hand, Räuber rennt');
+      T.ok(await untilRing(), 'Abzweigung: Ring'); await p;
+      T.eq([done[2].outcome, done[2].bonus, State.s.balance < bal, State.s.strength, scenes, qs('#ego').hidden], ['caught', 0, true, 4, ['mug.intro', 'mug.caught'], true], 'erwischt, Bonus 0, Stärke unverändert');
+      /* Zahlen: kein Overlay */
+      choice = 'pay'; await Mugging.run('junkie');
+      T.eq([opens, done[3].outcome, done[3].bonus], [3, 'paid', 0], 'Zahlen öffnet die Bühne nicht');
+    } finally {
+      off(); Cutscene.play = keep.play; Math.random = keep.rnd; State.save = keep.save; State.s = keep.s; State.mode = keep.mode; MugAction.TIMES = keep.times; GangRules.TIMING = keep.timing; MugAction.open = keep.open;
+      if (MugAction.running) MugAction.close();
+    }
   });
   const pseudoAnim = (el, pseudo) => getComputedStyle(el, pseudo).animationName;
   T.test('Glücksrad: Rad in Clip-Wrapper (contain: paint), Geometrie unverändert, Zeiger/Lichter/Nabe außerhalb, Glow per ::after', async () => {
