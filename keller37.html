@@ -7129,6 +7129,9 @@ const StoryRules = {
   },
   jobMod(s) { return (s.story && s.story.jobMod) || {}; },
   shiftPay(base, bonus, jobMod) { return Math.round((base + bonus) * (jobMod.shiftPay != null ? jobMod.shiftPay : 1)); },
+  /* Ruf-Stufen: Titel im HUD und Schwellen der Angebote (Story 1 und 3). Events nutzen weiterhin { var: 'ruf', gte: ab }. */
+  RUF_STUFEN: [{ id: 'niemand', ab: 0, titel: 'Niemand' }, { id: 'bekannt', ab: 2, titel: 'Bekannt' }, { id: 'respektiert', ab: 5, titel: 'Respektiert' }, { id: 'legende', ab: 8, titel: 'Legende' }],
+  rufStufe(ruf) { const r = ruf || 0; let cur = StoryRules.RUF_STUFEN[0]; for (const s of StoryRules.RUF_STUFEN) if (r >= s.ab) cur = s; return cur; },
   validate(story, sceneIds, jobIds, storyIds = null, stories = {}) {
     const errs = [];
     const scene = (id, where) => { if (id && !sceneIds.includes(id)) errs.push(`${story.id}: Szene "${id}" fehlt (${where})`); };
@@ -12799,6 +12802,25 @@ T.test('StoryRules.validate: Räume', () => {
   st.start.unlocked.rooms = ['bar'];
   st.events = [{ id: 'x', when: { day: { gte: 1 } }, at: 'morning', scene: 'p.e1', effects: [{ unlock: { rooms: ['keller'] } }] }];
   T.ok(StoryRules.validate(st, ['p.k2', 'p.e1', 'p.gut', 'p.mid', 'p.aus'], ['spueler']).some((e) => e.includes('keller')));
+});
+T.test('StoryRules.rufStufe: vier Stufen 0/2/5/8, negative Werte sind Niemand', () => {
+  T.eq(StoryRules.RUF_STUFEN.map((s) => s.ab), [0, 2, 5, 8]);
+  T.eq(StoryRules.RUF_STUFEN.map((s) => s.titel), ['Niemand', 'Bekannt', 'Respektiert', 'Legende']);
+  for (const [ruf, id] of [[0, 'niemand'], [1, 'niemand'], [2, 'bekannt'], [4, 'bekannt'], [5, 'respektiert'], [7, 'respektiert'], [8, 'legende'], [10, 'legende'], [-1, 'niemand'], [undefined, 'niemand']]) {
+    T.eq(StoryRules.rufStufe(ruf).id, id, `Ruf ${ruf}`);
+  }
+});
+T.test('Ruf-Events beider Stories nutzen nur die Stufen-Schwellen 2/5/8', () => {
+  const schwellen = StoryRules.RUF_STUFEN.map((s) => s.ab).filter((x) => x > 0);
+  const rufConds = (cond, out = []) => {
+    if (!cond || typeof cond !== 'object') return out;
+    if (cond.var === 'ruf' && 'gte' in cond) out.push(cond.gte);
+    for (const k of ['all', 'any']) for (const c of cond[k] || []) rufConds(c, out);
+    return out;
+  };
+  for (const story of [STORY_SCHULD, STORY_STASH]) for (const e of story.events) for (const g of rufConds(e.when)) {
+    T.ok(schwellen.includes(g), `${story.id}/${e.id}: Ruf-Schwelle ${g} ist keine Stufe`);
+  }
 });
 T.test('advanceDay: Überfall-Cooldown sinkt pro Tag', () => {
   const s = storyBase(); s.mugCooldown = 3;
