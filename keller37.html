@@ -6504,9 +6504,9 @@ const MugAction = {
     EgoStage.mount(this.stage, { set, weapon: 0, reduced: this.reduced(), hand });
     this.running = true; this.tapT = null;
     this.onPointer = (e) => { e.preventDefault(); this.tap(); };
-    this.onKey = (e) => { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) this.tap(); } };
+    this.onKey = (e) => { if (e.code === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); return; } if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) this.tap(); } };
     ov.addEventListener('pointerdown', this.onPointer);
-    document.addEventListener('keydown', this.onKey, true); // capture: die Spiel-Screens darunter bekommen die Taste nicht
+    document.addEventListener('keydown', this.onKey, true); // capture: die Spiel-Screens darunter bekommen die Taste nicht, und Escape schluckt der Einschub selbst (die globale Escape-Heimfahrt kennt #ego nicht)
   },
   close() {
     const ov = qs('#ego');
@@ -13977,6 +13977,9 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
       T.eq([qs('#ego').hidden, document.body.classList.contains('ego-open'), EgoStage.set, EgoStage.handKind, qs('#ego .duel-foe').dataset.pose, qs('#duelFoeName').textContent], [false, true, 'gasse', 'fist', 'windup', 'Der Junkie'], 'Overlay offen: Gasse, Faust, Räuber holt aus');
       tick(2); key('Space'); T.eq(MugAction.tapT, EgoStage.ringTime(), 'Leertaste = Tipp (capture, vor den Screens)'); T.eq(qs('#ego .duel-flash').textContent, 'TREFFER!');
       key('Space'); tick(1); T.ok(MugAction.tapT < EgoStage.ringTime(), 'nur der erste Tipp zählt');
+      const curBefore = UI.current;
+      const escOk = document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true, cancelable: true }));
+      T.eq([escOk, UI.current], [false, curBefore], 'Escape wird im Einschub geschluckt (kein Screen-Wechsel)');
       await p;
       T.eq([done.length, done[0].outcome, done[0].bonus, done[0].strength, State.s.strength, State.s.stats.fightsWon, qs('#ego').hidden, document.body.classList.contains('ego-open'), overlayDuringOutcome, EgoStage.mounted], [1, 'fightWon', 0.10, 3, 3, 1, true, false, false, false], 'gewonnen mit Bonus, Overlay vor dem Text-Panel geschlossen, Bühne abgebaut');
       T.eq(scenes, ['mug.intro', 'mug.fightWon']);
