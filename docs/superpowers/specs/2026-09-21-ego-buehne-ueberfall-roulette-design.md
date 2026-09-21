@@ -105,3 +105,7 @@ Screen `russian` bleibt (Einsatz-Leiste, „Duell starten", `forced`); das Panel
 **Unverändert:** siehe Rahmenbedingungen.
 
 **Nicht in Stufe 3:** neue Überfalltypen, Trefferzonen, Mehrfach-Tipps, Inszenierung von Blackjack/Poker/anderen Spielen.
+
+## Umsetzungsnotiz
+
+`chanceWithBonus` liegt neben `timingBonus` in `GangRules` (nicht in `Mugging`), damit der Node-Selbsttest es ohne DOM prüfen kann; `MugAction.brawl/chase` bekommen die Grundchance als zweites Argument, `Mugging.run` rechnet sie wie bisher aus. Die Trommel dreht wie vorher am Anfang jedes Abzugs auf die aktuelle Kammer. Igor trägt die Pistole des Rigs nur in seinem Zug (`EgoStage.foeGun`, Klasse `unarmed`), der Räuber nie; der Zähler `#duelCount` bleibt bei einem einzelnen Gegner leer. Am Ende eines Duells setzt `setTurn(null)` keine Pose mehr – sonst stünde ein gefallener Igor wieder auf. Headless-Tests takten die Bühnen-Uhr per `EgoStage.loop(last + 50)`, weil `virtual-time-budget` kaum rAF-Frames liefert.

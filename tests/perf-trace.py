@@ -82,6 +82,10 @@ SCENARIOS = [
     ("Duell", "?screen=shootout&foe=junge&weapon=1", 4,
      "GangRules.drawWait = () => 400; Shootout.ready(); setTimeout(() => { const b = DuelStage.foeBox(), R = document.querySelector('#duelStage').getBoundingClientRect();"
      " Shootout.shoot({ clientX: R.left + b.left + b.width / 2, clientY: R.top + b.top + b.height / 2, pointerType: 'mouse' }); }, 600)", None),
+    ("Ueberfall Kampf", "?screen=hub", 4,
+     "Math.random = () => 0; MugAction.brawl(Mugging.TYPES.junkie, 0.5); setTimeout(() => MugAction.tap(), 1500)", None),
+    ("Russisch Roulette", "?screen=russian", 4,
+     "State.s.flags.igor = true; State.s.balance = 1000; Rules.rrCylinder = () => [false, false, false, false, false, true]; Russian.start().then(() => Russian.pull())", None),
     ("Taxi fahren", "?story", 4, "document.querySelector('#btnTaxiStart').click()", STORY_JOB.replace("JOB", "'taxi'").replace("BTN", "'#btnTaxiStart'")),
     ("Spueler", "?story", 4, "document.querySelector('#btnDishStart').click()", STORY_JOB.replace("JOB", "'spueler'").replace("BTN", "'#btnDishStart'")),
 ]

@@ -83,6 +83,20 @@ __pt.advance = function(labelHint) {
   return true;
 };
 __pt.cutsceneActive = function() { return typeof Cutscene !== 'undefined' && Cutscene.active; };
+__pt.lastMug = null;
+if (typeof Bus !== 'undefined' && !__pt.mugHooked) { __pt.mugHooked = true; Bus.on('mug:done', (e) => { __pt.lastMug = e; }); }
+__pt.egoTap = function() {
+  // Ueberfall-Einschub (Ego-Buehne): wartet, bis der Timing-Ring laeuft, und tippt im goldenen Fenster (Bonus +10 pp)
+  return new Promise((resolve) => {
+    const t0 = Date.now();
+    const iv = setInterval(() => {
+      if (Date.now() - t0 > 8000) { clearInterval(iv); resolve(false); return; }
+      if (typeof MugAction === 'undefined' || !MugAction.running) return;
+      const t = EgoStage.ringTime();
+      if (t != null && t >= GangRules.TIMING.window - GangRules.TIMING.gold + 40) { MugAction.tap(); clearInterval(iv); resolve(MugAction.tapT != null); }
+    }, 15);
+  });
+};
 __pt.duelShoot = function() {
   // Schuss auf die Gegnerfigur (Ego-Duell): Tipp in die Mitte der Figuren-Box
   const b = DuelStage.foeBox(), R = document.querySelector('#duelStage').getBoundingClientRect();
@@ -552,7 +566,9 @@ async def scenario_fast_forward(cdp):
     if duel_seen:
         # Erst evtl. laufende "igor.first"-Cutscene durchklicken (spielt vor dem ersten Duell je einmal),
         # dann echten Abzugsknopf klicken, bis das Duell entschieden ist.
-        for _ in range(30):
+        stage_ok = await cdp.wait_for("EgoStage.mounted && EgoStage.set === 'hinterzimmer' && !!document.querySelector('#rrStage .duel-foe svg.part') && EgoStage.cyl != null", timeout=3.0)
+        record("duell: Ego-Buehne Hinterzimmer mit Igor und Trommel", bool(stage_ok), "stage_ok=%s" % stage_ok)
+        for _ in range(60):
             in_duel = await cdp.eval("typeof Russian !== 'undefined' && Russian.inDuel", await_promise=False)
             if not in_duel:
                 break
@@ -560,7 +576,9 @@ async def scenario_fast_forward(cdp):
             if active:
                 await cdp.advance_cutscene(max_steps=5)
             else:
-                await cdp.click("#btnTrigger")
+                busy = await cdp.eval("Russian.busy", await_promise=False)
+                if not busy:
+                    await cdp.click("#btnTrigger")
             await asyncio.sleep(0.4)
         await asyncio.sleep(0.3)
         flags = await cdp.eval("State.s.story.flags", await_promise=False)
@@ -1075,18 +1093,22 @@ async def scenario_mugging(cdp):
     await cdp.advance_cutscene(max_steps=5)
     await cdp.eval("window.__origRandom = Math.random; Math.random = () => 0; 0", await_promise=False)
     await cdp.eval("__pt.advance('Kämpfen')", await_promise=False)
-    await asyncio.sleep(0.5)
-    # Screenshot mitten in der Ergebnis-Szene (Gasse-Hintergrund, Portrait, Kampftext) statt erst
-    # nach deren vollstaendiger Aufloesung -- die Brief-Version schoss erst nach dem kompletten
-    # Durchklicken, als bereits wieder das Roulette-Blatt zu sehen war (siehe Report).
+    # Ego-Einschub: Raeuber holt aus, Timing-Ring, Tipp im goldenen Fenster (+10 pp); gewuerfelt wird
+    # erst danach im Einschub -- der Math.random-Stub bleibt bis zum Ausgangs-Panel stehen.
+    tapped = await cdp.eval("__pt.egoTap()", await_promise=True)
+    ego_open = await cdp.eval("!document.querySelector('#ego').hidden && MugAction.running && EgoStage.handKind === 'fist'", await_promise=False)
+    record("mug: Kampf-Einschub auf der Ego-Buehne (Faust, Ring), Tipp im goldenen Fenster", tapped is True and ego_open is True, "tapped=%s ego_open=%s" % (tapped, ego_open))
     await cdp.screenshot("mug-fight.png")
-    await cdp.advance_cutscene()
+    active = await cdp.wait_for("__pt.cutsceneActive()", timeout=8.0)
+    record("mug: Einschub schliesst sich von selbst, Ausgangs-Panel folgt", bool(active), "active=%s" % active)
     await cdp.eval("Math.random = window.__origRandom; 0", await_promise=False)
+    await cdp.advance_cutscene()
     await asyncio.sleep(0.4)
     bal = await cdp.eval("State.s.balance", await_promise=False)
     st = await cdp.eval("State.s.strength", await_promise=False)
     won = await cdp.eval("State.s.stats.fightsWon", await_promise=False)
-    record("mug: Kampf mit Staerke 20 gewonnen, Brieftasche 50-150, Staerke 21", bal == 1050 and st == 21 and won == 1, "bal=%s st=%s won=%s" % (bal, st, won))
+    bonus = await cdp.eval("__pt.lastMug && __pt.lastMug.bonus", await_promise=False)
+    record("mug: Kampf mit Staerke 20 gewonnen, Brieftasche 50-150, Staerke 21, Timing-Bonus 0.1 gemeldet", bal == 1050 and st == 21 and won == 1 and bonus == 0.1, "bal=%s st=%s won=%s bonus=%s" % (bal, st, won, bonus))
     # Wegrennen mit R8 + Carbon (90 % Fluchtchance): Math.random gestubbt (>= jeder moeglichen
     # Fluchtchance) macht die Flucht deterministisch erwischt, analog zum Kampf-Stub oben (siehe
     # Fix-Report) -- ohne Stub war dieser Check entsprechend flakig (bal 1000 oder 700).
@@ -1096,11 +1118,18 @@ async def scenario_mugging(cdp):
     await asyncio.sleep(0.6)
     await cdp.eval("window.__origRandom = Math.random; Math.random = () => 0.99; 0", await_promise=False)
     await cdp.advance_cutscene(label_hint="Wegrennen")
+    # Flucht-Einschub ohne Tipp (Bonus 0): laufende Kulisse, Raeuber holt auf, Abzweigung, dann erwischt
+    running = await cdp.wait_for("MugAction.running && EgoStage.moving", timeout=4.0)
+    record("mug: Flucht-Einschub mit laufender Kulisse", bool(running), "running=%s" % running)
+    await cdp.screenshot("mug-flee.png")
+    await cdp.wait_for("__pt.cutsceneActive()", timeout=8.0)
     await cdp.eval("Math.random = window.__origRandom; 0", await_promise=False)
-    await asyncio.sleep(0.6)
+    await cdp.advance_cutscene()
+    await asyncio.sleep(0.4)
     bal = await cdp.eval("State.s.balance", await_promise=False)
     st = await cdp.eval("State.s.strength", await_promise=False)
-    record("mug: Flucht erwischt (RNG gestubbt) kostet 300, Staerke bleibt 0", bal == 700 and st == 0, "bal=%s st=%s" % (bal, st))
+    bonus = await cdp.eval("__pt.lastMug && __pt.lastMug.bonus", await_promise=False)
+    record("mug: Flucht erwischt (RNG gestubbt) kostet 300, Staerke bleibt 0, Bonus 0 ohne Tipp", bal == 700 and st == 0 and bonus == 0, "bal=%s st=%s bonus=%s" % (bal, st, bonus))
     # Kein Ueberfall bei Cooldown
     await cdp.eval("Mugging.force = true; State.s.mugCooldown = 5; 0", await_promise=False)
     await cdp.eval("UI.show('hub'); 0", await_promise=False)
