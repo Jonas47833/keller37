@@ -1741,17 +1741,17 @@ async def scenario_perks(cdp):
 async def _scenario_perks_body(cdp):
     n = await cdp.eval("document.querySelectorAll('#skillCards .btn').length", await_promise=False)
     record("perks: ohne Punkt kein Waehlen-Button", n == 0, "buttons=%s" % n)
-    await cdp.eval("Perks.addXp(25, 'test'); 0", await_promise=False)
+    await cdp.eval("Perks.addXp(Rules.XP_LEVELS[1], 'test'); 0", await_promise=False)
     await asyncio.sleep(0.4)
     pulsing = await cdp.eval("document.querySelector('#lvBadge').classList.contains('point')", await_promise=False)
     n = await cdp.eval("document.querySelectorAll('#skillCards .btn').length", await_promise=False)
     record("perks: Level 2 -> Badge pulsiert, 9 Skills waehlbar", pulsing is True and n == 9, "pulsing=%s buttons=%s" % (pulsing, n))
     await cdp.screenshot("skills.png")
-    # Zusaetzliche XP auf Level 4 (110 XP gesamt = 2 Skill-Punkte), damit nach dem Pick von
+    # Zusaetzliche XP auf Level 4 (XP_LEVELS[3] gesamt = 2 Skill-Punkte), damit nach dem Pick von
     # Zockerhaende noch ein Punkt frei ist -- sonst meldet canPickSkill fuer Brieftraegerherz
     # "points" statt "conflict" (Punkt-Pruefung kommt vor der Konflikt-Pruefung), und der naechste
     # Check koennte den Konflikt-Grund nie sehen.
-    await cdp.eval("Perks.addXp(85, 'test'); 0", await_promise=False)
+    await cdp.eval("Perks.addXp(Rules.XP_LEVELS[3] - Rules.XP_LEVELS[1], 'test'); 0", await_promise=False)
     await asyncio.sleep(0.4)
     await cdp.eval("Perks.pick('zockerhaende'); 0", await_promise=False)
     await asyncio.sleep(0.3)
@@ -1836,7 +1836,7 @@ async def scenario_royal_look(cdp):
     record("zone: Vorhang beim Betreten, Zone royal, Untertitel sichtbar", zone_before == "keller" and fade_on is True and zone_after == "royal" and sub == "block",
            "before=%s fade=%s after=%s sub=%s" % (zone_before, fade_on, zone_after, sub))
     portals = await cdp.eval("document.querySelectorAll('.portal').length", await_promise=False)
-    record("lobby: vier Portale", portals == 4, "portals=%s" % portals)
+    record("lobby: fünf Portale", portals == 5, "portals=%s" % portals)
     # Mega Seven: Freispiel-Banner + Gewinnlinie
     await cdp.eval("UI.show('megaslots')")
     mega = await cdp.eval("""(async function(){
@@ -2110,6 +2110,104 @@ async def scenario_stud(cdp):
     record("stud: Ante 50 wird abgelehnt", in_round is False and toast is True, "cards=%s toast=%s inRound=%s" % (cards, toast, in_round))
 
 
+async def scenario_sicbo(cdp):
+    """Sic Bo im Royal: Portal, Zone, fester Wurf 2·3·4 (Klein + Summe 9), Triple 4·4·4 -> Achievement,
+    Leeren, Wuerfeln ohne Einsatz, Insider Gezinkter Becher mit Kappe."""
+    await cdp.navigate(URL_BASE + "?fresh&mode=free&screen=royal")
+    await asyncio.sleep(0.8)
+    await cdp.inject_helpers()
+    portal = await cdp.eval("!!document.querySelector('.portal[data-screen=\"sicbo\"]')", await_promise=False)
+    record("sicbo: Portal in der Royal-Lobby", portal is True)
+    await cdp.screenshot("royal-lobby.png")
+    # Meta-Speicher (Insider, Trophaeen) ueberlebt ?fresh und fruehere Laeufe im selben Chrome-Profil: zuruecksetzen
+    await cdp.eval("State.meta.insider = []; State.meta.achievements = State.meta.achievements.filter(id => id !== 'dreiGleiche'); State.saveMeta(); 0", await_promise=False)
+    await cdp.eval("State.s.car = 'audiA3'; State.s.balance = 1000; State.save(); UI.renderWallet(); 0", await_promise=False)
+    await cdp.eval("UI.show('sicbo'); 0", await_promise=False)
+    await asyncio.sleep(0.6)
+    zone = await cdp.eval("document.body.dataset.zone", await_promise=False)
+    cells = await cdp.eval("document.querySelectorAll('.sb-cell[data-bet]').length", await_promise=False)
+    record("sicbo: Zone royal, 29 Felder", zone == "royal" and cells == 29, "zone=%s cells=%s" % (zone, cells))
+
+    async def roll(dice):
+        before = await cdp.eval("State.s.balance", await_promise=False)
+        await cdp.eval("SicBo.forceDice = %s; 0" % json.dumps(dice), await_promise=False)
+        await cdp.click("#btnSbRoll")
+        await cdp.wait_for("!SicBo.rolling || __pt.cutsceneActive()", timeout=6.0)
+        # Ein Nettogewinn >= RoyalRules.GUEST_WIN (5000) loest einmalig die "Gast des Hauses"-Cutscene aus
+        # (Royal.onWin, Bus 'win'), die Game.settle() bis zum Durchklicken blockiert (SicBo.rolling bleibt
+        # dann true) -- durchklicken, falls sie gerade offen ist, dann erneut auf das Rollenende warten.
+        if await cdp.eval("__pt.cutsceneActive()", await_promise=False):
+            await cdp.advance_cutscene(max_steps=10)
+            await cdp.wait_for("!SicBo.rolling", timeout=3.0)
+        await asyncio.sleep(0.5)
+        after = await cdp.eval("State.s.balance", await_promise=False)
+        status = await cdp.eval("document.querySelector('#sbStatus').textContent", await_promise=False)
+        return before, after, status
+
+    # 1) Chip 50 auf Klein + Summe 9, Wurf 2·3·4 -> +50 + 300
+    await cdp.eval("document.querySelector('.chip[data-chip=\"50\"]').click(); SicBo.place('small'); SicBo.place('sum9'); 0", await_promise=False)
+    await cdp.screenshot("royal-sicbo.png")
+    b0, b1, status = await roll([2, 3, 4])
+    won = await cdp.eval("['small','sum9'].every(id => document.querySelector('.sb-cell[data-bet=\"' + id + '\"]').classList.contains('won'))", await_promise=False)
+    record("sicbo: Klein + Summe 9 gewinnen bei 2·3·4 (+350)", b1 == b0 + 350 and won is True and "Summe 9" in status, "b0=%s b1=%s won=%s status=%s" % (b0, b1, won, status))
+    # 2) Klein, Beliebiger Triple, Triple 4; Wurf 4·4·4 -> -50 + 1500 + 9000, Trophaee
+    await cdp.eval("SicBo.place('small'); SicBo.place('tripleAny'); SicBo.place('triple4'); 0", await_promise=False)
+    b0, b1, status = await roll([4, 4, 4])
+    ach = await cdp.eval("Achievements.has('dreiGleiche')", await_promise=False)
+    record("sicbo: Triple 4·4·4 zahlt 180:1 + 30:1, Klein verliert (+10450), Trophaee Drei Gleiche", b1 == b0 + 10450 and ach is True and "Triple" in status, "b0=%s b1=%s ach=%s status=%s" % (b0, b1, ach, status))
+    # 3) Leeren nimmt alles zurueck, Wuerfeln ohne Einsatz macht nichts
+    await cdp.eval("document.querySelector('.chip[data-chip=\"200\"]').click(); SicBo.place('big'); 0", await_promise=False)
+    stack_before = await cdp.eval("document.querySelector('.sb-cell[data-bet=\"big\"] .chip-stack').classList.contains('hidden')", await_promise=False)
+    await cdp.click("#btnSbClear")
+    stack_after = await cdp.eval("document.querySelector('.sb-cell[data-bet=\"big\"] .chip-stack').classList.contains('hidden')", await_promise=False)
+    before = await cdp.eval("State.s.balance", await_promise=False)
+    die_before = await cdp.eval("document.querySelector('#sbDie1').textContent", await_promise=False)
+    await cdp.eval("SicBo.roll(); 0", await_promise=False)
+    await asyncio.sleep(0.4)
+    after = await cdp.eval("State.s.balance", await_promise=False)
+    rolling = await cdp.eval("SicBo.rolling", await_promise=False)
+    die_after = await cdp.eval("document.querySelector('#sbDie1').textContent", await_promise=False)
+    record("sicbo: Leeren nimmt Chips zurueck, Wuerfeln ohne Einsatz macht nichts",
+           stack_before is False and stack_after is True and after == before and rolling is False and die_before == die_after,
+           "stack=%s/%s bal=%s/%s rolling=%s die=%s/%s" % (stack_before, stack_after, before, after, rolling, die_before, die_after))
+    # 4) Insider Gezinkter Becher: Wuerfel 1 liegt offen, wird bei Risiko <= 250 uebernommen, darueber nicht
+    await cdp.eval("State.meta.insider = ['becher']; State.saveMeta(); 0", await_promise=False)
+    await cdp.eval("UI.show('royal'); 0", await_promise=False)
+    # UI.show() ist fire-and-forget (Zonen-Blende, Template-Wechsel); ein fixer sleep(0.4) reicht nicht
+    # immer, und der direkt folgende UI.show('sicbo') wuerde dann durch den UI.busy-Guard verschluckt
+    # (Bildschirm bleibt 'royal', #sbDie1 existiert nicht) -- daher wie sonst im Skript auf UI.busy warten.
+    await cdp.wait_for("UI.current && UI.current.id === 'royal' && !UI.busy", timeout=3.0)
+    await cdp.eval("UI.show('sicbo'); 0", await_promise=False)
+    await cdp.wait_for("UI.current && UI.current.id === 'sicbo' && !UI.busy", timeout=3.0)
+    await asyncio.sleep(0.3)
+    peek = await cdp.eval("SicBo.peekDie", await_promise=False)
+    die1 = await cdp.eval("document.querySelector('#sbDie1').textContent", await_promise=False)
+    hint = await cdp.eval("document.querySelector('#sbPeek').textContent", await_promise=False)
+    faces = ["?", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"]
+    record("sicbo: Becher zeigt Wuerfel 1 vorab", isinstance(peek, int) and 1 <= peek <= 6 and die1 == faces[peek] and "liegt schon" in hint, "peek=%s die1=%s hint=%s" % (peek, die1, hint))
+    others = [n for n in range(1, 7) if n != peek][:2]      # zwei Werte != peek fuer Wuerfel 2/3
+    x = [n for n in range(1, 7) if n != peek and n not in others][0]
+    await cdp.eval("document.querySelector('.chip[data-chip=\"50\"]').click(); SicBo.place('one%d'); 0" % peek, await_promise=False)
+    b0, b1, status = await roll([x, others[0], others[1]])
+    shown = await cdp.eval("document.querySelector('#sbDie1').textContent", await_promise=False)
+    record("sicbo: Becher-Wuerfel wird bei Risiko 50 uebernommen, Einzelzahl zahlt 1:1", shown == faces[peek] and b1 == b0 + 50, "peek=%s shown=%s b0=%s b1=%s status=%s" % (peek, shown, b0, b1, status))
+    peek2 = await cdp.eval("SicBo.peekDie", await_promise=False)
+    await cdp.eval("document.querySelector('.chip[data-chip=\"500\"]').click(); SicBo.place('big'); 0", await_promise=False)
+    hint_cap = await cdp.eval("document.querySelector('#sbPeek').textContent", await_promise=False)
+    force = [6, 6, 5] if peek2 != 6 else [1, 6, 5]
+    b0, b1, status = await roll(force)
+    shown = await cdp.eval("document.querySelector('#sbDie1').textContent", await_promise=False)
+    record("sicbo: ueber 250 Euro Risiko bleibt der Wurf frisch, Hinweis nennt die Kappe", "wirkt bis 250" in hint_cap and shown == faces[force[0]] and b1 == b0 + 500, "hint=%s peek2=%s shown=%s b0=%s b1=%s" % (hint_cap, peek2, shown, b0, b1))
+    await cdp.eval("State.meta.insider = []; State.saveMeta(); 0", await_promise=False)
+    # 5) Verlassen ohne Toast, Konto unveraendert
+    before = await cdp.eval("State.s.balance", await_promise=False)
+    await cdp.eval("UI.show('royal'); 0", await_promise=False)
+    await asyncio.sleep(0.5)
+    after = await cdp.eval("State.s.balance", await_promise=False)
+    toast = await cdp.eval("document.querySelector('#toasts').textContent.includes('aufgegeben')", await_promise=False)
+    record("sicbo: Verlassen ohne Einsatzverlust und ohne Toast", after == before and toast is False, "before=%s after=%s toast=%s" % (before, after, toast))
+
+
 async def main():
     cdp = CDP()
     cdp.launch(mobile=MOBILE)
@@ -2141,6 +2239,7 @@ async def main():
         await scenario_perks(cdp)
         await scenario_poker(cdp)
         await scenario_stud(cdp)
+        await scenario_sicbo(cdp)
     finally:
         n_errors = len(cdp.console_errors)
         for e in cdp.console_errors:

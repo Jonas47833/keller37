@@ -44,7 +44,7 @@ insiderClaimed: {},    // storyId → true (pro Story-Teil einmal)
 | Story-Tag beendet (`advanceDay`) | +5 |
 | neue Trophäe (`achievement`) | +10 |
 
-`Rules.XP_LEVELS = [0, 25, 60, 110, 180, 270]` (kumulierte XP für Level 1–6). `Rules.xpLevel(xp) → { level, next, points }` – `points` = Skill-Punkte insgesamt (Level 2, 4, 6 → 1, 2, 3). Freie Punkte = `points − skills.length`. Über Level 6 hinaus zählt XP weiter (Anzeige „Lv 6 · max").
+`Rules.XP_LEVELS = [0, 150, 400, 800, 1300, 2000]` (kumulierte XP für Level 1–6; Balancing 2026-09-21, ursprünglich [0, 25, 60, 110, 180, 270]). `Rules.xpLevel(xp) → { level, next, points }` – `points` = Skill-Punkte insgesamt (Level 2, 4, 6 → 1, 2, 3). Freie Punkte = `points − skills.length`. Über Level 6 hinaus zählt XP weiter (Anzeige „Lv 6 · max").
 
 ### 2.4 Skill-Katalog `Rules.SKILLS`
 
