@@ -9908,7 +9908,7 @@ const STORY_STASH = {
     lieferung(s) {
       const st = s.story, v = st.vars;
       const w = GangRules.week(v.woche + 1, !!st.flags.bahnhof);
-      v.woche++; v.umsatz = 0; v.umsatzRoyal = 0; v.eintreiberWoche = 0;
+      v.woche++; v.umsatz = 0; v.umsatzRoyal = 0; v.eintreiberWoche = 0; delete st.flags.rufReparaturWoche;
       v.ziel = w.ziel; v.rueckgabe = w.rueckgabe; v.lieferung = w.lieferung;
       s.balance += w.lieferung;
       delete st.flags.royalWarn;
@@ -9921,7 +9921,7 @@ const STORY_STASH = {
       v.kredit = Math.max(0, (v.kredit || 0) + r.kreditDelta);
       v.zorn = GangRules.zorn(v.zorn, r.zornDelta);
       v.belege += r.belegDelta; v.belegeOffen += r.belegDelta;
-      if (r.ausgang === 'ok') v.abrechnungenOk++;
+      if (r.ausgang === 'ok') { v.abrechnungenOk++; v.ruf = Math.min(10, (v.ruf || 0) + 1); v.rufAbrechnung = 1; } else v.rufAbrechnung = 0;
       v.anabiErfaehrt = 0;
       if (f.bahnhof && !f.anabiWeiss) { f.anabiWeiss = true; v.zorn = GangRules.zorn(v.zorn, 1); v.anabiErfaehrt = 1; }
       v.ausgang = { ok: 0, umsatz: 1, geld: 2, beides: 3 }[r.ausgang];
@@ -9980,8 +9980,15 @@ const STORY_STASH = {
     kreditZahlen(s) {
       const v = s.story.vars, amt = Math.min(GangRules.KREDIT_SCHRITT, v.kredit || 0, s.balance);
       if (amt <= 0) return {};
-      s.balance -= amt; v.kredit -= amt;
-      return { toast: { icon: '🧾', title: `−${StoryRules.fmtMoney(amt)}`, text: `Kredit noch ${StoryRules.fmtMoney(v.kredit)}.`, tone: 'info' } };
+      s.balance -= amt; v.kredit -= amt; v.ruf = Math.min(10, (v.ruf || 0) + 1);
+      return { toast: { icon: '🧾', title: `−${StoryRules.fmtMoney(amt)}`, text: `Kredit noch ${StoryRules.fmtMoney(v.kredit)}. Ruf +1 – Anabi merkt sich, wer zahlt.`, tone: 'info' } };
+    },
+    /* Reparatur nach Überfall: Ruf +1, einmal je Woche (Flag fällt bei der Lieferung) – aufgerufen vom Bus-Hook story:repair */
+    reparaturRuf(s) {
+      const st = s.story;
+      if (st.flags.rufReparaturWoche) return {};
+      st.flags.rufReparaturWoche = true; st.vars.ruf = Math.min(10, (st.vars.ruf || 0) + 1);
+      return { toast: { icon: '🔥', title: 'Ruf +1', text: 'Er lässt sich nicht kleinkriegen, sagen sie am Bahnhof.', tone: 'win' } };
     },
     /* Dev-Start mitten in der Story (?day=N): ohne diese Nachbesserung stünde Woche/Ziel/Rückgabe auf 0,
        bis die nächste reguläre Lieferung/Abrechnung sie setzt. Kein Kontostand-Effekt, keine Lieferung heute Nacht. */
@@ -10030,6 +10037,7 @@ const STORY_STASH = {
     { id: 'finaleLost', when: { all: [{ flag: 'fight_finale' }, { flag: 'fightLost' }] }, at: 'fight:after', effects: [{ flag: 'kanal' }] },
     /* ---- Kurierfahrt: Kontrolle ---- */
     { id: 'kontrolle', when: { flag: 'kontrolle' }, at: 'job:after', scene: 'stash.kontrolle', effects: [{ unflag: 'kontrolle' }, { var: 'zorn', add: 1 }, { var: 'belege', add: 1 }, { var: 'belegeOffen', add: 1 }] },
+    { id: 'eintreiberRuf', when: { jobToday: 'eintreiber' }, daily: true, at: 'job:after', effects: [{ var: 'ruf', add: 1 }, { toast: { icon: '🥊', title: 'Ruf +1', text: 'Die Liste ist kürzer. Der Bahnhof hat es gesehen.', tone: 'win' } }] },
     /* ---- Royal: Sylvie ---- */
     { id: 'sylvieWarn', when: { all: [{ var: 'umsatzRoyal', gte: 10000 }, { var: 'umsatzRoyal', lt: 15000 }, { notFlag: 'royalWarn' }, { notFlag: 'royalBann' }] }, at: 'royal:enter', scene: 'stash.sylvie.warn', effects: [{ flag: 'royalWarn' }] },
     { id: 'royalBannEnter', when: { all: [{ var: 'umsatzRoyal', gte: 15000 }, { notFlag: 'royalBann' }] }, at: 'royal:enter', scene: 'stash.sylvie.bann', effects: [{ flag: 'royalBann' }, { lock: { rooms: ['royal'] } }, { show: 'stadt' }] },
@@ -10147,7 +10155,7 @@ const STORY_STASH = {
         { bg: 'keller', who: 'du', mood: 'calm', text: 'Sonntagabend. Der Keller ist leer, bis auf den Mann, der zählt.' },
         Object.assign({ bg: 'keller' }, ausgang),
         ...(bahnhof ? [{ bg: 'keller', who: 'anabi', mood: 'angry', text: 'Ach – und man erzählt sich, du wäschst auch für den Bahnhof. Zwei Herren. Ich mag keine Gemeinschaftsgüter.' }] : []),
-        { bg: 'keller', who: 'igor', mood: 'calm', text: `Zorn: ${v.zorn} von 3. Zettel: ${fmt(v.kredit)}. Ich sag es nur, damit du es weißt.` },
+        { bg: 'keller', who: 'igor', mood: 'calm', text: `Zorn: ${v.zorn} von 3. Zettel: ${fmt(v.kredit)}.${v.rufAbrechnung ? ' Und am Bahnhof wissen sie, dass du sauber abgeliefert hast – Ruf +1.' : ''} Ich sag es nur, damit du es weißt.` },
       ];
     },
     'stash.ueberfall': (ctx) => {
@@ -10285,6 +10293,13 @@ const STORY_STASH = {
   },
 };
 if (typeof Stories !== 'undefined') Stories.define(STORY_STASH);
+/* Ruf: +1 je Woche für die erste Reparatur nach einem Überfall (Spec 2026-09-21 Ruf-Stufen §4.1) */
+if (typeof Bus !== 'undefined') Bus.on('story:repair', () => {
+  if (State.mode !== 'story' || !State.s.story || State.s.story.id !== 'stash') return;
+  const out = STORY_STASH.fns.reparaturRuf(State.s);
+  if (out.toast) UI.toast(out.toast);
+  State.save(); UI.renderWallet();
+});
 </script>
 
 <script id="dev">
@@ -13159,6 +13174,33 @@ T.test('STORY_STASH: Eintreiber – 1.000 €, keine Stärke nötig, Zorn −1, 
   for (const sc of STORY_STASH.jobScenes.eintreiber) for (const eff of STORY_STASH.jobEffects[sc]) StoryRules.applyEffect(s, eff, STORY_STASH);
   T.eq([s.story.vars.zorn, s.story.vars.eintreiberWoche], [0, 2]);
   T.eq(StoryRules.jobAvailable(job, s).ok, false, 'zwei pro Woche');
+});
+T.test('STORY_STASH: Ruf-Quellen – Abrechnung ok, Eintreiber-Schicht, Kredit-Rate, Reparatur einmal je Woche; alle klemmen bei 10', () => {
+  /* Abrechnung: nur Ausgang ok gibt Ruf */
+  const a = stashState({ balance: 50000 }); a.story.day = 7; a.story.vars.woche = 1; a.story.vars.ziel = 20000; a.story.vars.rueckgabe = 11000; a.story.vars.lieferung = 10000;
+  a.story.vars.umsatz = 20000; STORY_STASH.fns.abrechnung(a); T.eq(a.story.vars.ruf, 1, 'sauber → +1');
+  const b = stashState({ balance: 50000 }); b.story.vars.woche = 1; b.story.vars.ziel = 20000; b.story.vars.rueckgabe = 11000; b.story.vars.umsatz = 5000;
+  STORY_STASH.fns.abrechnung(b); T.eq(b.story.vars.ruf, 0, 'Umsatz zu niedrig → nichts');
+  /* Eintreiber-Schicht */
+  const e = stashState(); e.story.day = 3; e.story.jobToday = 'eintreiber';
+  const [ids] = stashHook(e, 'job:after'); T.ok(ids.includes('eintreiberRuf')); T.eq(e.story.vars.ruf, 1);
+  T.eq(stashHook(e, 'job:after')[0].includes('eintreiberRuf'), false, 'daily: nur einmal am Tag');
+  e.story.jobToday = 'kurierfahrt'; e.story.day = 4; T.eq(stashHook(e, 'job:after')[0].includes('eintreiberRuf'), false, 'anderer Job: nichts');
+  /* Kredit-Rate */
+  const k = stashState({ balance: 9000 }); k.story.vars.kredit = 12000;
+  const out = STORY_STASH.fns.kreditZahlen(k); T.eq(k.story.vars.kredit, 7000); T.eq(k.story.vars.ruf, 1); T.ok(out.toast && /Ruf \+1/.test(out.toast.text), 'Toast nennt Ruf');
+  const k0 = stashState({ balance: 0 }); k0.story.vars.kredit = 5000; STORY_STASH.fns.kreditZahlen(k0); T.eq(k0.story.vars.ruf, 0, 'ohne Zahlung kein Ruf');
+  /* Reparatur: einmal je Woche, nach lieferung wieder */
+  const r = stashState(); r.story.vars.woche = 1;
+  T.ok(STORY_STASH.fns.reparaturRuf(r).toast); T.eq(r.story.vars.ruf, 1); T.eq(r.story.flags.rufReparaturWoche, true);
+  T.eq(STORY_STASH.fns.reparaturRuf(r), {}); T.eq(r.story.vars.ruf, 1, 'zweite Reparatur derselben Woche: nichts');
+  r.story.day = 8; STORY_STASH.fns.lieferung(r); T.eq(!!r.story.flags.rufReparaturWoche, false, 'Wochenwechsel setzt zurück');
+  T.ok(STORY_STASH.fns.reparaturRuf(r).toast); T.eq(r.story.vars.ruf, 2);
+  /* Klemmen bei 10 */
+  const m = stashState({ balance: 50000 }); m.story.vars.ruf = 10; m.story.vars.woche = 1; m.story.vars.ziel = 1; m.story.vars.rueckgabe = 1; m.story.vars.umsatz = 1;
+  STORY_STASH.fns.abrechnung(m); STORY_STASH.fns.reparaturRuf(m); m.story.vars.kredit = 5000; STORY_STASH.fns.kreditZahlen(m);
+  m.story.jobToday = 'eintreiber'; m.story.day = 5; stashHook(m, 'job:after');
+  T.eq(m.story.vars.ruf, 10);
 });
 T.test('STORY_STASH: Sylvie – Warnung ab 10.000 einmal pro Woche, Hausverbot ab 15.000 (Betreten und mitten im Spiel)', () => {
   const s = stashState(); s.story.vars.umsatzRoyal = 10000;
