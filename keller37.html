@@ -488,19 +488,7 @@ body.ego-open #toasts { bottom: auto; top: 64px; right: 20px; left: auto; }
 .pick.on small { color: #222; }
 /* -- Russisches Roulette -- */
 .rr-panel { position: relative; background: radial-gradient(circle at 50% 0%, #1b2430, #0b0f14 70%); border-color: rgba(76,201,240,.25); overflow: hidden; }
-.rr-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 5; }
-.rr-flash.on { animation: flash .12s ease both; }
-.duel { display: flex; align-items: center; justify-content: space-around; width: 100%; gap: 16px; }
-.fighter { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.fighter .face { width: 120px; height: 120px; border-radius: 50%; border: 4px solid rgba(76,201,240,.5); background: radial-gradient(circle at 40% 35%, #2a3440, #0d1117); display: flex; align-items: center; justify-content: center; font-size: 4rem; transition: transform .2s, filter .3s; }
-.fighter.turn .face { border-color: var(--neon-blue); box-shadow: 0 0 22px rgba(76,201,240,.6); transform: scale(1.06); }
-.fighter.dead .face { filter: grayscale(1) brightness(.6); transform: rotate(14deg); border-color: var(--neon-red); }
-.fighter .fname { font-family: var(--font-display); letter-spacing: .12em; font-size: 1.2rem; color: var(--neon-blue); }
-.cylinder-box { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.cyl-wrap { position: relative; }
-.cyl-pointer { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); color: var(--gold-2); font-size: 1.4rem; filter: drop-shadow(0 2px 3px #000); pointer-events: none; }
-#cylinder { transition: transform .25s cubic-bezier(.3,1.3,.5,1); filter: drop-shadow(0 6px 10px rgba(0,0,0,.8)); }
-.cylinder-box.zoom { animation: cylZoom .3s ease both; }
+.rr-panel .duel-stage { cursor: pointer; }
 .chambers-left { font-family: var(--font-mono); font-size: .85rem; color: var(--dim); }
 /* -- Post austragen -- */
 .postman-panel { background: linear-gradient(180deg, #8fc3f0 0, #dbe7ef 330px, #6b6a55 330px, #4e4c3c 100%); /* Horizont = 20px Padding + 350px Straße − 40px (knapp unter der Straßenkante) */ border-color: #8a8060; color: #222; }
@@ -1135,7 +1123,6 @@ body.mode-story #newgame { display: none; }
 @keyframes chipLost { to { transform: translate(120px, -50%) scale(.5); opacity: 0; } }
 @keyframes gallop { 0%, 100% { transform: scaleX(-1) translateY(0) rotate(-3deg); } 50% { transform: scaleX(-1) translateY(-5px) rotate(3deg); } }
 @keyframes dust { from { transform: translate(0, 0) scale(1); opacity: .8; } to { transform: translate(-30px, -6px) scale(2.2); opacity: 0; } }
-@keyframes cylZoom { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
 @keyframes sparkle { from { transform: scale(.8) rotate(0); } to { transform: scale(1.2) rotate(30deg); } }
 @keyframes stampIn { from { transform: translate(-50%, -50%) rotate(-12deg) scale(3); opacity: 0; } to { transform: translate(-50%, -50%) rotate(-12deg) scale(1); opacity: 1; } }
 @keyframes dogJump { 0% { transform: translateX(-50%) translateY(30px); opacity: 0; } 40% { transform: translateX(-50%) translateY(-20px); opacity: 1; } 100% { transform: translateX(-50%) translateY(0); opacity: 1; } }
@@ -1454,15 +1441,8 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
 </template>
 <template id="tpl-russian">
   <div class="panel rr-panel">
-    <div class="rr-flash" id="rrFlash"></div>
-    <div class="duel">
-      <div class="fighter" id="fPlayer"><div class="face">🤠</div><div class="fname">Du</div></div>
-      <div class="cylinder-box">
-        <div class="cyl-wrap"><svg id="cylinder" viewBox="0 0 200 200" width="200" height="200" aria-hidden="true"></svg><div class="cyl-pointer">▼</div></div>
-        <div class="chambers-left" id="chambersLeft">6 Kammern</div>
-      </div>
-      <div class="fighter" id="fIgor"><div class="face">🐻</div><div class="fname">Igor</div></div>
-    </div>
+    <div class="duel-stage" id="rrStage"></div>
+    <div class="chambers-left" id="chambersLeft">6 Kammern</div>
     <div class="status" id="rrStatus">Duell gegen Igor. Streifschuss = 100 € Spital.</div>
     <div class="bet-bar" id="rrBetControls">
       <div class="bet-field"><button data-step="-5">−</button><input type="number" id="rrBet" value="10" min="1"><button data-step="5">+</button></div>
@@ -5919,43 +5899,43 @@ UI.register('horses', {
 </script>
 
 <script id="game-russian">
-/* ================= RUSSISCHES ROULETTE ================= */
+/* ================= RUSSISCHES ROULETTE – Ego-Sicht: Igor gegenüber am Tisch, der Revolver dreht sich auf die Kamera ================= */
 const Russian = {
   root: null, duel: null, inDuel: false, busy: false, gen: 0,
+  TIMES: { turn: 600, igor: 1100, spin: 350, bang: 600, relief: 500 },   // Tests kürzen; Regeln bleiben in Rules
   alive(gen) { return !!this.root && this.gen === gen; },
-  drawCylinder() {
-    const svg = qs('#cylinder', this.root);
-    const ns = 'http://www.w3.org/2000/svg';
-    svg.innerHTML = '';
-    const el = (tag, attrs) => { const e = document.createElementNS(ns, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; };
-    svg.append(el('circle', { cx: 100, cy: 100, r: 92, fill: '#2a2f36', stroke: '#8a94a0', 'stroke-width': 4 }));
-    for (let i = 0; i < 6; i++) {
-      const a = (-90 + i * 60) * Math.PI / 180;
-      const c = el('circle', { cx: 100 + 56 * Math.cos(a), cy: 100 + 56 * Math.sin(a), r: 19, fill: '#0b0d10', stroke: '#8a94a0', 'stroke-width': 3, class: 'chamber', 'data-i': i });
-      svg.append(c);
-    }
-    svg.append(el('circle', { cx: 100, cy: 100, r: 14, fill: '#8a94a0' }));
-  },
-  rotateTo(idx, gen) {
-    if (!this.alive(gen)) return;
-    const svg = qs('#cylinder', this.root);
-    if (!svg) return;
-    svg.style.transform = `rotate(${-60 * idx}deg)`;
-    const box = svg.parentElement;
-    box.classList.remove('zoom'); void box.offsetWidth; box.classList.add('zoom');
-    qs('#chambersLeft', this.root).textContent = `${6 - idx} Kammer${6 - idx === 1 ? '' : 'n'}`;
-  },
-  markSpent(idx, gen) {
-    if (!this.alive(gen)) return;
-    const c = qs(`.chamber[data-i="${idx}"]`, this.root);
-    if (c) { c.setAttribute('fill', '#3a3f46'); c.setAttribute('stroke', '#555'); }
-    const left = 6 - (idx + 1);
-    qs('#chambersLeft', this.root).textContent = `${left} Kammer${left === 1 ? '' : 'n'} übrig`;
-  },
-  setTurn(who) {
+  reduced() { return matchMedia('(prefers-reduced-motion: reduce)').matches; },
+  stageEl() { return this.root ? qs('#rrStage', this.root) : null; },
+  /* Leertaste/Enter = Abzug (nur im Duell, nicht während Igors Zug, nicht unter Cutscene/Ego-Overlay) */
+  onKey(e) { if ((e.code === 'Space' || e.code === 'Enter') && qs('#cutscene').hidden && qs('#ego').hidden && Russian.inDuel && !Russian.busy && !e.repeat) { e.preventDefault(); Russian.pull(); } },
+  /* Bühne aufbauen: Hinterzimmer, Igor tritt an den Tisch, Trommel unten links */
+  mountStage() {
     if (!this.root) return;
-    qs('#fPlayer', this.root).classList.toggle('turn', who === 'player');
-    qs('#fIgor', this.root).classList.toggle('turn', who === 'igor');
+    EgoStage.mount(this.stageEl(), { set: 'hinterzimmer', weapon: 0, reduced: this.reduced(), hand: 'none' });
+    EgoStage.enter('igor', 0, 1, 'Igor', { gun: false });
+    EgoStage.cylinder({ idx: 0, spent: [] });
+  },
+  chambers(idx, spent) {
+    if (!this.root) return;
+    EgoStage.cylinder({ idx, spent });
+    const left = 6 - spent.length;
+    qs('#chambersLeft', this.root).textContent = spent.length ? `${left} Kammer${left === 1 ? '' : 'n'} übrig` : '6 Kammern';
+  },
+  /* Wer ist dran: Spieler → Revolver hebt sich und dreht zur Mündungssicht; Igor → Revolver gleitet über den Tisch, Igor hebt ihn an die Schläfe */
+  async setTurn(who, gen) {
+    if (!this.alive(gen)) return;
+    if (who === 'player') {
+      EgoStage.foePose('idle'); EgoStage.foeGun(false);
+      if (this.reduced()) { EgoStage.hand('revolverMuzzle'); EgoStage.handRise(); }
+      else { EgoStage.hand('revolver'); EgoStage.handRise(); await wait(this.TIMES.turn); if (this.alive(gen)) EgoStage.hand('revolverMuzzle'); }
+      EgoStage.tension(true);
+    } else if (who === 'igor') {
+      EgoStage.tension(false); EgoStage.handDrop();
+      const hp = EgoStage.foeHand();
+      EgoStage.slideProp({ x: EgoStage.W * 0.7, y: EgoStage.H * 0.9 }, hp, this.reduced() ? 1 : 500);
+      await wait(this.reduced() ? 0 : 500);
+      if (this.alive(gen)) { EgoStage.foeGun(true); EgoStage.foePose('temple'); }
+    } else { EgoStage.tension(false); EgoStage.handDrop(); } // Ende: Pose bleibt (Igor liegt ggf.)
   },
   heartbeat(duel) {
     if (!this.alive(duel.gen)) return;
@@ -5974,13 +5954,11 @@ const Russian = {
     const bet = forced ? 0 : Game.readBet('rrBet');
     if (!forced && !Game.beginSpin(bet)) return;
     const gen = this.gen;
-    const duel = { cylinder: Rules.rrCylinder(Math.random), idx: 0, bet, gen, run: forced ? null : Game.run, done: false, forced };
+    const duel = { cylinder: Rules.rrCylinder(Math.random), idx: 0, bet, gen, run: forced ? null : Game.run, done: false, forced, spent: [] };
     this.duel = duel;
     this.inDuel = true;
     if (this.alive(gen)) {
-      qs('#fPlayer', this.root).classList.remove('dead'); qs('#fIgor', this.root).classList.remove('dead');
-      this.drawCylinder();
-      qs('#cylinder', this.root).style.transform = 'rotate(0deg)';
+      this.mountStage();
       qs('#chambersLeft', this.root).textContent = '6 Kammern';
       qs('#rrBetControls', this.root).classList.add('hidden');
       qs('#rrActionControls', this.root).classList.remove('hidden');
@@ -5988,19 +5966,17 @@ const Russian = {
     if (!State.s.flags.igor) { State.s.flags.igor = true; State.save(); await Cutscene.play('igor.first', {}); }
     if (!this.alive(gen)) return;
     qs('#rrStatus', this.root).textContent = forced ? 'Vitos Prüfung. Kein Einsatz – nur dein Kopf. Drück ab.' : 'Du bist dran. Drück ab.';
-    this.setTurn('player');
+    await this.setTurn('player', gen);
     this.heartbeat(duel);
   },
+  /* Knall: Spieler → Blitz/Ruck/roter Rand/Tropfen; Igor → Mündungsblitz am Kopf, Blut, Fall in Zeitlupe */
   async bang(who, gen) {
     if (this.alive(gen)) {
-      const flash = qs('#rrFlash', this.root);
-      flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on');
       SFX.stopAll(); SFX.play('gunshot');
-      UI.shake(qs('#shell'));
-      qs(who === 'player' ? '#fPlayer' : '#fIgor', this.root).classList.add('dead');
-      qs(who === 'player' ? '#fPlayer .face' : '#fIgor .face', this.root).textContent = '💀';
+      if (who === 'player') { EgoStage.selfShot(); if (navigator.vibrate) navigator.vibrate([40, 40, 80]); }
+      else { const hp = EgoStage.foeHand(); EgoStage.muzzleAt(hp.x, hp.y - 10); const b = EgoStage.foeBox(); EgoStage.burst(b.left + b.width * 0.5, b.top + b.height * 0.25, 'blood', 22); EgoStage.foeDown(); }
     }
-    await wait(600);
+    await wait(this.TIMES.bang);
   },
   async pull() {
     if (!this.inDuel || this.busy || !this.root) return;
@@ -6009,35 +5985,37 @@ const Russian = {
     this.busy = true;
     try {
       if (this.alive(gen)) qs('#btnTrigger', this.root).disabled = true;
-      this.rotateTo(duel.idx, gen);
-      await wait(350);
+      this.chambers(duel.idx, duel.spent);
+      await wait(this.TIMES.spin);
       if (duel.cylinder[duel.idx]) {
         if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = duel.forced ? `<span class="loss">PÄNG · Streifschuss</span>` : `<span class="loss">PÄNG · Streifschuss · −${UI.fmt(duel.bet)} & 100 € Spital</span>`;
         await this.bang('player', gen);
         await this.end('player', duel);
         return;
       }
-      if (this.alive(gen)) SFX.play('dryfire');
-      this.markSpent(duel.idx, gen);
+      if (this.alive(gen)) { SFX.play('dryfire'); if (navigator.vibrate) navigator.vibrate(15); }
+      duel.spent.push(duel.idx); this.chambers(duel.idx, duel.spent);
       duel.idx++;
-      if (this.alive(gen)) { qs('#rrStatus', this.root).textContent = '*Klick*… Leer. Igor ist dran…'; this.setTurn('igor'); }
+      if (this.alive(gen)) qs('#rrStatus', this.root).textContent = '*Klick*… Leer. Igor ist dran…';
+      await this.setTurn('igor', gen);
       this.heartbeat(duel);
-      await wait(1100);
-      this.rotateTo(duel.idx, gen);
-      await wait(350);
+      await wait(this.TIMES.igor);
+      this.chambers(duel.idx, duel.spent);
+      await wait(this.TIMES.spin);
       if (duel.cylinder[duel.idx]) {
         if (this.alive(gen)) qs('#rrStatus', this.root).innerHTML = duel.forced ? `<span class="win">PÄNG · Igor liegt</span>` : `<span class="win">PÄNG · Igor liegt · +${UI.fmt(duel.bet)}</span>`;
         await this.bang('igor', gen);
         await this.end('igor', duel);
         return;
       }
-      if (this.alive(gen)) SFX.play('dryfire');
-      this.markSpent(duel.idx, gen);
+      if (this.alive(gen)) { SFX.play('dryfire'); EgoStage.foePose('relief'); }
+      duel.spent.push(duel.idx); this.chambers(duel.idx, duel.spent);
       duel.idx++;
+      await wait(this.TIMES.relief);
       if (this.alive(gen)) {
         qs('#rrStatus', this.root).textContent = '*Klick*… Igor lebt. Du bist dran.';
-        this.setTurn('player');
-        qs('#btnTrigger', this.root).disabled = false;
+        await this.setTurn('player', gen);
+        if (this.alive(gen)) qs('#btnTrigger', this.root).disabled = false;
       }
       this.heartbeat(duel);
       if (!this.alive(gen)) this.drop(duel); // Screen während des Zugs verlassen, Duell nicht entschieden
@@ -6052,7 +6030,7 @@ const Russian = {
     if (this.alive(gen)) SFX.stopAll(); else SFX.stop('heartbeat');
     try {
       if (this.alive(gen)) {
-        this.setTurn(null);
+        await this.setTurn(null, gen);
         qs('#rrActionControls', this.root).classList.add('hidden');
         qs('#rrBetControls', this.root).classList.remove('hidden');
         qs('#btnTrigger', this.root).disabled = false;
@@ -6064,7 +6042,7 @@ const Russian = {
     const delta = Rules.rrDelta(victim, duel.bet);
     await Bus.emit('rr:result', { victim, bet: duel.bet });
     if (victim === 'player' && this.alive(gen)) await Cutscene.play('rr.headshot', {});
-    await Game.settle(delta, { from: this.alive(gen) ? qs('.duel', this.root) : null, game: 'russian', bet: duel.bet, run: duel.run });
+    await Game.settle(delta, { from: this.alive(gen) ? this.stageEl() : null, game: 'russian', bet: duel.bet, run: duel.run });
   },
 };
 
@@ -6073,13 +6051,17 @@ UI.register('russian', {
   mount(root) {
     Russian.gen++;
     Russian.root = root;
-    Russian.drawCylinder();
+    Russian.mountStage();
     Game.bindBet(root, 'rrBet');
     qs('#btnDuel', root).addEventListener('click', () => Russian.start());
     qs('#btnTrigger', root).addEventListener('click', () => Russian.pull());
+    qs('#rrStage', root).addEventListener('pointerdown', (e) => { e.preventDefault(); Russian.pull(); });
+    document.addEventListener('keydown', Russian.onKey);
   },
   unmount() {
     Russian.gen++;
+    document.removeEventListener('keydown', Russian.onKey);
+    if (EgoStage.root && EgoStage.root === Russian.stageEl()) EgoStage.unmount(); // nur die eigene Bühne abbauen (nicht ein laufendes Überfall-Overlay)
     SFX.stop('heartbeat');
     if (Russian.inDuel) {
       /* Zwischen zwei Zügen verlassen: Duell sofort abbrechen. Läuft noch ein Zug (busy), räumt der selbst auf bzw. rechnet ab. */
@@ -14000,6 +13982,45 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     } finally {
       off(); Cutscene.play = keep.play; Math.random = keep.rnd; State.save = keep.save; State.s = keep.s; State.mode = keep.mode; MugAction.TIMES = keep.times; GangRules.TIMING = keep.timing; MugAction.open = keep.open;
       if (MugAction.running) MugAction.close();
+    }
+  });
+  T.test('Russisch Roulette in Ego-Sicht: Hinterzimmer, Igor, Trommel, Mündungssicht; Klick/Klick/Kugel beim Spieler; forced: Igor liegt; drop beim Verlassen', async () => {
+    const keep = { cur: UI.current, s: State.s, save: State.save, mode: State.mode, cyl: Rules.rrCylinder, play: Cutscene.play, times: Russian.TIMES };
+    State.save = () => {}; State.mode = 'free'; State.s = State.fresh(); State.s.balance = 1000; State.s.flags.igor = true;
+    Russian.TIMES = { turn: 20, igor: 30, spin: 10, bang: 250, relief: 10 }; // bang ≥ 220 ms: der Fall (foeDown-Timer) muss wie im Spiel vor end() kommen
+    const scenes = []; Cutscene.play = async (id) => { scenes.push(id); return null; };
+    const ev = []; const off1 = Bus.on('rr:result', (e) => ev.push(['result', e.victim, e.bet])); const off2 = Bus.on('rr:forced', (e) => ev.push(['forced', e.victim]));
+    const key = (code) => document.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true, cancelable: true }));
+    try {
+      await UI.show('russian');
+      T.eq([EgoStage.mounted, EgoStage.set, EgoStage.root === qs('#rrStage'), qsa('#rrStage .duel-foe svg.part').length, EgoStage.cyl.idx, EgoStage.handKind, qs('#chambersLeft').textContent], [true, 'hinterzimmer', true, 8, 0, 'none', '6 Kammern'], 'Bühne steht beim Betreten: Hinterzimmer, Igor, Trommel, keine Hand');
+      Rules.rrCylinder = () => [false, false, true, false, false, false];
+      qs('#rrBet').value = '10';
+      await Russian.start();
+      T.eq([Russian.inDuel, State.s.balance, qs('#rrActionControls').classList.contains('hidden'), EgoStage.handKind, qs('#rrStage .duel-gun').classList.contains('muzzle'), qs('#rrStage .duel-gun').classList.contains('up'), EgoStage.tenseFrom > 0], [true, 990, false, 'revolverMuzzle', true, true, true], 'Einsatz abgezogen, Revolver hebt sich in Mündungssicht, Anspannung');
+      /* Zug 1 per Leertaste: Klick beim Spieler → Igor (Revolver gleitet, Schläfe) → Klick → Erleichterung → wieder Spieler */
+      key('Space'); T.eq([Russian.busy, qs('#btnTrigger').disabled], [true, true], 'Leertaste drückt ab, Knopf gesperrt');
+      const seen = new Set(); for (let i = 0; i < 200 && Russian.busy; i++) { seen.add(qs('#rrStage .duel-foe').dataset.pose); await wait(5); }
+      T.ok(seen.has('temple') && seen.has('relief'), `Igor: Schläfe und Erleichterung (${[...seen].join(',')})`);
+      T.eq([Russian.inDuel, Russian.busy, EgoStage.cyl.idx, EgoStage.cyl.spent, qs('#chambersLeft').textContent, qs('#btnTrigger').disabled, EgoStage.handKind, qs('#rrStage .duel-foe').dataset.pose, EgoStage.parts.some((p) => p.kind === 'prop')], [true, false, 1, [0, 1], '4 Kammern übrig', false, 'revolverMuzzle', 'idle', true], 'zwei leere Kammern (Trommel dreht erst beim nächsten Abzug weiter), Revolver wieder bei dir');
+      /* Zug 2: Kugel beim Spieler → Blitz, roter Rand, rr:result, rr.headshot, Abrechnung −(10 + 100) */
+      await Russian.pull();
+      T.eq([Russian.inDuel, ev, scenes, State.s.balance, qs('#rrBetControls').classList.contains('hidden'), EgoStage.redUntil > EgoStage.t, qs('#rrStage .duel-gun').classList.contains('up')], [false, [['result', 'player', 10]], ['rr.headshot'], 890, false, true, false], 'Streifschuss abgerechnet, Hand gesenkt');
+      /* forced (Vitos Prüfung): kein Einsatz, Igor erwischt es → rr:forced igor, Igor fällt */
+      ev.length = 0; Rules.rrCylinder = () => [false, true, false, false, false, false];
+      await Russian.start({ forced: true }); T.eq([Russian.inDuel, State.s.balance, qs('#rrStatus').textContent.includes('Vitos Prüfung')], [true, 890, true]);
+      await Russian.pull();
+      T.eq([Russian.inDuel, ev, State.s.balance, qs('#rrStage .duel-foe').dataset.pose, EgoStage.stains.length >= 1, qs('#rrStage .duel-gun').classList.contains('up')], [false, [['forced', 'igor']], 890, 'down', true, false], 'Igor liegt (und bleibt liegen), kein Geld bewegt, Hand unten');
+      /* drop: Screen mitten im Duell verlassen → Einsatz verfällt, Bühne abgebaut */
+      ev.length = 0; Rules.rrCylinder = () => [false, false, false, false, false, true];
+      await Russian.start(); T.eq([Russian.inDuel, State.s.balance, Game.inFlight], [true, 880, 1]);
+      await UI.show('hub');
+      T.eq([Russian.inDuel, Russian.root, Game.inFlight, State.s.balance, EgoStage.mounted, ev], [false, null, 0, 880, false, []], 'drop: Einsatz weg, kein Event, Bühne weg');
+      for (const name of ['egoBob', 'egoJerk']) { const kf = keyframesOf(name); T.ok(kf, `@keyframes ${name}`); for (const p of animatedProps(kf)) T.ok(p === 'transform' || p === 'opacity', `${name}: ${p}`); }
+    } finally {
+      off1(); off2(); Cutscene.play = keep.play; Rules.rrCylinder = keep.cyl; Russian.TIMES = keep.times; State.save = keep.save; State.s = keep.s; State.mode = keep.mode;
+      SFX.stop('heartbeat');
+      await UI.show(keep.cur ? keep.cur.id : 'hub');
     }
   });
   const pseudoAnim = (el, pseudo) => getComputedStyle(el, pseudo).animationName;
