@@ -1008,6 +1008,29 @@ body.mode-story #newgame { display: none; }
 .craps-bet .chip-stack.won { background: var(--gold-2); color: #141216; }
 .craps-history { font-family: var(--font-display); font-size: .8rem; letter-spacing: .08em; color: rgba(241,223,168,.7); text-align: center; margin-top: 10px; min-height: 1.2em; }
 @media (max-width: 760px) { .craps-table { border-radius: 40px / 22px; padding: 14px 16px; } .craps-bets { grid-template-columns: 1fr; } }
+/* ---- Sic Bo: Wettfeld aus 29 Zellen (Klein | Summen 4–17 | Groß; Triple-Reihe; Einzelzahl-Reihe) ---- */
+.sicbo-grid { display: grid; grid-template-columns: 1fr 7fr 1fr; gap: 8px; margin-top: 8px; }
+.sb-sums { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.sicbo-row { display: grid; grid-template-columns: auto repeat(7, 1fr); gap: 6px; align-items: stretch; margin-top: 8px; }
+.sb-label { display: flex; align-items: center; padding: 0 8px; font-family: var(--font-display); font-weight: 700; letter-spacing: .14em; font-size: .8rem; color: var(--gold-2); }
+.sb-cell { position: relative; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 2px; border: 1px solid var(--gold); border-radius: 4px; background: rgba(0,0,0,.25); color: var(--ivory); font-family: inherit; cursor: pointer; box-shadow: inset 0 2px 8px rgba(0,0,0,.6); transition: transform .1s; }
+.sb-cell:hover { transform: translateY(-1px); }
+.sb-cell b { font-family: var(--font-display); font-weight: 700; letter-spacing: .08em; font-size: 1rem; line-height: 1; }
+.sb-one b { font-family: inherit; font-size: 1.7rem; line-height: 1; }
+.sb-cell small { font-family: var(--font-mono); font-size: .62rem; color: rgba(239,230,207,.7); letter-spacing: 0; }
+.sb-side { min-height: 100%; }
+.sb-cell .chip-stack { right: 2px; top: 2px; }
+.sb-cell.won { background: var(--gold); color: #141216; box-shadow: 0 0 0 2px var(--gold-2); }
+.sb-cell.won small { color: #141216; }
+.sb-cell.lost { opacity: .45; }
+.sb-cell .chip-stack.won { background: var(--gold-2); color: #141216; }
+@media (max-width: 760px) {
+  .sicbo-grid { grid-template-columns: 1fr 1fr; }
+  .sb-sums { order: 1; grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .sb-side { min-height: 44px; }
+  .sicbo-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .sb-label { grid-column: 1 / -1; padding: 0; }
+}
 .door[hidden] { display: none; } /* .door setzt keine display-Eigenschaft, aber sicher ist sicher – die Hinterzimmer-Tür ist außerhalb von Story 3 versteckt */
 .bac-panel { align-items: stretch; }
 .bac-table { background: radial-gradient(ellipse at 50% 20%, #5a1f1f, #2a0b0b 70%, #150505); border: 6px solid #3a2410; border-radius: 26px; padding: 16px 22px; box-shadow: var(--shadow), inset 0 0 60px rgba(0,0,0,.6); }
@@ -1382,6 +1405,33 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
     <div class="bet-bar"><button class="btn ghost sm" id="studBack">← Lobby</button></div>
   </div>
 </template>
+<template id="tpl-sicbo">
+  <div class="panel craps-panel">
+    <div class="craps-table">
+      <div class="craps-head"><span class="neon" style="--neon: var(--neon-green)">SIC BO</span><span class="craps-history" id="sbHistory"></span></div>
+      <div class="craps-dice"><div class="die" id="sbDie1">?</div><div class="die" id="sbDie2">?</div><div class="die" id="sbDie3">?</div></div>
+      <div class="insider-hint hidden" id="sbPeek" style="text-align:center"></div>
+      <div class="sicbo-grid">
+        <button class="sb-cell sb-side" data-bet="small"><b>KLEIN</b><small>4–10 · 1:1</small><span class="chip-stack hidden">0</span></button>
+        <div class="sb-sums" id="sbSums"></div>
+        <button class="sb-cell sb-side" data-bet="big"><b>GROSS</b><small>11–17 · 1:1</small><span class="chip-stack hidden">0</span></button>
+      </div>
+      <div class="sicbo-row" id="sbTriples"><span class="sb-label">TRIPLE</span></div>
+      <div class="sicbo-row" id="sbOnes"><span class="sb-label">ZAHL</span></div>
+    </div>
+    <div class="status" id="sbStatus">Einsatz wählen, auf Felder legen, würfeln</div>
+    <div class="bet-bar">
+      <div class="bet-field bet-view"><input type="number" id="sicBet" value="50" min="50" readonly></div>
+      <button class="chip" data-chip="50" data-v="50">50</button>
+      <button class="chip" data-chip="200" data-v="25">200</button>
+      <button class="chip" data-chip="500" data-v="100">500</button>
+      <button class="chip" data-chip="2000" data-v="max">2000</button>
+      <button class="btn ghost sm" id="btnSbClear">Leeren</button>
+      <button class="btn solid" id="btnSbRoll">Würfeln</button>
+      <button class="btn ghost sm" id="sbBack">← Lobby</button>
+    </div>
+  </div>
+</template>
 <template id="tpl-roulette">
   <div class="panel roulette-panel felt">
     <div class="roulette-top">
@@ -1580,6 +1630,7 @@ body.zitter .balance:not(.up):not(.down), body.zitter .hud-pegel { animation: zi
       <button class="portal" data-screen="craps"><span class="portal-crown"></span><span class="plaque">Craps</span><span class="glyph">🎲</span><span class="engraved">Pass Line · Field</span></button>
       <button class="portal" data-screen="wheel"><span class="portal-crown"></span><span class="plaque">Glücksrad</span><span class="glyph">🎡</span><span class="engraved">bis 10×</span></button>
       <button class="portal" data-screen="stud"><span class="portal-crown"></span><span class="plaque">Caribbean Stud</span><span class="glyph">🃏</span><span class="engraved">Ante · Bonus bis 100:1</span></button>
+      <button class="portal" data-screen="sicbo"><span class="portal-crown"></span><span class="plaque">Sic Bo</span><span class="glyph">🎲</span><span class="engraved">3 Würfel · bis 180:1</span></button>
     </div>
     <div class="bet-bar"><button class="btn ghost sm" id="royalLeave">← Zurück in die Stadt</button></div>
   </div>
@@ -2128,7 +2179,7 @@ Object.assign(Rules, {
     bankRateAdd: 0, bankLimitAdd: 0, mafiaSpins: Rules.MAFIA_SPINS, mafiaMult: 3, investRateMult: 1,
     mugChanceMult: 1, fightAdd: 0, walletMult: 1,
     postTimeAdd: 0, postPayAdd: 0, postLetters: 15,
-    pokerPeekDraw: false, pokerTell: false, bjDealerStand: 17, studPeek: false,
+    pokerPeekDraw: false, pokerTell: false, bjDealerStand: 17, studPeek: false, sicboPeek: false,
   },
   /* Wie ein Schlüssel gestapelt wird: add = Summe, mult = Produkt, max = Maximum, set = letzter Wert */
   MOD_STACK: {
@@ -2140,7 +2191,7 @@ Object.assign(Rules, {
     bankRateAdd: 'add', bankLimitAdd: 'add', mafiaSpins: 'max', mafiaMult: 'set', investRateMult: 'mult',
     mugChanceMult: 'mult', fightAdd: 'add', walletMult: 'mult',
     postTimeAdd: 'add', postPayAdd: 'add', postLetters: 'max',
-    pokerPeekDraw: 'set', pokerTell: 'set', bjDealerStand: 'max', studPeek: 'set',
+    pokerPeekDraw: 'set', pokerTell: 'set', bjDealerStand: 'max', studPeek: 'set', sicboPeek: 'set',
   },
   SKILLS: [
     { id: 'pokerface', name: 'Pokerface', icon: '🃏', light: 'Blackjack: natürlicher Blackjack zahlt 3:2, Push bringt +10 %', shadow: 'Bier gibt kein Glück', mods: { bjNatural: 1.5, bjPushBonus: 0.1, beerLuckMult: 0 } },
@@ -2163,6 +2214,7 @@ Object.assign(Rules, {
     { id: 'postmeister', name: 'Postmeister', icon: '📮', text: 'Postbote: 20 Briefe pro Schicht, +5 € pro Brief.', capped: false, mods: { postLetters: 20, postPayAdd: 5 } },
     { id: 'wirtstell', name: 'Wirts Tell', icon: '🧔', text: 'Poker: der Wirt kratzt sich am Bart, wenn er nichts auf der Hand hat.', capped: true, mods: { pokerTell: true } },
     { id: 'sylviesblick', name: 'Sylvies Blick', icon: '🎩', text: 'Caribbean Stud: Madame Sylvie lässt dich eine zweite Dealer-Karte sehen, bevor du mitgehst.', capped: true, mods: { studPeek: true } },
+    { id: 'becher', name: 'Gezinkter Becher', icon: '🥤', text: 'Sic Bo: ein Würfel liegt vor dem Wurf schon offen – du siehst einen der drei Werte, bevor du setzt.', capped: true, mods: { sicboPeek: true } },
   ],
   xpLevel(xp) {
     let level = 1;
@@ -4240,7 +4292,7 @@ Bus.on('gear:shoes', () => Stadt.checkFullSet());
 <script id="casino-royal">
 /* ================= CASINO ROYAL – Lobby, Eintritt, Madame Sylvie ================= */
 const Royal = {
-  GAMES: ['megaslots', 'craps', 'wheel', 'stud'],
+  GAMES: ['megaslots', 'craps', 'wheel', 'stud', 'sicbo'],
   SYLVIE: {
     first: 'Madame Sylvie sieht kurz von ihren Zahlen auf. Sie sieht alles. Sie sagt nichts.',
     guest: 'Madame Sylvie nickt. „Gast des Hauses. Der Eintritt entfällt. Das Haus behält sich alles andere vor.“',
@@ -4316,7 +4368,7 @@ UI.register('royal', {
 });
 Cutscene.define('royal.first', [
   { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Willkommen. Sie sind neu. Man sieht es an den Schuhen, nicht am Auto.' },
-  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Vier Tische. Höhere Einsätze, bessere Beleuchtung, dieselbe Mathematik. Viel Vergnügen.' },
+  { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Fünf Tische. Höhere Einsätze, bessere Beleuchtung, dieselbe Mathematik. Viel Vergnügen.' },
 ]);
 Cutscene.define('royal.leave', [
   { bg: 'royal', who: 'sylvie', mood: 'calm', text: 'Sie gehen? Der Eintritt gilt nicht für den Rückweg – die nächsten {{fee}} nehmen wir wieder an der Tür.',
@@ -5501,6 +5553,150 @@ UI.register('stud', {
 });
 </script>
 
+<script id="game-sicbo">
+/* ================= SIC BO – drei Würfel, Chips auf 29 Felder, ein Wurf entscheidet alles ================= */
+const SicBo = {
+  root: null, rolling: false, gen: 0, bets: {}, history: [], run: null,
+  peekDie: null,   // Gezinkter Becher: vorab gewürfelter Würfel 1 (null ohne Insider)
+  forceDice: null, // Dev/Test: fester Wurf [d1, d2, d3] für den nächsten Wurf
+  showingResult: false, // Würfel zeigen noch das letzte Ergebnis (bis zum nächsten Chip)
+  FACES: ['?', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'],
+  stackText(v) { return v >= 1000 ? `${Math.round(v / 100) / 10}k` : String(v); },
+  alive(gen) { return !!this.root && this.gen === gen; },
+  /* Tischzustand gehört zum Spielstand: anderer State.s (Moduswechsel, Neues Spiel) → Tisch räumen */
+  checkRun() { if (this.run !== State.s) { this.reset(); this.render(); } },
+  reset() { this.bets = {}; this.history = []; this.run = null; },
+  /* Beschriftung eines Gewinnfelds für die Statuszeile */
+  fieldName(id, dice) {
+    if (id === 'small') return 'Klein';
+    if (id === 'big') return 'Groß';
+    /* tripleAny vor startsWith('triple') prüfen – sonst würde es als Triple „Any“ verrechnet */
+    if (id === 'tripleAny') return `Beliebiger Triple zahlt ${SicBoRules.PAY.tripleAny}:1`;
+    if (id.startsWith('triple')) return `Triple ${id.slice(6)} zahlt ${SicBoRules.PAY.triple}:1`;
+    if (id.startsWith('sum')) return `Summe ${id.slice(3)} zahlt ${SicBoRules.PAY.sum[+id.slice(3)]}:1`;
+    const n = +id.slice(3), k = dice.filter((d) => d === n).length;
+    return `Zahl ${n} ×${k} zahlt ${k}:1`;
+  },
+  /* Die 29 Zellen aus SicBoRules.FIELDS bauen (Klein/Groß stehen schon im Template) */
+  cell(id, label, quote, cls = '') {
+    return h('button', { class: 'sb-cell' + (cls ? ' ' + cls : ''), 'data-bet': id }, h('b', {}, label), h('small', {}, quote), h('span', { class: 'chip-stack hidden' }, '0'));
+  },
+  buildTable(root) {
+    const sums = qs('#sbSums', root), triples = qs('#sbTriples', root), ones = qs('#sbOnes', root);
+    for (let s = 4; s <= 17; s++) sums.append(this.cell(`sum${s}`, String(s), `${SicBoRules.PAY.sum[s]}:1`));
+    for (let n = 1; n <= 6; n++) triples.append(this.cell(`triple${n}`, `${n} ${n} ${n}`, `${SicBoRules.PAY.triple}:1`));
+    triples.append(this.cell('tripleAny', 'BELIEBIG', `${SicBoRules.PAY.tripleAny}:1`));
+    for (let n = 1; n <= 6; n++) ones.append(this.cell(`one${n}`, this.FACES[n], '1:1 · 2:1 · 3:1', 'sb-one'));
+  },
+  newPeek() { this.peekDie = Perks.mods().sicboPeek ? SicBoRules.roll(Math.random)[0] : null; },
+  renderDice(dice) { for (let i = 0; i < 3; i++) qs(`#sbDie${i + 1}`, this.root).textContent = this.FACES[dice[i] || 0]; },
+  /* Vorschau vor dem Wurf: Würfel 1 aus dem Becher, sonst „?“ */
+  renderPreview() { this.showingResult = false; this.renderDice([this.peekDie || 0, 0, 0]); },
+  place(id) {
+    if (this.rolling || !this.root || !SicBoRules.FIELDS.includes(id)) return;
+    this.checkRun();
+    const v = Game.readBet('sicBet');
+    if (!(v >= SicBoRules.BET.MIN && v <= SicBoRules.BET.MAX)) { UI.toast({ icon: '🎲', title: 'Einsatz', text: `Zwischen ${UI.fmt(SicBoRules.BET.MIN)} und ${UI.fmt(SicBoRules.BET.MAX)}.`, tone: 'loss' }); return; }
+    this.bets[id] = Math.min(SicBoRules.BET.MAX, (this.bets[id] || 0) + v);
+    this.run = State.s;
+    qsa('.sb-cell', this.root).forEach((c) => c.classList.remove('won', 'lost'));
+    if (this.showingResult) this.renderPreview();
+    SFX.play('chip'); this.render();
+  },
+  clear() {
+    if (this.rolling || !this.root) return;
+    this.bets = {};
+    qsa('.sb-cell', this.root).forEach((c) => c.classList.remove('won', 'lost'));
+    SFX.play('click'); this.render();
+  },
+  render() {
+    if (!this.root) return;
+    for (const id of SicBoRules.FIELDS) {
+      const st = qs(`.sb-cell[data-bet="${id}"] .chip-stack`, this.root);
+      const v = this.bets[id] || 0;
+      st.textContent = this.stackText(v); st.classList.toggle('hidden', v === 0); st.classList.remove('won');
+    }
+    const risk = SicBoRules.risk(this.bets);
+    const hint = qs('#sbPeek', this.root);
+    const peek = Perks.mods().sicboPeek;
+    hint.classList.toggle('hidden', !peek);
+    if (peek) hint.textContent = Rules.effectiveInsider(true, risk) ? '🥤 Der erste Würfel liegt schon' : `🥤 Gezinkter Becher: wirkt bis ${UI.fmt(Rules.INSIDER_CAP)}`;
+    qs('#sbHistory', this.root).textContent = this.history.slice(-6).join(' · ');
+    qs('#btnSbRoll', this.root).disabled = this.rolling || risk === 0;
+  },
+  async roll() {
+    if (this.rolling || !this.root) return;
+    this.checkRun();
+    /* Schnappschuss der Einsätze: abgerechnet wird genau das, was treuhänderisch abgezogen wurde */
+    const bets = { ...this.bets };
+    const risk = SicBoRules.risk(bets);
+    if (risk === 0) { SFX.play('click'); return; }
+    if (!Game.beginSpin(risk)) return;
+    const run = Game.run, gen = this.gen;
+    this.rolling = true; this.render();
+    try {
+      qsa('.sb-cell', this.root).forEach((c) => c.classList.remove('won', 'lost'));
+      qsa('.die', this.root).forEach((d) => d.classList.add('rolling'));
+      qs('#sbStatus', this.root).textContent = 'Die Würfel rollen…';
+      SFX.loop('reelSpin', 100);
+      const mods = Perks.mods();
+      let dice = this.forceDice ? this.forceDice.slice() : SicBoRules.roll(Math.random);
+      this.forceDice = null;
+      if (Rules.effectiveInsider(mods.sicboPeek, risk)) dice = SicBoRules.peekDice(this.peekDie, dice);
+      dice = SicBoRules.luckOverride(dice, bets, Rules.effectiveLuck(Rules.luck(State.s, mods), risk), Math.random);
+      await wait(matchMedia('(prefers-reduced-motion: reduce)').matches ? 150 : 900);
+      SFX.stop('reelSpin');
+      const r = SicBoRules.settle(bets, dice);
+      this.history.push(dice.join('·'));
+      this.bets = {};
+      if (this.alive(gen)) {
+        this.newPeek();
+        qsa('.die', this.root).forEach((d) => d.classList.remove('rolling'));
+        this.renderDice(dice); this.showingResult = true;
+        SFX.play('reelStop');
+        this.render();
+        /* render() blendet Stacks anhand der (jetzt leeren) Einsätze aus – für die Ergebnisanzeige mit dem Schnappschuss wieder einblenden */
+        for (const id of Object.keys(bets)) {
+          const cell = qs(`.sb-cell[data-bet="${id}"]`, this.root);
+          const won = r.won.includes(id);
+          cell.classList.add(won ? 'won' : 'lost');
+          const st = qs('.chip-stack', cell); st.textContent = this.stackText(bets[id]); st.classList.remove('hidden'); st.classList.toggle('won', won);
+        }
+        const glyphs = dice.map((d) => this.FACES[d]).join(' ');
+        const parts = r.triple ? ['Triple!'] : [];
+        for (const id of r.won) parts.push(this.fieldName(id, dice));
+        const cls = r.delta > 0 ? 'win' : r.delta < 0 ? 'loss' : '';
+        const sign = r.delta > 0 ? '+' : r.delta < 0 ? '−' : '±';
+        qs('#sbStatus', this.root).innerHTML = `${glyphs} = ${r.sum} · <span class="${cls}">${parts.length ? parts.join(' · ') : 'nichts getroffen'} (${sign}${UI.fmt(Math.abs(r.delta))})</span>`;
+      }
+      await Bus.emit('sicbo:result', { delta: r.delta, bet: risk, dice, sum: r.sum, triple: r.triple, won: r.won, lost: r.lost });
+      await Game.settle(r.delta, { from: this.alive(gen) ? qs('.craps-table', this.root) : null, game: 'sicbo', bet: risk, run });
+    } finally {
+      SFX.stop('reelSpin');
+      if (this.gen === gen) { this.rolling = false; if (this.root) qs('#btnSbRoll', this.root).disabled = SicBoRules.risk(this.bets) === 0; }
+    }
+  },
+  onKey(e) { if (e.code === 'Space' && qs('#cutscene').hidden && !e.repeat) { e.preventDefault(); SicBo.roll(); } },
+};
+
+UI.register('sicbo', {
+  template: 'tpl-sicbo',
+  mount(root) {
+    SicBo.gen++; SicBo.root = root;
+    if (SicBo.run !== State.s) SicBo.reset();
+    SicBo.buildTable(root);
+    Game.bindBet(root, 'sicBet');
+    root.addEventListener('click', (e) => { const c = e.target.closest('.sb-cell[data-bet]'); if (c) SicBo.place(c.dataset.bet); });
+    qs('#btnSbClear', root).addEventListener('click', () => SicBo.clear());
+    qs('#btnSbRoll', root).addEventListener('click', () => SicBo.roll());
+    qs('#sbBack', root).addEventListener('click', () => { SFX.play('click'); UI.show('royal'); });
+    document.addEventListener('keydown', SicBo.onKey);
+    SicBo.newPeek(); SicBo.renderPreview(); SicBo.render();
+  },
+  unmount() { SicBo.gen++; document.removeEventListener('keydown', SicBo.onKey); SFX.stop('reelSpin'); SicBo.root = null; SicBo.rolling = false; SicBo.showingResult = false; },
+});
+</script>
+
 <script id="game-roulette">
 /* ================= ROULETTE ================= */
 const Roulette = {
@@ -6239,6 +6435,7 @@ const Achievements = {
     { id: 'royalHigh', title: 'High Roller', icon: '🎩', desc: 'Einzelgewinn von 5.000 € im Casino Royal.' },
     { id: 'fullhouse', title: 'Full House', icon: '🏠', desc: 'Mit Full House oder besser den Showdown gewonnen.' },
     { id: 'karibik', title: 'Karibische Nacht', icon: '🌴', desc: 'Bei Caribbean Stud mit Flush oder besser gegen einen qualifizierten Dealer gewonnen.' },
+    { id: 'dreiGleiche', title: 'Drei Gleiche', icon: '🎲', desc: 'Beim Sic Bo einen Triple getroffen – gezielt oder beliebig.' },
     { id: 'fuenfSiebener', title: 'Fünf Siebener', icon: '7️⃣', desc: 'Fünf 7️⃣ auf einer Linie bei Mega Seven.' },
     { id: 'gegenDieWand', title: 'Gegen die Wand', icon: '🎡', desc: 'Bankrott am Glücksrad mit 5.000 € Einsatz.' },
     { id: 'natural', title: 'Natural', icon: '🂡', desc: 'Fünf Naturals in einer Sitzung am Tisch im Hinterzimmer.' },
@@ -6299,6 +6496,7 @@ Bus.on('roulette:result', ({ hits }) => { if ((hits || []).some((x) => x.win && 
 Bus.on('rr:result', ({ victim }) => { if (victim === 'igor') Achievements.unlock('igor'); });
 Bus.on('poker:result', ({ outcome, showdown, player }) => { if (showdown && outcome === 'win' && player.rank >= 6) Achievements.unlock('fullhouse'); });
 Bus.on('stud:result', ({ outcome, player }) => { if (outcome === 'win' && player.rank >= 5) Achievements.unlock('karibik'); });
+Bus.on('sicbo:result', ({ won }) => { if (won.some((id) => id.startsWith('triple'))) Achievements.unlock('dreiGleiche'); });
 Bus.on('beer', ({ beers }) => { if (beers >= 3) Achievements.unlock('regular'); });
 Bus.on('kidney.sold', () => Achievements.unlock('donor'));
 Bus.on('house.bought', () => Achievements.unlock('owner'));
@@ -6927,7 +7125,7 @@ const RoyalRules = {
   ENTRY_FEE: 100,
   GUEST_WIN: 5000,
   /* Screens, die in der Zone „royal“ liegen (Body-Attribut data-zone, Gold-Vorhang beim Wechsel) */
-  SCREENS: ['royal', 'megaslots', 'craps', 'wheel', 'stud'],
+  SCREENS: ['royal', 'megaslots', 'craps', 'wheel', 'stud', 'sicbo'],
   zoneFor(id) { return RoyalRules.SCREENS.includes(id) ? 'royal' : 'keller'; },
   /* Mittelpunkte der ersten `count` Zellen einer Gewinnlinie (für die goldene Linie über dem Raster) */
   megaLinePoints(line, count, cell, gap, pad) {
@@ -7312,6 +7510,57 @@ const StudRules = {
 };
 </script>
 
+<script id="sicbo-rules">
+/* ================= SIC BO – drei Würfel, ein Wurf, kompaktes Wettfeld (rein, kein DOM) ================= */
+const SicBoRules = {
+  BET: { MIN: 50, MAX: 2000 },
+  /* Quoten (Gewinn : Einsatz); Einzelzahl je Anzahl Würfel mit der Zahl (Index 0 = kein Treffer) */
+  PAY: {
+    small: 1, big: 1, tripleAny: 30, triple: 180, one: [0, 1, 2, 3],
+    sum: { 4: 60, 5: 30, 6: 18, 7: 12, 8: 8, 9: 6, 10: 6, 11: 6, 12: 6, 13: 8, 14: 12, 15: 18, 16: 30, 17: 60 },
+  },
+  /* Alle 29 Felder in Tisch-Reihenfolge: Klein, Summen 4–17, Groß, Triple 1–6, Beliebiger Triple, Einzelzahl 1–6 */
+  FIELDS: ['small', ...Array.from({ length: 14 }, (_, i) => `sum${i + 4}`), 'big', ...[1, 2, 3, 4, 5, 6].map((n) => `triple${n}`), 'tripleAny', ...[1, 2, 3, 4, 5, 6].map((n) => `one${n}`)],
+  roll(rng) { return [0, 1, 2].map(() => Math.floor(rng() * 6) + 1); },
+  risk(bets) { return Object.values(bets).reduce((a, b) => a + b, 0); },
+  /* Quote eines Felds für diesen Wurf: > 0 gewinnt (Faktor), 0 verliert. Klein/Groß verlieren bei jedem Triple. */
+  odds(id, dice) {
+    const P = SicBoRules.PAY;
+    const sum = dice[0] + dice[1] + dice[2];
+    const triple = dice[0] === dice[1] && dice[1] === dice[2];
+    if (id === 'small') return !triple && sum <= 10 ? P.small : 0;
+    if (id === 'big') return !triple && sum >= 11 ? P.big : 0;
+    /* tripleAny vor startsWith('triple') prüfen – sonst würde es als Triple „Any“ verrechnet */
+    if (id === 'tripleAny') return triple ? P.tripleAny : 0;
+    if (id.startsWith('triple')) return triple && dice[0] === +id.slice(6) ? P.triple : 0;
+    if (id.startsWith('sum')) return sum === +id.slice(3) ? P.sum[sum] : 0;
+    if (id.startsWith('one')) return P.one[dice.filter((d) => d === +id.slice(3)).length];
+    return 0;
+  },
+  /* Nettobetrag über alle gesetzten Felder; won/lost in Tisch-Reihenfolge */
+  settle(bets, dice) {
+    const won = [], lost = [];
+    let delta = 0;
+    for (const id of SicBoRules.FIELDS) {
+      const bet = bets[id] || 0;
+      if (!bet) continue;
+      const q = SicBoRules.odds(id, dice);
+      if (q > 0) { won.push(id); delta += bet * q; } else { lost.push(id); delta -= bet; }
+    }
+    return { delta, won, lost, sum: dice[0] + dice[1] + dice[2], triple: dice[0] === dice[1] && dice[1] === dice[2] };
+  },
+  /* Gezinkter Becher: der vorab gewürfelte Wert ersetzt Würfel 1 */
+  peekDice(peekDie, dice) { return peekDie == null ? dice : [peekDie, dice[1], dice[2]]; },
+  /* Glück: ein verlierender Wurf wird mit luck % einmal komplett neu gewürfelt. Pech: ein gewinnender Wurf mit |luck| %. Sonst unverändert. */
+  luckOverride(dice, bets, luck, rng) {
+    const delta = SicBoRules.settle(bets, dice).delta;
+    if (luck > 0 && delta < 0 && rng() * 100 < luck) return SicBoRules.roll(rng);
+    if (luck < 0 && delta > 0 && Rules.pech(luck, rng)) return SicBoRules.roll(rng);
+    return dice;
+  },
+};
+</script>
+
 <script id="gang-rules">
 /* ================= GANG – Waffen, Duell, Kurier (rein, kein DOM); Wochen-/Wäsche-Logik der Story 3 folgt unten ================= */
 const GangRules = {
@@ -7477,7 +7726,7 @@ const DevRules = {
     return [...out].sort();
   },
   KELLER_SCREENS: ['hub', 'roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker', 'hinterzimmer', 'postman', 'finance', 'invest', 'life', 'skills'],
-  ROYAL_SCREENS: ['royal', 'megaslots', 'craps', 'wheel', 'stud'],
+  ROYAL_SCREENS: ['royal', 'megaslots', 'craps', 'wheel', 'stud', 'sicbo'],
   STORY_SCREENS: ['jobs', 'vito'],
   groupScreens(ids) {
     const g = { keller: [], royal: [], stadt: [], story: [], sonst: [] };
@@ -7632,7 +7881,7 @@ const Stories = {
 
 const Story = {
   DOORS: ['roulette', 'slots', 'horses', 'russian', 'blackjack', 'poker', 'postman', 'hinterzimmer'],
-  ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'], royal: ['royal'], megaslots: ['royal'], craps: ['royal'], wheel: ['royal'], stud: ['royal'] },
+  ROOM_OF: { finance: ['bank', 'mafia'], invest: ['invest'], life: ['life'], vito: ['vito'], stadt: ['stadt'], royal: ['royal'], megaslots: ['royal'], craps: ['royal'], wheel: ['royal'], stud: ['royal'], sicbo: ['royal'] },
   story: null,
   allowOnce: null,
   forcedNext: null,
@@ -9412,7 +9661,7 @@ const STORY_STASH = {
   varMax: { zorn: 3 },
   prices: { brownie: 1000 },
   disabled: ['tinder', 'house', 'dealer', 'brownie'],
-  turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel', 'stud'], umsatzHinterzimmer: ['baccarat'] },
+  turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel', 'stud', 'sicbo'], umsatzHinterzimmer: ['baccarat'] },
   jobOverrides: {
     eintreiber: { base: 1000, requires: { var: 'eintreiberWoche', lt: 2 }, requireText: 'Anabi hat nicht jeden Tag Schuldner', pay: '1.000 €', desc: 'Anabi hat eine Liste. Wer sie abarbeitet, macht ihn ruhiger.' },
   },
@@ -10566,6 +10815,50 @@ T.test('StudRules.luckOverride: Glück gibt Verlust neu, Pech gibt Gewinn neu, s
   T.ok(StudRules.luckOverride(lose, 0, rng) === lose, 'ohne Glück nie'); T.eq(calls, 0);
   T.ok(StudRules.luckOverride(lose, -50, rng) === lose, 'Verlust + Pech → unverändert'); T.eq(calls, 0);
 });
+T.test('SicBoRules.PAY und FIELDS: Quotentabelle, 29 Felder in Tisch-Reihenfolge', () => {
+  T.eq([SicBoRules.PAY.sum[4], SicBoRules.PAY.sum[10], SicBoRules.PAY.sum[15], SicBoRules.PAY.sum[17]], [60, 6, 18, 60]);
+  T.eq([SicBoRules.PAY.small, SicBoRules.PAY.big, SicBoRules.PAY.tripleAny, SicBoRules.PAY.triple], [1, 1, 30, 180]);
+  T.eq(SicBoRules.PAY.one, [0, 1, 2, 3]);
+  T.eq(SicBoRules.FIELDS.length, 29);
+  T.eq(SicBoRules.FIELDS.slice(0, 3), ['small', 'sum4', 'sum5']);
+  T.eq(SicBoRules.FIELDS.slice(14, 17), ['sum17', 'big', 'triple1']);
+  T.eq(SicBoRules.FIELDS.slice(-8), ['triple6', 'tripleAny', 'one1', 'one2', 'one3', 'one4', 'one5', 'one6']);
+  T.eq(SicBoRules.BET, { MIN: 50, MAX: 2000 });
+});
+T.test('SicBoRules.settle: Klein/Summe/Einzelzahl gewinnen, Groß verliert', () => {
+  const r = SicBoRules.settle({ small: 100, big: 100, sum9: 100, one3: 100, one5: 100 }, [2, 3, 4]);
+  T.eq(r, { delta: 600, won: ['small', 'sum9', 'one3'], lost: ['big', 'one5'], sum: 9, triple: false });
+});
+T.test('SicBoRules.settle: Triple – Klein und Groß verlieren, Triple 4 und Beliebig zahlen', () => {
+  const r = SicBoRules.settle({ small: 100, big: 100, triple4: 100, tripleAny: 100, sum12: 100, one4: 100 }, [4, 4, 4]);
+  T.eq(r.delta, 21700, '−100 −100 +600 +18000 +3000 +300');
+  T.eq(r.won, ['sum12', 'triple4', 'tripleAny', 'one4']); T.eq(r.lost, ['small', 'big']);
+  T.eq([r.sum, r.triple], [12, true]);
+  T.eq(SicBoRules.settle({ triple5: 100 }, [4, 4, 4]).delta, -100, 'falscher Triple verliert');
+});
+T.test('SicBoRules.settle: Einzelzahl zahlt je Treffer, leerer Tisch 0', () => {
+  T.eq(SicBoRules.settle({ one5: 100 }, [5, 5, 1]).delta, 200, 'zwei Fünfen → 2:1');
+  T.eq(SicBoRules.settle({ one5: 100 }, [5, 5, 5]).delta, 300, 'drei Fünfen → 3:1');
+  T.eq(SicBoRules.settle({ one5: 100 }, [1, 2, 3]).delta, -100);
+  T.eq(SicBoRules.settle({}, [1, 2, 3]), { delta: 0, won: [], lost: [], sum: 6, triple: false });
+  T.eq(SicBoRules.risk({ small: 50, sum9: 200, one1: 0 }), 250);
+});
+T.test('SicBoRules.roll und peekDice', () => {
+  T.eq(SicBoRules.roll(seq(0, 0.5, 0.99)), [1, 4, 6]);
+  T.eq(SicBoRules.peekDice(4, [1, 2, 3]), [4, 2, 3]);
+  const d = [1, 2, 3]; T.ok(SicBoRules.peekDice(null, d) === d, 'ohne Becher gleiche Referenz');
+});
+T.test('SicBoRules.luckOverride: Glück wirft Verlust neu, Pech wirft Gewinn neu, sonst unverändert', () => {
+  const lose = [6, 6, 6], win = [1, 2, 3], bets = { small: 100 };
+  T.eq(SicBoRules.luckOverride(lose, bets, 50, seq(0.1, 0, 0, 0)), [1, 1, 1], 'Verlust + Glück → Neuwurf');
+  T.ok(SicBoRules.luckOverride(lose, bets, 50, seq(0.9)) === lose, 'rng über luck → gleiche Referenz');
+  T.eq(SicBoRules.luckOverride(win, bets, -50, seq(0.1, 0.5, 0.5, 0.5)), [4, 4, 4], 'Gewinn + Pech → Neuwurf');
+  let calls = 0; const rng = () => { calls++; return 0; };
+  T.ok(SicBoRules.luckOverride(win, bets, 50, rng) === win, 'Gewinn + Glück → unverändert'); T.eq(calls, 0);
+  T.ok(SicBoRules.luckOverride(lose, bets, -50, rng) === lose, 'Verlust + Pech → unverändert'); T.eq(calls, 0);
+  T.ok(SicBoRules.luckOverride(lose, {}, 50, rng) === lose, 'ohne Einsatz nie'); T.eq(calls, 0);
+  T.ok(SicBoRules.luckOverride(lose, bets, 0, rng) === lose, 'ohne Glück nie'); T.eq(calls, 0);
+});
 
 T.test('Story 1 Kapitel 2/4 und Dev-Panel enthalten poker', () => {
   T.ok(STORY_SCHULD.chapters.find((c) => c.id === 'k2').unlock.doors.includes('poker'));
@@ -11008,19 +11301,25 @@ T.test('RoyalRules.canEnter / entryFee', () => {
   T.eq(RoyalRules.entryFee(base({ car: 'audiA3', story: { day: 5, royalPaidDay: 4 } })), 100);
 });
 T.test('RoyalRules.zoneFor: Royal-Screens sind Zone royal, alles andere keller', () => {
-  T.eq(RoyalRules.SCREENS, ['royal', 'megaslots', 'craps', 'wheel', 'stud']);
+  T.eq(RoyalRules.SCREENS, ['royal', 'megaslots', 'craps', 'wheel', 'stud', 'sicbo']);
   for (const id of RoyalRules.SCREENS) T.eq(RoyalRules.zoneFor(id), 'royal');
   for (const id of ['hub', 'roulette', 'stadt', 'jobs', 'skills', undefined, null]) T.eq(RoyalRules.zoneFor(id), 'keller');
 });
-T.test('stud hängt in allen Royal-Listen', () => {
-  T.ok(DevRules.ROYAL_SCREENS.includes('stud'), 'Dev-Panel');
-  T.ok(STORY_STASH.turnoverGroups.umsatzRoyal.includes('stud'), 'Story 3 Royal-Umsatz');
+T.test('stud und sicbo hängen in allen Royal-Listen', () => {
+  for (const id of ['stud', 'sicbo']) {
+    T.ok(DevRules.ROYAL_SCREENS.includes(id), `Dev-Panel ${id}`);
+    T.ok(STORY_STASH.turnoverGroups.umsatzRoyal.includes(id), `Story 3 Royal-Umsatz ${id}`);
+  }
 });
-if (typeof document !== 'undefined') T.test('stud: Royal.GAMES, ROOM_OF und Lobby-Portal', () => {
-  T.ok(Royal.GAMES.includes('stud'), 'Royal.GAMES');
-  T.eq(Story.ROOM_OF.stud, ['royal'], 'ROOM_OF');
+if (typeof document !== 'undefined') T.test('stud und sicbo: Royal.GAMES, ROOM_OF und Lobby-Portale', () => {
   const tpl = qs('#tpl-royal').content;
-  T.ok(!!tpl.querySelector('.portal[data-screen="stud"] .plaque') && tpl.querySelector('.portal[data-screen="stud"] .plaque').textContent === 'Caribbean Stud', 'Portal in der Lobby');
+  for (const [id, plaque] of [['stud', 'Caribbean Stud'], ['sicbo', 'Sic Bo']]) {
+    T.ok(Royal.GAMES.includes(id), `Royal.GAMES ${id}`);
+    T.eq(Story.ROOM_OF[id], ['royal'], `ROOM_OF ${id}`);
+    const p = tpl.querySelector(`.portal[data-screen="${id}"] .plaque`);
+    T.ok(!!p && p.textContent === plaque, `Portal ${id}`);
+  }
+  T.eq(tpl.querySelectorAll('.portal').length, 5, 'fünf Portale');
 });
 T.test('StoryRules.gate: bedingte Sperre mit Text', () => {
   const st = Object.assign({}, STORY_PROBE, { gates: { royal: [{ when: { flag: 'zitter' }, text: 'Sie zittern.' }, { when: { var: 'mut', lte: 0 }, text: 'Zu wenig Mut.' }] } });
@@ -11464,7 +11763,7 @@ T.test('StoryRules.recordSpin: Serie, Siege, größter Gewinn', () => {
   T.eq([st.streak, st.bestStreak, st.biggestWin], [1, 2, 700]);
 });
 T.test('StoryRules.recordStake: Umsatz gesamt, Gruppen je Spiel, bet ≤ 0 zählt nicht', () => {
-  const story = { turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel', 'stud'], umsatzHinterzimmer: ['baccarat'] } };
+  const story = { turnoverGroups: { umsatzRoyal: ['megaslots', 'craps', 'wheel', 'stud', 'sicbo'], umsatzHinterzimmer: ['baccarat'] } };
   const st = { vars: {} };
   StoryRules.recordStake(st, 500, 'roulette', story);
   T.eq(st.vars, { umsatz: 500, umsatzTotal: 500 });
@@ -13046,7 +13345,7 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     State.save = () => {}; State.saveMeta = () => {};
     try {
       State.mode = 'free'; State.s = State.fresh(); State.s.balance = 50000;
-      for (const [screen, id, start, chip] of [['megaslots', 'megaBet', '100', '500'], ['craps', 'crapsBet', '50', '200'], ['wheel', 'wheelBet', '100', '1000'], ['stud', 'studBet', '100', '500'], ['hinterzimmer', 'bacBet', '500', '5000']]) {
+      for (const [screen, id, start, chip] of [['megaslots', 'megaBet', '100', '500'], ['craps', 'crapsBet', '50', '200'], ['wheel', 'wheelBet', '100', '1000'], ['stud', 'studBet', '100', '500'], ['sicbo', 'sicBet', '50', '200'], ['hinterzimmer', 'bacBet', '500', '5000']]) {
         await UI.show(screen);
         const root = qs('#stage');
         const input = qs('#' + id, root);
@@ -14021,7 +14320,7 @@ T.test('xpLevel: Schwellen und Punkte (Balancing 2026-09-21: Lv 2 nach ~2 Abende
   T.ok(Rules.XP_LEVELS[5] / abend > 20 && Rules.XP_LEVELS[5] / abend < 30, 'Max-Level um Tag 20–30');
 });
 T.test('Kataloge: Skills mit Licht/Schatten, mods-Schlüssel bekannt', () => {
-  T.eq(Rules.SKILLS.length, 9); T.eq(Rules.INSIDER.length, 9);
+  T.eq(Rules.SKILLS.length, 9); T.eq(Rules.INSIDER.length, 10);
   for (const sk of Rules.SKILLS) { T.ok(sk.light && sk.shadow, sk.id); for (const k of Object.keys(sk.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${sk.id}.${k}`); }
   for (const ins of Rules.INSIDER) { T.ok(ins.text && typeof ins.capped === 'boolean', ins.id); for (const k of Object.keys(ins.mods)) T.ok(k in Rules.NEUTRAL_MODS, `${ins.id}.${k}`); }
   T.eq(Rules.INSIDER_CAP, 250); T.eq(Rules.MAX_SKILLS, 3); T.eq(Rules.RESPEC_PRICE, 2000);
@@ -14044,15 +14343,16 @@ T.test('mods: Skills und Insider stapeln', () => {
   T.eq(k.maxBeers, 4); T.eq(k.brownieSpins, 6); T.eq(k.postTimeAdd, -1); T.eq(k.postPayAdd, 5); T.eq(k.postLetters, 20);
   T.eq(Rules.mods(base({ skills: ['unbekannt'] })), Rules.NEUTRAL_MODS, 'unbekannte IDs ignoriert');
 });
-T.test('mods: Kartenhai, Wirts Tell und Sylvies Blick; neutral aus', () => {
+T.test('mods: Kartenhai, Wirts Tell, Sylvies Blick und Gezinkter Becher; neutral aus', () => {
   const n = Rules.mods(base(), { insider: [] });
-  T.eq([n.pokerPeekDraw, n.pokerTell, n.bjDealerStand, n.studPeek], [false, false, 17, false]);
-  const m = Rules.mods(base({ skills: ['kartenhai'] }), { insider: ['wirtstell', 'sylviesblick'] });
-  T.eq([m.pokerPeekDraw, m.pokerTell, m.bjDealerStand, m.studPeek], [true, true, 18, true]);
+  T.eq([n.pokerPeekDraw, n.pokerTell, n.bjDealerStand, n.studPeek, n.sicboPeek], [false, false, 17, false, false]);
+  const m = Rules.mods(base({ skills: ['kartenhai'] }), { insider: ['wirtstell', 'sylviesblick', 'becher'] });
+  T.eq([m.pokerPeekDraw, m.pokerTell, m.bjDealerStand, m.studPeek, m.sicboPeek], [true, true, 18, true, true]);
   T.ok(Rules.SKILLS.some((k) => k.id === 'kartenhai') && Rules.INSIDER.some((i) => i.id === 'wirtstell' && i.capped));
   T.ok(Rules.INSIDER.some((i) => i.id === 'sylviesblick' && i.capped && i.icon === '🎩'), 'Sylvies Blick gedeckelt');
-  T.eq(Rules.MOD_STACK.studPeek, 'set');
-  T.eq(Rules.effectiveInsider(m.studPeek, 250), true); T.eq(Rules.effectiveInsider(m.studPeek, 500), false, 'über der Kappe aus');
+  T.ok(Rules.INSIDER.some((i) => i.id === 'becher' && i.capped && i.icon === '🥤'), 'Gezinkter Becher gedeckelt');
+  T.eq([Rules.MOD_STACK.studPeek, Rules.MOD_STACK.sicboPeek], ['set', 'set']);
+  T.eq(Rules.effectiveInsider(m.sicboPeek, 250), true); T.eq(Rules.effectiveInsider(m.sicboPeek, 300), false, 'über der Kappe aus');
 });
 if (typeof document !== 'undefined') T.test('Erfolg karibik: Flush oder besser gewinnt bei Stud, Straße nicht, Passen nicht', async () => {
   const keep = State.meta.achievements.slice(), saveMeta = State.saveMeta;
@@ -14067,6 +14367,52 @@ if (typeof document !== 'undefined') T.test('Erfolg karibik: Flush oder besser g
     await Bus.emit('stud:result', { outcome: 'win', player: { rank: 5 }, dealer: { rank: 1 }, ante: 100, net: 1100 });
     T.ok(Achievements.has('karibik'), 'Flush gewinnt → Trophäe');
   } finally { State.meta.achievements = keep; State.saveMeta = saveMeta; }
+});
+if (typeof document !== 'undefined') T.test('Erfolg dreiGleiche: Triple-Feld gewonnen schaltet frei, Klein nicht', async () => {
+  const keep = State.meta.achievements.slice(), saveMeta = State.saveMeta;
+  State.saveMeta = () => {};
+  try {
+    State.meta.achievements = State.meta.achievements.filter((id) => id !== 'dreiGleiche');
+    T.ok(Achievements.DEFS.some((a) => a.id === 'dreiGleiche' && a.icon === '🎲'), 'im Katalog');
+    await Bus.emit('sicbo:result', { delta: 50, bet: 50, dice: [2, 3, 4], sum: 9, triple: false, won: ['small'], lost: [] });
+    T.ok(!Achievements.has('dreiGleiche'), 'Klein reicht nicht');
+    await Bus.emit('sicbo:result', { delta: -50, bet: 50, dice: [4, 4, 4], sum: 12, triple: true, won: [], lost: ['small'] });
+    T.ok(!Achievements.has('dreiGleiche'), 'Triple ohne Triple-Einsatz zählt nicht');
+    await Bus.emit('sicbo:result', { delta: 1500, bet: 50, dice: [4, 4, 4], sum: 12, triple: true, won: ['tripleAny'], lost: [] });
+    T.ok(Achievements.has('dreiGleiche'), 'Beliebiger Triple gewonnen → Trophäe');
+  } finally { State.meta.achievements = keep; State.saveMeta = saveMeta; }
+});
+if (typeof document !== 'undefined') T.test('SicBo: Chips auf Klein + Summe 9, fester Wurf 2·3·4 zahlt 1:1 und 6:1; Leeren nimmt zurück', async () => {
+  const keep = { s: State.s, mode: State.mode, save: State.save, saveMeta: State.saveMeta, cur: UI.current, insider: State.meta.insider.slice() };
+  State.save = () => {}; State.saveMeta = () => {};
+  try {
+    State.mode = 'free'; State.s = State.fresh(); State.s.balance = 1000;
+    State.meta.insider = [];
+    await UI.show('sicbo');
+    const root = qs('#stage');
+    T.eq(qsa('.sb-cell[data-bet]', root).length, 29, '29 Zellen');
+    T.eq(qs('#sbDie1', root).textContent, '?', 'ohne Insider keine Vorschau');
+    qs('.chip[data-chip="50"]', root).click();
+    SicBo.place('small'); SicBo.place('sum9');
+    T.eq(qs('.sb-cell[data-bet="sum9"] .chip-stack', root).textContent, '50');
+    T.ok(!qs('#btnSbRoll', root).disabled, 'Würfeln aktiv');
+    SicBo.forceDice = [2, 3, 4];
+    await SicBo.roll();
+    T.eq(State.s.balance, 1350, '1000 − 100 Risiko + (350 net + 100 Einsatz)');
+    T.ok(qs('.sb-cell[data-bet="small"]', root).classList.contains('won') && qs('.sb-cell[data-bet="sum9"]', root).classList.contains('won'), 'Gewinnfelder markiert');
+    T.eq([qs('#sbDie1', root).textContent, qs('#sbDie2', root).textContent, qs('#sbDie3', root).textContent], ['⚁', '⚂', '⚃']);
+    T.ok(qs('#sbStatus', root).textContent.includes('Summe 9'), qs('#sbStatus', root).textContent);
+    T.eq(SicBoRules.risk(SicBo.bets), 0, 'Tisch nach dem Wurf leer');
+    SicBo.place('big');
+    T.eq(qs('#sbDie1', root).textContent, '?', 'nächster Chip stellt die Vorschau wieder her');
+    SicBo.clear();
+    T.eq(SicBoRules.risk(SicBo.bets), 0); T.ok(qs('#btnSbRoll', root).disabled, 'ohne Einsatz kein Würfeln');
+    const before = State.s.balance; await SicBo.roll(); T.eq(State.s.balance, before, 'Würfeln ohne Einsatz ändert nichts');
+  } finally {
+    State.s = keep.s; State.mode = keep.mode; State.save = keep.save; State.saveMeta = keep.saveMeta;
+    State.meta.insider = keep.insider;
+    await UI.show(keep.cur ? keep.cur.id : 'hub');
+  }
 });
 if (typeof document !== 'undefined') T.test('Stud: Geben bucht Ante, Mitgehen Bet, Showdown zahlt net + Einsatz; Passen verliert Ante', async () => {
   const keep = { s: State.s, mode: State.mode, save: State.save, saveMeta: State.saveMeta, cur: UI.current };
@@ -14113,8 +14459,8 @@ T.test('insiderDraw: 3 ungezogene, weniger wenn Pool kleiner', () => {
   const all = Rules.INSIDER.map((i) => i.id);
   const d = Rules.insiderDraw({ insider: [] }, seq(0, 0, 0));
   T.eq(d.length, 3); T.ok(new Set(d).size === 3, 'verschieden'); d.forEach((id) => T.ok(all.includes(id)));
-  const d2 = Rules.insiderDraw({ insider: all.slice(0, 7) }, seq(0, 0));
-  T.eq(d2.length, 2); d2.forEach((id) => T.ok(!all.slice(0, 7).includes(id), 'nie gewählte'));
+  const d2 = Rules.insiderDraw({ insider: all.slice(0, 8) }, seq(0, 0));
+  T.eq(d2.length, 2); d2.forEach((id) => T.ok(!all.slice(0, 8).includes(id), 'nie gewählte'));
   T.eq(Rules.insiderDraw({ insider: all }, seq(0)), []);
 });
 T.test('insiderCapText: gedeckelte Insider nennen die 250 €, freie „wirkt immer"', () => {
@@ -14266,7 +14612,7 @@ if (typeof Perks !== 'undefined') T.test('Perks.refreshExcluded: ohne force blei
   /* Dev-Pfad freies Spiel: wie bisher */
   document.body.classList.add('mode-free');
   if (params.has('shop') && typeof Stadt !== 'undefined') Stadt.shop = Stadt.SHOPS[params.get('shop')] ? params.get('shop') : null;
-  if (params.get('screen') === 'royal' && params.has('game') && ['megaslots', 'craps', 'wheel', 'stud'].includes(params.get('game'))) { await UI.show(params.get('game')); }
+  if (params.get('screen') === 'royal' && params.has('game') && ['megaslots', 'craps', 'wheel', 'stud', 'sicbo'].includes(params.get('game'))) { await UI.show(params.get('game')); }
   else await UI.show(params.get('screen') || 'hub');
   let gameOverAtBoot = false;
   if (Rules.isGameOver(State.s, Perks.mods())) { gameOverAtBoot = true; await Bus.emit('gameover', {}); }
