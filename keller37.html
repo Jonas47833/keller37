@@ -9379,6 +9379,27 @@ const STORY_SCHULD = {
       { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Ein Zahnarzt. Spielt bei uns, verliert bei uns, zahlt nicht bei uns. Erste Etage, Praxis Dr. Leuchtenberg.' },
       { bg: 'strasse', who: 'du', mood: 'calm', text: 'Er zahlt, bevor du das Wartezimmer verlässt. Und bietet dir eine Prophylaxe an. Umsonst. Du sagst ja.' },
     ],
+    /* ---- Ruf-Angebote ---- */
+    'schuld.vitoRespekt': [
+      { bg: 'hinterzimmer', who: 'du', mood: 'calm', cast: ['du'], text: 'Igor holt dich von der Bar. Kein Wort. Hinterzimmer, Vito, ein Glas, das er nicht anrührt.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', text: 'Man redet über dich. Am Bahnhof, im Taxi, an meiner Tür. Ich höre viel. Meistens Unsinn. Diesmal nicht.' },
+      { bg: 'hinterzimmer', who: 'vito', mood: 'calm', cam: 'close', text: 'Zehntausend weniger auf dem Zettel. Dafür trägst du ab heute meinen Namen, wenn jemand fragt, für wen du arbeitest. Das ist kein Geschenk. Das ist ein Preis.',
+        choices: [
+          { label: 'Annehmen', value: 'ja', cls: 'red', effects: [{ var: 'schuld', add: -10000 }, { var: 'vertrauen', add: 2 }, { flag: 'vitosMann' }] },
+          { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ var: 'ruf', add: 1 }] },
+        ] },
+      { bg: 'hinterzimmer', who: 'igor', mood: 'calm', text: 'Igor bringt dich zurück. An der Tür sagt er, ohne dich anzusehen: „Am Bahnhof sagen sie, du zahlst selbst. Egal, was du eben gesagt hast.“' },
+    ],
+    'schuld.igorHoert': [
+      { bg: 'bar', who: 'du', mood: 'calm', cast: ['du'], text: 'Kurz vor Schluss. Der Wirt wischt. Igor setzt sich neben dich. Igor setzt sich nie.' },
+      { bg: 'bar', who: 'igor', mood: 'calm', text: 'Ich stehe seit elf Jahren an dieser Tür. Ich weiß, wer reinkommt und wer nicht mehr rauskommt. Und ich weiß, wie man am Bahnhof über Vito redet. Und wie über dich.' },
+      { bg: 'bar', who: 'igor', mood: 'calm', cam: 'close', text: 'Sie haben mehr Respekt vor dir als vor ihm. Das hat er noch nicht gemerkt. Ich schon. Willst du wissen, was ich sonst noch gemerkt habe?',
+        choices: [
+          { label: 'Zuhören', value: 'ja', cls: 'blue', effects: [{ flag: 'igorZweifelt' }] },
+          { label: 'Abwinken', value: 'nein', cls: 'ghost' },
+        ] },
+      { bg: 'bar', who: 'igor', mood: 'calm', text: 'Er steht auf, legt einen Schein auf den Tresen. „Für das Bier. Und für das Gespräch, das wir nicht hatten.“' },
+    ],
     'schuld.buero': [
       { bg: 'keller', who: 'igor', mood: 'calm', text: 'Vito will seinen Mantel. Büro, hinten. Ich bleibe an der Tür.' },
       { bg: 'hinterzimmer', who: 'du', mood: 'shock', text: 'Der Mantel hängt am Haken. Auf dem Schreibtisch liegt das Hauptbuch. Offen. Mein Name steht drin – mit einem Datum, an dem ich nicht hier war.',
@@ -9526,7 +9547,10 @@ const STORY_SCHULD = {
     { id: 'tuerJob', when: { all: [{ day: { gte: 13 } }, { var: 'vertrauen', gte: 4 }] }, once: true, at: 'morning', scene: 'schuld.tuerJob', effects: [{ unlock: { jobs: ['tuersteher', 'eintreiber'] } }] },
     { id: 'buero', when: { all: [{ jobDone: 'tuersteher', gte: 1 }, { notFlag: 'bueroGesehen' }] }, once: true, at: 'morning', scene: 'schuld.buero', effects: [{ flag: 'bueroGesehen' }] },
     { id: 'chantalBeichte', when: { all: [{ day: { gte: 15 } }, { flag: 'chantalKennt' }] }, once: true, at: 'night', scene: 'schuld.chantalBeichte', effects: [{ flag: 'chantalBeichte' }] },
-    { id: 'igorZweifel', when: { var: 'duellSiege', gte: 3 }, once: true, at: 'spin:after', scene: 'schuld.igorZweifel', effects: [{ flag: 'igorZweifelt' }] },
+    { id: 'igorZweifel', when: { all: [{ var: 'duellSiege', gte: 3 }, { notFlag: 'igorZweifelt' }] }, once: true, at: 'spin:after', scene: 'schuld.igorZweifel', effects: [{ flag: 'igorZweifelt' }] },
+    /* Ruf-Angebote (Spec 2026-09-21 Ruf-Stufen §3): Respektiert → Vito, Legende → Igor */
+    { id: 'vitoRespekt', when: { var: 'ruf', gte: 5 }, once: true, at: 'night', scene: 'schuld.vitoRespekt' },
+    { id: 'igorHoert', when: { all: [{ var: 'ruf', gte: 8 }, { notFlag: 'igorZweifelt' }] }, once: true, at: 'night', scene: 'schuld.igorHoert' },
     { id: 'tuerSauber', when: { var: 'tuerSauber', gte: 3 }, at: 'night', scene: 'schuld.tuerSauber', effects: [{ var: 'vertrauen', add: 1 }, { var: 'tuerSauber', set: 0 }] },
     { id: 'croupierJob', when: { all: [{ day: { gte: 21 } }, { var: 'vertrauen', gte: 7 }, { jobDone: 'tuersteher', gte: 3 }] }, once: true, at: 'morning', scene: 'schuld.croupierJob', effects: [{ unlock: { jobs: ['croupier'] } }] },
     { id: 'erinnerung', when: { day: { eq: 25 } }, once: true, at: 'night', scene: 'schuld.erinnerung', effects: [{ balancePct: -20, min: 100 }] },
@@ -12205,6 +12229,41 @@ T.test('Ruf-Stufen: HUD zeigt Titel, Stufen-Toast genau beim Wechsel (Story 1 un
     const alt = mk(); delete alt.story.vars.rufStufe; alt.story.vars.ruf = 6;
     const o = story.fns.rufStufe(alt); T.ok(o.toast && o.toast.title.includes('Respektiert')); T.eq(alt.story.vars.rufStufe, 2); T.eq(story.fns.rufStufe(alt), {});
   }
+});
+/* Wahl in einer Story-1-Szene anwenden (Szenen sind Arrays ohne ctx) */
+const schuldChoose = (s, sceneId, value) => {
+  const panels = STORY_SCHULD.scenes[sceneId];
+  for (const p of panels) for (const c of p.choices || []) if (c.value === value) for (const eff of c.effects || []) StoryRules.applyEffect(s, eff, STORY_SCHULD);
+};
+T.test('STORY_SCHULD: Vitos Respekt ab Ruf 5 (once), Annehmen −10.000/Vertrauen +2, nicht unter 0, Ablehnen Ruf +1', () => {
+  const s = Object.assign(base({ balance: 500 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
+  s.story.day = 12; s.story.seen.push('chantal3', 'wirt5', 'stadtOffen');
+  const night = () => StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id).filter((id) => !id.startsWith('rufStufe'));
+  s.story.vars.ruf = 4; T.eq(night().includes('vitoRespekt'), false, 'Ruf 4: kein Angebot');
+  s.story.vars.ruf = 5; T.ok(night().includes('vitoRespekt'));
+  schuldChoose(s, 'schuld.vitoRespekt', 'ja');
+  T.eq(s.story.vars.schuld, 40000); T.eq(s.story.vars.vertrauen, 2); T.eq(s.story.flags.vitosMann, true);
+  s.story.seen.push('vitoRespekt'); s.story.vars.ruf = 3; s.story.vars.ruf = 5;
+  T.eq(night().includes('vitoRespekt'), false, 'once: kommt nicht wieder, auch wenn Ruf erneut 5 erreicht');
+  const n = Object.assign(base({ balance: 500 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) }); n.story.vars.ruf = 5;
+  schuldChoose(n, 'schuld.vitoRespekt', 'nein'); T.eq(n.story.vars.ruf, 6); T.eq(n.story.vars.schuld, 50000);
+  const k = Object.assign(base({ balance: 500 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) }); k.story.vars.schuld = 4000; k.story.vars.vertrauen = 9;
+  schuldChoose(k, 'schuld.vitoRespekt', 'ja'); T.eq(k.story.vars.schuld, 0, 'nicht unter 0'); T.eq(k.story.vars.vertrauen, 10, 'varMax');
+  const end = StoryRules.ending(STORY_SCHULD, k); T.ok(end && end.id === 'ehrlich', 'Schuld 0 → Der Ehrliche am Nachtende');
+});
+T.test('STORY_SCHULD: Igor hört zu ab Ruf 8 nur ohne igorZweifelt; Zuhören setzt das Flag; igorZweifel dann nicht mehr', () => {
+  const s = Object.assign(base({ balance: 500 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) });
+  s.story.day = 20; s.story.seen.push('chantal3', 'wirt5', 'stadtOffen', 'vitoRespekt');
+  const night = () => StoryRules.dueEvents(STORY_SCHULD, s, 'night').map((e) => e.id).filter((id) => !id.startsWith('rufStufe'));
+  s.story.vars.ruf = 7; T.eq(night().includes('igorHoert'), false);
+  s.story.vars.ruf = 8; T.ok(night().includes('igorHoert'));
+  schuldChoose(s, 'schuld.igorHoert', 'nein'); T.eq(!!s.story.flags.igorZweifelt, false, 'Abwinken: nichts');
+  schuldChoose(s, 'schuld.igorHoert', 'ja'); T.eq(s.story.flags.igorZweifelt, true);
+  T.eq(night().includes('igorHoert'), false, 'mit Flag kein igorHoert mehr');
+  s.story.vars.duellSiege = 3;
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, s, 'spin:after').map((e) => e.id), [], 'igorZweifel feuert nicht mehr, wenn das Flag steht');
+  const z = Object.assign(base({ balance: 500 }), { story: StoryRules.freshStoryPart(STORY_SCHULD) }); z.story.vars.duellSiege = 3;
+  T.eq(StoryRules.dueEvents(STORY_SCHULD, z, 'spin:after').map((e) => e.id), ['igorZweifel'], 'ohne Flag wie bisher');
 });
 
 /* ---- Baccarat ---- */
