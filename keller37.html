@@ -1016,6 +1016,7 @@ body.mode-story #newgame { display: none; }
 .sb-cell { position: relative; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 2px; border: 1px solid var(--gold); border-radius: 4px; background: rgba(0,0,0,.25); color: var(--ivory); font-family: inherit; cursor: pointer; box-shadow: inset 0 2px 8px rgba(0,0,0,.6); transition: transform .1s; }
 .sb-cell:hover { transform: translateY(-1px); }
 .sb-cell b { font-family: var(--font-display); font-weight: 700; letter-spacing: .08em; font-size: 1rem; line-height: 1; }
+.sb-one b { font-family: inherit; font-size: 1.7rem; line-height: 1; }
 .sb-cell small { font-family: var(--font-mono); font-size: .62rem; color: rgba(239,230,207,.7); letter-spacing: 0; }
 .sb-side { min-height: 100%; }
 .sb-cell .chip-stack { right: 2px; top: 2px; }
@@ -1025,9 +1026,9 @@ body.mode-story #newgame { display: none; }
 .sb-cell .chip-stack.won { background: var(--gold-2); color: #141216; }
 @media (max-width: 760px) {
   .sicbo-grid { grid-template-columns: 1fr 1fr; }
-  .sb-sums { grid-column: 1 / -1; grid-template-columns: repeat(4, 1fr); }
+  .sb-sums { order: 1; grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .sb-side { min-height: 44px; }
-  .sicbo-row { grid-template-columns: repeat(4, 1fr); }
+  .sicbo-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .sb-label { grid-column: 1 / -1; padding: 0; }
 }
 .door[hidden] { display: none; } /* .door setzt keine display-Eigenschaft, aber sicher ist sicher – die Hinterzimmer-Tür ist außerhalb von Story 3 versteckt */
@@ -5567,6 +5568,7 @@ const SicBo = {
   fieldName(id, dice) {
     if (id === 'small') return 'Klein';
     if (id === 'big') return 'Groß';
+    /* tripleAny vor startsWith('triple') prüfen – sonst würde es als Triple „Any“ verrechnet */
     if (id === 'tripleAny') return `Beliebiger Triple zahlt ${SicBoRules.PAY.tripleAny}:1`;
     if (id.startsWith('triple')) return `Triple ${id.slice(6)} zahlt ${SicBoRules.PAY.triple}:1`;
     if (id.startsWith('sum')) return `Summe ${id.slice(3)} zahlt ${SicBoRules.PAY.sum[+id.slice(3)]}:1`;
@@ -5574,15 +5576,15 @@ const SicBo = {
     return `Zahl ${n} ×${k} zahlt ${k}:1`;
   },
   /* Die 29 Zellen aus SicBoRules.FIELDS bauen (Klein/Groß stehen schon im Template) */
-  cell(id, label, quote) {
-    return h('button', { class: 'sb-cell', 'data-bet': id }, h('b', {}, label), h('small', {}, quote), h('span', { class: 'chip-stack hidden' }, '0'));
+  cell(id, label, quote, cls = '') {
+    return h('button', { class: 'sb-cell' + (cls ? ' ' + cls : ''), 'data-bet': id }, h('b', {}, label), h('small', {}, quote), h('span', { class: 'chip-stack hidden' }, '0'));
   },
   buildTable(root) {
     const sums = qs('#sbSums', root), triples = qs('#sbTriples', root), ones = qs('#sbOnes', root);
     for (let s = 4; s <= 17; s++) sums.append(this.cell(`sum${s}`, String(s), `${SicBoRules.PAY.sum[s]}:1`));
     for (let n = 1; n <= 6; n++) triples.append(this.cell(`triple${n}`, `${n} ${n} ${n}`, `${SicBoRules.PAY.triple}:1`));
     triples.append(this.cell('tripleAny', 'BELIEBIG', `${SicBoRules.PAY.tripleAny}:1`));
-    for (let n = 1; n <= 6; n++) ones.append(this.cell(`one${n}`, this.FACES[n], '1:1 · 2:1 · 3:1'));
+    for (let n = 1; n <= 6; n++) ones.append(this.cell(`one${n}`, this.FACES[n], '1:1 · 2:1 · 3:1', 'sb-one'));
   },
   newPeek() { this.peekDie = Perks.mods().sicboPeek ? SicBoRules.roll(Math.random)[0] : null; },
   renderDice(dice) { for (let i = 0; i < 3; i++) qs(`#sbDie${i + 1}`, this.root).textContent = this.FACES[dice[i] || 0]; },
@@ -5645,8 +5647,8 @@ const SicBo = {
       const r = SicBoRules.settle(bets, dice);
       this.history.push(dice.join('·'));
       this.bets = {};
-      this.newPeek();
       if (this.alive(gen)) {
+        this.newPeek();
         qsa('.die', this.root).forEach((d) => d.classList.remove('rolling'));
         this.renderDice(dice); this.showingResult = true;
         SFX.play('reelStop');
@@ -7526,6 +7528,7 @@ const SicBoRules = {
     const triple = dice[0] === dice[1] && dice[1] === dice[2];
     if (id === 'small') return !triple && sum <= 10 ? P.small : 0;
     if (id === 'big') return !triple && sum >= 11 ? P.big : 0;
+    /* tripleAny vor startsWith('triple') prüfen – sonst würde es als Triple „Any“ verrechnet */
     if (id === 'tripleAny') return triple ? P.tripleAny : 0;
     if (id.startsWith('triple')) return triple && dice[0] === +id.slice(6) ? P.triple : 0;
     if (id.startsWith('sum')) return sum === +id.slice(3) ? P.sum[sum] : 0;
@@ -14373,10 +14376,11 @@ if (typeof document !== 'undefined') T.test('Erfolg dreiGleiche: Triple-Feld gew
   } finally { State.meta.achievements = keep; State.saveMeta = saveMeta; }
 });
 if (typeof document !== 'undefined') T.test('SicBo: Chips auf Klein + Summe 9, fester Wurf 2·3·4 zahlt 1:1 und 6:1; Leeren nimmt zurück', async () => {
-  const keep = { s: State.s, mode: State.mode, save: State.save, saveMeta: State.saveMeta, cur: UI.current };
+  const keep = { s: State.s, mode: State.mode, save: State.save, saveMeta: State.saveMeta, cur: UI.current, insider: State.meta.insider.slice() };
   State.save = () => {}; State.saveMeta = () => {};
   try {
     State.mode = 'free'; State.s = State.fresh(); State.s.balance = 1000;
+    State.meta.insider = [];
     await UI.show('sicbo');
     const root = qs('#stage');
     T.eq(qsa('.sb-cell[data-bet]', root).length, 29, '29 Zellen');
@@ -14399,6 +14403,7 @@ if (typeof document !== 'undefined') T.test('SicBo: Chips auf Klein + Summe 9, f
     const before = State.s.balance; await SicBo.roll(); T.eq(State.s.balance, before, 'Würfeln ohne Einsatz ändert nichts');
   } finally {
     State.s = keep.s; State.mode = keep.mode; State.save = keep.save; State.saveMeta = keep.saveMeta;
+    State.meta.insider = keep.insider;
     await UI.show(keep.cur ? keep.cur.id : 'hub');
   }
 });

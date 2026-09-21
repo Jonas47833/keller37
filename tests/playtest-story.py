@@ -2103,7 +2103,7 @@ async def scenario_sicbo(cdp):
         before = await cdp.eval("State.s.balance", await_promise=False)
         await cdp.eval("SicBo.forceDice = %s; 0" % json.dumps(dice), await_promise=False)
         await cdp.click("#btnSbRoll")
-        await cdp.wait_for("!SicBo.rolling", timeout=6.0)
+        await cdp.wait_for("!SicBo.rolling || __pt.cutsceneActive()", timeout=6.0)
         # Ein Nettogewinn >= RoyalRules.GUEST_WIN (5000) loest einmalig die "Gast des Hauses"-Cutscene aus
         # (Royal.onWin, Bus 'win'), die Game.settle() bis zum Durchklicken blockiert (SicBo.rolling bleibt
         # dann true) -- durchklicken, falls sie gerade offen ist, dann erneut auf das Rollenende warten.
