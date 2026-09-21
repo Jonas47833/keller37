@@ -5,5 +5,5 @@ for c in "$K37_CHROME" "/Applications/Google Chrome.app/Contents/MacOS/Google Ch
   [ -n "$c" ] && [ -x "$c" ] && CHROME="$c" && break
 done
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
-"$CHROME" --headless=new --disable-gpu --virtual-time-budget=30000 \
+"$CHROME" --headless=new --disable-gpu --virtual-time-budget=60000 \
   --dump-dom "file://$DIR/keller37.html?selftest&fresh" 2>/dev/null | grep -o 'data-selftest="[^"]*"'

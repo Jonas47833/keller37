@@ -79,6 +79,9 @@ SCENARIOS = [
      "(async()=>{ Cutscene.play('mug.intro', { loot: '40 €', type: Mugging.TYPES.junkie, fight: 50, flee: 30 });"
      " for (let i = 0; i < 20 && !Cutscene.active; i++) await new Promise((r) => setTimeout(r, 20));"
      " return Cutscene.active; })()"),
+    ("Duell", "?screen=shootout&foe=junge&weapon=1", 4,
+     "GangRules.drawWait = () => 400; Shootout.ready(); setTimeout(() => { const b = DuelStage.foeBox(), R = document.querySelector('#duelStage').getBoundingClientRect();"
+     " Shootout.shoot({ clientX: R.left + b.left + b.width / 2, clientY: R.top + b.top + b.height / 2, pointerType: 'mouse' }); }, 600)", None),
     ("Taxi fahren", "?story", 4, "document.querySelector('#btnTaxiStart').click()", STORY_JOB.replace("JOB", "'taxi'").replace("BTN", "'#btnTaxiStart'")),
     ("Spueler", "?story", 4, "document.querySelector('#btnDishStart').click()", STORY_JOB.replace("JOB", "'spueler'").replace("BTN", "'#btnDishStart'")),
 ]

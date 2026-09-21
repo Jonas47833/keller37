@@ -83,6 +83,12 @@ __pt.advance = function(labelHint) {
   return true;
 };
 __pt.cutsceneActive = function() { return typeof Cutscene !== 'undefined' && Cutscene.active; };
+__pt.duelShoot = function() {
+  // Schuss auf die Gegnerfigur (Ego-Duell): Tipp in die Mitte der Figuren-Box
+  const b = DuelStage.foeBox(), R = document.querySelector('#duelStage').getBoundingClientRect();
+  Shootout.shoot({ clientX: R.left + b.left + b.width / 2, clientY: R.top + b.top + b.height / 2, pointerType: 'mouse' });
+  return true;
+};
 __pt.autoplaySpueler = function(mode) {
   // mode: 'win' (immer treffen) oder 'loss' (immer verfehlen)
   return new Promise((resolve) => {
@@ -1545,7 +1551,7 @@ async def scenario_stash(cdp):
     await cdp.wait_for("UI.current && UI.current.id === 'shootout' && Shootout.running && !UI.busy", timeout=5.0)
     await cdp.eval("Shootout.ready()", await_promise=False)
     await cdp.wait_for("Shootout.phase === 'draw'", timeout=3.0)
-    await cdp.eval("Shootout.tap()", await_promise=False)
+    await cdp.eval("__pt.duelShoot()", await_promise=False)
     await asyncio.sleep(0.3)
     won = await cdp.eval("({ running: Shootout.running, won: Shootout.results[0] && Shootout.results[0].won })", await_promise=False)
     record("stash: Hinterhalt – Duell gewonnen", won["running"] is False and won["won"] is True, str(won))
