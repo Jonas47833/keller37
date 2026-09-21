@@ -1790,10 +1790,11 @@ const Rules = {
   MARRIAGE_SPINS: 2,
   MAFIA_SPINS: 5,
   MAX_BEERS: 3,
+  BASE_LUCK: 5,        // Grundglück nüchtern: jeder Tisch leicht im Plus (~102–105 %), Bier ist Turbo statt Pflicht (Balancing 2026-09-21, Jeder Tisch)
   LUCK_CAP: 1000,  // Glück wirkt voll bis zu diesem Einsatz, darüber proportional weniger
 
   luck(s, mods = Rules.NEUTRAL_MODS) {
-    let l = 0;
+    let l = Rules.BASE_LUCK;
     if (s.beerTimer > 0) l += Rules.BEER_LUCK[Math.min(s.beers, Rules.BEER_LUCK.length - 1)] * mods.beerLuckMult;
     if (s.brownieTimer > 0) l += Rules.BROWNIE_LUCK * mods.brownieLuckMult;
     l += Rules.gear(s).luck;
@@ -1801,9 +1802,10 @@ const Rules = {
     return l;
   },
   /* Glück ist ein echter, aber teurer Vorteil: voll bis LUCK_CAP, darüber im Verhältnis kleiner (Pech genauso).
-     Balancing 2026-09-21: nüchtern liegen alle Tische bei ~97 % (Roulette Rot 97, Slots 98, Rad 98, Mega 97, Craps/Baccarat 99),
-     mit 3 Bier bei ~115 % (Rot 117, Slots 115, Rad 115, Mega 117, Craps 109, Baccarat 108) – der Spieler darf das Spiel
-     wählen, das ihm gefällt. Wer die Bankroll hält und ab BEER_WORTH_FROM setzt, kommt voran; wer alles setzt, fällt trotzdem. */
+     Balancing 2026-09-21 (Jeder Tisch): Grundglück BASE_LUCK hebt jeden Tisch nüchtern auf ~102–105 %, mit 3 Bier auf ~117–138 %
+     (Rot 122, Craps 120, Mega 122, Baccarat 117, Rad 121, Slots 138 – Slots streuen am stärksten und brauchen den größten Vorteil).
+     Ziel: der disziplinierte Spieler (tests/balance-sim.mjs) schafft die Story an jedem Tisch zu ≥ 75 % (Story 1) / ≥ 65 % (Story 2);
+     wer alles setzt, fällt trotzdem. */
   effectiveLuck(luck, bet) {
     if (!luck) return 0;
     if (!bet || bet <= Rules.LUCK_CAP) return luck;
@@ -10610,27 +10612,28 @@ const base = (o = {}) => Object.assign({
   isMarried: false, isHeartbroken: false,
 }, o);
 
-T.test('luck: nichts aktiv = 0', () => T.eq(Rules.luck(base()), 0));
-T.test('luck: 1/2/3 Bier = 10/15/20', () => {
-  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2 })), 10);
-  T.eq(Rules.luck(base({ beers: 2, beerTimer: 1 })), 15);
-  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2 })), 20);
+T.test('luck: nichts aktiv = Grundglück 5 (Balancing 2026-09-21, Jeder Tisch)', () => { T.eq(Rules.BASE_LUCK, 5); T.eq(Rules.luck(base()), 5); });
+T.test('luck: Bier addiert auf das Grundglück', () => {
+  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2 })), 15);
+  T.eq(Rules.luck(base({ beers: 2, beerTimer: 1 })), 20);
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2 })), 25);
 });
-T.test('luck: Bier ohne Timer zählt nicht', () => T.eq(Rules.luck(base({ beers: 2, beerTimer: 0 })), 0));
-T.test('luck: Brownie +40, mit 3 Bier 60', () => {
-  T.eq(Rules.luck(base({ brownieTimer: 1 })), 40);
-  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, brownieTimer: 1 })), 60);
+T.test('luck: Bier ohne Timer zählt nicht', () => T.eq(Rules.luck(base({ beers: 2, beerTimer: 0 })), 5));
+T.test('luck: Brownie', () => {
+  T.eq(Rules.luck(base({ brownieTimer: 1 })), 45);
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, brownieTimer: 1 })), 65);
 });
-T.test('Rules.luck: Story-Modifikator, darf unter 0 fallen', () => {
-  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, story: { luckMod: -15 } })), 5);
-  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2, story: { luckMod: -15 } })), -5);
-  T.eq(Rules.luck(base({ story: { luckMod: 10 } })), 10);
-  T.eq(Rules.luck(base({ story: {} })), 0);
+T.test('luck: Story-Modifikator – Zitter-Tag −15 ist netto Pech (−10), mit 3 Bier +10', () => {
+  T.eq(Rules.luck(base({ story: { luckMod: -15 } })), -10);
+  T.ok(Rules.luck(base({ story: { luckMod: -15 } })) < 0, 'Pech-Zweige greifen weiter');
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, story: { luckMod: -15 } })), 10);
+  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2, story: { luckMod: -15 } })), 0);
+  T.eq(Rules.luck(base({ story: { luckMod: 10 } })), 15);
+  T.eq(Rules.luck(base({ story: {} })), 5);
 });
-T.test('luck: Story-Modifikator kann negativ werden (Pech)', () => {
-  T.eq(Rules.luck(base({ story: { luckMod: -15 } })), -15);
-  T.eq(Rules.luck(base({ beers: 3, beerTimer: 2, story: { luckMod: -15 } })), 5);
-  T.eq(Rules.luck(base({ beers: 1, beerTimer: 2, story: { luckMod: -15 } })), -5);
+T.test('effectiveLuck skaliert auch das Grundglück ab LUCK_CAP herunter', () => {
+  T.eq(Rules.effectiveLuck(Rules.BASE_LUCK, 1000), 5);
+  T.eq(Rules.effectiveLuck(Rules.BASE_LUCK, 5000), 1);
 });
 T.test('effectiveLuck: Pech wird wie Glück gedeckelt', () => { T.eq(Rules.effectiveLuck(-60, 2000), -30); T.eq(Rules.effectiveLuck(-15, 500), -15); });
 T.test('pech: nur bei negativem Glück, Wahrscheinlichkeit |luck| %', () => {
@@ -12736,9 +12739,9 @@ T.test('State.fresh: Gear-Felder', () => {
 });
 
 /* ---- Ausrüstung wirkt ---- */
-T.test('luck: Auto-Glück addiert sich', () => {
-  T.eq(Rules.luck(base({ car: 'audiRS4' })), 2);
-  T.eq(Rules.luck(base({ car: 'mercG', beers: 3, beerTimer: 1, brownieTimer: 1 })), 64);
+T.test('luck: Auto-Glück addiert sich (auf das Grundglück 5)', () => {
+  T.eq(Rules.luck(base({ car: 'audiRS4' })), 7);
+  T.eq(Rules.luck(base({ car: 'mercG', beers: 3, beerTimer: 1, brownieTimer: 1 })), 69);
 });
 T.test('bankInterest: Mercedes-Zinssatz', () => {
   T.eq(Rules.bankInterest(1000), 80);
@@ -13377,13 +13380,13 @@ if (typeof Story !== 'undefined' && typeof document !== 'undefined') {
     try {
       const k = State.freshStory(STORY_KATER); k.story.luckMod = -15;
       State.s = k; UI.renderWallet();
-      T.eq(qs('#luck .luck-val').textContent, '−15%');
-      T.eq(qs('#luck').title, 'Glück −15 %');
+      T.eq(qs('#luck .luck-val').textContent, '−10%', 'Zitter-Tag −15 + Grundglück 5');
+      T.eq(qs('#luck').title, 'Glück −10 %');
       T.eq(qsa('#luck .seg.on').length, 0, 'keine Segmente an');
       k.story.luckMod = 0; UI.renderWallet();
-      T.eq(qs('#luck .luck-val').textContent, '+0%');
+      T.eq(qs('#luck .luck-val').textContent, '+5%');
       k.beers = 3; k.beerTimer = 2; UI.renderWallet();
-      T.eq(qs('#luck .luck-val').textContent, '+20%'); T.eq(qsa('#luck .seg.on').length, 3);
+      T.eq(qs('#luck .luck-val').textContent, '+25%'); T.eq(qsa('#luck .seg.on').length, 3);
     } finally { State.s = keep; UI.renderWallet(); }
   });
   T.test('STORY_KATER.goal: Tagesziel rechnet Deckel dazu und den Bücher-Rabatt ab', () => {
@@ -14854,9 +14857,9 @@ T.test('State.fresh/freshMeta: Perk-Felder', () => {
 const M = (o) => Object.assign({}, Rules.NEUTRAL_MODS, o);
 T.test('luck mit mods: Bier/Brownie-Multiplikatoren, 4. Bier', () => {
   T.eq(Rules.BEER_LUCK, [0, 10, 15, 20, 25]);
-  T.eq(Rules.luck(base({ beers: 3, beerTimer: 1 }), M({ beerLuckMult: 0 })), 0);
-  T.eq(Rules.luck(base({ beers: 4, beerTimer: 1 })), 25);
-  T.eq(Rules.luck(base({ brownieTimer: 1 }), M({ brownieLuckMult: 0.5 })), 20);
+  T.eq(Rules.luck(base({ beers: 3, beerTimer: 1 }), M({ beerLuckMult: 0 })), 5, 'Bier wirkungslos → nur Grundglück');
+  T.eq(Rules.luck(base({ beers: 4, beerTimer: 1 })), 30);
+  T.eq(Rules.luck(base({ brownieTimer: 1 }), M({ brownieLuckMult: 0.5 })), 25);
   T.eq(Rules.canBeer(base({ beers: 3, balance: 100 })).reason, 'max');
   T.eq(Rules.canBeer(base({ beers: 3, balance: 100 }), Rules.PRICES.beer, M({ maxBeers: 4 })), { ok: true });
 });

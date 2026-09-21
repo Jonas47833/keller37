@@ -73,10 +73,12 @@ function rtpTable() {
 }
 
 /* Vorteil (Quote − 100 %) eines Spiels bei +20 Glück und Einsatz ≤ Cap – daraus folgt, ab welchem Einsatz 150 € Bier sich rechnen */
-function edgeAt20(game) {
-  const rng = seeded(3); let sum = 0; const N = 100000;
-  for (let i = 0; i < N; i++) sum += games[game](100, 20, rng);
-  return sum / N / 100;
+/* Vorteil von 3 Bier = Quote bei BASE_LUCK+20 minus Quote bei BASE_LUCK (in Einsätzen) */
+function beerEdge(game) {
+  const N = 100000; let with3 = 0, sober = 0;
+  let rng = seeded(3); for (let i = 0; i < N; i++) with3 += games[game](100, Rules.BASE_LUCK + 20, rng);
+  rng = seeded(3); for (let i = 0; i < N; i++) sober += games[game](100, Rules.BASE_LUCK, rng);
+  return (with3 - sober) / N / 100;
 }
 
 function disciplined(rng, P) {
@@ -90,7 +92,7 @@ function disciplined(rng, P) {
     while (spins++ < P.spins && bal < P.target && bal > start * 0.5) {
       const bet = Math.max(minBet, Math.min(cap, Math.round(bal / 10 / 10) * 10));
       if (timer === 0) { bal -= 150; timer = beerSpins; }
-      bal += games[P.game](bet, Rules.effectiveLuck(20, bet), rng); timer--;
+      bal += games[P.game](bet, Rules.effectiveLuck(Rules.BASE_LUCK + 20, bet), rng); timer--;
     }
     if (bal < 50) zero++;
     if (bal >= P.target) return { won: true, zero, day: d + 1 };
@@ -101,7 +103,7 @@ function wild(rng, P) {
   let bal = P.start, zero = 0;
   for (let d = 0; d < P.days; d++) {
     bal += P.job(d); let spins = 0;
-    while (spins++ < P.spins && bal >= 10 && bal < P.target) { const bet = Math.max(10, Math.round(bal / 2)); bal += games[P.game](bet, 0, rng); }
+    while (spins++ < P.spins && bal >= 10 && bal < P.target) { const bet = Math.max(10, Math.round(bal / 2)); bal += games[P.game](bet, Rules.effectiveLuck(Rules.BASE_LUCK, bet), rng); }
     if (bal < 50) zero++;
     if (bal >= P.target) return { won: true, zero, day: d + 1 };
   }
@@ -116,8 +118,8 @@ function run(name, P, strat) {
 
 rtpTable();
 if (!process.argv.includes('--rtp')) {
-  const rot = edgeAt20('rouletteRot'), slots = edgeAt20('slots');
-  console.log(`\nVorteil bei +20 Glück: Roulette Rot ${(rot * 100).toFixed(1)} %, Slots ${(slots * 100).toFixed(1)} % → 3 Bier (150 €) rechnen sich ab ${(150 / (Rules.BEER_SPINS * rot)).toFixed(0)} € (Rot) bzw. ${(150 / (Rules.BEER_SPINS * slots)).toFixed(0)} € (Slots) Einsatz`);
+  const rot = beerEdge('rouletteRot'), slots = beerEdge('slots');
+  console.log(`\nVorteil von 3 Bier (Grundglück ${Rules.BASE_LUCK}): Roulette Rot ${(rot * 100).toFixed(1)} %, Slots ${(slots * 100).toFixed(1)} % → 3 Bier (150 €) rechnen sich ab ${(150 / (Rules.BEER_SPINS * rot)).toFixed(0)} € (Rot) bzw. ${(150 / (Rules.BEER_SPINS * slots)).toFixed(0)} € (Slots) Einsatz`);
   /* Story 1: 50 € Start, 30 Tage, Jobs ~100 €/Tag (Spüler/Post), ab Tag 6 Roulette und Taxi (~220 €/Tag). Ziel: 50.000 € für Vito („ehrlich"). */
   const s1 = { start: 50, days: 30, target: 50000, job: (d) => (d < 6 ? 100 : 220), spins: 40 };
   /* Story 2: ab Tag 4 bei 0 €, 26 Abende, Jobs ~180 €/Tag, Roulette offen. Ziel: 40.000 € + Deckel („Der Wirt"). */
