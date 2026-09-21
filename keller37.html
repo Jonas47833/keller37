@@ -9998,6 +9998,12 @@ const STORY_STASH = {
       delete f.wache; f.wacheWeg = true;
       return { toast: { icon: '🚪', title: 'Die Wache geht', text: 'Kein Geld, keine Jungs. Die Tür ist wieder deine Sache.', tone: 'loss' } };
     },
+    /* Anabi hört zu (Legende): Kredit auf volle Tausend halbiert, Zorn 0 */
+    anabiNachlass(s) {
+      const v = s.story.vars;
+      v.kredit = Math.round((v.kredit || 0) / 2 / 1000) * 1000; v.zorn = 0;
+      return { toast: { icon: '🤝', title: 'Kredit halbiert', text: `Zettel jetzt ${StoryRules.fmtMoney(v.kredit)}. Zorn: null.`, tone: 'win' } };
+    },
     /* Dev-Start mitten in der Story (?day=N): ohne diese Nachbesserung stünde Woche/Ziel/Rückgabe auf 0,
        bis die nächste reguläre Lieferung/Abrechnung sie setzt. Kein Kontostand-Effekt, keine Lieferung heute Nacht. */
     devWoche(s) {
@@ -10026,6 +10032,7 @@ const STORY_STASH = {
     { id: 'hinterhalt', when: { day: { gte: 8 } }, daily: true, at: 'night', effects: [{ call: 'hinterhalt' }] },
     { id: 'angebot', when: { all: [{ day: { gte: 15 } }, { var: 'ruf', gte: 2 }, { notFlag: 'bahnhof' }, { notFlag: 'bahnhofNein' }] }, once: true, at: 'night', scene: 'stash.angebot' },
     { id: 'wache', when: { all: [{ var: 'ruf', gte: 5 }, { notFlag: 'bahnhof' }, { notFlag: 'wache' }, { notFlag: 'wacheNein' }] }, once: true, at: 'night', scene: 'stash.wache' },
+    { id: 'anabiHoert', when: { var: 'ruf', gte: 8 }, once: true, at: 'night', scene: 'stash.anabiHoert' },
     /* ---- Morgen ---- */
     { id: 'einrichten', when: { day: { gte: 1 } }, once: true, at: 'morning', effects: [{ set: { car: 'mercC' } }, { enable: ['hinterzimmer'] }, { call: 'devWoche' }] },
     { id: 'startKredit30', when: { all: [{ day: { gte: 1 } }, { any: [{ prevEnding: { story: 'kater', id: 'nuechtern' } }, { prevEnding: { story: 'kater', id: 'taxi' } }] }] }, once: true, at: 'morning', effects: [{ var: 'kredit', set: 30000 }] },
@@ -10210,6 +10217,16 @@ const STORY_STASH = {
           { label: 'Annehmen', value: 'ja', cls: 'blue', effects: [{ flag: 'wache' }] },
           { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ flag: 'wacheNein' }] },
         ] },
+    ],
+    'stash.anabiHoert': [
+      { bg: 'keller', who: 'du', mood: 'calm', cast: ['du'], text: 'Kein Igor, kein Anruf. Anabi kommt selbst. Er setzt sich an den Tisch, an dem sonst gezählt wird, und zählt nichts.' },
+      { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Am Bahnhof sagen sie deinen Namen, bevor sie meinen sagen. Ich habe das lange nicht gehört. Bei niemandem.' },
+      { bg: 'keller', who: 'anabi', mood: 'calm', cam: 'close', text: 'So einen Namen kauft man nicht. Man hält ihn. Ich streiche die Hälfte vom Zettel und vergesse, worüber ich mich geärgert habe. Einmal.',
+        choices: [
+          { label: 'Annehmen', value: 'ja', cls: 'red', effects: [{ call: 'anabiNachlass' }] },
+          { label: 'Ablehnen', value: 'nein', cls: 'ghost', effects: [{ var: 'ruf', add: 1 }] },
+        ] },
+      { bg: 'keller', who: 'anabi', mood: 'calm', text: 'Er steht auf. An der Treppe dreht er sich nicht um. Wer sich nicht umdreht, hat verstanden, was er gesehen hat.' },
     ],
     'stash.angebot': (ctx) => [
       { bg: 'bahnhof', who: 'du', mood: 'calm', cast: ['du'], text: 'Kessler wartet an der Unterführung. Allein. Das ist entweder Respekt oder eine Falle. Bei Kessler ist es meistens beides.' },
@@ -13261,6 +13278,17 @@ T.test('STORY_STASH: Die Wache ab Ruf 5 ohne Bahnhof-Deal (once); 200 €/Nacht;
   /* Wache + später Bahnhof-Deal: kostet weiter */
   const w = stashState({ balance: 5000 }); w.story.day = 16; w.story.flags.wache = true; w.story.flags.bahnhof = true;
   stashHook(w, 'night', seq(0.99, 0.99, 0.99)); T.eq(w.balance, 4800);
+});
+T.test('STORY_STASH: Anabi hört zu ab Ruf 8 (once) – Annehmen halbiert Kredit auf volle Tausend und setzt Zorn 0; Ablehnen Ruf +1', () => {
+  const nightIds = (s) => stashHook(s, 'night', seq(0.99, 0.99, 0.99))[0];
+  const s = stashState({ balance: 5000 }); s.story.day = 18; s.story.vars.woche = 3; s.story.vars.ruf = 7; s.story.vars.kredit = 7000; s.story.vars.zorn = 2; s.story.flags.bahnhofNein = true;
+  T.eq(nightIds(s).includes('anabiHoert'), false);
+  s.story.vars.ruf = 8; s.story.day = 19; T.ok(nightIds(s).includes('anabiHoert'));   // stashHook markiert once
+  stashChoose(s, 'stash.anabiHoert', 'ja'); T.eq(s.story.vars.kredit, 4000, '7.000 → 4.000 (auf volle Tausend)'); T.eq(s.story.vars.zorn, 0);
+  s.story.day = 20; T.eq(nightIds(s).includes('anabiHoert'), false, 'once');
+  const t = stashState(); t.story.vars.kredit = 10000; STORY_STASH.fns.anabiNachlass(t); T.eq(t.story.vars.kredit, 5000);
+  const z = stashState(); z.story.vars.kredit = 0; T.ok(STORY_STASH.fns.anabiNachlass(z).toast); T.eq(z.story.vars.kredit, 0, 'ohne Kredit bleibt 0');
+  const n = stashState(); n.story.vars.ruf = 8; n.story.vars.kredit = 7000; stashChoose(n, 'stash.anabiHoert', 'nein'); T.eq(n.story.vars.ruf, 9); T.eq(n.story.vars.kredit, 7000);
 });
 T.test('STORY_STASH: Sylvie – Warnung ab 10.000 einmal pro Woche, Hausverbot ab 15.000 (Betreten und mitten im Spiel)', () => {
   const s = stashState(); s.story.vars.umsatzRoyal = 10000;
