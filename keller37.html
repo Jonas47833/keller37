@@ -2468,6 +2468,8 @@ const SFX = {
     dryfire() { this.tone({ freq: 800, type: 'square', dur: 0.02, vol: 0.2 }); this.noise({ dur: 0.05, vol: 0.15, freq: 3000, type: 'highpass' }); },
     ricochet() { this.noise({ dur: 0.12, vol: 0.25, freq: 2500, type: 'highpass' }); this.tone({ freq: 1800, type: 'square', dur: 0.05, vol: 0.12, slide: -900, delay: 0.02 }); },
     gunshot() { this.noise({ dur: 0.45, vol: 0.6, freq: 900 }); this.tone({ freq: 90, type: 'sine', dur: 0.4, vol: 0.5, slide: -60 }); },
+    punch() { this.noise({ dur: 0.1, vol: 0.35, freq: 300 }); this.tone({ freq: 120, type: 'sine', dur: 0.18, vol: 0.4, slide: -70 }); },
+    whoosh() { this.noise({ dur: 0.28, vol: 0.18, freq: 1800, type: 'highpass' }); },
     cardSlide() { this.noise({ dur: 0.09, vol: 0.12, freq: 3500, type: 'highpass' }); },
     neonBuzz() { this.tone({ freq: 60, type: 'sawtooth', dur: 0.12, vol: 0.05 }); this.tone({ freq: 120, type: 'square', dur: 0.1, vol: 0.03 }); },
     typewriter() { this.tone({ freq: 3000 + Math.random() * 800, type: 'square', dur: 0.012, vol: 0.05 }); },
@@ -2744,7 +2746,7 @@ UI.register('hub', {
 /* ================= CUTSCENE DIRECTOR – Auto-Regie als reine Funktion (DOM-frei, testbar) ================= */
 const CsDirector = {
   SLOTS: ['left', 'mid', 'right', 'far'],
-  POSES: ['idle', 'talk', 'point', 'arms-crossed', 'hands-up', 'walk', 'down', 'flinch', 'draw', 'hit'],
+  POSES: ['idle', 'talk', 'point', 'arms-crossed', 'hands-up', 'walk', 'down', 'flinch', 'draw', 'hit', 'windup', 'temple', 'relief'],
   CAMS: ['close', 'wide', 'shake'],
   MOODS: ['calm', 'angry', 'happy', 'shock', 'dead'],
   HURTS: ['pflaster', 'kruecke'],
@@ -7339,6 +7341,11 @@ const GangRules = {
   DRAW_WAIT: [1500, 4000],
   /* ---- Duell in Ego-Sicht: Zielen, Fehlschüsse, Gegnerschuss ---- */
   HIT_MARGIN: { mouse: 24, touch: 32 },
+  /* ---- Überfall: Timing-Tipp (Ring schrumpft window ms, die letzten gold ms sind gold) → additiver Bonus auf die Kampf-/Fluchtchance, Deckel cap ---- */
+  TIMING: { window: 900, gold: 250, bonus: 0.10, cap: 0.95 },
+  /* t = Bühnen-ms seit Ringstart des ersten Tipps, null = kein Tipp → bonus im goldenen Fenster [window − gold, window], sonst 0 */
+  timingBonus(t, { window, gold, bonus } = GangRules.TIMING) { return t != null && t >= window - gold && t <= window ? bonus : 0; },
+  chanceWithBonus(p, bonus, cap = GangRules.TIMING.cap) { return Math.min(cap, p + bonus); },
   /* Tipp trifft, wenn er in der um margin vergrößerten Figuren-Box liegt (Bühnenkoordinaten) */
   hitTest(tap, box, margin = 24) {
     return tap.x >= box.left - margin && tap.x <= box.left + box.width + margin && tap.y >= box.top - margin && tap.y <= box.top + box.height + margin;
@@ -11827,6 +11834,13 @@ T.test('GangRules.resolveRound ≡ duelRound bei genau einem Treffer (Balance-In
     T.eq([neu.won, neu.you, neu.foeTime, neu.misfire], [old.won, old.you, old.foeTime, old.misfire], `t=${t} bonus=${bonus}`);
   }
 });
+T.test('GangRules.timingBonus: Bonus nur im goldenen Fenster [window − gold, window], null = kein Tipp; chanceWithBonus deckelt', () => {
+  T.eq(GangRules.TIMING, { window: 900, gold: 250, bonus: 0.10, cap: 0.95 });
+  T.eq([GangRules.timingBonus(null), GangRules.timingBonus(0), GangRules.timingBonus(649), GangRules.timingBonus(650), GangRules.timingBonus(900), GangRules.timingBonus(901)], [0, 0, 0, 0.10, 0.10, 0]);
+  T.eq([GangRules.timingBonus(80, { window: 100, gold: 30, bonus: 0.2 }), GangRules.timingBonus(60, { window: 100, gold: 30, bonus: 0.2 })], [0.2, 0], 'eigenes Fenster');
+  T.ok(Math.abs(GangRules.chanceWithBonus(0.35, 0.10) - 0.45) < 1e-9, '0,35 + 0,10 = 0,45');
+  T.eq([GangRules.chanceWithBonus(0.9, 0.10), GangRules.chanceWithBonus(0.5, 0), GangRules.chanceWithBonus(0.9, 0.10, 0.99)], [0.95, 0.5, 0.99], 'Deckel 0,95 (Standard) bzw. eigener');
+});
 if (typeof CsCast !== 'undefined') {
   T.test('CsCast: Looks für Bahnhof-Läufer und -Junge, gun: true zeichnet die Pistole in die rechte Hand', () => {
     for (const id of ['laeufer', 'junge']) { T.ok(CsCast.CAST[id] && CsCast.CAST[id].look, `Look ${id}`); T.eq(CsCast.CAST[id].name, GangRules.FOES[id].name, `${id}: Name wie in FOES`); }
@@ -11836,6 +11850,7 @@ if (typeof CsCast !== 'undefined') {
     T.ok(html.indexOf('class="pistole"') > html.indexOf('class="part armR"') && html.indexOf('class="pistole"') < html.indexOf('class="part head"'), 'Pistole liegt im rechten Arm-Teil');
   });
   T.test('CsDirector.POSES kennt draw und hit', () => { T.ok(CsDirector.POSES.includes('draw') && CsDirector.POSES.includes('hit')); });
+  T.test('CsDirector.POSES kennt windup, temple und relief (Überfall/Roulette)', () => { for (const p of ['windup', 'temple', 'relief']) T.ok(CsDirector.POSES.includes(p), p); });
 }
 T.test('GangRules.kurierPay: 0 → 3.000, 1 → 1.500, ≥ 2 → Kontrolle', () => {
   T.eq(GangRules.kurierPay(0), { pay: 3000, kontrolle: false });
